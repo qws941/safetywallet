@@ -10,6 +10,7 @@ import {
   CardTitle,
   CardContent,
   CardFooter,
+  toast,
 } from "@safetywallet/ui";
 import {
   useMySites,
@@ -37,7 +38,10 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
   const handleSubmit = () => {
     if (!selectedUserId || !selectedSiteId || !reason || !validDate) return;
     if (reason.length < 10) {
-      alert("사유는 10자 이상이어야 합니다.");
+      toast({
+        variant: "destructive",
+        description: "사유는 10자 이상이어야 합니다.",
+      });
       return;
     }
 
@@ -56,7 +60,10 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
           setSelectedSiteId("");
         },
         onError: (error) => {
-          alert("승인 생성 실패: " + error.message);
+          toast({
+            variant: "destructive",
+            description: "승인 생성 실패: " + error.message,
+          });
         },
       },
     );

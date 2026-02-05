@@ -1,14 +1,28 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Plus, Pin, Edit2, Trash2 } from 'lucide-react';
-import { Button, Card, Input, Badge } from '@safetywallet/ui';
+import { useState } from "react";
+import { Plus, Pin, Edit2, Trash2 } from "lucide-react";
+import {
+  Button,
+  Card,
+  Input,
+  Badge,
+  toast,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@safetywallet/ui";
 import {
   useAdminAnnouncements,
   useCreateAnnouncement,
   useUpdateAnnouncement,
   useDeleteAnnouncement,
-} from '@/hooks/use-api';
+} from "@/hooks/use-api";
 
 interface Announcement {
   id: string;
@@ -26,15 +40,16 @@ export default function AnnouncementsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [isPinned, setIsPinned] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const resetForm = () => {
     setShowForm(false);
     setEditingId(null);
-    setTitle('');
-    setContent('');
+    setTitle("");
+    setContent("");
     setIsPinned(false);
   };
 
@@ -44,12 +59,12 @@ export default function AnnouncementsPage() {
     if (editingId) {
       updateMutation.mutate(
         { id: editingId, title, content, isPinned },
-        { onSuccess: resetForm }
+        { onSuccess: resetForm },
       );
     } else {
       createMutation.mutate(
         { title, content, isPinned },
-        { onSuccess: resetForm }
+        { onSuccess: resetForm },
       );
     }
   };
@@ -63,8 +78,24 @@ export default function AnnouncementsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      deleteMutation.mutate(id);
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTargetId) {
+      deleteMutation.mutate(deleteTargetId, {
+        onSuccess: () => {
+          toast({ description: "삭제되었습니다." });
+          setDeleteTargetId(null);
+        },
+        onError: (err) => {
+          toast({
+            variant: "destructive",
+            description: "삭제 실패: " + err.message,
+          });
+          setDeleteTargetId(null);
+        },
+      });
     }
   };
 
@@ -72,10 +103,8 @@ export default function AnnouncementsPage() {
     (a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-      return (
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    },
   );
 
   return (
@@ -84,8 +113,7 @@ export default function AnnouncementsPage() {
         <h1 className="text-2xl font-bold">공지사항</h1>
         {!showForm && (
           <Button onClick={() => setShowForm(true)} className="gap-1">
-            <Plus size={16} />
-            새 공지
+            <Plus size={16} />새 공지
           </Button>
         )}
       </div>
@@ -93,7 +121,7 @@ export default function AnnouncementsPage() {
       {showForm && (
         <Card className="p-6">
           <h2 className="mb-4 text-lg font-semibold">
-            {editingId ? '공지 수정' : '새 공지 작성'}
+            {editingId ? "공지 수정" : "새 공지 작성"}
           </h2>
           <div className="space-y-4">
             <Input
@@ -126,7 +154,7 @@ export default function AnnouncementsPage() {
                   updateMutation.isPending
                 }
               >
-                {editingId ? '수정' : '등록'}
+                {editingId ? "수정" : "등록"}
               </Button>
               <Button variant="outline" onClick={resetForm}>
                 취소
@@ -139,9 +167,7 @@ export default function AnnouncementsPage() {
       {isLoading ? (
         <p className="text-center text-muted-foreground">로딩 중...</p>
       ) : sortedAnnouncements.length === 0 ? (
-        <p className="text-center text-muted-foreground">
-          공지사항이 없습니다
-        </p>
+        <p className="text-center text-muted-foreground">공지사항이 없습니다</p>
       ) : (
         <div className="space-y-4">
           {sortedAnnouncements.map((announcement) => (
@@ -161,7 +187,7 @@ export default function AnnouncementsPage() {
                     {announcement.content}
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {new Date(announcement.createdAt).toLocaleString('ko-KR')}
+                    {new Date(announcement.createdAt).toLocaleString("ko-KR")}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -186,6 +212,24 @@ export default function AnnouncementsPage() {
           ))}
         </div>
       )}
+
+      <AlertDialog
+        open={!!deleteTargetId}
+        onOpenChange={(open) => !open && setDeleteTargetId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>삭제 확인</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>삭제</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

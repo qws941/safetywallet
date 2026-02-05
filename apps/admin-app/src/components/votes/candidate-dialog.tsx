@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input } from "@safetywallet/ui";
+import { Button, Input, toast } from "@safetywallet/ui";
 import { useMembers } from "@/hooks/use-api";
 import { useAddVoteCandidate } from "@/hooks/use-votes";
 
@@ -16,7 +16,10 @@ export function CandidateDialog() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !month) {
-      alert("사용자와 월을 선택해주세요.");
+      toast({
+        variant: "destructive",
+        description: "사용자와 월을 선택해주세요.",
+      });
       return;
     }
 
@@ -24,12 +27,15 @@ export function CandidateDialog() {
       { userId, month },
       {
         onSuccess: () => {
-          alert("후보자가 추가되었습니다.");
+          toast({ description: "후보자가 추가되었습니다." });
           setOpen(false);
           setUserId("");
         },
         onError: (error) => {
-          alert("후보자 추가 실패: " + error.message);
+          toast({
+            variant: "destructive",
+            description: "후보자 추가 실패: " + error.message,
+          });
         },
       },
     );

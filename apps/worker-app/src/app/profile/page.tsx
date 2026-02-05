@@ -1,11 +1,19 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
-import { useProfile } from '@/hooks/use-api';
-import { Header } from '@/components/header';
-import { BottomNav } from '@/components/bottom-nav';
-import { Card, CardContent, Button, Avatar, AvatarFallback, Skeleton } from '@safetywallet/ui';
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-api";
+import { Header } from "@/components/header";
+import { BottomNav } from "@/components/bottom-nav";
+import {
+  Card,
+  CardContent,
+  Button,
+  Avatar,
+  AvatarFallback,
+  Skeleton,
+  toast,
+} from "@safetywallet/ui";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -16,18 +24,20 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    router.replace('/login');
+    router.replace("/login");
   };
 
   const handleLeaveSite = () => {
-    // TODO: Implement leave site
-    alert('현장 탈퇴 기능은 준비 중입니다.');
+    toast({
+      title: "알림",
+      description: "현장 탈퇴 기능은 준비 중입니다.",
+    });
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-nav">
       <Header />
-      
+
       <main className="p-4 space-y-4">
         {/* Profile Card */}
         <Card>
@@ -44,11 +54,13 @@ export default function ProfilePage() {
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarFallback className="text-xl">
-                    {user?.nameMasked?.slice(0, 1) || '👷'}
+                    {user?.nameMasked?.slice(0, 1) || "👷"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="text-xl font-bold">{user?.nameMasked || '이름 없음'}</h2>
+                  <h2 className="text-xl font-bold">
+                    {user?.nameMasked || "이름 없음"}
+                  </h2>
                   <p className="text-sm text-muted-foreground">{user?.phone}</p>
                 </div>
               </div>
@@ -61,18 +73,28 @@ export default function ProfilePage() {
           <Card>
             <CardContent className="py-4">
               <h3 className="font-medium mb-2">현재 현장</h3>
-              <p className="text-sm text-muted-foreground">ID: {currentSiteId}</p>
+              <p className="text-sm text-muted-foreground">
+                ID: {currentSiteId}
+              </p>
             </CardContent>
           </Card>
         )}
 
         {/* Actions */}
         <div className="space-y-3">
-          <Button variant="outline" className="w-full justify-start" onClick={handleLeaveSite}>
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            onClick={handleLeaveSite}
+          >
             <span className="mr-2">📍</span>
             현장 탈퇴하기
           </Button>
-          <Button variant="outline" className="w-full justify-start text-destructive" onClick={handleLogout}>
+          <Button
+            variant="outline"
+            className="w-full justify-start text-destructive"
+            onClick={handleLogout}
+          >
             <span className="mr-2">🚶</span>
             로그아웃
           </Button>

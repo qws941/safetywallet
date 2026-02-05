@@ -1,7 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Input, Button } from "@safetywallet/ui";
+import {
+  Input,
+  Button,
+  toast,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import { CandidateDialog } from "@/components/votes/candidate-dialog";
 import {
@@ -13,16 +25,30 @@ import { Trash2 } from "lucide-react";
 
 export default function VoteCandidatesPage() {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const { data: candidates, isLoading } = useVoteCandidates(month);
   const { mutate: deleteCandidate } = useDeleteVoteCandidate();
 
   const handleDelete = (id: string) => {
-    if (confirm("정말 이 후보자를 삭제하시겠습니까?")) {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTargetId) {
       deleteCandidate(
-        { id },
+        { id: deleteTargetId },
         {
-          onSuccess: () => alert("삭제되었습니다."),
-          onError: (err) => alert("삭제 실패: " + err.message),
+          onSuccess: () => {
+            toast({ description: "삭제되었습니다." });
+            setDeleteTargetId(null);
+          },
+          onError: (err) => {
+            toast({
+              variant: "destructive",
+              description: "삭제 실패: " + err.message,
+            });
+            setDeleteTargetId(null);
+          },
         },
       );
     }
@@ -112,6 +138,24 @@ export default function VoteCandidatesPage() {
           emptyMessage="등록된 후보자가 없습니다."
         />
       )}
+
+      <AlertDialog
+        open={!!deleteTargetId}
+        onOpenChange={(open) => !open && setDeleteTargetId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>삭제 확인</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 이 후보자를 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>삭제</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

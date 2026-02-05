@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  toast,
 } from "@safetywallet/ui";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api";
@@ -101,8 +102,10 @@ export default function JoinPage() {
               variant="outline"
               className="w-full"
               onClick={() => {
-                // TODO: Implement QR scanner
-                alert("QR 스캐너 기능은 준비 중입니다.");
+                toast({
+                  title: "알림",
+                  description: "QR 스캐너 기능은 준비 중입니다.",
+                });
               }}
             >
               QR 코드 스캔
