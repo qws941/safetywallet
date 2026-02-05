@@ -39,6 +39,29 @@ const requireAdmin = async (c: AppContext, next: Next) => {
   await next();
 };
 
+app.get("/unlock-user/:phoneHash", requireAdmin, async (c) => {
+  const phoneHash = c.req.param("phoneHash");
+  if (!phoneHash) {
+    return error(c, "PHONE_HASH_REQUIRED", "phoneHash is required", 400);
+  }
+
+  const db = drizzle(c.env.DB);
+  const { user: currentUser } = c.get("auth");
+  const key = `login_attempts:${phoneHash}`;
+
+  await c.env.KV.delete(key);
+
+  await db.insert(auditLogs).values({
+    action: "LOGIN_LOCKOUT_RESET",
+    actorId: currentUser.id,
+    targetType: "LOGIN_LOCKOUT",
+    targetId: phoneHash,
+    reason: "Admin unlock",
+  });
+
+  return success(c, { unlocked: true });
+});
+
 const requireManagerOrAdmin = async (c: AppContext, next: Next) => {
   const { user } = c.get("auth");
   const siteId = c.req.query("siteId") || c.req.param("siteId");
@@ -333,6 +356,7 @@ app.get("/posts/pending-review", requireManagerOrAdmin, async (c) => {
     posts: pendingPosts.map((row) => ({
       ...row.post,
       author: row.author,
+      duplicateWarning: row.post.isPotentialDuplicate,
     })),
   });
 });
@@ -377,18 +401,16 @@ app.post("/posts/:id/review", requireManagerOrAdmin, async (c) => {
     .returning()
     .get();
 
-  if (
-    body.action === "APPROVE" &&
-    body.pointsToAward &&
-    body.pointsToAward > 0
-  ) {
+  const pointsToAward = post.isPotentialDuplicate ? 0 : body.pointsToAward || 0;
+
+  if (body.action === "APPROVE" && pointsToAward > 0) {
     const now = new Date();
     const settleMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     await db.insert(pointsLedger).values({
       userId: post.userId,
       siteId: post.siteId,
       postId: post.id,
-      amount: body.pointsToAward,
+      amount: pointsToAward,
       reasonCode: "POST_APPROVED",
       reasonText: `Post approved: ${post.id}`,
       adminId: reviewer.id,
@@ -401,7 +423,7 @@ app.post("/posts/:id/review", requireManagerOrAdmin, async (c) => {
     actorId: reviewer.id,
     targetType: "POST",
     targetId: postId,
-    reason: `Action: ${body.action}, Points: ${body.pointsToAward || 0}`,
+    reason: `Action: ${body.action}, Points: ${pointsToAward}`,
   });
 
   return success(c, { review });

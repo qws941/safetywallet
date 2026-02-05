@@ -31,7 +31,6 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
   );
 
   const { data: sites } = useMySites();
-  // Fetch members for selected site
   const { data: members } = useMembers(selectedSiteId);
   const createMutation = useCreateManualApproval();
 
@@ -80,7 +79,6 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4 px-6 py-4">
-          {/* Site Select */}
           <div className="space-y-2">
             <label className="text-sm font-medium">현장 선택</label>
             <select
@@ -97,7 +95,6 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
             </select>
           </div>
 
-          {/* Member Select */}
           <div className="space-y-2">
             <label className="text-sm font-medium">작업자 선택</label>
             <select
@@ -115,7 +112,6 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
             </select>
           </div>
 
-          {/* Reason */}
           <div className="space-y-2">
             <label className="text-sm font-medium">승인 사유 (10자 이상)</label>
             <Input
@@ -125,7 +121,6 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
             />
           </div>
 
-          {/* Date */}
           <div className="space-y-2">
             <label className="text-sm font-medium">유효 날짜</label>
             <Input

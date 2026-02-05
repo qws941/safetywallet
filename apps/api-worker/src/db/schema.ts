@@ -192,6 +192,10 @@ export const posts = sqliteTable(
     isAnonymous: integer("is_anonymous", { mode: "boolean" })
       .default(false)
       .notNull(),
+    isPotentialDuplicate: integer("is_potential_duplicate", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+    duplicateOfPostId: text("duplicate_of_post_id"),
     reviewStatus: text("review_status", { enum: reviewStatusEnum })
       .default("RECEIVED")
       .notNull(),

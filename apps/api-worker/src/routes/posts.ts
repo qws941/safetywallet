@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
@@ -88,6 +88,28 @@ app.post("/", async (c) => {
     return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
   }
 
+  let duplicatePost: typeof posts.$inferSelect | undefined;
+  if (data.locationFloor && data.locationZone) {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const duplicateConditions = [
+      eq(posts.siteId, data.siteId),
+      eq(posts.locationFloor, data.locationFloor),
+      eq(posts.locationZone, data.locationZone),
+      gte(posts.createdAt, cutoff),
+    ];
+
+    if (data.hazardType) {
+      duplicateConditions.push(eq(posts.hazardType, data.hazardType));
+    }
+
+    duplicatePost = await db
+      .select()
+      .from(posts)
+      .where(and(...duplicateConditions))
+      .orderBy(desc(posts.createdAt))
+      .get();
+  }
+
   const newPost = await db
     .insert(posts)
     .values({
@@ -102,6 +124,8 @@ app.post("/", async (c) => {
       locationZone: data.locationZone,
       locationDetail: data.locationDetail,
       isAnonymous: data.isAnonymous,
+      isPotentialDuplicate: Boolean(duplicatePost),
+      duplicateOfPostId: duplicatePost?.id ?? null,
     })
     .returning()
     .get();
