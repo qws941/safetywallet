@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
-import { users, attendance } from "../db/schema";
+import { HTTPException } from "hono/http-exception";
+import { users, attendance, siteMemberships } from "../db/schema";
 import { hmac } from "../lib/crypto";
 import { signJwt } from "../lib/jwt";
 import { success, error } from "../lib/response";
-import type { Env } from "../types";
+import { authMiddleware } from "../middleware/auth";
+import type { Env, AuthContext } from "../types";
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 86400;
 const DAY_CUTOFF_HOUR = 5;
@@ -40,7 +42,7 @@ function getTodayRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
-const auth = new Hono<{ Bindings: Env }>();
+const auth = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -225,6 +227,69 @@ auth.post("/logout", async (c) => {
     .where(eq(users.refreshToken, body.refreshToken));
 
   return success(c, { message: "Logged out successfully" }, 200);
+});
+
+auth.get("/me", authMiddleware, async (c) => {
+  const authContext = c.get("auth");
+  if (!authContext) {
+    throw new HTTPException(401, { message: "인증이 필요합니다." });
+  }
+
+  const db = drizzle(c.env.DB);
+  const userId = authContext.user.id;
+
+  const userResults = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (userResults.length === 0) {
+    throw new HTTPException(404, { message: "사용자를 찾을 수 없습니다." });
+  }
+
+  const user = userResults[0];
+
+  const membershipResults = await db
+    .select()
+    .from(siteMemberships)
+    .where(eq(siteMemberships.userId, userId))
+    .limit(1);
+
+  const siteId =
+    membershipResults.length > 0 ? membershipResults[0].siteId : "";
+
+  const { start, end } = getTodayRange();
+  const attendanceRecords = await db
+    .select()
+    .from(attendance)
+    .where(and(eq(attendance.userId, userId), eq(attendance.result, "SUCCESS")))
+    .limit(100);
+
+  const todayAttendance = attendanceRecords.find((record) => {
+    const checkinTime = record.checkinAt;
+    return checkinTime && checkinTime >= start && checkinTime < end;
+  });
+
+  return success(
+    c,
+    {
+      id: user.id,
+      name: user.name || "",
+      nameMasked: user.nameMasked || "",
+      role: user.role,
+      siteId,
+      permissions: [
+        user.piiViewFull ? "PII_VIEW_FULL" : "PII_VIEW_MASKED",
+        user.canAwardPoints ? "AWARD_POINTS" : "",
+        user.canManageUsers ? "MANAGE_USERS" : "",
+      ].filter(Boolean),
+      todayAttendance: todayAttendance
+        ? { checkinAt: todayAttendance.checkinAt.toISOString() }
+        : null,
+    },
+    200,
+  );
 });
 
 export default auth;

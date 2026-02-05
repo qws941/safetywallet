@@ -14,6 +14,7 @@ import {
   reviews,
   pointsLedger,
   userRoleEnum,
+  voteCandidates,
 } from "../db/schema";
 import { hmac } from "../lib/crypto";
 import { success, error } from "../lib/response";
@@ -543,6 +544,132 @@ app.get("/stats", requireAdmin, async (c) => {
       activeUsersToday: activeAttendanceCount?.count || 0,
     },
   });
+});
+
+app.get("/votes/candidates", requireAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const month = c.req.query("month"); // YYYY-MM
+
+  if (!siteId || !month) {
+    return error(c, "MISSING_PARAMS", "siteId and month are required", 400);
+  }
+
+  const candidates = await db
+    .select({
+      id: voteCandidates.id,
+      month: voteCandidates.month,
+      source: voteCandidates.source,
+      createdAt: voteCandidates.createdAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        nameMasked: users.nameMasked,
+        companyName: users.companyName,
+        tradeType: users.tradeType,
+      },
+    })
+    .from(voteCandidates)
+    .innerJoin(users, eq(voteCandidates.userId, users.id))
+    .where(
+      and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
+    )
+    .orderBy(desc(voteCandidates.createdAt))
+    .all();
+
+  return success(c, { candidates });
+});
+
+app.post("/votes/candidates", requireAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user: currentUser } = c.get("auth");
+
+  let body: { userId: string; siteId: string; month: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "INVALID_JSON", "Invalid JSON", 400);
+  }
+
+  if (!body.userId || !body.siteId || !body.month) {
+    return error(
+      c,
+      "MISSING_FIELDS",
+      "userId, siteId, and month are required",
+      400,
+    );
+  }
+
+  // Check duplicate
+  const existing = await db
+    .select()
+    .from(voteCandidates)
+    .where(
+      and(
+        eq(voteCandidates.siteId, body.siteId),
+        eq(voteCandidates.userId, body.userId),
+        eq(voteCandidates.month, body.month),
+      ),
+    )
+    .get();
+
+  if (existing) {
+    return error(
+      c,
+      "DUPLICATE_CANDIDATE",
+      "Candidate already exists for this month",
+      409,
+    );
+  }
+
+  const newCandidate = await db
+    .insert(voteCandidates)
+    .values({
+      userId: body.userId,
+      siteId: body.siteId,
+      month: body.month,
+      source: "ADMIN",
+    })
+    .returning()
+    .get();
+
+  await db.insert(auditLogs).values({
+    action: "VOTE_CANDIDATE_ADDED",
+    actorId: currentUser.id,
+    targetType: "VOTE_CANDIDATE",
+    targetId: newCandidate.id,
+    reason: `Added candidate ${body.userId} for ${body.month}`,
+  });
+
+  return success(c, { candidate: newCandidate }, 201);
+});
+
+app.delete("/votes/candidates/:id", requireAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user: currentUser } = c.get("auth");
+  const id = c.req.param("id");
+
+  const existing = await db
+    .select()
+    .from(voteCandidates)
+    .where(eq(voteCandidates.id, id))
+    .get();
+
+  if (!existing) {
+    return error(c, "CANDIDATE_NOT_FOUND", "Candidate not found", 404);
+  }
+
+  await db.delete(voteCandidates).where(eq(voteCandidates.id, id)).run();
+
+  await db.insert(auditLogs).values({
+    action: "VOTE_CANDIDATE_REMOVED",
+    actorId: currentUser.id,
+    targetType: "VOTE_CANDIDATE",
+    targetId: id,
+    reason: `Removed candidate ${existing.userId} from ${existing.month}`,
+  });
+
+  return success(c, { success: true });
 });
 
 export default app;

@@ -466,6 +466,9 @@ export const attendance = sqliteTable(
       table.externalWorkerId,
       table.checkinAt,
     ),
+    externalSiteCheckinUnique: unique(
+      "attendance_external_site_checkin_unique",
+    ).on(table.externalWorkerId, table.siteId, table.checkinAt),
   }),
 );
 

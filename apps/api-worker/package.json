@@ -14,15 +14,15 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "hono": "^4.6.0",
-    "drizzle-orm": "^0.38.0",
     "@hono/zod-validator": "^0.4.0",
-    "zod": "^3.23.0",
-    "jose": "^5.9.0"
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.6.0",
+    "jose": "^5.9.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
-    "drizzle-kit": "^0.30.0",
+    "drizzle-kit": "^0.31.8",
     "typescript": "^5.7.0",
     "wrangler": "^3.99.0"
   }

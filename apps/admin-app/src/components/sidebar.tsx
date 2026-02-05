@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -14,21 +14,25 @@ import {
   Menu,
   X,
   LogOut,
-} from 'lucide-react';
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
-import { Button } from '@safetywallet/ui';
-import { useAuthStore } from '@/stores/auth';
+  Trophy,
+  CheckSquare,
+} from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@safetywallet/ui";
+import { useAuthStore } from "@/stores/auth";
 
 const navItems = [
-  { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
-  { href: '/posts', label: '제보 관리', icon: FileText },
-  { href: '/members', label: '회원 관리', icon: Users },
-  { href: '/points', label: '포인트 관리', icon: Coins },
-  { href: '/actions', label: '조치 현황', icon: ClipboardList },
-  { href: '/announcements', label: '공지사항', icon: Megaphone },
-  { href: '/settings', label: '설정', icon: Settings },
-  { href: '/audit', label: '감사 로그', icon: ScrollText },
+  { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/posts", label: "제보 관리", icon: FileText },
+  { href: "/members", label: "회원 관리", icon: Users },
+  { href: "/points", label: "포인트 관리", icon: Coins },
+  { href: "/approvals", label: "승인 관리", icon: CheckSquare },
+  { href: "/actions", label: "조치 현황", icon: ClipboardList },
+  { href: "/announcements", label: "공지사항", icon: Megaphone },
+  { href: "/votes/candidates", label: "투표 후보 관리", icon: Trophy },
+  { href: "/settings", label: "설정", icon: Settings },
+  { href: "/audit", label: "감사 로그", icon: ScrollText },
 ];
 
 export function Sidebar() {
@@ -39,8 +43,8 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex flex-col bg-slate-900 text-white transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64'
+        "flex flex-col bg-slate-900 text-white transition-all duration-300",
+        collapsed ? "w-16" : "w-64",
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-slate-700 px-4">
@@ -67,10 +71,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
+                "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
                 isActive
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? "bg-slate-700 text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white",
               )}
             >
               <Icon size={20} />
@@ -84,8 +88,8 @@ export function Sidebar() {
         <Button
           variant="ghost"
           className={cn(
-            'w-full justify-start gap-3 text-slate-300 hover:bg-slate-800 hover:text-white',
-            collapsed && 'justify-center'
+            "w-full justify-start gap-3 text-slate-300 hover:bg-slate-800 hover:text-white",
+            collapsed && "justify-center",
           )}
           onClick={logout}
         >

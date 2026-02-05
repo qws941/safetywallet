@@ -19,6 +19,35 @@ interface SyncBody {
   events: SyncEvent[];
 }
 
+// In-memory idempotency cache (key -> response)
+// In production, use KV namespace for distributed idempotency
+const idempotencyCache = new Map<
+  string,
+  {
+    response: {
+      processed: number;
+      inserted: number;
+      skipped: number;
+      failed: number;
+      results: Array<{ fasEventId: string; result: string }>;
+    };
+    timestamp: number;
+  }
+>();
+
+// Clean up old entries every 5 minutes (TTL: 1 hour)
+const IDEMPOTENCY_TTL = 3600000;
+const CACHE_CLEANUP_INTERVAL = 300000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of idempotencyCache.entries()) {
+    if (now - value.timestamp > IDEMPOTENCY_TTL) {
+      idempotencyCache.delete(key);
+    }
+  }
+}, CACHE_CLEANUP_INTERVAL);
+
 function getTodayRange(): { start: Date; end: Date } {
   const now = new Date();
   const koreaTime = new Date(
@@ -45,6 +74,14 @@ const attendanceRoute = new Hono<{
 }>();
 
 attendanceRoute.post("/sync", async (c) => {
+  const idempotencyKey = c.req.header("Idempotency-Key");
+  if (idempotencyKey) {
+    const cached = idempotencyCache.get(idempotencyKey);
+    if (cached) {
+      return success(c, cached.response);
+    }
+  }
+
   let body: SyncBody;
   try {
     body = await c.req.json();
@@ -60,8 +97,12 @@ attendanceRoute.post("/sync", async (c) => {
   const db = drizzle(c.env.DB);
 
   const results = [];
+  let inserted = 0;
+  let skipped = 0;
+  let failed = 0;
 
   for (const event of events) {
+    // Validate user exists
     const userResults = await db
       .select()
       .from(users)
@@ -70,47 +111,85 @@ attendanceRoute.post("/sync", async (c) => {
 
     if (userResults.length === 0) {
       results.push({ fasEventId: event.fasEventId, result: "NOT_FOUND" });
+      failed++;
       continue;
     }
 
-    // Check for duplicate by externalWorkerId + checkinAt
-    const checkinTime = new Date(event.checkinAt);
-    const existingRecords = await db
-      .select()
-      .from(attendance)
-      .where(
-        and(
-          eq(attendance.externalWorkerId, event.fasUserId),
-          eq(attendance.checkinAt, checkinTime),
-        ),
-      )
-      .limit(1);
-
-    if (existingRecords.length > 0) {
-      results.push({ fasEventId: event.fasEventId, result: "DUPLICATE" });
-      continue;
-    }
-
+    // Validate siteId
     if (!event.siteId) {
       results.push({ fasEventId: event.fasEventId, result: "MISSING_SITE" });
+      failed++;
       continue;
     }
 
-    await db.insert(attendance).values({
-      siteId: event.siteId as string,
-      externalWorkerId: event.fasUserId,
-      result: "SUCCESS",
-      source: "FAS",
-      checkinAt: checkinTime,
-    });
+    const checkinTime = new Date(event.checkinAt);
 
-    results.push({ fasEventId: event.fasEventId, result: "SUCCESS" });
+    try {
+      // Check if record already exists before insert
+      const existingBefore = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            eq(attendance.externalWorkerId, event.fasUserId),
+            eq(attendance.siteId, event.siteId as string),
+            eq(attendance.checkinAt, checkinTime),
+          ),
+        )
+        .limit(1);
+
+      if (existingBefore.length > 0) {
+        // Duplicate - record already existed
+        results.push({ fasEventId: event.fasEventId, result: "DUPLICATE" });
+        skipped++;
+        console.debug(
+          `[Attendance] Duplicate skipped: ${event.fasUserId} @ ${event.siteId} @ ${checkinTime.toISOString()}`,
+        );
+      } else {
+        // Idempotent insert: onConflictDoNothing silently skips if race condition occurs
+        await db
+          .insert(attendance)
+          .values({
+            siteId: event.siteId as string,
+            externalWorkerId: event.fasUserId,
+            result: "SUCCESS",
+            source: "FAS",
+            checkinAt: checkinTime,
+          })
+          .onConflictDoNothing({
+            target: [
+              attendance.externalWorkerId,
+              attendance.siteId,
+              attendance.checkinAt,
+            ],
+          });
+
+        results.push({ fasEventId: event.fasEventId, result: "SUCCESS" });
+        inserted++;
+      }
+    } catch (err) {
+      results.push({ fasEventId: event.fasEventId, result: "ERROR" });
+      failed++;
+      console.error(`[Attendance] Insert error for ${event.fasEventId}:`, err);
+    }
   }
 
-  return success(c, {
+  const response = {
     processed: results.length,
+    inserted,
+    skipped,
+    failed,
     results,
-  });
+  };
+
+  if (idempotencyKey) {
+    idempotencyCache.set(idempotencyKey, {
+      response,
+      timestamp: Date.now(),
+    });
+  }
+
+  return success(c, response);
 });
 
 attendanceRoute.get("/today", authMiddleware, async (c) => {

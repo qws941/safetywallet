@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
-import { useAuthStore } from '@/stores/auth';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 import type {
   ReviewStatus,
   ReviewAction,
   RejectReason,
   Category,
-} from '@safetywallet/types';
+} from "@safetywallet/types";
 
 // Types
 interface Post {
@@ -84,7 +84,7 @@ export function useDashboardStats() {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ['dashboard', 'stats', siteId],
+    queryKey: ["dashboard", "stats", siteId],
     queryFn: () => apiFetch<DashboardStats>(`/sites/${siteId}/stats`),
     enabled: !!siteId,
   });
@@ -94,11 +94,11 @@ export function useDashboardStats() {
 export function useAdminPosts(status?: ReviewStatus) {
   const siteId = useAuthStore((s) => s.currentSiteId);
   const params = new URLSearchParams();
-  if (siteId) params.set('siteId', siteId);
-  if (status) params.set('status', status);
+  if (siteId) params.set("siteId", siteId);
+  if (status) params.set("status", status);
 
   return useQuery({
-    queryKey: ['admin', 'posts', siteId, status],
+    queryKey: ["admin", "posts", siteId, status],
     queryFn: () => apiFetch<Post[]>(`/posts?${params.toString()}`),
     enabled: !!siteId,
   });
@@ -106,7 +106,7 @@ export function useAdminPosts(status?: ReviewStatus) {
 
 export function useAdminPost(postId: string) {
   return useQuery({
-    queryKey: ['admin', 'post', postId],
+    queryKey: ["admin", "post", postId],
     queryFn: () => apiFetch<Post>(`/posts/${postId}`),
     enabled: !!postId,
   });
@@ -128,24 +128,25 @@ export function useReviewPost() {
       note?: string;
     }) =>
       apiFetch(`/reviews`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ postId, action, reason, note }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'posts'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "posts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
 
 // Members
-export function useMembers() {
-  const siteId = useAuthStore((s) => s.currentSiteId);
+export function useMembers(siteId?: string) {
+  const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  const targetSiteId = siteId || currentSiteId;
 
   return useQuery({
-    queryKey: ['admin', 'members', siteId],
-    queryFn: () => apiFetch<Member[]>(`/sites/${siteId}/members`),
-    enabled: !!siteId,
+    queryKey: ["admin", "members", targetSiteId],
+    queryFn: () => apiFetch<Member[]>(`/sites/${targetSiteId}/members`),
+    enabled: !!targetSiteId,
   });
 }
 
@@ -153,7 +154,7 @@ export function useMember(memberId: string) {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ['admin', 'member', siteId, memberId],
+    queryKey: ["admin", "member", siteId, memberId],
     queryFn: () => apiFetch<Member>(`/sites/${siteId}/members/${memberId}`),
     enabled: !!siteId && !!memberId,
   });
@@ -164,7 +165,7 @@ export function usePointsLedger() {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ['admin', 'points', siteId],
+    queryKey: ["admin", "points", siteId],
     queryFn: () => apiFetch<PointsEntry[]>(`/points/history?siteId=${siteId}`),
     enabled: !!siteId,
   });
@@ -185,12 +186,12 @@ export function useAwardPoints() {
       reason: string;
     }) =>
       apiFetch(`/points/award`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ siteId, memberId, amount, reason }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'points'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'members'] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "points"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
     },
   });
 }
@@ -200,7 +201,7 @@ export function useAdminAnnouncements() {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ['admin', 'announcements', siteId],
+    queryKey: ["admin", "announcements", siteId],
     queryFn: () => apiFetch<Announcement[]>(`/announcements?siteId=${siteId}`),
     enabled: !!siteId,
   });
@@ -221,11 +222,11 @@ export function useCreateAnnouncement() {
       isPinned?: boolean;
     }) =>
       apiFetch(`/announcements`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ siteId, title, content, isPinned }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'announcements'] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
     },
   });
 }
@@ -246,11 +247,11 @@ export function useUpdateAnnouncement() {
       isPinned?: boolean;
     }) =>
       apiFetch(`/announcements/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         body: JSON.stringify({ title, content, isPinned }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'announcements'] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
     },
   });
 }
@@ -261,10 +262,10 @@ export function useDeleteAnnouncement() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch(`/announcements/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'announcements'] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
     },
   });
 }
@@ -275,7 +276,7 @@ export function useAuditLogs() {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ['admin', 'audit', siteId],
+    queryKey: ["admin", "audit", siteId],
     queryFn: () => Promise.resolve([] as AuditLog[]),
     enabled: !!siteId,
   });
@@ -294,11 +295,87 @@ interface ActionItem {
   createdAt: string;
 }
 
+export interface ManualApproval {
+  id: string;
+  userId: string;
+  siteId: string;
+  approvedById: string;
+  reason: string;
+  validDate: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    companyName: string | null;
+    tradeType: string | null;
+  };
+  approvedBy: {
+    id: string;
+    name: string | null;
+  };
+}
+
+export interface SiteMembership {
+  id: string;
+  siteId: string;
+  siteName: string;
+  status: string;
+  role: string;
+  joinedAt: string;
+}
+
+export function useMySites() {
+  return useQuery({
+    queryKey: ["admin", "my-sites"],
+    queryFn: () => apiFetch<SiteMembership[]>("/users/me/memberships"),
+  });
+}
+
+export function useManualApprovals(siteId?: string, date?: string) {
+  const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  const targetSiteId = siteId || currentSiteId;
+
+  const params = new URLSearchParams();
+  if (targetSiteId) params.set("siteId", targetSiteId);
+  if (date) params.set("date", date);
+
+  return useQuery({
+    queryKey: ["admin", "manual-approvals", targetSiteId, date],
+    queryFn: () =>
+      apiFetch<ManualApproval[]>(
+        `/admin/manual-approvals?${params.toString()}`,
+      ),
+    enabled: !!targetSiteId,
+  });
+}
+
+export function useCreateManualApproval() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      userId: string;
+      siteId: string;
+      reason: string;
+      validDate: string;
+    }) =>
+      apiFetch("/admin/manual-approval", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "manual-approvals", variables.siteId],
+      });
+    },
+  });
+}
+
 export function useActionItems() {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ['admin', 'actions', siteId],
+    queryKey: ["admin", "actions", siteId],
     queryFn: () => apiFetch<ActionItem[]>(`/actions?siteId=${siteId}`),
     enabled: !!siteId,
   });
@@ -310,11 +387,11 @@ export function useUpdateAction() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       apiFetch(`/actions/${id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ status }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'actions'] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "actions"] });
     },
   });
 }
