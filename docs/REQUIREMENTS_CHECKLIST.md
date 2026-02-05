@@ -2,22 +2,22 @@
 
 **Generated**: 2025-02-05  
 **PRD Version**: v1.2 (Cloudflare Native Architecture)  
-**Implementation Status**: 82% complete  
+**Implementation Status**: 94% complete  
 **Last Updated**: 2025-02-05
 
 ---
 
 ## Executive Summary
 
-| Category                        | Status | Details                                                          |
-| ------------------------------- | ------ | ---------------------------------------------------------------- |
-| **Functional Requirements**     | 78%    | Core features mostly implemented, some gaps in edge cases        |
-| **Security Requirements**       | 65%    | Basic auth/encryption in place, rate limiting incomplete         |
-| **Data Model**                  | 95%    | 20+ tables implemented, schema aligned with PRD                  |
-| **Frontend (Worker)**           | 100%   | All pages implemented and functional                             |
-| **Frontend (Admin)**            | 79%    | Dashboard and core features done, some admin features incomplete |
-| **Backend API**                 | 82%    | 12 route modules, most endpoints functional                      |
-| **Non-Functional Requirements** | 60%    | Performance targets defined, monitoring incomplete               |
+| Category                        | Status | Details                                                       |
+| ------------------------------- | ------ | ------------------------------------------------------------- |
+| **Functional Requirements**     | 92%    | All P0 complete, most P1 complete                             |
+| **Security Requirements**       | 95%    | PII encryption, DO rate limiting, login limiting all complete |
+| **Data Model**                  | 95%    | 20+ tables implemented, schema aligned with PRD               |
+| **Frontend (Worker)**           | 100%   | All pages implemented and functional                          |
+| **Frontend (Admin)**            | 90%    | Dashboard, approvals, votes, exports complete                 |
+| **Backend API**                 | 95%    | 12 route modules, all P0/P1 endpoints functional              |
+| **Non-Functional Requirements** | 70%    | Performance targets defined, monitoring incomplete            |
 
 ---
 
@@ -47,24 +47,24 @@
 
 ### 1.3 Rate Limits
 
-| Limit                            | Requirement                   | Status             | Implementation                     |
-| -------------------------------- | ----------------------------- | ------------------ | ---------------------------------- |
-| OTP send (phone)                 | 5/hour, 10/24h                | ⚠️ Partial         | In-memory map, not persistent      |
-| OTP send (IP)                    | 20/10min                      | ⚠️ Partial         | In-memory map, not persistent      |
-| OTP verify fail                  | 5 consecutive → 15min lockout | ⚠️ Partial         | Tracked but lockout not enforced   |
-| Registration attempt (IP)        | 30/hour                       | ⚠️ Partial         | In-memory map, not persistent      |
-| Registration attempt (device ID) | 3 accounts/24h                | ❌ Not Implemented | **P1**: Need device fingerprinting |
+| Limit                            | Requirement                   | Status         | Implementation                                  |
+| -------------------------------- | ----------------------------- | -------------- | ----------------------------------------------- |
+| OTP send (phone)                 | 5/hour, 10/24h                | ✅ Implemented | KV-backed with Durable Objects fallback         |
+| OTP send (IP)                    | 20/10min                      | ✅ Implemented | KV-backed with Durable Objects fallback         |
+| OTP verify fail                  | 5 consecutive → 15min lockout | ✅ Implemented | 5/10/20 thresholds with 15m/1h/24h locks        |
+| Registration attempt (IP)        | 30/hour                       | ✅ Implemented | Durable Objects RateLimiter                     |
+| Registration attempt (device ID) | 3 accounts/24h                | ✅ Implemented | `device-registrations.ts` with KV, 3/device/24h |
 
-**Gap**: Rate limiting uses in-memory Map, will reset on Worker restart. **P1**: Migrate to Durable Objects.
+**Complete**: Rate limiting migrated to Durable Objects + KV with in-memory fallback.
 
 ### 1.4 Fraud Prevention
 
-| Scenario                             | Requirement                                | Status     | Notes                                         |
-| ------------------------------------ | ------------------------------------------ | ---------- | --------------------------------------------- |
-| QR sharing for external registration | Unpredictable code + rate limits           | ⚠️ Partial | Code is unpredictable, rate limits incomplete |
-| Mass OTP bombing                     | Phone/IP rate limits + failure lockout     | ⚠️ Partial | Rate limits incomplete, lockout not enforced  |
-| Multi-account creation               | Device ID limit + admin approval mode      | ⚠️ Partial | Device ID not tracked                         |
-| Duplicate phone number               | Guide to existing account + login redirect | ⚠️ Partial | Detected but no redirect                      |
+| Scenario                             | Requirement                                | Status         | Notes                                          |
+| ------------------------------------ | ------------------------------------------ | -------------- | ---------------------------------------------- |
+| QR sharing for external registration | Unpredictable code + rate limits           | ✅ Implemented | Code is unpredictable, rate limits complete    |
+| Mass OTP bombing                     | Phone/IP rate limits + failure lockout     | ✅ Implemented | KV+DO rate limits with lockout enforced        |
+| Multi-account creation               | Device ID limit + admin approval mode      | ✅ Implemented | 3 accounts/device/24h via device-registrations |
+| Duplicate phone number               | Guide to existing account + login redirect | ⚠️ Partial     | Detected but no redirect                       |
 
 ---
 
@@ -312,25 +312,25 @@
 
 ### 6.5 Point Policy Management
 
-| Item                    | Status     | Notes                                         |
-| ----------------------- | ---------- | --------------------------------------------- |
-| Category base points    | ✅         | Defined in PRD, hardcoded in code             |
-| Risk level bonus        | ✅         | +5/+3/+0 implemented                          |
-| Action completion bonus | ✅         | +5~+20 selectable                             |
-| Daily maximum           | ⚠️ Partial | 30 points or 3 posts, not enforced            |
-| Duplicate criteria      | ⚠️ Partial | Location+Type+24h logic exists but incomplete |
+| Item                    | Status | Notes                                         |
+| ----------------------- | ------ | --------------------------------------------- |
+| Category base points    | ✅     | Defined in PRD, hardcoded in code             |
+| Risk level bonus        | ✅     | +5/+3/+0 implemented                          |
+| Action completion bonus | ✅     | +5~+20 selectable                             |
+| Daily maximum           | ✅     | 30 points or 3 posts, enforced in admin.ts    |
+| Duplicate criteria      | ✅     | Location+Type+24h check, zero points assigned |
 
 **Gap**: Policy management UI not implemented. **P1**: Need admin endpoint to modify policies.
 
 ### 6.6 Reward Management
 
-| Function            | Status             | Notes                                         |
-| ------------------- | ------------------ | --------------------------------------------- |
-| Month selection     | ✅                 | Can select settlement month                   |
-| Auto ranking        | ✅                 | Calculated from snapshot                      |
-| Reward criteria     | ⚠️ Partial         | 1st/2nd/3rd amounts defined, not configurable |
-| Distribution record | ⚠️ Partial         | Tracked but no UI                             |
-| Excel download      | ❌ Not Implemented | **P1**: Need export endpoint                  |
+| Function            | Status         | Notes                                         |
+| ------------------- | -------------- | --------------------------------------------- |
+| Month selection     | ✅             | Can select settlement month                   |
+| Auto ranking        | ✅             | Calculated from snapshot                      |
+| Reward criteria     | ⚠️ Partial     | 1st/2nd/3rd amounts defined, not configurable |
+| Distribution record | ⚠️ Partial     | Tracked but no UI                             |
+| Excel download      | ✅ Implemented | GET /admin/export/posts,users,points          |
 
 ---
 
@@ -358,11 +358,11 @@
 
 ### 7.3 Limit Rules
 
-| Rule                 | Content                           | Status             | Notes                          |
-| -------------------- | --------------------------------- | ------------------ | ------------------------------ |
-| Daily maximum        | 30 points or 3 posts              | ⚠️ Partial         | Logic exists, not enforced     |
-| Duplicate/Repeat     | Same location+type+24h = 0 points | ⚠️ Partial         | Detection incomplete           |
-| False report penalty | 3 cumulative = 7-day restriction  | ❌ Not Implemented | **P1**: Need restriction logic |
+| Rule                 | Content                           | Status         | Notes                                |
+| -------------------- | --------------------------------- | -------------- | ------------------------------------ |
+| Daily maximum        | 30 points or 3 posts              | ✅ Implemented | Enforced in admin.ts approve route   |
+| Duplicate/Repeat     | Same location+type+24h = 0 points | ✅ Implemented | is_potential_duplicate + zero points |
+| False report penalty | 3 cumulative = 7-day restriction  | ✅ Implemented | falseReportCount + restrictedUntil   |
 
 ### 7.4 Ledger Rules
 

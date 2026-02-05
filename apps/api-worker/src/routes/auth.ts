@@ -276,20 +276,11 @@ auth.post("/register", async (c) => {
   }
 
   const deviceId = resolveDeviceId(c, body.deviceId);
-  if (deviceId) {
-    const deviceCheck = await checkDeviceRegistrationLimit(
-      c.env.KV,
-      deviceId,
-      Date.now(),
-    );
-    if (!deviceCheck.allowed) {
-      return error(
-        c,
-        "DEVICE_LIMIT",
-        "Too many accounts from this device",
-        429,
-      );
-    }
+  const deviceCheck = deviceId
+    ? await checkDeviceRegistrationLimit(c.env.KV, deviceId, Date.now())
+    : null;
+  if (deviceCheck && !deviceCheck.allowed) {
+    return error(c, "DEVICE_LIMIT", "Too many accounts from this device", 429);
   }
 
   const db = drizzle(c.env.DB);
@@ -329,7 +320,13 @@ auth.post("/register", async (c) => {
     .get();
 
   if (deviceId) {
-    await recordDeviceRegistration(c.env.KV, deviceId, newUser.id, Date.now());
+    await recordDeviceRegistration(
+      c.env.KV,
+      deviceId,
+      newUser.id,
+      Date.now(),
+      deviceCheck?.recent,
+    );
     await db.insert(auditLogs).values({
       action: "DEVICE_REGISTRATION",
       actorId: newUser.id,

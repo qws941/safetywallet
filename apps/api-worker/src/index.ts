@@ -29,7 +29,7 @@ app.use(
       "http://localhost:3001",
     ],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "Device-Id", "X-Device-Id"],
     credentials: true,
   }),
 );
