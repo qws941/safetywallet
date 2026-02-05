@@ -1,23 +1,33 @@
 import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-export function success<T>(c: Context, data: T, status = 200) {
+export function success<T>(
+  c: Context,
+  data: T,
+  status: ContentfulStatusCode = 200,
+) {
   return c.json(
     {
       success: true,
       data,
       timestamp: new Date().toISOString(),
     },
-    status as any,
+    status,
   );
 }
 
-export function error(c: Context, code: string, message: string, status = 400) {
+export function error(
+  c: Context,
+  code: string,
+  message: string,
+  status: ContentfulStatusCode = 400,
+) {
   return c.json(
     {
       success: false,
       error: { code, message },
       timestamp: new Date().toISOString(),
     },
-    status as any,
+    status,
   );
 }

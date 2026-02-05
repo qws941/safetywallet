@@ -33,7 +33,23 @@ export async function verifyJwt(
   try {
     const secretKey = new TextEncoder().encode(secret);
     const { payload } = await jose.jwtVerify(token, secretKey);
-    return payload as unknown as JwtPayload;
+
+    // Validate required fields exist and are strings
+    if (
+      typeof payload.sub !== "string" ||
+      typeof payload.phone !== "string" ||
+      typeof payload.role !== "string" ||
+      typeof payload.loginDate !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      sub: payload.sub,
+      phone: payload.phone,
+      role: payload.role,
+      loginDate: payload.loginDate,
+    };
   } catch {
     return null;
   }
