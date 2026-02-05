@@ -18,6 +18,11 @@ database_id = "9d62c0d4-b264-4378-8219-da540f35d9d9"
 binding = "R2"
 bucket_name = "safework2-images"
 
+# R2 Bucket for static frontend files
+[[r2_buckets]]
+binding = "STATIC"
+bucket_name = "safework2-static"
+
 # KV Namespace for cache/sessions
 [[kv_namespaces]]
 binding = "KV"

@@ -1,6 +1,7 @@
 export interface Env {
   DB: D1Database;
   R2: R2Bucket;
+  STATIC: R2Bucket;
   KV: KVNamespace;
   JWT_SECRET: string;
   HMAC_SECRET: string;

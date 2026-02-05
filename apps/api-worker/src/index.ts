@@ -34,31 +34,92 @@ app.use(
   }),
 );
 
-app.get("/", (c) => {
-  return c.json({
-    status: "ok",
-    service: "safework2-api",
-    version: "1.0.0",
-    environment: c.env.ENVIRONMENT || "production",
-  });
-});
+const api = new Hono<{ Bindings: Env }>();
 
-app.get("/health", (c) => {
+api.get("/health", (c) => {
   return c.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-app.route("/auth", auth);
-app.route("/attendance", attendanceRoute);
-app.route("/votes", votesRoute);
-app.route("/posts", postsRoute);
-app.route("/actions", actionsRoute);
-app.route("/users", usersRoute);
-app.route("/sites", sitesRoute);
-app.route("/announcements", announcementsRoute);
-app.route("/admin", adminRoute);
-app.route("/points", pointsRoute);
-app.route("/reviews", reviewsRoute);
-app.route("/fas", fasRoute);
+api.route("/auth", auth);
+api.route("/attendance", attendanceRoute);
+api.route("/votes", votesRoute);
+api.route("/posts", postsRoute);
+api.route("/actions", actionsRoute);
+api.route("/users", usersRoute);
+api.route("/sites", sitesRoute);
+api.route("/announcements", announcementsRoute);
+api.route("/admin", adminRoute);
+api.route("/points", pointsRoute);
+api.route("/reviews", reviewsRoute);
+api.route("/fas", fasRoute);
+
+app.route("/api", api);
+
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html",
+  ".css": "text/css",
+  ".js": "application/javascript",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".webp": "image/webp",
+};
+
+function getMimeType(path: string): string {
+  const ext = path.substring(path.lastIndexOf("."));
+  return MIME_TYPES[ext] || "application/octet-stream";
+}
+
+app.get("*", async (c) => {
+  const url = new URL(c.req.url);
+  let path = url.pathname;
+
+  if (path.endsWith("/")) {
+    path += "index.html";
+  } else if (!path.includes(".")) {
+    path += "/index.html";
+  }
+
+  const key = path.startsWith("/") ? path.slice(1) : path;
+
+  try {
+    const object = await c.env.STATIC.get(key);
+
+    if (object) {
+      const headers = new Headers();
+      headers.set("Content-Type", getMimeType(path));
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      if (path.endsWith(".html")) {
+        headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      }
+
+      return new Response(object.body, { headers });
+    }
+
+    const indexObject = await c.env.STATIC.get("index.html");
+    if (indexObject) {
+      return new Response(indexObject.body, {
+        headers: {
+          "Content-Type": "text/html",
+          "Cache-Control": "public, max-age=0, must-revalidate",
+        },
+      });
+    }
+
+    return c.json({ error: "Not Found", path: c.req.path }, 404);
+  } catch (err) {
+    console.error("Static serve error:", err);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+});
 
 app.onError((err, c) => {
   console.error("Unhandled error:", err);
@@ -70,10 +131,6 @@ app.onError((err, c) => {
     },
     500,
   );
-});
-
-app.notFound((c) => {
-  return c.json({ error: "Not Found", path: c.req.path }, 404);
 });
 
 export { RateLimiter } from "./durable-objects/RateLimiter";

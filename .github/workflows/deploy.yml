@@ -1,22 +1,20 @@
-name: Deploy API Worker
+name: Deploy SafeWork2
 
 on:
   push:
     branches: [main]
-    paths:
-      - "apps/api-worker/**"
-      - "packages/**"
   workflow_dispatch:
 
 env:
   NODE_VERSION: "20"
 
 jobs:
-  deploy-api:
-    name: Deploy API Worker
+  deploy:
+    name: Build and Deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -25,8 +23,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build types package
-        run: npm run build --workspace=packages/types
+      - name: Build packages
+        run: |
+          npm run build --workspace=packages/types
+          npm run build --workspace=packages/ui
+
+      - name: Build Next.js (static export)
+        working-directory: apps/worker-app
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: "/api"
+
+      - name: Upload static files to R2
+        working-directory: apps/worker-app
+        run: |
+          for file in $(find out -type f); do
+            key="${file#out/}"
+            npx wrangler r2 object put "safework2-static/$key" --file="$file"
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy API Worker
         uses: cloudflare/wrangler-action@v3
