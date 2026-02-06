@@ -328,9 +328,12 @@ export interface ManualApproval {
   id: string;
   userId: string;
   siteId: string;
-  approvedById: string;
+  approvedById?: string;
   reason: string;
   validDate: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectionReason?: string;
+  approvedAt?: string;
   createdAt: string;
   user: {
     id: string;
@@ -338,7 +341,7 @@ export interface ManualApproval {
     companyName: string | null;
     tradeType: string | null;
   };
-  approvedBy: {
+  approvedBy?: {
     id: string;
     name: string | null;
   };
@@ -360,21 +363,57 @@ export function useMySites() {
   });
 }
 
-export function useManualApprovals(siteId?: string, date?: string) {
+export function useManualApprovals(
+  siteId?: string,
+  date?: string,
+  status?: string,
+) {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
   const targetSiteId = siteId || currentSiteId;
 
   const params = new URLSearchParams();
   if (targetSiteId) params.set("siteId", targetSiteId);
   if (date) params.set("date", date);
+  if (status) params.set("status", status);
 
   return useQuery({
-    queryKey: ["admin", "manual-approvals", targetSiteId, date],
+    queryKey: ["admin", "manual-approvals", targetSiteId, date, status],
     queryFn: () =>
-      apiFetch<ManualApproval[]>(
-        `/admin/manual-approvals?${params.toString()}`,
-      ),
+      apiFetch<ManualApproval[]>(`/approvals?${params.toString()}`),
     enabled: !!targetSiteId,
+  });
+}
+
+export function useApproveManualRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/approvals/${id}/approve`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "manual-approvals"],
+      });
+    },
+  });
+}
+
+export function useRejectManualRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiFetch(`/approvals/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "manual-approvals"],
+      });
+    },
   });
 }
 

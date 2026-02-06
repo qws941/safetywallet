@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo } from "react";
 import {
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react';
-import { Button, Input } from '@safetywallet/ui';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { Button, Input } from "@safetywallet/ui";
+import { cn } from "@/lib/utils";
 
 export interface Column<T> {
   key: keyof T | string;
@@ -27,6 +27,8 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  selectable?: boolean;
+  onSelectionChange?: (selectedItems: T[]) => void;
 }
 
 export function DataTable<T extends object>({
@@ -34,17 +36,22 @@ export function DataTable<T extends object>({
   data,
   pageSize = 10,
   searchable = false,
-  searchPlaceholder = '검색...',
+  searchPlaceholder = "검색...",
   onRowClick,
-  emptyMessage = '데이터가 없습니다',
+  emptyMessage = "데이터가 없습니다",
+  selectable = false,
+  onSelectionChange,
 }: DataTableProps<T>) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(0);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
+    new Set(),
+  );
 
   const getValue = (item: T, key: string): unknown => {
-    const keys = key.split('.');
+    const keys = key.split(".");
     let value: unknown = item;
     for (const k of keys) {
       value = (value as Record<string, unknown>)?.[k];
@@ -59,8 +66,8 @@ export function DataTable<T extends object>({
       const lowerSearch = search.toLowerCase();
       result = result.filter((item) =>
         Object.values(item).some((val) =>
-          String(val).toLowerCase().includes(lowerSearch)
-        )
+          String(val).toLowerCase().includes(lowerSearch),
+        ),
       );
     }
 
@@ -69,10 +76,10 @@ export function DataTable<T extends object>({
         const aVal = getValue(a, sortKey);
         const bVal = getValue(b, sortKey);
         if (aVal === bVal) return 0;
-        const aStr = String(aVal ?? '');
-        const bStr = String(bVal ?? '');
+        const aStr = String(aVal ?? "");
+        const bStr = String(bVal ?? "");
         const cmp = aStr.localeCompare(bStr);
-        return sortOrder === 'asc' ? cmp : -cmp;
+        return sortOrder === "asc" ? cmp : -cmp;
       });
     }
 
@@ -88,10 +95,41 @@ export function DataTable<T extends object>({
 
   const handleSort = (key: string) => {
     if (sortKey === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortKey(key);
-      setSortOrder('asc');
+      setSortOrder("asc");
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIndices = new Set(
+        paginatedData.map((_, idx) => idx + page * pageSize),
+      );
+      setSelectedIndices(allIndices);
+      onSelectionChange?.(paginatedData);
+    } else {
+      setSelectedIndices(new Set());
+      onSelectionChange?.([]);
+    }
+  };
+
+  const handleSelectRow = (index: number, checked: boolean) => {
+    const newSelected = new Set(selectedIndices);
+    const globalIndex = index + page * pageSize;
+    if (checked) {
+      newSelected.add(globalIndex);
+    } else {
+      newSelected.delete(globalIndex);
+    }
+    setSelectedIndices(newSelected);
+
+    if (onSelectionChange) {
+      const selectedItems = filteredData.filter((_, idx) =>
+        newSelected.has(idx),
+      );
+      onSelectionChange(selectedItems);
     }
   };
 
@@ -104,6 +142,8 @@ export function DataTable<T extends object>({
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(0);
+            setSelectedIndices(new Set());
+            onSelectionChange?.([]);
           }}
           className="max-w-sm"
         />
@@ -113,22 +153,39 @@ export function DataTable<T extends object>({
         <table className="w-full">
           <thead className="bg-muted/50">
             <tr>
+              {selectable && (
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300"
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    checked={
+                      paginatedData.length > 0 &&
+                      paginatedData.every((_, idx) =>
+                        selectedIndices.has(idx + page * pageSize),
+                      )
+                    }
+                  />
+                </th>
+              )}
               {columns.map((col) => (
                 <th
                   key={String(col.key)}
                   className={cn(
-                    'px-4 py-3 text-left text-sm font-medium text-muted-foreground',
-                    col.sortable && 'cursor-pointer select-none',
-                    col.className
+                    "px-4 py-3 text-left text-sm font-medium text-muted-foreground",
+                    col.sortable && "cursor-pointer select-none",
+                    col.className,
                   )}
-                  onClick={col.sortable ? () => handleSort(String(col.key)) : undefined}
+                  onClick={
+                    col.sortable ? () => handleSort(String(col.key)) : undefined
+                  }
                 >
                   <div className="flex items-center gap-1">
                     {col.header}
                     {col.sortable && (
                       <span className="text-muted-foreground/50">
                         {sortKey === col.key ? (
-                          sortOrder === 'asc' ? (
+                          sortOrder === "asc" ? (
                             <ChevronUp size={16} />
                           ) : (
                             <ChevronDown size={16} />
@@ -158,19 +215,19 @@ export function DataTable<T extends object>({
                 <tr
                   key={idx}
                   className={cn(
-                    'border-t',
-                    onRowClick && 'cursor-pointer hover:bg-muted/50'
+                    "border-t",
+                    onRowClick && "cursor-pointer hover:bg-muted/50",
                   )}
                   onClick={() => onRowClick?.(item)}
                 >
                   {columns.map((col) => (
                     <td
                       key={String(col.key)}
-                      className={cn('px-4 py-3 text-sm', col.className)}
+                      className={cn("px-4 py-3 text-sm", col.className)}
                     >
                       {col.render
                         ? col.render(item)
-                        : String(getValue(item, String(col.key)) ?? '-')}
+                        : String(getValue(item, String(col.key)) ?? "-")}
                     </td>
                   ))}
                 </tr>

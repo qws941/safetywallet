@@ -375,19 +375,28 @@ model AccessPolicy {
   @@map("access_policies")
 }
 
-model ManualApproval {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
-  siteId       String   @map("site_id")
-  approvedById String   @map("approved_by_id")
-  reason       String
-  validDate    DateTime @map("valid_date")
-  approvedAt   DateTime @default(now()) @map("approved_at")
-  createdAt    DateTime @default(now()) @map("created_at")
 
-  user       User @relation("ApprovalUser", fields: [userId], references: [id], onDelete: Cascade)
-  approvedBy User @relation("ApprovalAdmin", fields: [approvedById], references: [id], onDelete: Cascade)
-  site       Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ManualApproval {
+  id           String         @id @default(cuid())
+  userId       String         @map("user_id")
+  siteId       String         @map("site_id")
+  approvedById String?        @map("approved_by_id")
+  reason       String
+  validDate    DateTime       @map("valid_date")
+  status       ApprovalStatus @default(PENDING)
+  rejectionReason String?     @map("rejection_reason")
+  approvedAt   DateTime?      @map("approved_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  user       User  @relation("ApprovalUser", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("ApprovalAdmin", fields: [approvedById], references: [id], onDelete: Cascade)
+  site       Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
   @@index([userId, validDate])
   @@index([siteId, validDate])

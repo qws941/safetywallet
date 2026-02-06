@@ -20,6 +20,7 @@ import {
   categoryEnum,
   riskLevelEnum,
   voteCandidates,
+  votes,
 } from "../db/schema";
 import { hmac, encrypt, decrypt } from "../lib/crypto";
 import { success, error } from "../lib/response";
@@ -1323,6 +1324,8 @@ app.post("/manual-approval", requireManagerOrAdmin, async (c) => {
       approvedById: approver.id,
       reason: body.reason,
       validDate: now,
+      status: "APPROVED",
+      approvedAt: new Date(),
     })
     .returning()
     .get();
@@ -1568,6 +1571,66 @@ app.post("/votes/candidates", requireAdmin, async (c) => {
   });
 
   return success(c, { candidate: newCandidate }, 201);
+});
+
+app.get("/votes/results", requireAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const month = c.req.query("month");
+
+  if (!siteId || !month) {
+    return error(c, "MISSING_PARAMS", "siteId and month are required", 400);
+  }
+
+  const voteCounts = await db
+    .select({
+      candidateId: votes.candidateId,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(votes)
+    .where(and(eq(votes.siteId, siteId), eq(votes.month, month)))
+    .groupBy(votes.candidateId)
+    .all();
+
+  const voteCountMap = new Map(
+    voteCounts.map((vc) => [vc.candidateId, vc.count]),
+  );
+
+  const candidates = await db
+    .select({
+      id: voteCandidates.id,
+      userId: voteCandidates.userId,
+      month: voteCandidates.month,
+      source: voteCandidates.source,
+      user: {
+        id: users.id,
+        name: users.name,
+        nameMasked: users.nameMasked,
+        companyName: users.companyName,
+        tradeType: users.tradeType,
+      },
+    })
+    .from(voteCandidates)
+    .innerJoin(users, eq(voteCandidates.userId, users.id))
+    .where(
+      and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
+    )
+    .all();
+
+  const results = candidates.map((cand) => ({
+    user: cand.user,
+    voteCount: voteCountMap.get(cand.userId) || 0,
+    candidateId: cand.id,
+    source: cand.source,
+  }));
+
+  // Sort by vote count desc
+  results.sort((a, b) => b.voteCount - a.voteCount);
+
+  return success(c, {
+    month,
+    results,
+  });
 });
 
 app.delete("/votes/candidates/:id", requireAdmin, async (c) => {

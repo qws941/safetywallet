@@ -7,143 +7,128 @@ import {
   CardHeader,
   CardTitle,
   Button,
+  Badge,
 } from "@safetywallet/ui";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
-import { Award, Trophy, Medal } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { useRouter } from "next/navigation";
+import { Plus, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
-
-interface VoteResult {
-  user: {
-    id: string;
-    name: string | null;
-    nameMasked: string | null;
-    companyName: string | null;
-    tradeType: string | null;
-  };
-  voteCount: number;
-}
-
-interface VoteResults {
-  month: string;
-  results: VoteResult[];
-}
 
 export const runtime = "edge";
 
+interface ElectionRow {
+  month: string;
+  status: "UPCOMING" | "ACTIVE" | "ENDED";
+}
+
 export default function VotesPage() {
+  const router = useRouter();
   const siteId = useAuthStore((s) => s.currentSiteId);
-  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
-  const { data: voteResults, isLoading } = useQuery<VoteResults>({
-    queryKey: ["votes", "results", siteId, selectedMonth],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: VoteResults }>(
-        `/votes/results?siteId=${siteId}&month=${selectedMonth}`,
-      );
-      return res.data;
-    },
-    enabled: !!siteId,
-  });
-
-  const formatMonth = (month: string) => {
-    const [year, m] = month.split("-");
-    return `${year}년 ${parseInt(m)}월`;
-  };
-
-  const getMonthOptions = () => {
-    const options = [];
+  const getElectionRows = (): ElectionRow[] => {
+    const rows: ElectionRow[] = [];
     const now = new Date();
-    for (let i = 0; i < 6; i++) {
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // Generate last 11 months + current + next 2 months
+    for (let i = -2; i < 12; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      options.push(month);
+
+      let status: "UPCOMING" | "ACTIVE" | "ENDED" = "ENDED";
+      if (month === currentMonthStr) {
+        status = "ACTIVE";
+      } else if (month > currentMonthStr) {
+        status = "UPCOMING";
+      }
+
+      rows.push({ month, status });
     }
-    return options;
+
+    // Sort desc (newest first)
+    return rows.sort((a, b) => b.month.localeCompare(a.month));
   };
 
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="h-6 w-6 text-yellow-500" />;
-    if (rank === 2) return <Medal className="h-6 w-6 text-gray-400" />;
-    if (rank === 3) return <Medal className="h-6 w-6 text-amber-600" />;
-    return <span className="text-lg font-bold text-gray-400">{rank}</span>;
+  const elections = getElectionRows();
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return (
+          <Badge variant="default" className="bg-green-500">
+            진행중
+          </Badge>
+        );
+      case "UPCOMING":
+        return <Badge variant="secondary">예정</Badge>;
+      default:
+        return <Badge variant="outline">종료</Badge>;
+    }
   };
+
+  if (!siteId) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            현장을 선택해주세요.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Award className="h-6 w-6 text-yellow-500" />
-          우수 근로자 투표
-        </h1>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        {getMonthOptions().map((month) => (
-          <Button
-            key={month}
-            variant={selectedMonth === month ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedMonth(month)}
-          >
-            {formatMonth(month)}
-          </Button>
-        ))}
+        <h1 className="text-2xl font-bold">투표 관리</h1>
+        <Button onClick={() => router.push("/votes/new")}>
+          <Plus className="h-4 w-4 mr-2" />새 투표 시작
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{formatMonth(selectedMonth)} 투표 결과</CardTitle>
+          <CardTitle>투표 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          {!siteId ? (
-            <p className="text-muted-foreground text-center py-8">
-              현장을 선택해주세요.
-            </p>
-          ) : isLoading ? (
-            <p className="text-center py-8">로딩 중...</p>
-          ) : voteResults?.results && voteResults.results.length > 0 ? (
-            <div className="space-y-3">
-              {voteResults.results.map((result, index) => (
-                <div
-                  key={result.user.id}
-                  className={`flex items-center justify-between p-4 rounded-lg ${
-                    index === 0
-                      ? "bg-yellow-50 border border-yellow-200"
-                      : "bg-gray-50"
-                  }`}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>해당 월</TableHead>
+                <TableHead>상태</TableHead>
+                <TableHead className="text-right">관리</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {elections.map((election) => (
+                <TableRow
+                  key={election.month}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => router.push(`/votes/${election.month}`)}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 flex justify-center">
-                      {getRankIcon(index + 1)}
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {result.user.nameMasked || result.user.name || "익명"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {result.user.companyName}
-                        {result.user.tradeType && ` · ${result.user.tradeType}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-bold">
-                      {result.voteCount}
-                    </span>
-                    <span className="text-sm text-muted-foreground ml-1">
-                      표
-                    </span>
-                  </div>
-                </div>
+                  <TableCell className="font-medium">
+                    {election.month.split("-")[0]}년{" "}
+                    {parseInt(election.month.split("-")[1])}월
+                  </TableCell>
+                  <TableCell>{getStatusBadge(election.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm">
+                      상세보기
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">
-              투표 결과가 없습니다.
-            </p>
-          )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

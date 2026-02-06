@@ -12,11 +12,7 @@ import {
 import { hmac, decrypt, encrypt } from "../lib/crypto";
 import { signJwt } from "../lib/jwt";
 import { success, error } from "../lib/response";
-import {
-  fasSearchEmployeeByPhone,
-  fasGetDailyAttendance,
-  type FasEmployee,
-} from "../lib/fas-mariadb";
+import { fasSearchEmployeeByPhone } from "../lib/fas-mariadb";
 import { authMiddleware } from "../middleware/auth";
 import {
   checkDeviceRegistrationLimit,
@@ -28,12 +24,11 @@ import type { Env, AuthContext } from "../types";
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 86400;
 const DAY_CUTOFF_HOUR = 5;
-const LOGIN_ATTEMPT_KEY_PREFIX = "login_attempts:";
-const LOGIN_LOCK_15_MIN_THRESHOLD = 5;
-const LOGIN_LOCK_1_HOUR_THRESHOLD = 10;
-const LOGIN_LOCK_ADMIN_THRESHOLD = 20;
-const LOGIN_LOCK_15_MIN_MS = 15 * 60 * 1000;
-const LOGIN_LOCK_1_HOUR_MS = 60 * 60 * 1000;
+const LOGIN_LOCKOUT_KEY_PREFIX = "login:lockout:";
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_ATTEMPT_TTL_SECONDS = 15 * 60;
+const LOGIN_LOCKOUT_TTL_SECONDS = 30 * 60;
+const LOGIN_LOCKOUT_MS = LOGIN_LOCKOUT_TTL_SECONDS * 1000;
 const LOGIN_MIN_RESPONSE_MS = 350;
 
 interface LoginBody {
@@ -53,30 +48,30 @@ interface RefreshBody {
   refreshToken: string;
 }
 
-interface LoginAttemptRecord {
-  count: number;
-  lastAttempt: string;
-  lockUntil: string | null;
+interface LoginLockoutRecord {
+  attempts: number;
+  lockedUntil?: number;
 }
 
-function getLoginAttemptKey(phoneHash: string): string {
-  return `${LOGIN_ATTEMPT_KEY_PREFIX}${phoneHash}`;
+function getLoginLockoutKey(phoneHash: string): string {
+  return `${LOGIN_LOCKOUT_KEY_PREFIX}${phoneHash}`;
 }
 
-function parseLoginAttemptRecord(
+function parseLoginLockoutRecord(
   value: string | null,
-): LoginAttemptRecord | null {
+): LoginLockoutRecord | null {
   if (!value) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(value) as LoginAttemptRecord;
+    const parsed = JSON.parse(value) as LoginLockoutRecord;
     if (
-      typeof parsed.count === "number" &&
-      Number.isFinite(parsed.count) &&
-      typeof parsed.lastAttempt === "string" &&
-      (typeof parsed.lockUntil === "string" || parsed.lockUntil === null)
+      typeof parsed.attempts === "number" &&
+      Number.isFinite(parsed.attempts) &&
+      parsed.attempts >= 0 &&
+      (typeof parsed.lockedUntil === "number" ||
+        typeof parsed.lockedUntil === "undefined")
     ) {
       return parsed;
     }
@@ -87,59 +82,90 @@ function parseLoginAttemptRecord(
   return null;
 }
 
-function resolveLockState(
-  record: LoginAttemptRecord | null,
+function isExpiredLock(
+  record: LoginLockoutRecord | null,
   nowMs: number,
-): { locked: boolean; reason?: "TEMP_15" | "TEMP_60" | "ADMIN" } {
-  if (!record) {
-    return { locked: false };
-  }
+): boolean {
+  return typeof record?.lockedUntil === "number" && record.lockedUntil <= nowMs;
+}
 
-  if (record.count >= LOGIN_LOCK_ADMIN_THRESHOLD) {
-    return { locked: true, reason: "ADMIN" };
-  }
+function getRetryAfterSeconds(lockedUntil: number, nowMs: number): number {
+  return Math.max(1, Math.ceil((lockedUntil - nowMs) / 1000));
+}
 
-  if (record.lockUntil) {
-    const lockUntilMs = Date.parse(record.lockUntil);
-    if (!Number.isNaN(lockUntilMs) && lockUntilMs > nowMs) {
-      if (record.count >= LOGIN_LOCK_1_HOUR_THRESHOLD) {
-        return { locked: true, reason: "TEMP_60" };
-      }
-      if (record.count >= LOGIN_LOCK_15_MIN_THRESHOLD) {
-        return { locked: true, reason: "TEMP_15" };
-      }
-      return { locked: true, reason: "TEMP_15" };
-    }
-  }
-
-  return { locked: false };
+function accountLockedResponse(c: Context, lockedUntil: number, nowMs: number) {
+  const retryAfter = getRetryAfterSeconds(lockedUntil, nowMs);
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: "ACCOUNT_LOCKED",
+        message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도하세요.",
+        lockedUntil,
+        retryAfter,
+      },
+      timestamp: new Date().toISOString(),
+    },
+    429,
+    {
+      "Retry-After": retryAfter.toString(),
+    },
+  );
 }
 
 async function recordFailedLoginAttempt(
   kv: Env["KV"],
   key: string,
-  record: LoginAttemptRecord | null,
+  record: LoginLockoutRecord | null,
   nowMs: number,
-): Promise<LoginAttemptRecord> {
-  const nextCount = (record?.count ?? 0) + 1;
-  let lockUntil: string | null = null;
+): Promise<LoginLockoutRecord> {
+  const attempts = (record?.attempts ?? 0) + 1;
+  const updated: LoginLockoutRecord = { attempts };
 
-  if (nextCount >= LOGIN_LOCK_ADMIN_THRESHOLD) {
-    lockUntil = null;
-  } else if (nextCount >= LOGIN_LOCK_1_HOUR_THRESHOLD) {
-    lockUntil = new Date(nowMs + LOGIN_LOCK_1_HOUR_MS).toISOString();
-  } else if (nextCount >= LOGIN_LOCK_15_MIN_THRESHOLD) {
-    lockUntil = new Date(nowMs + LOGIN_LOCK_15_MIN_MS).toISOString();
+  if (attempts >= LOGIN_MAX_ATTEMPTS) {
+    updated.lockedUntil = nowMs + LOGIN_LOCKOUT_MS;
+    await kv.put(key, JSON.stringify(updated), {
+      expirationTtl: LOGIN_LOCKOUT_TTL_SECONDS,
+    });
+    return updated;
   }
 
-  const updated: LoginAttemptRecord = {
-    count: nextCount,
-    lastAttempt: new Date(nowMs).toISOString(),
-    lockUntil,
-  };
-
-  await kv.put(key, JSON.stringify(updated));
+  await kv.put(key, JSON.stringify(updated), {
+    expirationTtl: LOGIN_ATTEMPT_TTL_SECONDS,
+  });
   return updated;
+}
+
+async function resolveLockoutActorId(
+  db: ReturnType<typeof drizzle>,
+  phoneHash: string,
+): Promise<string | null> {
+  const existingUser = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.phoneHash, phoneHash))
+    .get();
+
+  return existingUser?.id ?? null;
+}
+
+async function logLoginLockoutEvent(
+  db: ReturnType<typeof drizzle>,
+  c: Context,
+  actorId: string,
+  phoneHash: string,
+  attempts: number,
+  lockedUntil: number,
+) {
+  await db.insert(auditLogs).values({
+    action: "LOGIN_LOCKOUT",
+    actorId,
+    targetType: "LOGIN_LOCKOUT",
+    targetId: phoneHash,
+    reason: JSON.stringify({ attempts, lockedUntil }),
+    ip: c.req.header("CF-Connecting-IP") || undefined,
+    userAgent: c.req.header("User-Agent") || undefined,
+  });
 }
 
 async function enforceMinimumResponseTime(startedAt: number) {
@@ -329,21 +355,25 @@ auth.post("/login", async (c) => {
   const db = drizzle(c.env.DB);
   const normalizedPhone = body.phone.replace(/[^0-9]/g, "");
   const phoneHash = await hmac(c.env.HMAC_SECRET, normalizedPhone);
-  const attemptKey = getLoginAttemptKey(phoneHash);
-  const existingAttempt = parseLoginAttemptRecord(
+  const attemptKey = getLoginLockoutKey(phoneHash);
+  const nowMs = Date.now();
+  const existingAttempt = parseLoginLockoutRecord(
     await c.env.KV.get(attemptKey),
   );
-  const lockState = resolveLockState(existingAttempt, Date.now());
-  if (lockState.locked) {
-    const message =
-      lockState.reason === "ADMIN"
-        ? "계정이 잠금 상태입니다. 관리자에게 문의하세요."
-        : lockState.reason === "TEMP_60"
-          ? "로그인 시도가 너무 많습니다. 1시간 후 다시 시도하세요."
-          : "로그인 시도가 너무 많습니다. 15분 후 다시 시도하세요.";
-    const code =
-      lockState.reason === "ADMIN" ? "ACCOUNT_LOCKED_ADMIN" : "ACCOUNT_LOCKED";
-    return respondWithDelay(error(c, code, message, 423));
+  if (isExpiredLock(existingAttempt, nowMs)) {
+    await c.env.KV.delete(attemptKey);
+  }
+  const currentAttempt = isExpiredLock(existingAttempt, nowMs)
+    ? null
+    : existingAttempt;
+
+  if (
+    typeof currentAttempt?.lockedUntil === "number" &&
+    currentAttempt.lockedUntil > nowMs
+  ) {
+    return respondWithDelay(
+      accountLockedResponse(c, currentAttempt.lockedUntil, nowMs),
+    );
   }
   const normalizedDob = body.dob.replace(/[^0-9]/g, "");
   const dobHash = await hmac(c.env.HMAC_SECRET, normalizedDob);
@@ -409,37 +439,23 @@ auth.post("/login", async (c) => {
     const updatedAttempt = await recordFailedLoginAttempt(
       c.env.KV,
       attemptKey,
-      existingAttempt,
+      currentAttempt,
       Date.now(),
     );
-    if (updatedAttempt.count >= LOGIN_LOCK_ADMIN_THRESHOLD) {
-      return respondWithDelay(
-        error(
+    if (typeof updatedAttempt.lockedUntil === "number") {
+      const actorId = await resolveLockoutActorId(db, phoneHash);
+      if (actorId) {
+        await logLoginLockoutEvent(
+          db,
           c,
-          "ACCOUNT_LOCKED_ADMIN",
-          "계정이 잠금 상태입니다. 관리자에게 문의하세요.",
-          423,
-        ),
-      );
-    }
-    if (updatedAttempt.count >= LOGIN_LOCK_1_HOUR_THRESHOLD) {
+          actorId,
+          phoneHash,
+          updatedAttempt.attempts,
+          updatedAttempt.lockedUntil,
+        );
+      }
       return respondWithDelay(
-        error(
-          c,
-          "ACCOUNT_LOCKED",
-          "로그인 시도가 너무 많습니다. 1시간 후 다시 시도하세요.",
-          423,
-        ),
-      );
-    }
-    if (updatedAttempt.count >= LOGIN_LOCK_15_MIN_THRESHOLD) {
-      return respondWithDelay(
-        error(
-          c,
-          "ACCOUNT_LOCKED",
-          "로그인 시도가 너무 많습니다. 15분 후 다시 시도하세요.",
-          423,
-        ),
+        accountLockedResponse(c, updatedAttempt.lockedUntil, Date.now()),
       );
     }
 
@@ -461,37 +477,20 @@ auth.post("/login", async (c) => {
     const updatedAttempt = await recordFailedLoginAttempt(
       c.env.KV,
       attemptKey,
-      existingAttempt,
+      currentAttempt,
       Date.now(),
     );
-    if (updatedAttempt.count >= LOGIN_LOCK_ADMIN_THRESHOLD) {
-      return respondWithDelay(
-        error(
-          c,
-          "ACCOUNT_LOCKED_ADMIN",
-          "계정이 잠금 상태입니다. 관리자에게 문의하세요.",
-          423,
-        ),
+    if (typeof updatedAttempt.lockedUntil === "number") {
+      await logLoginLockoutEvent(
+        db,
+        c,
+        user.id,
+        phoneHash,
+        updatedAttempt.attempts,
+        updatedAttempt.lockedUntil,
       );
-    }
-    if (updatedAttempt.count >= LOGIN_LOCK_1_HOUR_THRESHOLD) {
       return respondWithDelay(
-        error(
-          c,
-          "ACCOUNT_LOCKED",
-          "로그인 시도가 너무 많습니다. 1시간 후 다시 시도하세요.",
-          423,
-        ),
-      );
-    }
-    if (updatedAttempt.count >= LOGIN_LOCK_15_MIN_THRESHOLD) {
-      return respondWithDelay(
-        error(
-          c,
-          "ACCOUNT_LOCKED",
-          "로그인 시도가 너무 많습니다. 15분 후 다시 시도하세요.",
-          423,
-        ),
+        accountLockedResponse(c, updatedAttempt.lockedUntil, Date.now()),
       );
     }
 

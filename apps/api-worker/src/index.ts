@@ -18,6 +18,7 @@ import fasRoute from "./routes/fas";
 import disputesRoute from "./routes/disputes";
 import notificationsRoute from "./routes/notifications";
 import policiesRoute from "./routes/policies";
+import approvalsRoute from "./routes/approvals";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -58,6 +59,7 @@ api.route("/fas", fasRoute);
 api.route("/disputes", disputesRoute);
 api.route("/notifications", notificationsRoute);
 api.route("/policies", policiesRoute);
+api.route("/approvals", approvalsRoute);
 
 app.route("/api", api);
 

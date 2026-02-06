@@ -72,6 +72,7 @@ export const disputeTypeEnum = [
   "ATTENDANCE_DISPUTE",
   "OTHER",
 ] as const;
+export const approvalStatusEnum = ["PENDING", "APPROVED", "REJECTED"] as const;
 
 // ============================================================================
 // TABLES
@@ -524,14 +525,16 @@ export const manualApprovals = sqliteTable(
     siteId: text("site_id")
       .notNull()
       .references(() => sites.id, { onDelete: "cascade" }),
-    approvedById: text("approved_by_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    approvedById: text("approved_by_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     reason: text("reason").notNull(),
     validDate: integer("valid_date", { mode: "timestamp" }).notNull(),
-    approvedAt: integer("approved_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(),
-    ),
+    status: text("status", { enum: approvalStatusEnum })
+      .default("PENDING")
+      .notNull(),
+    rejectionReason: text("rejection_reason"),
+    approvedAt: integer("approved_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),
