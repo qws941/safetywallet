@@ -5,13 +5,53 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Require CI to pass before deploying
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   NODE_VERSION: "20"
 
 jobs:
+  # Wait for CI workflow to complete successfully
+  ci:
+    name: Wait for CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI Status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // For workflow_dispatch, skip CI check
+            if (context.eventName === 'workflow_dispatch') {
+              console.log('Manual dispatch - skipping CI check');
+              return;
+            }
+
+            // Get the latest CI workflow run for this commit
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              head_sha: context.sha,
+              per_page: 1
+            });
+
+            if (runs.data.workflow_runs.length === 0) {
+              core.setFailed('No CI workflow run found for this commit');
+              return;
+            }
+
+            const run = runs.data.workflow_runs[0];
+            if (run.conclusion !== 'success') {
+              core.setFailed(`CI workflow ${run.status}: ${run.conclusion}`);
+            }
+
   deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
+    needs: ci
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +62,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate
 
       - name: Build packages
         run: npm run build --workspace=packages/types
@@ -40,16 +83,14 @@ jobs:
             npx wrangler r2 object put "safework2-static/$key" --file="$file"
           done
         env:
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy API Worker
         working-directory: apps/api-worker
         run: npx wrangler deploy
         env:
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Build Admin App (Cloudflare Pages)
@@ -61,14 +102,12 @@ jobs:
       - name: Create Pages Project (if not exists)
         run: npx wrangler pages project create safework2-admin --production-branch=main 2>/dev/null || echo "Project may already exist"
         env:
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy Admin App to Pages
         working-directory: apps/admin-app
         run: npx wrangler pages deploy .vercel/output/static --project-name=safework2-admin --branch=main
         env:
-          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
-          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
