@@ -59,13 +59,3 @@ binding = "DB"
 database_name = "safework2-db-dev"
 database_id = "f0a2bc59-80b6-483e-87ed-09a234acfe8b"
 
-# Hyperdrive for FAS MariaDB connection (AceTime)
-# NOTE: Create with: npx wrangler hyperdrive create fas-mariadb --connection-string="mysql://mdidev6510:1234@110.10.129.91:3306/acetime"
-# Then replace the placeholder ID below with the actual hyperdrive ID
-[[hyperdrive]]
-binding = "FAS_HYPERDRIVE"
-id = "PLACEHOLDER_HYPERDRIVE_ID"
-
-[[env.dev.hyperdrive]]
-binding = "FAS_HYPERDRIVE"
-id = "PLACEHOLDER_HYPERDRIVE_ID"
