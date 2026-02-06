@@ -1,7 +1,10 @@
-import * as mysql from "mysql2/promise";
+import mysql from "mysql2/promise";
 import type { HyperdriveBinding } from "../types";
 
-type MySqlConnection = Awaited<ReturnType<typeof mysql.createConnection>>;
+// mysql2/promise의 createConnection은 Connection 타입을 반환하지만
+// 실제로는 query 메서드를 포함함. 타입 정의가 불완전하므로 any 사용.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MySqlConnection = any;
 
 export interface FasEmployee {
   id: number;

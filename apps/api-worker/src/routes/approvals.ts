@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, gte, lt } from "drizzle-orm";
-import { manualApprovals, attendance, users, sites } from "../db/schema";
+import * as schema from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 import { logAuditWithContext } from "../lib/audit";
+
+const { manualApprovals, attendance, users, sites } = schema;
 
 const app = new Hono<{
   Bindings: Env;
@@ -16,7 +18,7 @@ app.use("*", authMiddleware);
 
 // List approvals (pending by default, or filtered)
 app.get("/", async (c) => {
-  const db = drizzle(c.env.DB);
+  const db = drizzle(c.env.DB, { schema });
   const { user } = c.get("auth");
   const siteId = c.req.query("siteId");
   const status = c.req.query("status"); // PENDING, APPROVED, REJECTED
@@ -99,7 +101,7 @@ app.get("/", async (c) => {
 
 // Approve request
 app.post("/:id/approve", async (c) => {
-  const db = drizzle(c.env.DB);
+  const db = drizzle(c.env.DB, { schema });
   const { user: approver } = c.get("auth");
   const id = c.req.param("id");
 
@@ -172,7 +174,7 @@ app.post("/:id/approve", async (c) => {
 
 // Reject request
 app.post("/:id/reject", async (c) => {
-  const db = drizzle(c.env.DB);
+  const db = drizzle(c.env.DB, { schema });
   const { user: approver } = c.get("auth");
   const id = c.req.param("id");
   const { reason } = await c.req.json<{ reason: string }>();
