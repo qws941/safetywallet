@@ -5,8 +5,11 @@ import type { Env } from "../types";
 import { users } from "../db/schema";
 import { hmac, encrypt } from "../lib/crypto";
 import { success, error } from "../lib/response";
+import { fasAuthMiddleware } from "../middleware/fas-auth";
 
 const app = new Hono<{ Bindings: Env }>();
+
+app.use("*", fasAuthMiddleware);
 
 interface FasWorkerDto {
   externalWorkerId: string;

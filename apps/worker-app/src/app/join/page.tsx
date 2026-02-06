@@ -15,6 +15,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api";
 import type { ApiResponse } from "@safetywallet/types";
+import { QRScanner } from "@/components/qr-scanner";
 
 export default function JoinPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function JoinPage() {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,15 +103,17 @@ export default function JoinPage() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => {
-                toast({
-                  title: "알림",
-                  description: "QR 스캐너 기능은 준비 중입니다.",
-                });
-              }}
+              onClick={() => setShowScanner(true)}
             >
               QR 코드 스캔
             </Button>
+            <QRScanner
+              open={showScanner}
+              onOpenChange={setShowScanner}
+              onScan={(code) => {
+                setJoinCode(code.toUpperCase());
+              }}
+            />
           </form>
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gte, lt } from "drizzle-orm";
 import { attendance, users } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
+import { fasAuthMiddleware } from "../middleware/fas-auth";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 
@@ -78,7 +79,7 @@ const attendanceRoute = new Hono<{
   Variables: { auth: AuthContext };
 }>();
 
-attendanceRoute.post("/sync", async (c) => {
+attendanceRoute.post("/sync", fasAuthMiddleware, async (c) => {
   cleanupIdempotencyCache();
   const idempotencyKey = c.req.header("Idempotency-Key");
   if (idempotencyKey) {

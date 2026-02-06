@@ -5,12 +5,14 @@ import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { success, error } from "../lib/response";
+import { logAuditWithContext } from "../lib/audit";
 import {
   posts,
   postImages,
   siteMemberships,
   users,
   reviews,
+  auditLogs,
 } from "../db/schema";
 
 const app = new Hono<{
@@ -46,6 +48,7 @@ interface CreatePostBody {
   locationZone?: string;
   locationDetail?: string;
   isAnonymous?: boolean;
+  metadata?: Record<string, any>;
 }
 
 app.use("*", authMiddleware);
@@ -138,6 +141,7 @@ app.post("/", async (c) => {
       locationZone: data.locationZone,
       locationDetail: data.locationDetail,
       isAnonymous: data.isAnonymous,
+      metadata: data.metadata,
       isPotentialDuplicate: Boolean(duplicatePost),
       duplicateOfPostId: duplicatePost?.id ?? null,
     })
@@ -219,6 +223,7 @@ app.get("/me", async (c) => {
 app.get("/:id", async (c) => {
   await attendanceMiddleware(c, async () => {});
   const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
   const postId = c.req.param("id");
 
   const post = await db.select().from(posts).where(eq(posts.id, postId)).get();
@@ -237,6 +242,21 @@ app.get("/:id", async (c) => {
       .all(),
     db.select().from(reviews).where(eq(reviews.postId, postId)).all(),
   ]);
+
+  if (images.length > 0) {
+    await logAuditWithContext(
+      c,
+      db,
+      "IMAGE_DOWNLOAD",
+      user.id,
+      "IMAGE",
+      postId,
+      {
+        imageIds: images.map((img) => img.id),
+        postId,
+      },
+    );
+  }
 
   return success(c, {
     post: {

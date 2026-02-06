@@ -15,6 +15,7 @@ export interface Env {
   SMS_SENDER?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
+  FAS_API_KEY?: string;
 }
 
 export interface User {

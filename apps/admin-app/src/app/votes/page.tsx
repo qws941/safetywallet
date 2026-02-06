@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@safetywallet/ui';
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
-import { Award, Trophy, Medal } from 'lucide-react';
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+} from "@safetywallet/ui";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
+import { Award, Trophy, Medal } from "lucide-react";
+import { useAuthStore } from "@/stores/auth";
 
 interface VoteResult {
   user: {
@@ -22,24 +29,26 @@ interface VoteResults {
   results: VoteResult[];
 }
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
 export default function VotesPage() {
-  const [siteId] = useState<string | null>(null);
-  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const siteId = useAuthStore((s) => s.currentSiteId);
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   const { data: voteResults, isLoading } = useQuery<VoteResults>({
-    queryKey: ['votes', 'results', siteId, selectedMonth],
+    queryKey: ["votes", "results", siteId, selectedMonth],
     queryFn: async () => {
-      const res = await apiFetch<{ data: VoteResults }>(`/votes/results?siteId=${siteId}&month=${selectedMonth}`);
+      const res = await apiFetch<{ data: VoteResults }>(
+        `/votes/results?siteId=${siteId}&month=${selectedMonth}`,
+      );
       return res.data;
     },
     enabled: !!siteId,
   });
 
   const formatMonth = (month: string) => {
-    const [year, m] = month.split('-');
+    const [year, m] = month.split("-");
     return `${year}년 ${parseInt(m)}월`;
   };
 
@@ -48,7 +57,7 @@ export default function VotesPage() {
     const now = new Date();
     for (let i = 0; i < 6; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       options.push(month);
     }
     return options;
@@ -74,7 +83,7 @@ export default function VotesPage() {
         {getMonthOptions().map((month) => (
           <Button
             key={month}
-            variant={selectedMonth === month ? 'default' : 'outline'}
+            variant={selectedMonth === month ? "default" : "outline"}
             size="sm"
             onClick={() => setSelectedMonth(month)}
           >
@@ -89,7 +98,9 @@ export default function VotesPage() {
         </CardHeader>
         <CardContent>
           {!siteId ? (
-            <p className="text-muted-foreground text-center py-8">현장을 선택해주세요.</p>
+            <p className="text-muted-foreground text-center py-8">
+              현장을 선택해주세요.
+            </p>
           ) : isLoading ? (
             <p className="text-center py-8">로딩 중...</p>
           ) : voteResults?.results && voteResults.results.length > 0 ? (
@@ -98,7 +109,9 @@ export default function VotesPage() {
                 <div
                   key={result.user.id}
                   className={`flex items-center justify-between p-4 rounded-lg ${
-                    index === 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'
+                    index === 0
+                      ? "bg-yellow-50 border border-yellow-200"
+                      : "bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center gap-4">
@@ -107,7 +120,7 @@ export default function VotesPage() {
                     </div>
                     <div>
                       <p className="font-medium">
-                        {result.user.nameMasked || result.user.name || '익명'}
+                        {result.user.nameMasked || result.user.name || "익명"}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {result.user.companyName}
@@ -116,14 +129,20 @@ export default function VotesPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-2xl font-bold">{result.voteCount}</span>
-                    <span className="text-sm text-muted-foreground ml-1">표</span>
+                    <span className="text-2xl font-bold">
+                      {result.voteCount}
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-1">
+                      표
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-8">투표 결과가 없습니다.</p>
+            <p className="text-muted-foreground text-center py-8">
+              투표 결과가 없습니다.
+            </p>
           )}
         </CardContent>
       </Card>

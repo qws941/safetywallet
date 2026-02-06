@@ -10,6 +10,13 @@ interface FailureState {
   lockedUntil: number | null;
 }
 
+interface OtpLimitState {
+  hourlyCount: number;
+  hourlyResetAt: number;
+  dailyCount: number;
+  dailyResetAt: number;
+}
+
 type CheckLimitResult = {
   allowed: boolean;
   remaining: number;
@@ -21,12 +28,26 @@ type FailureResult = {
   lockedUntil: number | null;
 };
 
+type OtpLimitResult = {
+  allowed: boolean;
+  hourlyRemaining: number;
+  dailyRemaining: number;
+  resetAt: number;
+  reason?: "HOURLY_LIMIT" | "DAILY_LIMIT";
+};
+
 type RateLimiterRequest =
   | { action: "checkLimit"; key: string; limit: number; windowMs: number }
   | { action: "recordFailure"; key: string }
-  | { action: "resetFailures"; key: string };
+  | { action: "resetFailures"; key: string }
+  | { action: "checkOtpLimit"; key: string }
+  | { action: "resetOtpLimit"; key: string };
 
 const OTP_LOCK_MS = 15 * 60 * 1000;
+const OTP_HOURLY_LIMIT = 5;
+const OTP_DAILY_LIMIT = 10;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export class RateLimiter {
   private state: DurableObjectState;
@@ -102,6 +123,79 @@ export class RateLimiter {
     await this.state.storage.delete(key);
   }
 
+  async checkOtpLimit(key: string): Promise<OtpLimitResult> {
+    const now = Date.now();
+    const storageKey = `otp:${key}`;
+    const record = await this.state.storage.get<OtpLimitState>(storageKey);
+
+    let hourlyCount = 0;
+    let hourlyResetAt = now + ONE_HOUR_MS;
+    let dailyCount = 0;
+    let dailyResetAt = now + TWENTY_FOUR_HOURS_MS;
+
+    if (record) {
+      // Reset hourly if window expired
+      if (record.hourlyResetAt <= now) {
+        hourlyCount = 0;
+        hourlyResetAt = now + ONE_HOUR_MS;
+      } else {
+        hourlyCount = record.hourlyCount;
+        hourlyResetAt = record.hourlyResetAt;
+      }
+
+      // Reset daily if window expired
+      if (record.dailyResetAt <= now) {
+        dailyCount = 0;
+        dailyResetAt = now + TWENTY_FOUR_HOURS_MS;
+      } else {
+        dailyCount = record.dailyCount;
+        dailyResetAt = record.dailyResetAt;
+      }
+    }
+
+    // Check daily limit first (stricter)
+    if (dailyCount >= OTP_DAILY_LIMIT) {
+      return {
+        allowed: false,
+        hourlyRemaining: Math.max(0, OTP_HOURLY_LIMIT - hourlyCount),
+        dailyRemaining: 0,
+        resetAt: dailyResetAt,
+        reason: "DAILY_LIMIT",
+      };
+    }
+
+    // Check hourly limit
+    if (hourlyCount >= OTP_HOURLY_LIMIT) {
+      return {
+        allowed: false,
+        hourlyRemaining: 0,
+        dailyRemaining: Math.max(0, OTP_DAILY_LIMIT - dailyCount),
+        resetAt: hourlyResetAt,
+        reason: "HOURLY_LIMIT",
+      };
+    }
+
+    // Increment both counters
+    const updated: OtpLimitState = {
+      hourlyCount: hourlyCount + 1,
+      hourlyResetAt,
+      dailyCount: dailyCount + 1,
+      dailyResetAt,
+    };
+    await this.state.storage.put(storageKey, updated);
+
+    return {
+      allowed: true,
+      hourlyRemaining: Math.max(0, OTP_HOURLY_LIMIT - updated.hourlyCount),
+      dailyRemaining: Math.max(0, OTP_DAILY_LIMIT - updated.dailyCount),
+      resetAt: hourlyResetAt,
+    };
+  }
+
+  async resetOtpLimit(key: string): Promise<void> {
+    await this.state.storage.delete(`otp:${key}`);
+  }
+
   async fetch(request: Request): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
@@ -134,6 +228,16 @@ export class RateLimiter {
 
     if (payload.action === "resetFailures") {
       await this.resetFailures(payload.key);
+      return Response.json({ ok: true });
+    }
+
+    if (payload.action === "checkOtpLimit") {
+      const result = await this.checkOtpLimit(payload.key);
+      return Response.json(result);
+    }
+
+    if (payload.action === "resetOtpLimit") {
+      await this.resetOtpLimit(payload.key);
       return Response.json({ ok: true });
     }
 

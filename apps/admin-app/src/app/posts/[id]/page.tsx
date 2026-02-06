@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Button, Card, Badge, Skeleton } from '@safetywallet/ui';
-import { ReviewActions } from '@/components/review-actions';
-import { useAdminPost } from '@/hooks/use-api';
-import { ReviewStatus, Category } from '@safetywallet/types';
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Button, Card, Badge, Skeleton } from "@safetywallet/ui";
+import { ReviewActions } from "@/components/review-actions";
+import { useAdminPost } from "@/hooks/use-api";
+import { ReviewStatus, Category } from "@safetywallet/types";
 
 const statusLabels: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: '접수됨',
-  [ReviewStatus.IN_REVIEW]: '검토 중',
-  [ReviewStatus.NEED_INFO]: '추가정보 필요',
-  [ReviewStatus.APPROVED]: '승인됨',
-  [ReviewStatus.REJECTED]: '거절됨',
+  [ReviewStatus.RECEIVED]: "접수됨",
+  [ReviewStatus.IN_REVIEW]: "검토 중",
+  [ReviewStatus.NEED_INFO]: "추가정보 필요",
+  [ReviewStatus.APPROVED]: "승인됨",
+  [ReviewStatus.REJECTED]: "거절됨",
 };
 
 const categoryLabels: Record<Category, string> = {
-  [Category.HAZARD]: '위험요소',
-  [Category.UNSAFE_BEHAVIOR]: '불안전 행동',
-  [Category.INCONVENIENCE]: '불편사항',
-  [Category.SUGGESTION]: '개선 제안',
-  [Category.BEST_PRACTICE]: '모범 사례',
+  [Category.HAZARD]: "위험요소",
+  [Category.UNSAFE_BEHAVIOR]: "불안전 행동",
+  [Category.INCONVENIENCE]: "불편사항",
+  [Category.SUGGESTION]: "개선 제안",
+  [Category.BEST_PRACTICE]: "모범 사례",
 };
 
 export default function PostDetailPage() {
@@ -67,7 +67,9 @@ export default function PostDetailPage() {
       <Card className="p-6">
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold">{post.title}</h2>
+            <h2 className="text-xl font-semibold">
+              {categoryLabels[post.category] || post.category}
+            </h2>
             <div className="mt-2 flex gap-2">
               <Badge variant="outline">
                 {categoryLabels[post.category] || post.category}
@@ -77,25 +79,26 @@ export default function PostDetailPage() {
           </div>
           <div className="text-right text-sm text-muted-foreground">
             <p>{post.author.nameMasked}</p>
-            <p>{new Date(post.createdAt).toLocaleString('ko-KR')}</p>
+            <p>{new Date(post.createdAt).toLocaleString("ko-KR")}</p>
           </div>
         </div>
 
         <div className="mb-6">
           <h3 className="mb-2 font-medium">내용</h3>
           <p className="whitespace-pre-wrap text-muted-foreground">
-            {post.description}
+            {post.content}
           </p>
         </div>
 
-        {post.location && (
+        {post.site && (
           <div className="mb-6">
             <h3 className="mb-2 font-medium">위치</h3>
-            <p className="text-muted-foreground">{post.location}</p>
+            <p className="text-muted-foreground">{post.site.name}</p>
           </div>
         )}
 
-        {post.photos && post.photos.length > 0 && (
+        {/* Photos section commented out as it's not in the Post interface yet */}
+        {/* {post.photos && post.photos.length > 0 && (
           <div className="mb-6">
             <h3 className="mb-2 font-medium">첨부 사진</h3>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -109,7 +112,7 @@ export default function PostDetailPage() {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         {canReview && (
           <div className="border-t pt-6">

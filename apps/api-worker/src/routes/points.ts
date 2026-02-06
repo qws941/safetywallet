@@ -3,8 +3,9 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
-import { pointsLedger, siteMemberships, users } from "../db/schema";
+import { pointsLedger, siteMemberships, users, auditLogs } from "../db/schema";
 import { success, error } from "../lib/response";
+import { logAuditWithContext } from "../lib/audit";
 
 const app = new Hono<{
   Bindings: Env;
@@ -101,6 +102,13 @@ app.post("/award", async (c) => {
     })
     .returning()
     .get();
+
+  await logAuditWithContext(c, db, "POINT_AWARD", user.id, "POINT", entry.id, {
+    userId: data.userId,
+    amount: data.amount,
+    reason: data.reason,
+    reasonCode: "MANUAL_AWARD",
+  });
 
   const targetUser = await db
     .select({ id: users.id, nameMasked: users.nameMasked })

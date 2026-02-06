@@ -18,6 +18,7 @@ import {
   normalizeDeviceId,
   recordDeviceRegistration,
 } from "../lib/device-registrations";
+import { checkRateLimit } from "../lib/rate-limit";
 import type { Env, AuthContext } from "../types";
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 86400;
@@ -181,94 +182,6 @@ function resolveDeviceId(c: Context, bodyDeviceId?: string): string | null {
 
 const auth = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
-interface RateLimitState {
-  count: number;
-  resetAt: number;
-}
-
-interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  resetAt: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitState>();
-
-async function checkDurableLimit(
-  env: Env,
-  key: string,
-  limit: number,
-  windowMs: number,
-): Promise<RateLimitResult | null> {
-  if (!env.RATE_LIMITER) {
-    return null;
-  }
-
-  try {
-    const id = env.RATE_LIMITER.idFromName(key);
-    const stub = env.RATE_LIMITER.get(id);
-    const response = await stub.fetch("https://rate-limiter/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "checkLimit", key, limit, windowMs }),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as RateLimitResult;
-  } catch {
-    return null;
-  }
-}
-
-function checkInMemoryLimit(
-  key: string,
-  limit: number,
-  windowMs: number,
-  map: Map<string, RateLimitState>,
-): RateLimitResult {
-  const now = Date.now();
-  const record = map.get(key);
-
-  if (!record || record.resetAt <= now) {
-    const next: RateLimitState = { count: 1, resetAt: now + windowMs };
-    map.set(key, next);
-    return {
-      allowed: true,
-      remaining: Math.max(0, limit - next.count),
-      resetAt: next.resetAt,
-    };
-  }
-
-  if (record.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: record.resetAt };
-  }
-
-  record.count += 1;
-  return {
-    allowed: true,
-    remaining: Math.max(0, limit - record.count),
-    resetAt: record.resetAt,
-  };
-}
-
-async function checkRateLimit(
-  env: Env,
-  key: string,
-  limit: number,
-  windowMs: number,
-  map: Map<string, RateLimitState>,
-): Promise<RateLimitResult> {
-  const durableResult = await checkDurableLimit(env, key, limit, windowMs);
-  if (durableResult) {
-    return durableResult;
-  }
-
-  return checkInMemoryLimit(key, limit, windowMs, map);
-}
-
 auth.post("/register", async (c) => {
   let body: RegisterBody;
   try {
@@ -395,13 +308,7 @@ auth.post("/login", async (c) => {
   const clientIp = c.req.header("CF-Connecting-IP") || "unknown";
 
   const rateLimitKey = `auth:login:ip:${clientIp}`;
-  const rateLimit = await checkRateLimit(
-    c.env,
-    rateLimitKey,
-    5,
-    60 * 1000,
-    rateLimitMap,
-  );
+  const rateLimit = await checkRateLimit(c.env, rateLimitKey, 5, 60 * 1000);
 
   if (!rateLimit.allowed) {
     return respondWithDelay(
@@ -433,7 +340,8 @@ auth.post("/login", async (c) => {
       lockState.reason === "ADMIN" ? "ACCOUNT_LOCKED_ADMIN" : "ACCOUNT_LOCKED";
     return respondWithDelay(error(c, code, message, 423));
   }
-  const dobHash = await hmac(c.env.HMAC_SECRET, body.dob);
+  const normalizedDob = body.dob.replace(/[^0-9]/g, "");
+  const dobHash = await hmac(c.env.HMAC_SECRET, normalizedDob);
 
   const userResults = await db
     .select()

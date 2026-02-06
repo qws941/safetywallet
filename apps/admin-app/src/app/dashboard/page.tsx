@@ -1,9 +1,74 @@
-'use client';
+"use client";
 
-import { FileText, Users, Coins, Clock } from 'lucide-react';
-import { StatsCard } from '@/components/stats-card';
-import { useDashboardStats } from '@/hooks/use-api';
-import { Skeleton } from '@safetywallet/ui';
+import {
+  FileText,
+  Users,
+  Coins,
+  Clock,
+  AlertTriangle,
+  BarChart3,
+  Timer,
+} from "lucide-react";
+import { StatsCard } from "@/components/stats-card";
+import { useDashboardStats } from "@/hooks/use-api";
+import { Skeleton, Card } from "@safetywallet/ui";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  HAZARD: "위험요소",
+  UNSAFE_BEHAVIOR: "불안전 행동",
+  INCONVENIENCE: "불편사항",
+  SUGGESTION: "개선 제안",
+  BEST_PRACTICE: "모범 사례",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  HAZARD: "bg-red-500",
+  UNSAFE_BEHAVIOR: "bg-orange-500",
+  INCONVENIENCE: "bg-yellow-500",
+  SUGGESTION: "bg-blue-500",
+  BEST_PRACTICE: "bg-green-500",
+};
+
+function CategoryDistributionChart({ data }: { data: Record<string, number> }) {
+  const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+  if (total === 0) {
+    return (
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">카테고리 분포</h3>
+        <p className="text-muted-foreground">데이터가 없습니다</p>
+      </Card>
+    );
+  }
+
+  const sortedCategories = Object.entries(data).sort(([, a], [, b]) => b - a);
+
+  return (
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold mb-4">카테고리 분포</h3>
+      <div className="space-y-3">
+        {sortedCategories.map(([category, count]) => {
+          const percentage = Math.round((count / total) * 100);
+          return (
+            <div key={category} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>{CATEGORY_LABELS[category] || category}</span>
+                <span className="text-muted-foreground">
+                  {count}건 ({percentage}%)
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${CATEGORY_COLORS[category] || "bg-gray-500"} transition-all`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
@@ -13,10 +78,11 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">대시보드</h1>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
+        <Skeleton className="h-64" />
       </div>
     );
   }
@@ -27,9 +93,33 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
+          title="오늘 제보"
+          value={stats?.todayPostsCount ?? 0}
+          icon={FileText}
+          description="금일 등록된 제보"
+        />
+        <StatsCard
+          title="미처리 백로그"
+          value={stats?.pendingCount ?? 0}
+          icon={Clock}
+          description="검토 대기 중"
+        />
+        <StatsCard
+          title="긴급 제보"
+          value={stats?.urgentCount ?? 0}
+          icon={AlertTriangle}
+          description="즉시 처리 필요"
+        />
+        <StatsCard
+          title="평균 처리 시간"
+          value={`${stats?.avgProcessingHours ?? 0}h`}
+          icon={Timer}
+          description="승인/반려까지"
+        />
+        <StatsCard
           title="대기 중인 제보"
           value={stats?.pendingReviews ?? 0}
-          icon={Clock}
+          icon={BarChart3}
           description="검토 필요"
         />
         <StatsCard
@@ -48,6 +138,8 @@ export default function DashboardPage() {
           icon={Coins}
         />
       </div>
+
+      <CategoryDistributionChart data={stats?.categoryDistribution ?? {}} />
     </div>
   );
 }

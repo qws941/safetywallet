@@ -2,9 +2,10 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { pointPolicies, siteMemberships } from "../db/schema";
+import { pointPolicies, siteMemberships, auditLogs } from "../db/schema";
 import { success, error } from "../lib/response";
 import { authMiddleware } from "../middleware/auth";
+import { logAuditWithContext } from "../lib/audit";
 import type { Env, AuthContext } from "../types";
 
 interface CreatePolicyBody {
@@ -227,6 +228,38 @@ policies.patch("/:id", authMiddleware, async (c) => {
     .where(eq(pointPolicies.id, policyId))
     .returning()
     .get();
+
+  const changedFields: Record<string, { old: unknown; new: unknown }> = {};
+  const keys = [
+    "name",
+    "description",
+    "defaultAmount",
+    "minAmount",
+    "maxAmount",
+    "dailyLimit",
+    "monthlyLimit",
+    "isActive",
+  ] as const;
+  for (const key of keys) {
+    if (body[key] !== undefined && existingPolicy[key] !== body[key]) {
+      changedFields[key] = { old: existingPolicy[key], new: body[key] };
+    }
+  }
+
+  await logAuditWithContext(
+    c,
+    db,
+    "POLICY_CHANGE",
+    authContext.user.id,
+    "POLICY",
+    policyId,
+    {
+      policyKey: existingPolicy.reasonCode,
+      oldValue: existingPolicy,
+      newValue: updated,
+      changedFields,
+    },
+  );
 
   return success(c, { policy: updated }, 200);
 });

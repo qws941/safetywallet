@@ -21,6 +21,7 @@ import {
 } from "../db/schema";
 import { hmac, encrypt, decrypt } from "../lib/crypto";
 import { success, error } from "../lib/response";
+import { logAuditWithContext } from "../lib/audit";
 
 type AppContext = Context<{
   Bindings: Env;
@@ -339,15 +340,19 @@ app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
     formatKst(row.post.createdAt),
   ]);
 
-  await db.insert(auditLogs).values({
-    action: "EXPORT_POSTS",
-    actorId: currentUser.id,
-    targetType: "EXPORT",
-    targetId: siteId || "ALL",
-    reason: `from=${fromParam || ""}, to=${toParam || ""}, status=${status || ""}`,
-    ip: getClientIp(c),
-    userAgent: c.req.header("User-Agent") || "",
-  });
+  await logAuditWithContext(
+    c,
+    db,
+    "EXCEL_EXPORT",
+    currentUser.id,
+    "EXPORT",
+    siteId || "ALL",
+    {
+      exportType: "posts",
+      filterConditions: { siteId, status, from: fromParam, to: toParam },
+      rowCount: rows.length,
+    },
+  );
 
   const filenameDate = fromDate
     ? formatYearMonth(fromDate)
@@ -469,15 +474,19 @@ app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
     ];
   });
 
-  await db.insert(auditLogs).values({
-    action: "EXPORT_USERS",
-    actorId: currentUser.id,
-    targetType: "EXPORT",
-    targetId: siteId || "ALL",
-    reason: `from=${fromParam || ""}, to=${toParam || ""}, status=${status || ""}`,
-    ip: getClientIp(c),
-    userAgent: c.req.header("User-Agent") || "",
-  });
+  await logAuditWithContext(
+    c,
+    db,
+    "EXCEL_EXPORT",
+    currentUser.id,
+    "EXPORT",
+    siteId || "ALL",
+    {
+      exportType: "users",
+      filterConditions: { siteId, status, from: fromParam, to: toParam },
+      rowCount: rows.length,
+    },
+  );
 
   const filenameDate = fromDate
     ? formatYearMonth(fromDate)
@@ -552,15 +561,19 @@ app.get("/export/points", requireExportAccess, exportRateLimit, async (c) => {
     row.ledger.adminId || "",
   ]);
 
-  await db.insert(auditLogs).values({
-    action: "EXPORT_POINTS",
-    actorId: currentUser.id,
-    targetType: "EXPORT",
-    targetId: siteId,
-    reason: `month=${month}`,
-    ip: getClientIp(c),
-    userAgent: c.req.header("User-Agent") || "",
-  });
+  await logAuditWithContext(
+    c,
+    db,
+    "EXCEL_EXPORT",
+    currentUser.id,
+    "EXPORT",
+    siteId,
+    {
+      exportType: "points",
+      filterConditions: { siteId, month },
+      rowCount: rows.length,
+    },
+  );
 
   const csv = buildCsv(headers, rows);
   return csvResponse(c, csv, `points-${month}.csv`);
@@ -664,6 +677,24 @@ app.get("/users", requireAdmin, async (c) => {
         restrictedUntil: row.restrictedUntil,
         createdAt: row.createdAt,
       }));
+
+  if (canViewFullPii && allUsers.length > 0) {
+    const userIdsViewed = allUsers.map((u) => u.id);
+    await logAuditWithContext(
+      c,
+      db,
+      "PII_VIEW",
+      currentUser.id,
+      "USER",
+      "BULK",
+      {
+        field: "phone,dob",
+        reason: "Admin user list with full PII",
+        targetUserId: userIdsViewed.length === 1 ? userIdsViewed[0] : undefined,
+        rowCount: userIdsViewed.length,
+      },
+    );
+  }
 
   return success(c, {
     users: usersWithPii,
@@ -771,6 +802,18 @@ app.patch("/users/:id/role", requireAdmin, async (c) => {
     );
   }
 
+  const existingUser = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .get();
+
+  if (!existingUser) {
+    return error(c, "USER_NOT_FOUND", "User not found", 404);
+  }
+
+  const oldRole = existingUser.role;
+
   const updated = await db
     .update(users)
     .set({ role, updatedAt: new Date() })
@@ -782,13 +825,21 @@ app.patch("/users/:id/role", requireAdmin, async (c) => {
     return error(c, "USER_NOT_FOUND", "User not found", 404);
   }
 
-  await db.insert(auditLogs).values({
-    action: "USER_ROLE_CHANGED",
-    actorId: currentUser.id,
-    targetType: "USER",
-    targetId: userId,
-    reason: `Role changed to ${role}`,
-  });
+  await logAuditWithContext(
+    c,
+    db,
+    "PERMISSION_CHANGE",
+    currentUser.id,
+    "PERMISSION",
+    userId,
+    {
+      role,
+      action: "ROLE_CHANGE",
+      oldRole,
+      newRole: role,
+      targetUserId: userId,
+    },
+  );
 
   return success(c, { user: updated });
 });
@@ -947,6 +998,91 @@ app.post("/fas/sync-workers", requireAdmin, async (c) => {
   });
 
   return success(c, { results });
+});
+
+app.get("/posts", requireManagerOrAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const category = c.req.query("category");
+  const riskLevel = c.req.query("riskLevel");
+  const reviewStatus = c.req.query("reviewStatus");
+  const isUrgent = c.req.query("isUrgent") === "true";
+  const startDateStr = c.req.query("startDate");
+  const endDateStr = c.req.query("endDate");
+  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
+  const offset = parseInt(c.req.query("offset") || "0");
+
+  const conditions = [];
+
+  if (siteId) {
+    conditions.push(eq(posts.siteId, siteId));
+  }
+
+  if (category) {
+    conditions.push(eq(posts.category, category as any));
+  }
+
+  if (riskLevel) {
+    conditions.push(eq(posts.riskLevel, riskLevel as any));
+  }
+
+  if (reviewStatus) {
+    conditions.push(eq(posts.reviewStatus, reviewStatus as any));
+  }
+
+  if (isUrgent) {
+    conditions.push(eq(posts.isUrgent, true));
+  }
+
+  if (startDateStr) {
+    const startDate = new Date(startDateStr);
+    if (!isNaN(startDate.getTime())) {
+      conditions.push(gte(posts.createdAt, startDate));
+    }
+  }
+
+  if (endDateStr) {
+    const endDate = new Date(endDateStr);
+    // Add 1 day to include the end date fully if it's just YYYY-MM-DD
+    // But usually frontend sends specific timestamps. Let's assume end of day if specific time not provided?
+    // For now, simple date comparison.
+    if (!isNaN(endDate.getTime())) {
+      const nextDay = new Date(endDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setHours(0, 0, 0, 0);
+      conditions.push(lt(posts.createdAt, nextDay));
+    }
+  }
+
+  const results = await db
+    .select({
+      post: posts,
+      author: {
+        id: users.id,
+        name: users.name,
+        nameMasked: users.nameMasked,
+      },
+      site: {
+        id: sites.id,
+        name: sites.name,
+      },
+    })
+    .from(posts)
+    .leftJoin(users, eq(posts.userId, users.id))
+    .leftJoin(sites, eq(posts.siteId, sites.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(posts.createdAt))
+    .limit(limit)
+    .offset(offset)
+    .all();
+
+  return success(c, {
+    posts: results.map((row) => ({
+      ...row.post,
+      author: row.author,
+      site: row.site,
+    })),
+  });
 });
 
 app.get("/posts/pending-review", requireManagerOrAdmin, async (c) => {
@@ -1237,31 +1373,80 @@ app.get("/stats", requireAdmin, async (c) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const [userCount, siteCount, postCount, activeAttendanceCount] =
-    await Promise.all([
-      db
-        .select({ count: sql<number>`COUNT(*)` })
-        .from(users)
-        .get(),
-      db
-        .select({ count: sql<number>`COUNT(*)` })
-        .from(sites)
-        .get(),
-      db
-        .select({ count: sql<number>`COUNT(*)` })
-        .from(posts)
-        .get(),
-      db
-        .select({ count: sql<number>`COUNT(DISTINCT user_id)` })
-        .from(attendance)
-        .where(
-          and(
-            gte(attendance.checkinAt, today),
-            lt(attendance.checkinAt, tomorrow),
-          ),
-        )
-        .get(),
-    ]);
+  const [
+    userCount,
+    siteCount,
+    postCount,
+    activeAttendanceCount,
+    pendingCount,
+    urgentCount,
+    avgProcessingResult,
+    categoryDistributionResult,
+    todayPostsCount,
+  ] = await Promise.all([
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(users)
+      .get(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(sites)
+      .get(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(posts)
+      .get(),
+    db
+      .select({ count: sql<number>`COUNT(DISTINCT user_id)` })
+      .from(attendance)
+      .where(
+        and(
+          gte(attendance.checkinAt, today),
+          lt(attendance.checkinAt, tomorrow),
+        ),
+      )
+      .get(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(posts)
+      .where(sql`${posts.reviewStatus} IN ('RECEIVED', 'IN_REVIEW')`)
+      .get(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.isUrgent, true),
+          sql`${posts.reviewStatus} NOT IN ('APPROVED', 'REJECTED')`,
+        ),
+      )
+      .get(),
+    db
+      .select({
+        avgHours: sql<number>`COALESCE(AVG((${posts.updatedAt} - ${posts.createdAt}) / 3600.0), 0)`,
+      })
+      .from(posts)
+      .where(sql`${posts.reviewStatus} IN ('APPROVED', 'REJECTED')`)
+      .get(),
+    db
+      .select({
+        category: posts.category,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(posts)
+      .groupBy(posts.category)
+      .all(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(posts)
+      .where(and(gte(posts.createdAt, today), lt(posts.createdAt, tomorrow)))
+      .get(),
+  ]);
+
+  const categoryDistribution: Record<string, number> = {};
+  for (const row of categoryDistributionResult) {
+    categoryDistribution[row.category] = row.count;
+  }
 
   return success(c, {
     stats: {
@@ -1269,6 +1454,12 @@ app.get("/stats", requireAdmin, async (c) => {
       totalSites: siteCount?.count || 0,
       totalPosts: postCount?.count || 0,
       activeUsersToday: activeAttendanceCount?.count || 0,
+      pendingCount: pendingCount?.count || 0,
+      urgentCount: urgentCount?.count || 0,
+      avgProcessingHours:
+        Math.round((avgProcessingResult?.avgHours || 0) * 10) / 10,
+      categoryDistribution,
+      todayPostsCount: todayPostsCount?.count || 0,
     },
   });
 });

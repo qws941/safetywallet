@@ -4,12 +4,14 @@ import { eq, and, desc } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { success, error } from "../lib/response";
+import { logAuditWithContext } from "../lib/audit";
 import {
   reviews,
   posts,
   siteMemberships,
   users,
   pointsLedger,
+  auditLogs,
 } from "../db/schema";
 
 const app = new Hono<{
@@ -188,6 +190,27 @@ app.post("/", async (c) => {
   }
 
   await db.update(posts).set(postUpdateData).where(eq(posts.id, data.postId));
+
+  const oldReviewStatus = post.reviewStatus;
+  const oldActionStatus = post.actionStatus;
+
+  await logAuditWithContext(
+    c,
+    db,
+    "FORCED_STATUS_CHANGE",
+    user.id,
+    "REVIEW",
+    data.postId,
+    {
+      postId: data.postId,
+      oldStatus: oldReviewStatus,
+      newStatus: newReviewStatus,
+      oldActionStatus,
+      newActionStatus: newActionStatus ?? oldActionStatus,
+      reason: data.comment,
+      action: data.action,
+    },
+  );
 
   let pointsAwarded = 0;
   if (data.action === "APPROVE") {

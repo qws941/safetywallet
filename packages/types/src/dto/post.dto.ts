@@ -4,7 +4,7 @@ import type {
   Visibility,
   ReviewStatus,
   ActionStatus,
-} from '../enums';
+} from "../enums";
 
 export interface CreatePostDto {
   siteId: string;
@@ -18,6 +18,7 @@ export interface CreatePostDto {
   visibility?: Visibility;
   isAnonymous?: boolean;
   imageUrls?: string[];
+  metadata?: Record<string, any>;
 }
 
 export interface PostDto {

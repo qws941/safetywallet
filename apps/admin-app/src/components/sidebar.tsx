@@ -16,6 +16,7 @@ import {
   LogOut,
   Trophy,
   CheckSquare,
+  Clock,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/posts", label: "제보 관리", icon: FileText },
   { href: "/members", label: "회원 관리", icon: Users },
+  { href: "/attendance", label: "출근 현황", icon: Clock },
   { href: "/points", label: "포인트 관리", icon: Coins },
   { href: "/approvals", label: "승인 관리", icon: CheckSquare },
   { href: "/actions", label: "조치 현황", icon: ClipboardList },

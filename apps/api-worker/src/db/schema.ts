@@ -201,6 +201,7 @@ export const posts = sqliteTable(
     locationZone: text("location_zone"),
     locationDetail: text("location_detail"),
     content: text("content").notNull(),
+    metadata: text("metadata", { mode: "json" }),
     visibility: text("visibility", { enum: visibilityEnum })
       .default("WORKER_PUBLIC")
       .notNull(),

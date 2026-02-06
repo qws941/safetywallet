@@ -1,16 +1,24 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/use-auth';
-import { usePosts, usePoints } from '@/hooks/use-api';
-import { Header } from '@/components/header';
-import { BottomNav } from '@/components/bottom-nav';
-import { PointsCard } from '@/components/points-card';
-import { PostCard } from '@/components/post-card';
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@safetywallet/ui';
-import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
-import { CheckCircle, XCircle, Award } from 'lucide-react';
+import { useAuth } from "@/hooks/use-auth";
+import { usePosts, usePoints } from "@/hooks/use-api";
+import { useLeaderboard } from "@/hooks/use-leaderboard";
+import { Header } from "@/components/header";
+import { BottomNav } from "@/components/bottom-nav";
+import { PointsCard } from "@/components/points-card";
+import { RankingCard } from "@/components/ranking-card";
+import { PostCard } from "@/components/post-card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Skeleton,
+} from "@safetywallet/ui";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
+import { CheckCircle, XCircle, Award } from "lucide-react";
 
 interface AttendanceStatus {
   attended: boolean;
@@ -19,33 +27,46 @@ interface AttendanceStatus {
 
 export default function HomePage() {
   const { currentSiteId } = useAuth();
-  const { data: postsData, isLoading: postsLoading } = usePosts(currentSiteId || '');
-  const { data: pointsData, isLoading: pointsLoading } = usePoints(currentSiteId || '');
+  const { data: postsData, isLoading: postsLoading } = usePosts(
+    currentSiteId || "",
+  );
+  const { data: pointsData, isLoading: pointsLoading } = usePoints(
+    currentSiteId || "",
+  );
+  const { data: leaderboardData, isLoading: leaderboardLoading } =
+    useLeaderboard(currentSiteId || null);
 
-  const { data: attendanceData, isLoading: attendanceLoading } = useQuery<AttendanceStatus>({
-    queryKey: ['attendance', 'today', currentSiteId],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: AttendanceStatus }>(`/attendance/today?siteId=${currentSiteId}`);
-      return res.data;
-    },
-    enabled: !!currentSiteId,
-  });
+  const { data: attendanceData, isLoading: attendanceLoading } =
+    useQuery<AttendanceStatus>({
+      queryKey: ["attendance", "today", currentSiteId],
+      queryFn: async () => {
+        const res = await apiFetch<{ data: AttendanceStatus }>(
+          `/attendance/today?siteId=${currentSiteId}`,
+        );
+        return res.data;
+      },
+      enabled: !!currentSiteId,
+    });
 
   const recentPosts = postsData?.data?.slice(0, 3) || [];
   const pointsBalance = pointsData?.data?.balance || 0;
+  const myRank = leaderboardData?.myRank || null;
+  const totalParticipants = leaderboardData?.leaderboard?.length || 0;
 
   const formatCheckinTime = (dateStr: string | null) => {
-    if (!dateStr) return '';
+    if (!dateStr) return "";
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-nav">
       <Header />
-      
+
       <main className="p-4 space-y-4">
-        {/* Attendance Status */}
         {attendanceLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : attendanceData?.attended ? (
@@ -74,14 +95,20 @@ export default function HomePage() {
           </Card>
         )}
 
-        {/* Points Summary */}
-        {pointsLoading ? (
-          <Skeleton className="h-28 w-full" />
-        ) : (
-          <PointsCard balance={pointsBalance} />
-        )}
+        <div className="grid grid-cols-2 gap-3 h-32">
+          {pointsLoading ? (
+            <Skeleton className="h-full w-full" />
+          ) : (
+            <PointsCard balance={pointsBalance} />
+          )}
 
-        {/* Quick Actions */}
+          <RankingCard
+            myRank={myRank}
+            totalParticipants={totalParticipants}
+            isLoading={leaderboardLoading}
+          />
+        </div>
+
         <div className="grid grid-cols-3 gap-3">
           <Link href="/posts/new">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -109,12 +136,13 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Recent Posts */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">최근 내 제보</CardTitle>
-              <Link href="/posts" className="text-sm text-primary">전체보기</Link>
+              <Link href="/posts" className="text-sm text-primary">
+                전체보기
+              </Link>
             </div>
           </CardHeader>
           <CardContent>
