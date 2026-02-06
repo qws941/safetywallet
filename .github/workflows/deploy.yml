@@ -120,22 +120,3 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Build Admin App (Cloudflare Pages)
-        working-directory: apps/admin-app
-        run: npx @cloudflare/next-on-pages
-        env:
-          NEXT_PUBLIC_API_URL: "https://safework2.jclee.me/api"
-
-      - name: Create Pages Project (if not exists)
-        run: npx wrangler pages project create safework2-admin --production-branch=main 2>/dev/null || echo "Project may already exist"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Deploy Admin App to Pages
-        working-directory: apps/admin-app
-        run: npx wrangler pages deploy .vercel/output/static --project-name=safework2-admin --branch=main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
