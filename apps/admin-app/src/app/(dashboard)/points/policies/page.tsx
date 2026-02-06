@@ -19,6 +19,14 @@ import {
   Switch,
   Badge,
   useToast,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import {
@@ -40,6 +48,7 @@ export default function PointPoliciesPage() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<PointPolicy | null>(null);
+  const [deletingPolicyId, setDeletingPolicyId] = useState<string | null>(null);
 
   const createMutation = useCreatePolicy();
   const updateMutation = useUpdatePolicy();
@@ -121,11 +130,10 @@ export default function PointPoliciesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("정말 이 정책을 삭제하시겠습니까?")) return;
-
     try {
       await deleteMutation.mutateAsync(id);
       toast({ title: "정책이 삭제되었습니다." });
+      setDeletingPolicyId(null);
     } catch (error) {
       toast({
         title: "삭제 실패",
@@ -203,7 +211,7 @@ export default function PointPoliciesPage() {
             className="text-destructive hover:text-destructive"
             onClick={(e) => {
               e.stopPropagation();
-              handleDelete(item.id);
+              setDeletingPolicyId(item.id);
             }}
           >
             <Trash2 className="h-4 w-4" />
@@ -419,6 +427,30 @@ export default function PointPoliciesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deletingPolicyId}
+        onOpenChange={(open) => !open && setDeletingPolicyId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정책 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말 이 정책을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingPolicyId && handleDelete(deletingPolicyId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

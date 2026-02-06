@@ -2,6 +2,11 @@ import type { Env } from "../types";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, sql, and, gte, lt } from "drizzle-orm";
 import { pointsLedger, siteMemberships, auditLogs, users } from "../db/schema";
+import {
+  fasGetUpdatedEmployees,
+  testConnection as testFasConnection,
+} from "../lib/fas-mariadb";
+import { hmac } from "../lib/crypto";
 
 function getKSTDate(): Date {
   const now = new Date();
@@ -143,6 +148,72 @@ async function runDataRetention(env: Env): Promise<void> {
   });
 }
 
+async function runFasSyncIncremental(env: Env): Promise<void> {
+  if (!env.FAS_HYPERDRIVE) {
+    console.log("FAS_HYPERDRIVE not configured, skipping sync");
+    return;
+  }
+
+  const db = drizzle(env.DB);
+  const kstNow = getKSTDate();
+  const fiveMinutesAgo = new Date(kstNow.getTime() - 5 * 60 * 1000);
+
+  console.log(
+    `Running FAS incremental sync, since: ${fiveMinutesAgo.toISOString()}`,
+  );
+
+  const isConnected = await testFasConnection(env.FAS_HYPERDRIVE);
+  if (!isConnected) {
+    console.error("FAS MariaDB connection failed");
+    return;
+  }
+
+  const companyId = env.FAS_COMPANY_ID ? parseInt(env.FAS_COMPANY_ID, 10) : 1;
+  const updatedEmployees = await fasGetUpdatedEmployees(
+    env.FAS_HYPERDRIVE,
+    companyId,
+    fiveMinutesAgo.toISOString(),
+  );
+
+  console.log(`Found ${updatedEmployees.length} updated employees`);
+
+  let upsertCount = 0;
+  for (const employee of updatedEmployees) {
+    const phoneHash = await hmac(env.HMAC_SECRET, employee.phone);
+    const dobHash = employee.birthDate
+      ? await hmac(env.HMAC_SECRET, employee.birthDate.replace(/-/g, ""))
+      : null;
+
+    const existingUser = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.phoneHash, phoneHash))
+      .get();
+
+    if (existingUser) {
+      await db
+        .update(users)
+        .set({
+          name: employee.name,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, existingUser.id));
+    } else if (dobHash) {
+      await db.insert(users).values({
+        id: crypto.randomUUID(),
+        name: employee.name,
+        phone: phoneHash,
+        phoneHash,
+        dobHash,
+        role: "WORKER",
+      });
+    }
+    upsertCount++;
+  }
+
+  console.log(`FAS sync complete: ${upsertCount} users upserted`);
+}
+
 export async function scheduled(
   controller: ScheduledController,
   env: Env,
@@ -151,6 +222,10 @@ export async function scheduled(
   console.log(`Scheduled trigger: ${trigger}`);
 
   try {
+    if (trigger.startsWith("*/5 ") || trigger === "*/5 * * * *") {
+      await runFasSyncIncremental(env);
+    }
+
     if (trigger === "0 0 1 * *") {
       await runMonthEndSnapshot(env);
     }

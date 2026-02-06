@@ -12,6 +12,11 @@ import {
 import { hmac, decrypt, encrypt } from "../lib/crypto";
 import { signJwt } from "../lib/jwt";
 import { success, error } from "../lib/response";
+import {
+  fasSearchEmployeeByPhone,
+  fasGetDailyAttendance,
+  type FasEmployee,
+} from "../lib/fas-mariadb";
 import { authMiddleware } from "../middleware/auth";
 import {
   checkDeviceRegistrationLimit,
@@ -343,11 +348,62 @@ auth.post("/login", async (c) => {
   const normalizedDob = body.dob.replace(/[^0-9]/g, "");
   const dobHash = await hmac(c.env.HMAC_SECRET, normalizedDob);
 
-  const userResults = await db
+  // Try D1 first
+  let userResults = await db
     .select()
     .from(users)
     .where(and(eq(users.phoneHash, phoneHash), eq(users.dobHash, dobHash)))
     .limit(1);
+
+  // If not found in D1 and FAS_HYPERDRIVE is available, try MariaDB
+  if (userResults.length === 0 && c.env.FAS_HYPERDRIVE) {
+    try {
+      const fasCompanyId = parseInt(c.env.FAS_COMPANY_ID || "1", 10);
+      const fasEmployee = await fasSearchEmployeeByPhone(
+        c.env.FAS_HYPERDRIVE,
+        fasCompanyId,
+        normalizedPhone,
+      );
+
+      if (fasEmployee && fasEmployee.birthDate) {
+        // Verify DOB matches
+        const fasDobNormalized = fasEmployee.birthDate.replace(/[^0-9]/g, "");
+        if (fasDobNormalized === normalizedDob) {
+          // Cache in D1 for future logins
+          const phoneEncrypted = await encrypt(
+            c.env.ENCRYPTION_KEY,
+            normalizedPhone,
+          );
+          const dobEncrypted = await encrypt(
+            c.env.ENCRYPTION_KEY,
+            normalizedDob,
+          );
+          const nameMasked = maskName(fasEmployee.name);
+
+          const newUser = await db
+            .insert(users)
+            .values({
+              name: fasEmployee.name,
+              nameMasked,
+              phone: phoneHash,
+              phoneHash,
+              phoneEncrypted,
+              dob: null,
+              dobHash,
+              dobEncrypted,
+              role: "WORKER",
+            })
+            .returning()
+            .get();
+
+          userResults = [newUser];
+        }
+      }
+    } catch (fasError) {
+      // MariaDB connection failed - continue with D1-only flow
+      console.error("FAS MariaDB lookup failed:", fasError);
+    }
+  }
 
   if (userResults.length === 0) {
     const updatedAttempt = await recordFailedLoginAttempt(
@@ -611,6 +667,116 @@ auth.post("/logout", async (c) => {
     .where(eq(users.refreshToken, body.refreshToken));
 
   return success(c, { message: "Logged out successfully" }, 200);
+});
+
+// Admin login with username/password
+auth.post("/admin/login", async (c) => {
+  const startedAt = Date.now();
+  const respondWithDelay = async (response: Response) => {
+    await enforceMinimumResponseTime(startedAt);
+    return response;
+  };
+
+  let body: { username: string; password: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return respondWithDelay(error(c, "INVALID_JSON", "Invalid JSON", 400));
+  }
+
+  if (!body.username || !body.password) {
+    return respondWithDelay(
+      error(c, "MISSING_FIELDS", "username and password are required", 400),
+    );
+  }
+
+  const clientIp = c.req.header("CF-Connecting-IP") || "unknown";
+  const rateLimitKey = `auth:admin:login:ip:${clientIp}`;
+  const rateLimit = await checkRateLimit(c.env, rateLimitKey, 5, 60 * 1000);
+
+  if (!rateLimit.allowed) {
+    return respondWithDelay(
+      error(
+        c,
+        "RATE_LIMIT_EXCEEDED",
+        "요청이 너무 많습니다. 잠시 후 다시 시도하세요.",
+        429,
+      ),
+    );
+  }
+
+  // Check hardcoded admin credentials
+  // In production, this should be stored in KV or environment variables
+  const ADMIN_USERNAME = c.env.ADMIN_USERNAME || "admin";
+  const ADMIN_PASSWORD = c.env.ADMIN_PASSWORD || "bingogo1";
+
+  if (body.username !== ADMIN_USERNAME || body.password !== ADMIN_PASSWORD) {
+    return respondWithDelay(
+      error(
+        c,
+        "INVALID_CREDENTIALS",
+        "아이디 또는 비밀번호가 올바르지 않습니다",
+        401,
+      ),
+    );
+  }
+
+  const db = drizzle(c.env.DB);
+
+  // Find or create admin user
+  let adminUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.role, "SUPER_ADMIN"))
+    .get();
+
+  if (!adminUser) {
+    // Create default super admin user
+    adminUser = await db
+      .insert(users)
+      .values({
+        name: "관리자",
+        nameMasked: "관*자",
+        phone: "admin",
+        phoneHash: await hmac(c.env.HMAC_SECRET, "admin"),
+        role: "SUPER_ADMIN",
+        piiViewFull: true,
+        canAwardPoints: true,
+        canManageUsers: true,
+      })
+      .returning()
+      .get();
+  }
+
+  const accessToken = await signJwt(
+    { sub: adminUser.id, phone: "", role: adminUser.role },
+    c.env.JWT_SECRET,
+  );
+  const refreshToken = crypto.randomUUID();
+
+  await db
+    .update(users)
+    .set({ refreshToken, updatedAt: new Date() })
+    .where(eq(users.id, adminUser.id));
+
+  return respondWithDelay(
+    success(
+      c,
+      {
+        user: {
+          id: adminUser.id,
+          phone: "",
+          nameMasked: adminUser.nameMasked || "관리자",
+          role: adminUser.role,
+        },
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      },
+      200,
+    ),
+  );
 });
 
 auth.get("/me", authMiddleware, async (c) => {

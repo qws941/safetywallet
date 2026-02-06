@@ -17,6 +17,8 @@ import {
   userRoleEnum,
   membershipStatusEnum,
   reviewStatusEnum,
+  categoryEnum,
+  riskLevelEnum,
   voteCandidates,
 } from "../db/schema";
 import { hmac, encrypt, decrypt } from "../lib/crypto";
@@ -1019,15 +1021,21 @@ app.get("/posts", requireManagerOrAdmin, async (c) => {
   }
 
   if (category) {
-    conditions.push(eq(posts.category, category as any));
+    conditions.push(
+      eq(posts.category, category as (typeof categoryEnum)[number]),
+    );
   }
 
   if (riskLevel) {
-    conditions.push(eq(posts.riskLevel, riskLevel as any));
+    conditions.push(
+      eq(posts.riskLevel, riskLevel as (typeof riskLevelEnum)[number]),
+    );
   }
 
   if (reviewStatus) {
-    conditions.push(eq(posts.reviewStatus, reviewStatus as any));
+    conditions.push(
+      eq(posts.reviewStatus, reviewStatus as (typeof reviewStatusEnum)[number]),
+    );
   }
 
   if (isUrgent) {

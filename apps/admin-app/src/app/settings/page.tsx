@@ -3,6 +3,16 @@
 import { useEffect, useState } from "react";
 import { Copy, RefreshCw, Save, Loader2 } from "lucide-react";
 import { Button, Card, Input } from "@safetywallet/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@safetywallet/ui";
 import { useAuthStore } from "@/stores/auth";
 import { useSite, useUpdateSite, useReissueJoinCode } from "@/hooks/use-api";
 
@@ -16,6 +26,7 @@ export default function SettingsPage() {
   const [active, setActive] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isReissueDialogOpen, setIsReissueDialogOpen] = useState(false);
 
   useEffect(() => {
     if (site) {
@@ -45,11 +56,9 @@ export default function SettingsPage() {
 
   const handleRegenerateCode = async () => {
     if (!siteId) return;
-    if (!confirm("참여 코드를 재발급하시겠습니까? 기존 코드는 무효화됩니다.")) {
-      return;
-    }
     try {
       await reissueJoinCode.mutateAsync(siteId);
+      setIsReissueDialogOpen(false);
     } catch {}
   };
 
@@ -148,7 +157,7 @@ export default function SettingsPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={handleRegenerateCode}
+            onClick={() => setIsReissueDialogOpen(true)}
             disabled={reissueJoinCode.isPending}
             title="코드 재발급"
           >
@@ -177,6 +186,30 @@ export default function SettingsPage() {
           설정 저장에 실패했습니다.
         </div>
       )}
+
+      <AlertDialog
+        open={isReissueDialogOpen}
+        onOpenChange={setIsReissueDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>참여 코드 재발급</AlertDialogTitle>
+            <AlertDialogDescription>
+              참여 코드를 재발급하시겠습니까? 기존 코드는 무효화되어 더 이상
+              사용할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRegenerateCode}
+              disabled={reissueJoinCode.isPending}
+            >
+              {reissueJoinCode.isPending ? "재발급 중..." : "재발급"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

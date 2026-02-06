@@ -1,3 +1,13 @@
+// Hyperdrive binding type for external database connections
+export interface HyperdriveBinding {
+  connectionString: string;
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}
+
 export interface Env {
   DB: D1Database;
   R2: R2Bucket;
@@ -16,6 +26,12 @@ export interface Env {
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
   FAS_API_KEY?: string;
+  // AceTime FAS MariaDB via Hyperdrive
+  FAS_HYPERDRIVE?: HyperdriveBinding;
+  FAS_COMPANY_ID?: string;
+  // Admin credentials
+  ADMIN_USERNAME?: string;
+  ADMIN_PASSWORD?: string;
 }
 
 export interface User {
