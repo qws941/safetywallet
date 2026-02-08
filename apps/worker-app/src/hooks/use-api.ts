@@ -256,3 +256,23 @@ export function useAttendTbm() {
     },
   });
 }
+
+// ============================================================
+// 출근 확인 (Attendance Check)
+// ============================================================
+
+interface AttendanceStatus {
+  attended: boolean;
+  checkinAt: string | null;
+}
+
+export function useAttendanceToday(siteId: string | null) {
+  return useQuery({
+    queryKey: ["attendance", "today", siteId],
+    queryFn: () =>
+      apiFetch<AttendanceStatus>(`/attendance/today?siteId=${siteId}`),
+    enabled: !!siteId,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 5,
+  });
+}

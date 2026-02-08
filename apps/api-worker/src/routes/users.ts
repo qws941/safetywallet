@@ -4,6 +4,7 @@ import { eq, and, sql } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { users, siteMemberships, sites, pointsLedger } from "../db/schema";
+import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import { decrypt } from "../lib/crypto";
 
@@ -132,6 +133,24 @@ app.patch("/me", async (c) => {
     updated?.piiViewFull && updated.phoneEncrypted
       ? await decrypt(c.env.ENCRYPTION_KEY, updated.phoneEncrypted)
       : null;
+
+  if (updated) {
+    try {
+      await logAuditWithContext(
+        c,
+        db,
+        "USER_PROFILE_UPDATED",
+        user.id,
+        "USER",
+        user.id,
+        {
+          updatedFields: ["name"],
+        },
+      );
+    } catch {
+      // Do not block successful profile update on audit failure.
+    }
+  }
 
   return success(c, {
     user: updated

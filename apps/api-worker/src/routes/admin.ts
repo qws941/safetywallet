@@ -1,6 +1,6 @@
 import { Hono, type Context, type Next } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, sql, desc, gte, lt } from "drizzle-orm";
+import { eq, and, sql, desc, gte, lt, isNull } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { rateLimitMiddleware } from "../middleware/rate-limit";
@@ -1376,6 +1376,136 @@ app.get("/audit-logs", requireAdmin, async (c) => {
   });
 });
 
+// GET /attendance-logs - 출근 기록 조회 (관리자)
+app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const page = parseInt(c.req.query("page") || "1", 10);
+  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
+  const offset = (page - 1) * limit;
+  const dateStr = c.req.query("date");
+  const search = c.req.query("search");
+  const resultFilter = c.req.query("result");
+
+  if (!siteId) {
+    return error(c, "MISSING_SITE", "현장을 선택해주세요", 400);
+  }
+
+  const conditions = [eq(attendance.siteId, siteId)];
+
+  if (dateStr) {
+    const date = parseDateParam(dateStr);
+    if (date) {
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      conditions.push(gte(attendance.checkinAt, date));
+      conditions.push(lt(attendance.checkinAt, nextDay));
+    }
+  }
+
+  if (resultFilter && (resultFilter === "SUCCESS" || resultFilter === "FAIL")) {
+    conditions.push(eq(attendance.result, resultFilter));
+  }
+
+  const baseWhere = and(...conditions);
+
+  const [totalResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(attendance)
+    .where(baseWhere);
+
+  let query = db
+    .select({
+      id: attendance.id,
+      siteId: attendance.siteId,
+      userId: attendance.userId,
+      externalWorkerId: attendance.externalWorkerId,
+      checkinAt: attendance.checkinAt,
+      result: attendance.result,
+      source: attendance.source,
+      createdAt: attendance.createdAt,
+      userName: users.nameMasked,
+    })
+    .from(attendance)
+    .leftJoin(users, eq(attendance.userId, users.id))
+    .where(baseWhere)
+    .orderBy(desc(attendance.checkinAt))
+    .limit(limit)
+    .offset(offset);
+
+  const logs = await query;
+
+  return success(c, {
+    logs,
+    pagination: {
+      page,
+      limit,
+      total: totalResult?.count || 0,
+      totalPages: Math.ceil((totalResult?.count || 0) / limit),
+    },
+  });
+});
+
+// GET /attendance/unmatched - 사용자 매칭 실패 출근 기록 조회 (관리자)
+app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const page = parseInt(c.req.query("page") || "1", 10);
+  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
+  const offset = (page - 1) * limit;
+  const dateStr = c.req.query("date");
+
+  if (!siteId) {
+    return error(c, "MISSING_SITE", "현장을 선택해주세요", 400);
+  }
+
+  const conditions = [eq(attendance.siteId, siteId), isNull(attendance.userId)];
+
+  if (dateStr) {
+    const date = parseDateParam(dateStr);
+    if (date) {
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      conditions.push(gte(attendance.checkinAt, date));
+      conditions.push(lt(attendance.checkinAt, nextDay));
+    }
+  }
+
+  const baseWhere = and(...conditions);
+
+  const [totalResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(attendance)
+    .where(baseWhere);
+
+  const unmatchedRecords = await db
+    .select({
+      id: attendance.id,
+      externalWorkerId: attendance.externalWorkerId,
+      siteId: attendance.siteId,
+      siteName: sites.name,
+      checkinAt: attendance.checkinAt,
+      source: attendance.source,
+      createdAt: attendance.createdAt,
+    })
+    .from(attendance)
+    .leftJoin(sites, eq(attendance.siteId, sites.id))
+    .where(baseWhere)
+    .orderBy(desc(attendance.checkinAt))
+    .limit(limit)
+    .offset(offset);
+
+  return success(c, {
+    records: unmatchedRecords,
+    pagination: {
+      page,
+      limit,
+      total: totalResult?.count || 0,
+      totalPages: Math.ceil((totalResult?.count || 0) / limit),
+    },
+  });
+});
+
 app.get("/stats", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
 
@@ -1575,62 +1705,86 @@ app.post("/votes/candidates", requireAdmin, async (c) => {
 
 app.get("/votes/results", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
+  const { user: currentUser } = c.get("auth");
   const siteId = c.req.query("siteId");
   const month = c.req.query("month");
+  const format = c.req.query("format") || "json";
 
   if (!siteId || !month) {
     return error(c, "MISSING_PARAMS", "siteId and month are required", 400);
   }
 
-  const voteCounts = await db
-    .select({
-      candidateId: votes.candidateId,
-      count: sql<number>`count(*)`.as("count"),
-    })
-    .from(votes)
-    .where(and(eq(votes.siteId, siteId), eq(votes.month, month)))
-    .groupBy(votes.candidateId)
-    .all();
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return error(c, "INVALID_MONTH", "month must be YYYY-MM", 400);
+  }
 
-  const voteCountMap = new Map(
-    voteCounts.map((vc) => [vc.candidateId, vc.count]),
-  );
+  if (format !== "json" && format !== "csv") {
+    return error(
+      c,
+      "UNSUPPORTED_FORMAT",
+      "Only json or csv format supported",
+      400,
+    );
+  }
 
-  const candidates = await db
+  const voteCountExpression = sql<number>`COALESCE(COUNT(${votes.id}), 0)`;
+  const candidateRows = await db
     .select({
-      id: voteCandidates.id,
-      userId: voteCandidates.userId,
-      month: voteCandidates.month,
-      source: voteCandidates.source,
-      user: {
-        id: users.id,
-        name: users.name,
-        nameMasked: users.nameMasked,
-        companyName: users.companyName,
-        tradeType: users.tradeType,
-      },
+      candidateId: voteCandidates.id,
+      candidateName: users.nameMasked,
+      voteCount: voteCountExpression.as("voteCount"),
     })
     .from(voteCandidates)
     .innerJoin(users, eq(voteCandidates.userId, users.id))
+    .leftJoin(
+      votes,
+      and(
+        eq(votes.siteId, voteCandidates.siteId),
+        eq(votes.month, voteCandidates.month),
+        eq(votes.candidateId, voteCandidates.userId),
+      ),
+    )
     .where(
       and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
     )
+    .groupBy(voteCandidates.id, users.nameMasked)
+    .orderBy(desc(voteCountExpression), users.nameMasked)
     .all();
 
-  const results = candidates.map((cand) => ({
-    user: cand.user,
-    voteCount: voteCountMap.get(cand.userId) || 0,
-    candidateId: cand.id,
-    source: cand.source,
+  const results = candidateRows.map((candidate, index) => ({
+    candidateId: candidate.candidateId,
+    candidateName: candidate.candidateName || "",
+    voteCount: candidate.voteCount,
+    rank: index + 1,
   }));
 
-  // Sort by vote count desc
-  results.sort((a, b) => b.voteCount - a.voteCount);
+  if (format === "csv") {
+    await logAuditWithContext(
+      c,
+      db,
+      "VOTE_RESULT_EXPORT",
+      currentUser.id,
+      "EXPORT",
+      siteId,
+      {
+        exportType: "vote-results",
+        filterConditions: { siteId, month },
+        rowCount: results.length,
+      },
+    );
 
-  return success(c, {
-    month,
-    results,
-  });
+    const headers = ["후보 ID", "후보자명", "득표수", "순위"];
+    const rows = results.map((result) => [
+      result.candidateId,
+      result.candidateName,
+      result.voteCount,
+      result.rank,
+    ]);
+    const csv = buildCsv(headers, rows);
+    return csvResponse(c, csv, `vote-results-${siteId}-${month}.csv`);
+  }
+
+  return success(c, results);
 });
 
 app.delete("/votes/candidates/:id", requireAdmin, async (c) => {

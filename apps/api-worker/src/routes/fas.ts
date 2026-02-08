@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import type { Env } from "../types";
 import { users } from "../db/schema";
 import { hmac, encrypt } from "../lib/crypto";
+import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import { fasAuthMiddleware } from "../middleware/fas-auth";
 
@@ -130,6 +131,25 @@ app.post("/workers/sync", async (c) => {
     }
   }
 
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "FAS_WORKERS_SYNCED",
+      "system",
+      "USER",
+      "BULK",
+      {
+        totalWorkers: data.workers.length,
+        created: results.created,
+        updated: results.updated,
+        failed: results.failed,
+      },
+    );
+  } catch {
+    // Do not block successful sync response on audit failure.
+  }
+
   return success(c, results);
 });
 
@@ -157,6 +177,23 @@ app.delete("/workers/:externalWorkerId", async (c) => {
   }
 
   await db.delete(users).where(eq(users.id, user.id));
+
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "USER_PROFILE_UPDATED",
+      "system",
+      "USER",
+      user.id,
+      {
+        action: "FAS_WORKER_DELETED",
+        externalWorkerId,
+      },
+    );
+  } catch {
+    // Do not block successful delete response on audit failure.
+  }
 
   return success(c, { deleted: true });
 });

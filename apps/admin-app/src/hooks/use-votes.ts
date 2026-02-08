@@ -3,20 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
-
-export interface VoteCandidate {
-  id: string;
-  month: string;
-  source: "ADMIN" | "AUTO";
-  createdAt: string;
-  user: {
-    id: string;
-    name: string;
-    nameMasked: string;
-    companyName: string;
-    tradeType: string;
-  };
-}
+import type { VoteCandidate, VoteResult } from "@/types/vote";
 
 export function useVoteCandidates(month: string) {
   const siteId = useAuthStore((s) => s.currentSiteId);
@@ -51,10 +38,9 @@ export function useAddVoteCandidate() {
 
 export function useDeleteVoteCandidate() {
   const queryClient = useQueryClient();
-  const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useMutation({
-    mutationFn: ({ id }: { id: string }) =>
+    mutationFn: (id: string) =>
       apiFetch(`/admin/votes/candidates/${id}`, {
         method: "DELETE",
       }),
@@ -63,5 +49,18 @@ export function useDeleteVoteCandidate() {
         queryKey: ["admin", "vote-candidates"],
       });
     },
+  });
+}
+
+export function useVoteResults(month: string) {
+  const siteId = useAuthStore((s) => s.currentSiteId);
+
+  return useQuery({
+    queryKey: ["admin", "vote-results", siteId, month],
+    queryFn: () =>
+      apiFetch<{ results: VoteResult[] }>(
+        `/admin/votes/results?siteId=${siteId}&month=${month}`,
+      ).then((res) => res.results),
+    enabled: !!siteId && !!month,
   });
 }

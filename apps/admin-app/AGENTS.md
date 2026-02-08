@@ -1,79 +1,75 @@
-# apps/admin-app - Admin Dashboard
-
-**Status**: 79% complete. Missing audit logs UI, advanced stats.
+# ADMIN-APP (Next.js 14 Dashboard)
 
 ## OVERVIEW
 
-Next.js 14 admin dashboard for site managers and super admins. Desktop-first.
+Admin dashboard for site managers. Next.js 14 App Router, static export to CF Pages (port 3001). 17 pages, 12-item sidebar.
 
 ## STRUCTURE
 
 ```
 src/
-├── app/              # Next.js App Router
-│   ├── layout.tsx    # Root layout with sidebar
-│   ├── page.tsx      # Dashboard overview
-│   ├── users/        # User management
-│   ├── sites/        # Site management
-│   ├── posts/        # Post review/approval
-│   ├── attendance/   # Attendance records, approvals
-│   ├── announcements/# Announcement CRUD
-│   ├── votes/        # Vote management
-│   └── stats/        # Analytics (TBD)
-├── components/       # Shared admin components
-├── hooks/            # useApi, useAuth, usePermissions
-└── lib/              # API client, utils
+├── app/
+│   ├── layout.tsx                    # Root layout
+│   ├── page.tsx                      # Root redirect
+│   ├── login/page.tsx                # Admin login
+│   ├── sites/page.tsx                # Site management
+│   ├── users/page.tsx                # User list
+│   ├── users/[id]/page.tsx           # User detail (dynamic)
+│   ├── posts/page.tsx                # Post management
+│   ├── posts/[id]/page.tsx           # Post detail (dynamic)
+│   ├── education/page.tsx            # Education mgmt (1391L — BLOATED, needs split)
+│   ├── approvals/page.tsx            # Approval workflow
+│   ├── announcements/page.tsx        # Announcements
+│   ├── votes/page.tsx                # Vote management
+│   ├── points/page.tsx               # Points ledger
+│   ├── policies/page.tsx             # Safety policies
+│   ├── (dashboard)/                  # Route group (shared layout)
+│   │   ├── layout.tsx                # Dashboard sidebar layout
+│   │   ├── page.tsx                  # Dashboard home (8 stat cards + chart)
+│   │   └── attendance/page.tsx       # Attendance (30s real-time refetch)
+│   └── settings/page.tsx             # App settings
+├── components/
+│   ├── sidebar.tsx                   # 281L, 12 menu items, collapsible
+│   ├── header.tsx                    # Top header
+│   ├── data-table.tsx                # 269L, generic: search/sort/pagination/selection
+│   ├── stats-card.tsx                # Dashboard stat cards
+│   ├── user-form.tsx                 # User create/edit form
+│   └── approvals/                    # Approval-specific components
+│       ├── approval-list.tsx
+│       ├── approval-detail.tsx
+│       ├── approval-actions.tsx
+│       └── approval-filters.tsx
+├── hooks/
+│   ├── use-auth.ts                   # Auth wrapper
+│   ├── use-api.ts                    # 1288L, 60+ hooks (MONOLITHIC — needs split)
+│   └── use-votes.ts                  # Vote hooks (separated — good pattern)
+├── stores/
+│   └── auth.ts                       # Zustand auth store
+└── lib/
+    ├── api.ts                        # API client + token refresh
+    └── utils.ts                      # cn() re-export
 ```
 
-## WHERE TO LOOK
+## KEY DETAILS
 
-| Task              | Location                    | Notes                  |
-| ----------------- | --------------------------- | ---------------------- |
-| Add admin page    | `src/app/{path}/page.tsx`   | Check role permissions |
-| Add data table    | Use `@tanstack/react-table` | Pagination, sorting    |
-| Check permissions | `usePermissions` hook       | Role-based UI          |
-| Add API call      | Use `useApi` from hooks     | Auto token refresh     |
-
-## KEY PATTERNS
-
-### Role-Based Access
-
-```typescript
-const { isAdmin, isSuperAdmin, canManageUsers } = usePermissions();
-if (!isAdmin) return <AccessDenied />;
-```
-
-### Data Tables
-
-- TanStack Table for complex grids
-- Server-side pagination
-- Column sorting/filtering
+| Component  | Detail                                                                   |
+| ---------- | ------------------------------------------------------------------------ |
+| Dashboard  | 8 stat cards (users, posts, sites, etc.) + category distribution chart   |
+| data-table | Generic, reusable: column sort, search filter, pagination, row selection |
+| Attendance | 30-second auto-refetch interval                                          |
+| use-api.ts | **1288 lines, 60+ hooks** — monolithic, refactor candidate               |
+| education  | **1391 lines** — single-page CRUD for courses/quizzes/TBM                |
 
 ## CONVENTIONS
 
-- **Desktop-first**: Optimized for 1024px+ screens
-- **Data density**: Tables, not cards
-- **Audit trail**: All actions logged via API
-- **Confirmation**: Modal for destructive actions
+- **ALL pages `'use client'`** — zero RSC, static export
+- **Dynamic routes**: `[id]` pattern for user/post detail pages
+- **Route groups**: `(dashboard)/` for shared sidebar layout
+- **API base**: `NEXT_PUBLIC_API_URL` env or `http://localhost:3333`
+- Same auth/API patterns as worker-app (Zustand + TanStack Query)
 
 ## ANTI-PATTERNS
 
-| Pattern                    | Why Forbidden         |
-| -------------------------- | --------------------- |
-| `confirm()` for deletion   | Use modal component   |
-| Skipping permission check  | Always verify role    |
-| Client-side only filtering | Use server pagination |
-
-## COMMANDS
-
-```bash
-npm run dev:admin       # Dev server (port 3001)
-npm run build:admin     # Production build
-```
-
-## GAPS (TODO)
-
-- [ ] Audit logs viewer
-- [ ] Advanced statistics dashboard
-- [ ] Bulk user import
-- [ ] Export to CSV/Excel
+- **Known**: `hooks/use-api.ts:~310` — `useAuditLogs()` returns `Promise.resolve()` (placeholder, HIGH priority)
+- No `alert()`/`confirm()` — use modal components
+- **Refactor targets**: `use-api.ts` (split by domain), `education/page.tsx` (extract sub-components)

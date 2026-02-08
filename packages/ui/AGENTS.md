@@ -1,64 +1,47 @@
-# UI PACKAGE (@safetywallet/ui)
-
-Shared shadcn/ui component library for worker-app and admin-app.
+# PACKAGES/UI
 
 ## OVERVIEW
 
-Minimal shadcn component set. 6 components + cn() utility. CVA for variants.
+Shared shadcn/ui component library. 13 components consumed by worker-app and admin-app.
 
 ## STRUCTURE
 
 ```
 src/
-├── index.ts           # Barrel export (all components + cn)
-├── globals.css        # Tailwind base styles
-├── lib/
-│   └── utils.ts       # cn() utility (clsx + tailwind-merge)
-└── components/
-    ├── button.tsx     # Button + buttonVariants
-    ├── card.tsx       # Card, CardHeader, CardTitle, etc.
-    ├── input.tsx      # Input
-    ├── badge.tsx      # Badge + badgeVariants
-    ├── skeleton.tsx   # Skeleton
-    └── avatar.tsx     # Avatar, AvatarImage, AvatarFallback
+├── components/
+│   ├── button.tsx
+│   ├── card.tsx
+│   ├── input.tsx
+│   ├── badge.tsx
+│   ├── skeleton.tsx
+│   ├── avatar.tsx
+│   ├── alert-dialog.tsx
+│   ├── dialog.tsx
+│   ├── select.tsx
+│   ├── switch.tsx
+│   ├── toaster.tsx
+│   ├── toast.tsx
+│   └── use-toast.ts     # Toast hook (not a component)
+├── index.ts              # Barrel export
+└── lib/
+    └── utils.ts          # cn() (clsx + tailwind-merge)
 ```
 
 ## CONVENTIONS
 
-### Adding Components
+- **Import as**: `import { Button, Card } from "@safetywallet/ui"`
+- **shadcn/ui conventions**: CVA variants, forwardRef, Slot composition
+- **Styling**: Tailwind CSS v4, dark mode via `class` strategy
+- **No custom wrappers** — use shadcn primitives directly
 
-1. Use shadcn CLI or copy from ui.shadcn.com
-2. Place in `src/components/{name}.tsx`
-3. Export from `src/index.ts`
+## ADDING COMPONENTS
 
-### Variant Pattern (CVA)
-
-```typescript
-const buttonVariants = cva("base-classes", {
-  variants: {
-    variant: { default: "...", destructive: "..." },
-    size: { default: "...", sm: "...", lg: "..." },
-  },
-  defaultVariants: { variant: "default", size: "default" },
-});
-```
-
-### Usage in Apps
-
-```typescript
-import { Button, cn } from "@safetywallet/ui";
-import "@safetywallet/ui/globals.css";
-```
-
-## DEPENDENCIES
-
-- `class-variance-authority` - Variant management
-- `clsx` - Conditional classes
-- `tailwind-merge` - Merge Tailwind classes
-- `lucide-react` - Icons
+1. Copy shadcn component to `src/components/`
+2. Update dependencies in `package.json` if needed
+3. Export from `src/index.ts` barrel
 
 ## ANTI-PATTERNS
 
-- **No inline styles** - Use Tailwind classes
-- **No hardcoded colors** - Use CSS variables from globals.css
-- **No component logic** - Pure presentational only
+- **No business logic** — UI primitives only
+- **No direct Tailwind `@apply`** — use CVA variants
+- **No app-specific styling** — keep generic

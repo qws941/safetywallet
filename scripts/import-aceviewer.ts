@@ -16,7 +16,7 @@
  */
 
 import Database from "better-sqlite3";
-import { createHash, randomUUID } from "crypto";
+import { createHmac, randomUUID } from "crypto";
 import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
@@ -62,9 +62,7 @@ function decodeEucKr(buffer: Buffer | null): string {
 }
 
 function hmacSync(secret: string, data: string): string {
-  return createHash("sha256")
-    .update(secret + data)
-    .digest("hex");
+  return createHmac("sha256", secret).update(data).digest("hex");
 }
 
 function generateId(): string {
@@ -119,7 +117,14 @@ async function main() {
 
   console.log(`Employees: ${employees.length}\n`);
 
-  const hmacSecret = process.env.HMAC_SECRET || "dummy-secret-for-import";
+  const hmacSecret = process.env.HMAC_SECRET;
+  if (!hmacSecret) {
+    console.error("Error: HMAC_SECRET environment variable is required");
+    console.error(
+      "  HMAC_SECRET=your-secret npx tsx scripts/import-aceviewer.ts",
+    );
+    process.exit(1);
+  }
   const now = new Date().toISOString();
 
   const inserts: string[] = [];
@@ -136,7 +141,8 @@ async function main() {
     const phoneHash = hmacSync(hmacSecret, dummyPhone);
     const nameMasked = name.length > 0 ? name[0] + "**" : "***";
 
-    const sql = `INSERT OR IGNORE INTO users (id, phone, phone_hash, name, name_masked, external_system, external_worker_id, company_name, trade_type, role, created_at, updated_at) VALUES (${escapeSQL(id)}, ${escapeSQL(dummyPhone)}, ${escapeSQL(phoneHash)}, ${escapeSQL(name)}, ${escapeSQL(nameMasked)}, 'FAS', ${escapeSQL(emplCd)}, ${escapeSQL(companyName)}, ${escapeSQL(tradeType)}, 'WORKER', ${escapeSQL(now)}, ${escapeSQL(now)});`;
+    // AceViewer has no dob, so dob_hash is NULL — these users can't login directly
+    const sql = `INSERT OR IGNORE INTO users (id, phone, phone_hash, dob_hash, name, name_masked, external_system, external_worker_id, company_name, trade_type, role, created_at, updated_at) VALUES (${escapeSQL(id)}, ${escapeSQL(dummyPhone)}, ${escapeSQL(phoneHash)}, NULL, ${escapeSQL(name)}, ${escapeSQL(nameMasked)}, 'FAS', ${escapeSQL(emplCd)}, ${escapeSQL(companyName)}, ${escapeSQL(tradeType)}, 'WORKER', ${escapeSQL(now)}, ${escapeSQL(now)});`;
 
     inserts.push(sql);
   }

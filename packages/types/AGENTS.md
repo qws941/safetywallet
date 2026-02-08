@@ -1,77 +1,42 @@
-# packages/types - Shared TypeScript Types
+# PACKAGES/TYPES
 
 ## OVERVIEW
 
-Centralized TypeScript types, enums, DTOs shared across all apps. Barrel exports via `index.ts`.
+Shared TypeScript types, 19 enums, and DTO interfaces consumed by all apps.
 
 ## STRUCTURE
 
 ```
 src/
-├── index.ts          # Barrel export (re-exports all)
-├── enums/            # UserRole, ReviewStatus, etc.
-├── dto/              # Request/response DTOs
-├── api/              # API response interfaces
-└── entities/         # Entity type definitions
-```
-
-## WHERE TO LOOK
-
-| Task             | Location              | Notes                      |
-| ---------------- | --------------------- | -------------------------- |
-| Add enum         | `src/enums/{name}.ts` | Export in index.ts         |
-| Add DTO          | `src/dto/{entity}/`   | Create, Update, Query DTOs |
-| Add API response | `src/api/`            | ApiResponse<T> wrapper     |
-| Add entity type  | `src/entities/`       | Mirror Prisma models       |
-
-## KEY TYPES
-
-### Enums (10)
-
-```typescript
-export enum UserRole {
-  WORKER,
-  SITE_ADMIN,
-  SUPER_ADMIN,
-  SYSTEM,
-}
-export enum ReviewStatus {
-  RECEIVED,
-  IN_REVIEW,
-  NEED_INFO,
-  APPROVED,
-  REJECTED,
-}
-export enum ActionStatus {
-  NONE,
-  REQUIRED,
-  ASSIGNED,
-  IN_PROGRESS,
-  DONE,
-  REOPENED,
-}
-```
-
-### API Response
-
-```typescript
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
-  timestamp: string;
-}
+├── index.ts              # Barrel export (ALL types/enums/DTOs)
+├── enums.ts              # 19 enum definitions
+└── dto/
+    ├── index.ts          # DTO barrel export
+    ├── auth.dto.ts       # Auth request/response types
+    ├── post.dto.ts       # Post CRUD types
+    ├── user.dto.ts       # User types
+    ├── site.dto.ts       # Site types
+    ├── attendance.dto.ts # Attendance types
+    ├── education.dto.ts  # Course, material, quiz types
+    ├── vote.dto.ts       # Vote types
+    ├── point.dto.ts      # Point types
+    ├── announcement.dto.ts
+    └── admin.dto.ts      # Admin dashboard types
 ```
 
 ## CONVENTIONS
 
-- **Barrel exports**: All types must be re-exported from `src/index.ts`
-- **Naming**: PascalCase for types, SCREAMING_CASE for enum values
-- **DTOs**: Suffix with `Dto` (CreatePostDto, QueryPostsDto)
-- **Import path**: `import { UserRole } from '@safetywallet/types'`
+- **Barrel exports**: Everything re-exported from `src/index.ts`
+- **Import as**: `import { UserRole, CreatePostDto } from "@safetywallet/types"`
+- **DTOs are interfaces** — no runtime validation (Zod is on API side)
+- **Enums MUST match** Drizzle schema enums in `api-worker/src/db/schema.ts`
 
-## COMMANDS
+## ENUMS (19)
 
-```bash
-npm run build:types    # Compile TypeScript
-```
+UserRole, ReviewStatus, ActionStatus, PostCategory, PostType, VoteStatus, PointType, AttendanceStatus, SiteStatus, MembershipStatus, AnnouncementType, NotificationType, ApprovalStatus, DisputeStatus, EducationContentType, QuizQuestionType, PolicyStatus, DeviceType, AuditAction
+
+## ANTI-PATTERNS
+
+- **Never add runtime logic** — types-only package
+- **Never import from sub-paths** — always import from `@safetywallet/types`
+- **Enum sync**: Adding/changing an enum HERE requires matching change in `api-worker/src/db/schema.ts`

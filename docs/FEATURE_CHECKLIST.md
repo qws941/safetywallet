@@ -1,6 +1,6 @@
 # 안전지갑 기능 체크리스트
 
-> 최종 업데이트: 2026-02-06
+> 최종 업데이트: 2026-02-08
 
 ## 1. 사용자 인증 (Authentication)
 
@@ -229,7 +229,7 @@
 
 - [x] 승인 대상 선택 ✅ NEW - POST /admin/manual-approval
 - [x] 승인 사유 입력 (필수) ✅ NEW
-- [ ] 승인/반려 버튼 (UI 구현 필요)
+- [x] 승인/반려 버튼 ✅ (approvals/approval-list.tsx 구현됨)
 - [x] 승인 이력 조회 ✅ NEW - GET /admin/manual-approvals
 
 ### 8.5 회원 관리
@@ -265,7 +265,7 @@
 
 - [x] `POST /auth/login` - 로그인 (name+phone+dob HMAC + 출근체크)
 - [x] `POST /auth/logout` - 로그아웃
-- [ ] `GET /auth/me` - 현재 사용자 정보
+- [x] `GET /auth/me` - 현재 사용자 정보 ✅ (auth.ts 구현됨)
 
 ### 9.2 FAS 연동 API ✅ NEW
 
@@ -389,7 +389,7 @@
 
 - [x] JWT 토큰 검증
 - [x] API Rate Limiting ✅ NEW - ThrottlerGuard
-- [ ] CORS 설정
+- [x] CORS 설정 ✅ (index.ts cors middleware)
 - [x] HTTPS 필수 (배포 환경)
 
 ### 11.3 감사 로그
@@ -425,6 +425,35 @@
 
 ---
 
+## 13. 안전교육 시스템 (Safety Education) ✅ NEW
+
+### 13.1 교육자료 (Education Content)
+
+- [x] 교육자료 목록/상세 API (GET /education/contents)
+- [x] 교육자료 등록/수정/삭제 API (Admin)
+- [x] 교육자료 열람 UI (Worker App)
+- [x] 교육자료 관리 UI (Admin App)
+
+### 13.2 퀴즈/평가 (Quiz)
+
+- [x] 퀴즈 목록/상세 API (GET /education/quizzes)
+- [x] 퀴즈 등록/수정/삭제 + 문제 관리 API (Admin)
+- [x] 퀴즈 응시 API (POST /education/quizzes/:id/attempt)
+- [x] 퀴즈 응시 UI (Worker App)
+- [x] 퀴즈 관리 UI (Admin App)
+
+### 13.3 TBM (Toolbox Meeting)
+
+- [x] TBM 기록/참석 API (GET/POST /education/tbm)
+- [x] TBM 관리 UI (Admin App)
+
+### 13.4 법정교육 (Statutory Training)
+
+- [x] 법정교육 CRUD API (Admin)
+- [x] 법정교육 관리 UI (Admin App)
+
+---
+
 ## 진행 상태 요약
 
 | 카테고리        | 총 항목 | 완료    | 진행률  |
@@ -436,12 +465,13 @@
 | 우수근로자 투표 | 14      | 13      | 93%     |
 | 포인트 시스템   | 8       | 8       | 100%    |
 | 게시물          | 12      | 12      | 100%    |
-| 관리자 기능     | 24      | 17      | 71%     |
-| API             | 22      | 19      | 86%     |
+| 관리자 기능     | 24      | 18      | 75%     |
+| API             | 22      | 20      | 91%     |
 | 데이터베이스    | 32      | 30      | 94%     |
-| 보안            | 12      | 8       | 67%     |
+| 보안            | 12      | 9       | 75%     |
 | 운영            | 10      | 6       | 60%     |
-| **합계**        | **191** | **168** | **88%** |
+| 안전교육        | 13      | 13      | 100%    |
+| **합계**        | **204** | **184** | **90%** |
 
 ---
 
@@ -468,13 +498,13 @@
 ### P0 (Critical - 보안)
 
 - [x] 전화번호/생년월일 실제 암호화 저장 적용 ✅ (2026-02-04)
-- [ ] 로그인 시도 횟수 제한 (계정 잠금)
+- [x] 로그인 시도 횟수 제한 (계정 잠금) ✅ (1.1 참조 - 이미 구현됨)
 
 ### P1 (High)
 
 - [ ] 해당 현장 출근 시에만 접속 허용
 - [ ] 투표 후보 관리 UI (Admin)
-- [ ] 수동 승인 UI (Admin)
+- [x] 수동 승인 UI (Admin) ✅ (approvals 페이지 구현됨)
 
 ### P2 (Medium)
 

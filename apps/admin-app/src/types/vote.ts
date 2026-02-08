@@ -12,6 +12,7 @@ export interface VoteCandidate {
   siteId: string;
   month: string;
   source: "ADMIN" | "AUTO";
+  createdAt: string;
   user: {
     id: string;
     name: string | null;

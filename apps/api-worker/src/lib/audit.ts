@@ -6,6 +6,13 @@ import type { Context } from "hono";
  * Audit log action types as defined in PRD Appendix B
  */
 export type AuditAction =
+  | "LOGIN_SUCCESS"
+  | "LOGIN_FAILED"
+  | "USER_PROFILE_UPDATED"
+  | "VOTE_CAST"
+  | "ATTENDANCE_SYNCED"
+  | "DISPUTE_CREATED"
+  | "DISPUTE_RESOLVED"
   | "PII_VIEW" // When piiViewFull is used to decrypt PII
   | "EXCEL_EXPORT" // CSV/Excel data export
   | "IMAGE_DOWNLOAD" // Bulk image download
@@ -24,6 +31,7 @@ export type AuditAction =
   | "MANUAL_APPROVAL_REJECTED"
   | "VOTE_CANDIDATE_ADDED"
   | "VOTE_CANDIDATE_REMOVED"
+  | "VOTE_RESULT_EXPORT"
   | "EXPORT_POSTS"
   | "EXPORT_USERS"
   | "EXPORT_POINTS"
@@ -43,6 +51,9 @@ export type AuditAction =
  */
 export type AuditTargetType =
   | "USER"
+  | "VOTE"
+  | "ATTENDANCE"
+  | "DISPUTE"
   | "POST"
   | "SITE"
   | "EXPORT"

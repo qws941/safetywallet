@@ -1,75 +1,77 @@
-# apps/worker-app - Worker PWA
-
-**Status**: 100% complete. Production-ready.
+# WORKER-APP (Next.js 14 PWA)
 
 ## OVERVIEW
 
-Next.js 14 Progressive Web App for construction workers. Mobile-first, offline-capable.
+Construction worker mobile PWA. Next.js 14 App Router, static export to CF Pages.
 
 ## STRUCTURE
 
 ```
 src/
-├── app/              # Next.js App Router pages
-│   ├── layout.tsx    # Root layout, PWA config
-│   ├── page.tsx      # Dashboard (attendance, posts)
-│   ├── posts/        # View/create safety reports
-│   ├── profile/      # User profile, points
-│   ├── join/         # Site join flow (QR/code)
-│   ├── attendance/   # Daily check-in status
-│   └── vote/         # Monthly voting
-├── components/       # Page-specific components
-├── hooks/            # useApi, useAuth, useToast
-├── lib/              # API client, utilities
-└── stores/           # Zustand state stores
+├── app/
+│   ├── layout.tsx              # Root layout, PWA metadata, Providers
+│   ├── page.tsx                # Root redirect (→ login | join | home)
+│   ├── login/page.tsx          # Employee code + name login form
+│   ├── join/page.tsx           # Site join (QR scan or code entry)
+│   ├── home/page.tsx           # Dashboard (attendance, points, ranking)
+│   ├── posts/
+│   │   ├── page.tsx            # Posts list
+│   │   ├── new/page.tsx        # Create post (R2 image upload)
+│   │   └── view/page.tsx       # View single post
+│   ├── education/
+│   │   ├── page.tsx            # Education hub (316L, tabs: Contents/Quizzes/TBM)
+│   │   ├── view/page.tsx       # Course detail
+│   │   └── quiz-take/page.tsx  # Take quiz
+│   ├── points/page.tsx         # Leaderboard
+│   ├── announcements/page.tsx  # Site announcements
+│   ├── votes/page.tsx          # Monthly voting
+│   └── profile/page.tsx        # User profile, logout
+├── components/
+│   ├── providers.tsx           # TanStack QueryClient + Toaster
+│   ├── header.tsx              # Sticky top bar + site ID
+│   ├── bottom-nav.tsx          # 5-item bottom navigation
+│   ├── post-card.tsx           # Post display
+│   ├── points-card.tsx         # Points balance
+│   ├── ranking-card.tsx        # User ranking
+│   ├── qr-scanner.tsx          # QR code scanner (@yudiel/react-qr-scanner)
+│   ├── attendance-guard.tsx    # Attendance check wrapper
+│   └── unsafe-warning-modal.tsx
+├── hooks/
+│   ├── use-auth.ts             # Auth store wrapper
+│   ├── use-api.ts              # TanStack Query hooks (279L, 20+ hooks)
+│   └── use-leaderboard.ts      # Leaderboard hook
+├── stores/
+│   └── auth.ts                 # Zustand auth store (localStorage)
+└── lib/
+    ├── api.ts                  # apiFetch + auto token refresh
+    └── utils.ts                # cn() re-export
 ```
-
-## WHERE TO LOOK
-
-| Task             | Location                    | Notes                 |
-| ---------------- | --------------------------- | --------------------- |
-| Add page         | `src/app/{path}/page.tsx`   | App Router convention |
-| Add component    | `src/components/{feature}/` | Co-locate with page   |
-| Add API call     | Use `useApi` hook           | Auto token refresh    |
-| Add global state | `src/stores/{name}.ts`      | Zustand store         |
-| PWA config       | `next.config.js`            | next-pwa settings     |
-
-## KEY PATTERNS
-
-### API Client (useApi hook)
-
-```typescript
-const { data, isLoading, error } = useApi("/posts", { siteId });
-```
-
-- Auto-injects Bearer token
-- Handles 401 → token refresh → retry
-- Returns typed response
-
-### State Management
-
-- **Zustand**: Auth state, site context, UI preferences
-- **TanStack Query**: Server state, caching
 
 ## CONVENTIONS
 
-- **Mobile-first**: All layouts start from mobile viewport
-- **PWA**: Service worker, manifest, offline fallback
-- **Korean locale**: All UI strings in Korean
-- **Time**: Asia/Seoul timezone, 5 AM day boundary
+- **ALL pages `'use client'`** — zero RSC, static export
+- **Auth state**: Zustand → localStorage key `safetywallet-auth`
+- **Server data**: TanStack Query (staleTime: 60s, no auto-refetch)
+- **API base**: `NEXT_PUBLIC_API_URL` env or `http://localhost:3333`
+- **Auto 401 handling**: `lib/api.ts` intercepts → refresh → retry → logout
+- **Korean (ko-KR)** localization throughout
+- **Mobile-first**: `pb-nav` / `safe-bottom` padding for bottom nav
 
 ## ANTI-PATTERNS
 
-| Pattern                 | Why Forbidden                       |
-| ----------------------- | ----------------------------------- |
-| `alert()` / `confirm()` | Use toast or modal components       |
-| Direct fetch()          | Use `useApi` hook for auth handling |
-| Inline styles           | Use Tailwind classes                |
+- **Known**: `posts/new/page.tsx:167` — `as any`
+- No `alert()`/`confirm()` — use modal components
 
-## COMMANDS
+## LOGIN FLOW
 
-```bash
-npm run dev:worker      # Dev server (port 3000)
-npm run build:worker    # Production build
-npx wrangler pages dev  # Test on Cloudflare Pages
-```
+1. `/` → redirects to `/login` if unauthenticated
+2. LoginPage: dual-auth — AceTime (`employee_code` + `name`) OR Phone (`phone` + `dob`)
+3. Response: `{ accessToken, refreshToken, user }`
+4. `login()` → updates Zustand store → redirects to `/join`
+5. After site join → `/home` (dashboard)
+
+## PWA
+
+- **Manifest**: Korean, portrait, standalone, `#ff8c42` theme
+- **Service worker**: next-pwa generated `sw.js`
+- **Viewport**: no-zoom (`user-scalable=no`)

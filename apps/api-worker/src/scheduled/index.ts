@@ -1,7 +1,13 @@
 import type { Env } from "../types";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, sql, and, gte, lt } from "drizzle-orm";
-import { pointsLedger, siteMemberships, auditLogs, users } from "../db/schema";
+import {
+  pointsLedger,
+  siteMemberships,
+  auditLogs,
+  users,
+  syncErrors,
+} from "../db/schema";
 import {
   fasGetUpdatedEmployees,
   testConnection as testFasConnection,
@@ -24,6 +30,24 @@ function getMonthRange(date: Date): { start: Date; end: Date } {
 
 function formatSettleMonth(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 1000,
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      await new Promise((r) =>
+        setTimeout(r, baseDelayMs * Math.pow(2, attempt - 1)),
+      );
+    }
+  }
+  throw new Error("Unreachable");
 }
 
 async function getOrCreateSystemUser(
@@ -154,6 +178,8 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
     return;
   }
 
+  const fasHyperdrive = env.FAS_HYPERDRIVE;
+
   const db = drizzle(env.DB);
   const kstNow = getKSTDate();
   const fiveMinutesAgo = new Date(kstNow.getTime() - 5 * 60 * 1000);
@@ -168,50 +194,75 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
     return;
   }
 
-  const companyId = env.FAS_COMPANY_ID ? parseInt(env.FAS_COMPANY_ID, 10) : 1;
-  const updatedEmployees = await fasGetUpdatedEmployees(
-    env.FAS_HYPERDRIVE,
-    companyId,
-    fiveMinutesAgo.toISOString(),
-  );
+  try {
+    const companyId = env.FAS_COMPANY_ID ? parseInt(env.FAS_COMPANY_ID, 10) : 1;
+    const updatedEmployees = await withRetry(() =>
+      fasGetUpdatedEmployees(
+        fasHyperdrive,
+        companyId,
+        fiveMinutesAgo.toISOString(),
+      ),
+    );
 
-  console.log(`Found ${updatedEmployees.length} updated employees`);
+    console.log(`Found ${updatedEmployees.length} updated employees`);
 
-  let upsertCount = 0;
-  for (const employee of updatedEmployees) {
-    const phoneHash = await hmac(env.HMAC_SECRET, employee.phone);
-    const dobHash = employee.birthDate
-      ? await hmac(env.HMAC_SECRET, employee.birthDate.replace(/-/g, ""))
-      : null;
+    let upsertCount = 0;
+    for (const employee of updatedEmployees) {
+      const phoneHash = await hmac(env.HMAC_SECRET, employee.phone);
+      const dobHash = employee.birthDate
+        ? await hmac(env.HMAC_SECRET, employee.birthDate.replace(/-/g, ""))
+        : null;
 
-    const existingUser = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.phoneHash, phoneHash))
-      .get();
+      const existingUser = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.phoneHash, phoneHash))
+        .get();
 
-    if (existingUser) {
-      await db
-        .update(users)
-        .set({
+      if (existingUser) {
+        await db
+          .update(users)
+          .set({
+            name: employee.name,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingUser.id));
+      } else if (dobHash) {
+        await db.insert(users).values({
+          id: crypto.randomUUID(),
           name: employee.name,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, existingUser.id));
-    } else if (dobHash) {
-      await db.insert(users).values({
-        id: crypto.randomUUID(),
-        name: employee.name,
-        phone: phoneHash,
-        phoneHash,
-        dobHash,
-        role: "WORKER",
-      });
+          phone: phoneHash,
+          phoneHash,
+          dobHash,
+          role: "WORKER",
+        });
+      }
+      upsertCount++;
     }
-    upsertCount++;
-  }
 
-  console.log(`FAS sync complete: ${upsertCount} users upserted`);
+    console.log(`FAS sync complete: ${upsertCount} users upserted`);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorCode =
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      typeof err.code === "string"
+        ? err.code
+        : "UNKNOWN";
+
+    console.error("FAS incremental sync failed:", err);
+
+    await db.insert(syncErrors).values({
+      syncType: "FAS_WORKER",
+      status: "OPEN",
+      errorCode,
+      errorMessage,
+      payload: JSON.stringify({ timestamp: new Date().toISOString() }),
+    });
+
+    throw err;
+  }
 }
 
 export async function scheduled(

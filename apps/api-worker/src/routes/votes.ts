@@ -4,6 +4,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { votes, voteCandidates, users, siteMemberships } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
+import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 
@@ -116,6 +117,42 @@ votesRoute.get("/current", authMiddleware, async (c) => {
   });
 });
 
+// GET /my - 내 투표 이력
+votesRoute.get("/my", authMiddleware, async (c) => {
+  const { user } = c.get("auth");
+  const db = drizzle(c.env.DB);
+
+  const membership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .get();
+
+  if (!membership) {
+    return error(c, "NO_ACTIVE_SITE", "활성 현장이 없습니다", 400);
+  }
+
+  const myVotes = await db
+    .select({
+      id: votes.id,
+      month: votes.month,
+      candidateId: votes.candidateId,
+      candidateName: users.nameMasked,
+      votedAt: votes.votedAt,
+    })
+    .from(votes)
+    .innerJoin(users, eq(votes.candidateId, users.id))
+    .where(and(eq(votes.siteId, membership.siteId), eq(votes.voterId, user.id)))
+    .orderBy(sql`${votes.month} DESC`);
+
+  return success(c, { votes: myVotes });
+});
+
 votesRoute.post("/", authMiddleware, async (c) => {
   const { user } = c.get("auth");
 
@@ -199,6 +236,24 @@ votesRoute.post("/", authMiddleware, async (c) => {
     voterId: user.id,
     candidateId,
   });
+
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "VOTE_CAST",
+      user.id,
+      "VOTE",
+      `${siteId}:${currentMonth}:${user.id}`,
+      {
+        siteId,
+        month: currentMonth,
+        candidateId,
+      },
+    );
+  } catch {
+    // Do not block successful vote submission on audit failure.
+  }
 
   return success(c, { message: "투표가 완료되었습니다." });
 });

@@ -4,6 +4,7 @@ import { eq, and, gte, lt } from "drizzle-orm";
 import { attendance, users } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
 import { fasAuthMiddleware } from "../middleware/fas-auth";
+import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 
@@ -194,6 +195,25 @@ attendanceRoute.post("/sync", fasAuthMiddleware, async (c) => {
       response,
       timestamp: Date.now(),
     });
+  }
+
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "ATTENDANCE_SYNCED",
+      "system",
+      "ATTENDANCE",
+      idempotencyKey || `attendance-sync:${Date.now()}`,
+      {
+        processed: response.processed,
+        inserted: response.inserted,
+        skipped: response.skipped,
+        failed: response.failed,
+      },
+    );
+  } catch {
+    // Do not block successful sync response on audit failure.
   }
 
   return success(c, response);

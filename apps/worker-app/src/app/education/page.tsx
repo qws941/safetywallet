@@ -20,6 +20,7 @@ import {
   useToast,
 } from "@safetywallet/ui";
 import { cn } from "@/lib/utils";
+import { AttendanceGuard } from "@/components/attendance-guard";
 import {
   BookOpen,
   FileText,
@@ -129,37 +130,42 @@ function ContentsTab({ siteId }: { siteId: string }) {
       {contents.map((content) => {
         const Icon = contentTypeIcons[content.contentType] || FileText;
         return (
-          <Link key={content.id} href={`/education/view?id=${content.id}`}>
-            <Card className="active:scale-[0.98] transition-transform">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                  <Icon className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="text-[10px] px-1.5 h-5">
-                      {contentTypeLabels[content.contentType] ||
-                        content.contentType}
-                    </Badge>
-                    {content.isRequired && (
+          <AttendanceGuard>
+            <Link key={content.id} href={`/education/view?id=${content.id}`}>
+              <Card className="active:scale-[0.98] transition-transform">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
                       <Badge
-                        variant="destructive"
+                        variant="outline"
                         className="text-[10px] px-1.5 h-5"
                       >
-                        필수
+                        {contentTypeLabels[content.contentType] ||
+                          content.contentType}
                       </Badge>
-                    )}
+                      {content.isRequired && (
+                        <Badge
+                          variant="destructive"
+                          className="text-[10px] px-1.5 h-5"
+                        >
+                          필수
+                        </Badge>
+                      )}
+                    </div>
+                    <h3 className="font-medium text-sm line-clamp-2 mb-1">
+                      {content.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(content.createdAt).toLocaleDateString("ko-KR")}
+                    </p>
                   </div>
-                  <h3 className="font-medium text-sm line-clamp-2 mb-1">
-                    {content.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(content.createdAt).toLocaleDateString("ko-KR")}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+                </CardContent>
+              </Card>
+            </Link>
+          </AttendanceGuard>
         );
       })}
     </div>

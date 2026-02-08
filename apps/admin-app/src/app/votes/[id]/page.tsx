@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -7,6 +8,16 @@ import {
   CardTitle,
   Button,
   Badge,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  useToast,
 } from "@safetywallet/ui";
 import {
   Table,
@@ -17,21 +28,11 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Download, Plus, Trash2, Users } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { VoteResultsResponse } from "@/types/vote";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@safetywallet/ui";
 
 export const runtime = "edge";
 
@@ -41,6 +42,8 @@ export default function VoteDetailPage() {
   const month = params.id as string;
   const siteId = useAuthStore((s) => s.currentSiteId);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery<VoteResultsResponse>({
     queryKey: ["votes", "results", siteId, month],
@@ -63,8 +66,39 @@ export default function VoteDetailPage() {
       queryClient.invalidateQueries({
         queryKey: ["votes", "results", siteId, month],
       });
+      toast({ title: "후보자가 삭제되었습니다." });
+      setDeletingId(null);
+    },
+    onError: () => {
+      toast({ title: "삭제에 실패했습니다.", variant: "destructive" });
+      setDeletingId(null);
     },
   });
+
+  const handleExportCSV = () => {
+    if (!data?.results.length) return;
+    const header = "순위,이름,소속,업종,득표수";
+    const rows = data.results.map((r, i) =>
+      [
+        i + 1,
+        r.user.nameMasked || r.user.name,
+        r.user.companyName || "",
+        r.user.tradeType || "",
+        r.voteCount,
+      ].join(","),
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `투표결과_${month}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV 파일이 다운로드되었습니다." });
+  };
 
   const getStatus = () => {
     const now = new Date();
@@ -108,6 +142,14 @@ export default function VoteDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            disabled={!data?.results.length}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            결과 내보내기
+          </Button>
           {status !== "ENDED" && (
             <Button
               onClick={() => router.push(`/votes/${month}/candidates/new`)}
@@ -171,18 +213,46 @@ export default function VoteDetailPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {status !== "ENDED" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => {
-                              if (confirm("정말 삭제하시겠습니까?")) {
-                                deleteMutation.mutate(result.candidateId);
-                              }
-                            }}
+                          <AlertDialog
+                            open={deletingId === result.candidateId}
+                            onOpenChange={(open) =>
+                              !open && setDeletingId(null)
+                            }
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={() =>
+                                  setDeletingId(result.candidateId)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>후보자 삭제</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {result.user.nameMasked || result.user.name}{" "}
+                                  후보를 삭제하시겠습니까? 이 작업은 되돌릴 수
+                                  없습니다.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>취소</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-500 hover:bg-red-600"
+                                  onClick={() =>
+                                    deleteMutation.mutate(result.candidateId)
+                                  }
+                                >
+                                  삭제
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </TableCell>
                     </TableRow>

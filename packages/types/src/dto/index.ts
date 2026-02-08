@@ -7,3 +7,4 @@ export * from "./points.dto";
 export * from "./action.dto";
 export * from "./announcement.dto";
 export * from "./education.dto";
+export * from "./vote.dto";

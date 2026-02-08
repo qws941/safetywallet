@@ -1396,3 +1396,52 @@ export const tbmAttendeesRelations = relations(tbmAttendees, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ============================================================================
+// SYNC ERRORS - Track FAS sync failures for retry & visibility
+// ============================================================================
+
+export const syncTypeEnum = [
+  "FAS_ATTENDANCE",
+  "FAS_WORKER",
+  "ATTENDANCE_MANUAL",
+] as const;
+export const syncErrorStatusEnum = ["OPEN", "RESOLVED", "IGNORED"] as const;
+
+export const syncErrors = sqliteTable(
+  "sync_errors",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    siteId: text("site_id").references(() => sites.id),
+    syncType: text("sync_type", { enum: syncTypeEnum }).notNull(),
+    status: text("status", { enum: syncErrorStatusEnum })
+      .notNull()
+      .default("OPEN"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message").notNull(),
+    payload: text("payload"), // JSON string of failed data
+    retryCount: integer("retry_count").notNull().default(0),
+    lastRetryAt: text("last_retry_at"),
+    resolvedAt: text("resolved_at"),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => ({
+    siteTypeIdx: index("sync_errors_site_type_idx").on(
+      table.siteId,
+      table.syncType,
+    ),
+    statusIdx: index("sync_errors_status_idx").on(table.status),
+    createdAtIdx: index("sync_errors_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export const syncErrorsRelations = relations(syncErrors, ({ one }) => ({
+  site: one(sites, {
+    fields: [syncErrors.siteId],
+    references: [sites.id],
+  }),
+}));

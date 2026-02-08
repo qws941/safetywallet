@@ -2,7 +2,8 @@ import { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, gte, lt } from "drizzle-orm";
-import { attendance, manualApprovals } from "../db/schema";
+import { attendance, manualApprovals, siteMemberships } from "../db/schema";
+import { error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 
 const DAY_CUTOFF_HOUR = 5;
@@ -32,16 +33,40 @@ export async function attendanceMiddleware(
   next: Next,
   siteId?: string,
 ) {
+  const auth = c.get("auth");
+  const resolvedSiteId = siteId?.trim() || undefined;
+
+  if (resolvedSiteId) {
+    if (!auth) {
+      throw new HTTPException(401, { message: "인증이 필요합니다." });
+    }
+
+    const db = drizzle(c.env.DB);
+    const membership = await db
+      .select({ id: siteMemberships.id })
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, auth.user.id),
+          eq(siteMemberships.siteId, resolvedSiteId),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
+
+    if (!membership) {
+      return error(c, "FORBIDDEN", "해당 현장의 멤버가 아닙니다", 403);
+    }
+  }
+
   if (c.env.REQUIRE_ATTENDANCE_FOR_POST === "false") {
     return next();
   }
 
-  const auth = c.get("auth");
   if (!auth) {
     throw new HTTPException(401, { message: "인증이 필요합니다." });
   }
 
-  const resolvedSiteId = siteId?.trim() || undefined;
   const db = drizzle(c.env.DB);
   const { start, end } = getTodayRange();
 

@@ -11,6 +11,7 @@ import {
 } from "../db/schema";
 import { hmac, decrypt, encrypt } from "../lib/crypto";
 import { signJwt } from "../lib/jwt";
+import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import { fasSearchEmployeeByPhone } from "../lib/fas-mariadb";
 import { authMiddleware } from "../middleware/auth";
@@ -442,6 +443,23 @@ auth.post("/login", async (c) => {
       currentAttempt,
       Date.now(),
     );
+    try {
+      await logAuditWithContext(
+        c,
+        db,
+        "LOGIN_FAILED",
+        phoneHash,
+        "LOGIN_LOCKOUT",
+        attemptKey,
+        {
+          reason: "USER_NOT_FOUND",
+          attempts: updatedAttempt.attempts,
+        },
+      );
+    } catch {
+      // Do not block failed login response on audit failure.
+    }
+
     if (typeof updatedAttempt.lockedUntil === "number") {
       const actorId = await resolveLockoutActorId(db, phoneHash);
       if (actorId) {
@@ -480,6 +498,23 @@ auth.post("/login", async (c) => {
       currentAttempt,
       Date.now(),
     );
+    try {
+      await logAuditWithContext(
+        c,
+        db,
+        "LOGIN_FAILED",
+        user.id,
+        "USER",
+        user.id,
+        {
+          reason: "NAME_MISMATCH",
+          attempts: updatedAttempt.attempts,
+        },
+      );
+    } catch {
+      // Do not block failed login response on audit failure.
+    }
+
     if (typeof updatedAttempt.lockedUntil === "number") {
       await logLoginLockoutEvent(
         db,
@@ -574,6 +609,22 @@ auth.post("/login", async (c) => {
   }
 
   await c.env.KV.delete(attemptKey);
+
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "LOGIN_SUCCESS",
+      user.id,
+      "USER",
+      user.id,
+      {
+        method: "PHONE_DOB",
+      },
+    );
+  } catch {
+    // Do not block successful login response on audit failure.
+  }
 
   return respondWithDelay(
     success(

@@ -16,11 +16,8 @@ import {
 } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import { CandidateDialog } from "@/components/votes/candidate-dialog";
-import {
-  useVoteCandidates,
-  useDeleteVoteCandidate,
-  type VoteCandidate,
-} from "@/hooks/use-votes";
+import { useVoteCandidates, useDeleteVoteCandidate } from "@/hooks/use-votes";
+import type { VoteCandidate } from "@/types/vote";
 import { Trash2 } from "lucide-react";
 
 export default function VoteCandidatesPage() {
@@ -35,22 +32,19 @@ export default function VoteCandidatesPage() {
 
   const confirmDelete = () => {
     if (deleteTargetId) {
-      deleteCandidate(
-        { id: deleteTargetId },
-        {
-          onSuccess: () => {
-            toast({ description: "삭제되었습니다." });
-            setDeleteTargetId(null);
-          },
-          onError: (err) => {
-            toast({
-              variant: "destructive",
-              description: "삭제 실패: " + err.message,
-            });
-            setDeleteTargetId(null);
-          },
+      deleteCandidate(deleteTargetId, {
+        onSuccess: () => {
+          toast({ description: "삭제되었습니다." });
+          setDeleteTargetId(null);
         },
-      );
+        onError: (err) => {
+          toast({
+            variant: "destructive",
+            description: "삭제 실패: " + err.message,
+          });
+          setDeleteTargetId(null);
+        },
+      });
     }
   };
 

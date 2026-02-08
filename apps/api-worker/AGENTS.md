@@ -1,30 +1,38 @@
 # API-WORKER (Cloudflare Workers)
 
-**Target architecture** - All new API development here.
+**Target architecture** — All new API development here.
 
 ## OVERVIEW
 
-Hono.js REST API on Cloudflare Workers. D1 (SQLite) + R2 (images) + KV (sessions). Migrating from NestJS.
+Hono.js REST API on Cloudflare Workers. D1 (SQLite) via Drizzle ORM + R2 (images) + KV (sessions).
 
 ## STRUCTURE
 
 ```
 src/
-├── index.ts           # Hono app entry, route mounting
-├── routes/            # 9 route modules (auth, posts, sites, etc.)
-├── middleware/        # auth.ts (JWT validation)
-├── lib/               # jwt.ts, response.ts, crypto.ts utilities
+├── index.ts           # Hono app entry, route mounting, CRON scheduled handler
+├── routes/            # 17 route modules
+├── middleware/         # 4 middleware (auth, attendance, fas-auth, rate-limit)
+├── lib/               # 8 utility modules
+├── db/
+│   └── schema.ts      # Drizzle ORM schema (26 tables, 16 enums, 1447 lines)
+├── scheduled/
+│   └── index.ts       # CRON job handlers (292 lines)
+├── durable-objects/
+│   └── RateLimiter.ts # DO rate limiter (declared, not active)
 └── types.ts           # Env bindings, context types
 ```
 
 ## WHERE TO LOOK
 
-| Task             | Location                 | Notes                           |
-| ---------------- | ------------------------ | ------------------------------- |
-| Add endpoint     | `src/routes/{module}.ts` | Export Hono app, mount in index |
-| Add middleware   | `src/middleware/`        | c.set() for context injection   |
-| Change bindings  | `wrangler.toml`          | D1, R2, KV, Durable Objects     |
-| Response helpers | `src/lib/response.ts`    | success(), error() functions    |
+| Task             | Location                 | Notes                                     |
+| ---------------- | ------------------------ | ----------------------------------------- |
+| Add endpoint     | `src/routes/{module}.ts` | Export Hono app, mount in index           |
+| Add middleware   | `src/middleware/`        | Manual invocation, NOT `.use()`           |
+| Add/modify table | `src/db/schema.ts`       | Drizzle ORM definitions                   |
+| Change bindings  | `wrangler.toml`          | D1, R2, KV, DO, CRON triggers             |
+| Response helpers | `src/lib/response.ts`    | `success(c, data)`, `error(c, code, msg)` |
+| Add CRON job     | `src/index.ts`           | `scheduled` export handler                |
 
 ## CONVENTIONS
 
@@ -34,59 +42,117 @@ src/
 // src/routes/example.ts
 import { Hono } from "hono";
 import type { Env } from "../types";
+import { success, error } from "../lib/response";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.get("/", async (c) => {
-  const db = c.env.DB;
-  // ... D1 query
-  return c.json(success(data));
+  const db = drizzle(c.env.DB); // Drizzle, NOT raw SQL
+  // ... query with Drizzle
+  return success(c, data); // context c is FIRST param
 });
 
 export default app;
 ```
 
-### Response Format
+### Middleware Pattern (Manual Invocation)
 
 ```typescript
-success(data); // { success: true, data, timestamp }
-error(code, msg); // { success: false, error: { code, message }, timestamp }
+// NOT: app.use(authMiddleware)
+// YES: called inside handler
+app.get("/", async (c) => {
+  await attendanceMiddleware(
+    c,
+    async () => {
+      // handler logic
+    },
+    siteId,
+  );
+});
 ```
 
-### D1 Queries
+### Database (Drizzle ORM)
 
-Use `db.prepare().bind().run/all/first()`. No ORM - raw SQL only.
+```typescript
+import { drizzle } from "drizzle-orm/d1";
+import { users, posts } from "../db/schema";
+
+const db = drizzle(c.env.DB);
+const result = await db.select().from(users).where(eq(users.id, id));
+```
+
+**NOT raw SQL** — Use Drizzle query builder.
+
+## ROUTE MODULES (17)
+
+| Route          | File                 | Auth | Purpose                         |
+| -------------- | -------------------- | ---- | ------------------------------- |
+| /auth          | auth.ts (1009L)      | No   | Login, refresh, logout, lockout |
+| /admin         | admin.ts (1734L)     | Yes  | User/post/site mgmt, stats, CSV |
+| /education     | education.ts (1508L) | Yes  | Courses, materials, quizzes     |
+| /posts         | posts.ts             | Yes  | Safety reports, R2 images       |
+| /sites         | sites.ts             | Yes  | Site CRUD, memberships          |
+| /attendance    | attendance.ts        | Yes  | Check-in, today, history        |
+| /votes         | votes.ts             | Yes  | Monthly worker voting           |
+| /points        | points.ts            | Yes  | Ledger, balance                 |
+| /users         | users.ts             | Yes  | Profile, password update        |
+| /actions       | actions.ts           | Yes  | Corrective actions              |
+| /approvals     | approvals.ts         | Yes  | Review workflow                 |
+| /disputes      | disputes.ts          | Yes  | Attendance disputes             |
+| /fas           | fas.ts               | Yes  | FAS sync endpoints              |
+| /notifications | notifications.ts     | Yes  | Push notifications              |
+| /policies      | policies.ts          | Yes  | Safety policies                 |
+| /reviews       | reviews.ts           | Yes  | Post reviews                    |
+| /announcements | announcements.ts     | Yes  | Site announcements              |
+
+## MIDDLEWARE (4)
+
+| File          | Purpose                                |
+| ------------- | -------------------------------------- |
+| auth.ts       | JWT validation, user context injection |
+| attendance.ts | Attendance state check                 |
+| fas-auth.ts   | FAS (external system) auth             |
+| rate-limit.ts | Rate limiting logic                    |
+
+## LIB UTILITIES (8)
+
+| File                    | Purpose                                 |
+| ----------------------- | --------------------------------------- |
+| response.ts             | `success()`, `error()` response helpers |
+| jwt.ts                  | JWT sign/verify, token management       |
+| crypto.ts (95L)         | HMAC-SHA256, PII hashing (phone, DOB)   |
+| audit.ts (182L)         | Audit trail logging, 47 action types    |
+| notification.ts         | Push notification dispatch              |
+| fas-mariadb.ts          | External FAS MariaDB connector          |
+| device-registrations.ts | Device token management                 |
+| rate-limit.ts           | Rate limiter utilities                  |
 
 ## BINDINGS (wrangler.toml)
 
-| Binding  | Type | Name               | Usage                  |
-| -------- | ---- | ------------------ | ---------------------- |
-| DB       | D1   | safework2-db       | All database queries   |
-| IMAGES   | R2   | safework2-images   | Post images upload     |
-| SESSIONS | KV   | safework2-sessions | Token storage (unused) |
+| Binding      | Type | Name               | Usage                            |
+| ------------ | ---- | ------------------ | -------------------------------- |
+| DB           | D1   | safework2-db       | All database queries (Drizzle)   |
+| IMAGES       | R2   | safework2-images   | Post image upload/serve          |
+| SESSIONS     | KV   | safework2-sessions | Token storage (unused)           |
+| RATE_LIMITER | DO   | RateLimiter        | Rate limiting (declared, unused) |
 
-## ROUTE MODULES
+## CRON SCHEDULED JOBS
 
-| Route       | File          | Auth | Endpoints                |
-| ----------- | ------------- | ---- | ------------------------ |
-| /auth       | auth.ts       | No   | login, refresh, logout   |
-| /users      | users.ts      | Yes  | me, update-password      |
-| /posts      | posts.ts      | Yes  | CRUD + images            |
-| /sites      | sites.ts      | Yes  | CRUD + memberships       |
-| /attendance | attendance.ts | Yes  | check-in, today, history |
-| /votes      | votes.ts      | Yes  | monthly worker voting    |
-| /points     | points.ts     | Yes  | ledger, balance          |
-| /fas        | fas.ts        | Yes  | FAS sync endpoints       |
-| /admin      | admin.ts      | Yes  | User/post management     |
-
-## TODO (Not Implemented)
-
-- [ ] **Durable Objects rate limiting** - wrangler.toml declares but not implemented
-- [ ] **KV session storage** - binding exists, code uses in-memory
-- [ ] **Zod validation** - Some routes lack request validation
+| Schedule      | Purpose                    |
+| ------------- | -------------------------- |
+| `*/5 * * * *` | FAS attendance data sync   |
+| `0 0 1 * *`   | Monthly points calculation |
+| `0 3 * * 0`   | Sunday cleanup tasks       |
 
 ## ANTI-PATTERNS
 
-- **Known violations**: `jwt.ts:36` has `as unknown as`, `response.ts:10,21` has `as any`
-- **No raw SQL string concatenation** - Always use `.bind()` for parameters
-- **No console.log in production** - Use structured logging if needed
+- **Known**: `approvals.ts:34` `as any`
+- **No raw SQL** — Always use Drizzle ORM query builder
+- **No console.log** — Use structured logging if needed
+- **No `.use()` middleware** — Manual invocation pattern only
+
+## TODO
+
+- [ ] Durable Objects rate limiting — declared in wrangler.toml, not implemented
+- [ ] KV session storage — binding exists, code uses in-memory
+- [ ] Consistent Zod validation across all routes

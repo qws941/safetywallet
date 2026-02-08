@@ -3,6 +3,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import {
   disputes,
@@ -71,6 +72,23 @@ disputesRoute.post("/", async (c) => {
       refAttendanceId: body.refAttendanceId,
     })
     .returning();
+
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "DISPUTE_CREATED",
+      user.id,
+      "DISPUTE",
+      dispute.id,
+      {
+        siteId: body.siteId,
+        type: body.type,
+      },
+    );
+  } catch {
+    // Do not block successful dispute creation on audit failure.
+  }
 
   return success(c, dispute, 201);
 });
@@ -287,6 +305,23 @@ disputesRoute.patch("/:id/resolve", async (c) => {
     })
     .where(eq(disputes.id, disputeId))
     .returning();
+
+  try {
+    await logAuditWithContext(
+      c,
+      db,
+      "DISPUTE_RESOLVED",
+      user.id,
+      "DISPUTE",
+      disputeId,
+      {
+        status: body.status,
+        resolutionNote: body.resolutionNote,
+      },
+    );
+  } catch {
+    // Do not block successful dispute resolution on audit failure.
+  }
 
   return success(c, updated);
 });
