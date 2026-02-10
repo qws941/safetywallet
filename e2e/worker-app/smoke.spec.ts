@@ -15,9 +15,7 @@ test.describe("Worker App - Smoke Tests", () => {
     await expect(page.getByText("안전지갑")).toBeVisible();
 
     await expect(page.getByRole("textbox", { name: "이름" })).toBeVisible();
-    await expect(
-      page.getByRole("textbox", { name: "휴대폰 번호" }),
-    ).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "전화번호" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: /생년월일/ })).toBeVisible();
 
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
@@ -29,9 +27,7 @@ test.describe("Worker App - Smoke Tests", () => {
     await expect(page.getByRole("button", { name: "로그인" })).toBeDisabled();
 
     await page.getByRole("textbox", { name: "이름" }).fill("테스트");
-    await page
-      .getByRole("textbox", { name: "휴대폰 번호" })
-      .fill("010-0000-0000");
+    await page.getByRole("textbox", { name: "전화번호" }).fill("010-0000-0000");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
 
     await expect(page.getByRole("button", { name: "로그인" })).toBeEnabled();
@@ -41,9 +37,7 @@ test.describe("Worker App - Smoke Tests", () => {
     await page.goto("/login");
 
     await page.getByRole("textbox", { name: "이름" }).fill("테스트");
-    await page
-      .getByRole("textbox", { name: "휴대폰 번호" })
-      .fill("010-0000-0000");
+    await page.getByRole("textbox", { name: "전화번호" }).fill("010-0000-0000");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
     await page.getByRole("button", { name: "로그인" }).click();
 

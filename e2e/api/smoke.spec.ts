@@ -49,5 +49,7 @@ test.describe("API - Smoke Tests", () => {
   test("unknown route returns 404", async ({ request }) => {
     const response = await request.get("./this-route-does-not-exist");
     expect(response.status()).toBe(404);
+    const body = await response.json();
+    expect(body.success).toBe(false);
   });
 });

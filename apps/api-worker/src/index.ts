@@ -135,6 +135,21 @@ api.route("/approvals", approvalsRoute);
 api.route("/education", educationRoute);
 api.route("/acetime", acetimeRoute);
 
+// Catch-all for unmatched API routes — return 404 JSON instead of SPA HTML
+api.all("*", (c) => {
+  return c.json(
+    {
+      success: false,
+      error: {
+        code: "NOT_FOUND",
+        message: `Route not found: ${c.req.method} ${c.req.path}`,
+      },
+      timestamp: new Date().toISOString(),
+    },
+    404,
+  );
+});
+
 app.route("/api", api);
 
 const MIME_TYPES: Record<string, string> = {
