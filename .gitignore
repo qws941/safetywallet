@@ -38,6 +38,7 @@ playwright/.cache/
 
 # Database
 *.db
+*.db3
 *.sqlite
 prisma/migrations/*.sql.backup
 
@@ -49,6 +50,14 @@ minio-data/
 tmp/
 *.tsbuildinfo
 
+# Wrangler (all apps)
+.wrangler/
+
+# Vercel build output (CF Pages adapter)
+.vercel/
+
+# Data files
+AceTime/
+
 # In-Memoria (local dev tool)
 in-memoria.db
-apps/api-worker/.wrangler/
