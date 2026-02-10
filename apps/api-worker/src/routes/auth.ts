@@ -18,6 +18,7 @@ import {
   fasSearchEmployeeByPhone,
   fasGetEmployeeInfo,
 } from "../lib/fas-mariadb";
+import { syncSingleFasEmployee, socialNoToDob } from "../lib/fas-sync";
 import { authMiddleware } from "../middleware/auth";
 import {
   checkDeviceRegistrationLimit,
@@ -30,7 +31,6 @@ import { getTodayRange, maskName } from "../utils/common";
 import {
   RegisterSchema,
   LoginSchema,
-  AcetimeLoginSchema,
   RefreshTokenSchema,
   AdminLoginSchema,
 } from "../validators/schemas";
@@ -234,7 +234,7 @@ auth.post("/register", zValidator("json", RegisterSchema), async (c) => {
       phone: normalizedPhone,
       phoneHash,
       phoneEncrypted,
-      dob: null,
+      dob: normalizedDob,
       dobHash,
       dobEncrypted,
       role: "WORKER",
@@ -362,15 +362,9 @@ auth.post("/login", zValidator("json", LoginSchema), async (c) => {
   const normalizedDob = body.dob.replace(/[^0-9]/g, "");
   const dobHash = await hmac(c.env.HMAC_SECRET, normalizedDob);
 
-  // Try D1 first
-  let userResults = await db
-    .select()
-    .from(users)
-    .where(and(eq(users.phoneHash, phoneHash), eq(users.dobHash, dobHash)))
-    .limit(1);
+  let userResults: (typeof users.$inferSelect)[] = [];
 
-  // If not found in D1 and FAS_HYPERDRIVE is available, try MariaDB
-  if (userResults.length === 0 && c.env.FAS_HYPERDRIVE) {
+  if (c.env.FAS_HYPERDRIVE) {
     try {
       const fasEmployee = await fasSearchEmployeeByPhone(
         c.env.FAS_HYPERDRIVE,
@@ -378,43 +372,29 @@ auth.post("/login", zValidator("json", LoginSchema), async (c) => {
       );
 
       if (fasEmployee && fasEmployee.socialNo) {
-        // Verify DOB matches (socialNo = first 7 digits of 주민번호, e.g. "9501011")
-        const fasDobNormalized = fasEmployee.socialNo.replace(/[^0-9]/g, "");
-        if (fasDobNormalized === normalizedDob) {
-          // Cache in D1 for future logins
-          const phoneEncrypted = await encrypt(
-            c.env.ENCRYPTION_KEY,
-            normalizedPhone,
-          );
-          const dobEncrypted = await encrypt(
-            c.env.ENCRYPTION_KEY,
-            normalizedDob,
-          );
-          const nameMasked = maskName(fasEmployee.name);
-
-          const newUser = await db
-            .insert(users)
-            .values({
-              name: fasEmployee.name,
-              nameMasked,
-              phone: phoneHash,
-              phoneHash,
-              phoneEncrypted,
-              dob: null,
-              dobHash,
-              dobEncrypted,
-              role: "WORKER",
-            })
-            .returning()
-            .get();
-
-          userResults = [newUser];
+        // socialNo "7104101" (7자리 주민번호) → dob "19710410" (YYYYMMDD)
+        const fasDob = socialNoToDob(fasEmployee.socialNo);
+        if (fasDob && fasDob === normalizedDob) {
+          const syncedUser = await syncSingleFasEmployee(fasEmployee, db, {
+            HMAC_SECRET: c.env.HMAC_SECRET,
+            ENCRYPTION_KEY: c.env.ENCRYPTION_KEY,
+          });
+          if (syncedUser) {
+            userResults = [syncedUser];
+          }
         }
       }
     } catch (fasError) {
-      // MariaDB connection failed - continue with D1-only flow
       console.error("FAS MariaDB lookup failed:", fasError);
     }
+  }
+
+  if (userResults.length === 0) {
+    userResults = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.phoneHash, phoneHash), eq(users.dobHash, dobHash)))
+      .limit(1);
   }
 
   if (userResults.length === 0) {
@@ -627,231 +607,7 @@ auth.post("/login", zValidator("json", LoginSchema), async (c) => {
   );
 });
 
-// AceTime login: employee code + name (no phone/dob required)
-auth.post(
-  "/acetime-login",
-  zValidator("json", AcetimeLoginSchema),
-  async (c) => {
-    const startedAt = Date.now();
-    const respondWithDelay = async (response: Response) => {
-      await enforceMinimumResponseTime(startedAt);
-      return response;
-    };
-
-    const body = (() => {
-      try {
-        return c.req.valid("json");
-      } catch {
-        return null;
-      }
-    })();
-    if (!body) {
-      return respondWithDelay(error(c, "INVALID_JSON", "Invalid JSON", 400));
-    }
-
-    if (!body.employeeCode || !body.name) {
-      return respondWithDelay(
-        error(
-          c,
-          "MISSING_FIELDS",
-          "사번(employeeCode)과 이름(name)을 입력해주세요.",
-          400,
-        ),
-      );
-    }
-
-    const clientIp = c.req.header("CF-Connecting-IP") || "unknown";
-    const rateLimitKey = `auth:acetime:ip:${clientIp}`;
-    const rateLimit = await checkRateLimit(c.env, rateLimitKey, 5, 60 * 1000);
-
-    if (!rateLimit.allowed) {
-      return respondWithDelay(
-        error(
-          c,
-          "RATE_LIMIT_EXCEEDED",
-          "요청이 너무 많습니다. 잠시 후 다시 시도하세요.",
-          429,
-        ),
-      );
-    }
-
-    const db = drizzle(c.env.DB);
-    const normalizedCode = body.employeeCode.trim();
-
-    const attemptKey = `login:lockout:acetime:${normalizedCode}`;
-    const nowMs = Date.now();
-    const existingAttempt = parseLoginLockoutRecord(
-      await c.env.KV.get(attemptKey),
-    );
-    if (isExpiredLock(existingAttempt, nowMs)) {
-      await c.env.KV.delete(attemptKey);
-    }
-    const currentAttempt = isExpiredLock(existingAttempt, nowMs)
-      ? null
-      : existingAttempt;
-
-    if (
-      typeof currentAttempt?.lockedUntil === "number" &&
-      currentAttempt.lockedUntil > nowMs
-    ) {
-      return respondWithDelay(
-        accountLockedResponse(c, currentAttempt.lockedUntil, nowMs),
-      );
-    }
-
-    const userResults = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.externalSystem, "FAS"),
-          eq(users.externalWorkerId, normalizedCode),
-        ),
-      )
-      .limit(1);
-
-    if (userResults.length === 0) {
-      const updatedAttempt = await recordFailedLoginAttempt(
-        c.env.KV,
-        attemptKey,
-        currentAttempt,
-        Date.now(),
-      );
-      if (typeof updatedAttempt.lockedUntil === "number") {
-        return respondWithDelay(
-          accountLockedResponse(c, updatedAttempt.lockedUntil, Date.now()),
-        );
-      }
-
-      return respondWithDelay(
-        error(
-          c,
-          "USER_NOT_FOUND",
-          "등록되지 않은 사번입니다. 현장 관리자에게 문의하세요.",
-          401,
-        ),
-      );
-    }
-
-    const user = userResults[0];
-    const normalizedInputName = body.name.trim().toLowerCase();
-    const normalizedUserName = (user.name || "").trim().toLowerCase();
-
-    if (normalizedUserName !== normalizedInputName) {
-      const updatedAttempt = await recordFailedLoginAttempt(
-        c.env.KV,
-        attemptKey,
-        currentAttempt,
-        Date.now(),
-      );
-      if (typeof updatedAttempt.lockedUntil === "number") {
-        await logLoginLockoutEvent(
-          db,
-          c,
-          user.id,
-          `acetime:${normalizedCode}`,
-          updatedAttempt.attempts,
-          updatedAttempt.lockedUntil,
-        );
-        return respondWithDelay(
-          accountLockedResponse(c, updatedAttempt.lockedUntil, Date.now()),
-        );
-      }
-
-      return respondWithDelay(
-        error(c, "NAME_MISMATCH", "이름이 일치하지 않습니다.", 401),
-      );
-    }
-
-    // AceTime login skips attendance check - FAS-imported users
-    // may not have attendance data yet
-
-    // If user is missing phone info, fetch from FAS and update
-    let fasWarning: string | undefined;
-    if (!user.phoneHash && c.env.FAS_HYPERDRIVE) {
-      try {
-        const fasEmployee = await fasGetEmployeeInfo(
-          c.env.FAS_HYPERDRIVE,
-          normalizedCode,
-        );
-        if (fasEmployee?.phone) {
-          const normalizedPhone = fasEmployee.phone.replace(/[^0-9]/g, "");
-          if (normalizedPhone) {
-            const phoneHash = await hmac(c.env.HMAC_SECRET, normalizedPhone);
-            const phoneEncrypted = await encrypt(
-              c.env.ENCRYPTION_KEY,
-              normalizedPhone,
-            );
-            const dob = fasEmployee.socialNo
-              ? fasEmployee.socialNo.replace(/[^0-9]/g, "")
-              : null;
-            const dobHash = dob ? await hmac(c.env.HMAC_SECRET, dob) : null;
-            const dobEncrypted = dob
-              ? await encrypt(c.env.ENCRYPTION_KEY, dob)
-              : null;
-            const nameMasked =
-              fasEmployee.name.length > 1
-                ? fasEmployee.name[0] + "*".repeat(fasEmployee.name.length - 1)
-                : fasEmployee.name;
-
-            await db
-              .update(users)
-              .set({
-                phone: phoneHash,
-                phoneHash,
-                phoneEncrypted,
-                ...(dobHash ? { dobHash, dobEncrypted } : {}),
-                nameMasked,
-                updatedAt: new Date(),
-              })
-              .where(eq(users.id, user.id));
-          }
-        }
-      } catch (fasErr) {
-        console.error(
-          "Failed to fetch FAS employee info for phone update:",
-          fasErr,
-        );
-        // Non-blocking: login still succeeds, but client is warned
-        fasWarning =
-          "직원 정보 동기화에 실패했습니다. 기본 정보로 로그인됩니다.";
-      }
-    }
-
-    const accessToken = await signJwt(
-      { sub: user.id, phone: "", role: user.role },
-      c.env.JWT_SECRET,
-    );
-    const refreshToken = crypto.randomUUID();
-
-    await db
-      .update(users)
-      .set({ refreshToken, updatedAt: new Date() })
-      .where(eq(users.id, user.id));
-
-    await c.env.KV.delete(attemptKey);
-
-    return respondWithDelay(
-      success(
-        c,
-        {
-          accessToken,
-          refreshToken,
-          expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
-          user: {
-            id: user.id,
-            phone: "",
-            role: user.role,
-            name: user.name,
-            nameMasked: user.nameMasked,
-          },
-          ...(fasWarning ? { warning: fasWarning } : {}),
-        },
-        200,
-      ),
-    );
-  },
-);
+// AceTime login removed — using phone+DOB login only
 
 auth.post("/refresh", zValidator("json", RefreshTokenSchema), async (c) => {
   const body = (() => {

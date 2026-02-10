@@ -139,6 +139,12 @@ export const users = sqliteTable(
       table.externalSystem,
       table.externalWorkerId,
     ),
+    // Prevent duplicate users per external system (e.g. FAS/AceTime)
+    // Must clean existing duplicates before pushing this migration
+    externalUnique: unique("users_external_unique").on(
+      table.externalSystem,
+      table.externalWorkerId,
+    ),
   }),
 );
 

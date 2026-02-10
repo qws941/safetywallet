@@ -81,17 +81,35 @@ app.post("/sync-db", async (c) => {
     const db = drizzle(c.env.DB);
 
     // Step 1: Get all existing FAS users in one query
+    // Include phoneHash to prefer records with real PII data when duplicates exist
     const existingUsers = await db
       .select({
         id: users.id,
         externalWorkerId: users.externalWorkerId,
+        phoneHash: users.phoneHash,
+        updatedAt: users.updatedAt,
       })
       .from(users)
       .where(eq(users.externalSystem, "FAS"));
 
-    const existingMap = new Map(
-      existingUsers.map((u) => [u.externalWorkerId, u.id]),
-    );
+    // Build map preferring records with real phone data (FAS CRON > AceViewer sync)
+    const existingMap = new Map<string | null, string>();
+    for (const u of existingUsers) {
+      const current = existingMap.get(u.externalWorkerId);
+      if (!current) {
+        existingMap.set(u.externalWorkerId, u.id);
+      } else {
+        // Prefer the record with real phoneHash (not acetime- placeholder)
+        const isRealPhone = u.phoneHash && !u.phoneHash.startsWith("acetime-");
+        const currentUser = existingUsers.find((eu) => eu.id === current);
+        const currentIsReal =
+          currentUser?.phoneHash &&
+          !currentUser.phoneHash.startsWith("acetime-");
+        if (isRealPhone && !currentIsReal) {
+          existingMap.set(u.externalWorkerId, u.id);
+        }
+      }
+    }
 
     // Step 2: Pre-compute HMAC hashes for new employees
     const newEmployees = aceViewerEmployees.filter(
@@ -125,14 +143,18 @@ app.post("/sync-db", async (c) => {
           externalWorkerId: e.externalWorkerId,
           name: e.name,
           nameMasked: maskName(e.name),
-          phone: phoneHash,
+          phone: "",
           phoneHash: phoneHash,
           companyName: e.companyName,
           tradeType: e.trade,
           role: "WORKER",
         });
         created++;
-      } catch {
+      } catch (insertErr) {
+        console.error(
+          `[sync-db] Failed to insert worker ${e.externalWorkerId}:`,
+          insertErr instanceof Error ? insertErr.message : insertErr,
+        );
         skipped++;
       }
     }
@@ -155,7 +177,11 @@ app.post("/sync-db", async (c) => {
           })
           .where(eq(users.id, userId));
         updated++;
-      } catch {
+      } catch (updateErr) {
+        console.error(
+          `[sync-db] Failed to update worker ${e.externalWorkerId}:`,
+          updateErr instanceof Error ? updateErr.message : updateErr,
+        );
         skipped++;
       }
     }

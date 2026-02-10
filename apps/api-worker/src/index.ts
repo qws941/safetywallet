@@ -2,9 +2,11 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
-import { users } from "./db/schema";
-import { hmac } from "./lib/crypto";
+import { fasGetAllEmployeesPaginated } from "./lib/fas-mariadb";
+import {
+  syncFasEmployeesToD1,
+  deactivateRetiredEmployees,
+} from "./lib/fas-sync";
 import type { Env } from "./types";
 
 import auth from "./routes/auth";
@@ -53,78 +55,64 @@ api.get("/health", (c) => {
   return c.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-// TODO: TEMPORARY seed endpoint - remove after test user created
-api.post("/seed/test-user", async (c) => {
+// Admin-only: Bulk sync FAS employees to D1 (paginated to avoid Workers CPU limit)
+api.post("/fas-sync", async (c) => {
   const body = await c.req.json<{
-    name: string;
-    phone: string;
-    dob: string;
-    role?: string;
     secret?: string;
+    offset?: number;
+    limit?: number;
   }>();
-  const { name, phone, dob, role = "WORKER" } = body;
-
   if (body.secret !== "safework2-seed-2026") {
-    return c.json({ success: false, error: "Invalid seed secret" }, 403);
+    return c.json({ error: "Forbidden" }, 403);
   }
 
-  if (!name || !phone || !dob) {
-    return c.json({ success: false, error: "name, phone, dob required" }, 400);
+  if (!c.env.FAS_HYPERDRIVE) {
+    return c.json({ error: "FAS_HYPERDRIVE not available" }, 500);
   }
 
-  const db = drizzle(c.env.DB);
-  const phoneHash = await hmac(c.env.HMAC_SECRET, phone);
-  const dobHash = await hmac(c.env.HMAC_SECRET, dob);
-  const nameMasked =
-    name.length > 1 ? name[0] + "*".repeat(name.length - 1) : name;
-  const validRole =
-    role === "SUPER_ADMIN" || role === "SITE_ADMIN" || role === "SYSTEM"
-      ? role
-      : ("WORKER" as const);
+  const batchSize = body.limit ?? 100;
+  const offset = body.offset ?? 0;
 
-  const existing = await db
-    .select()
-    .from(users)
-    .where(eq(users.phoneHash, phoneHash))
-    .limit(1);
+  try {
+    const db = drizzle(c.env.DB);
+    const { employees: batch, total: totalFas } =
+      await fasGetAllEmployeesPaginated(
+        c.env.FAS_HYPERDRIVE,
+        offset,
+        batchSize,
+      );
 
-  if (existing.length > 0) {
-    await db
-      .update(users)
-      .set({
-        name,
-        nameMasked,
-        dobHash,
-        role: validRole,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.phoneHash, phoneHash));
+    const activeEmployees = batch.filter((e) => e.stateFlag === "W");
+    const retiredEmplCds = batch
+      .filter((e) => e.stateFlag !== "W")
+      .map((e) => e.emplCd);
 
+    const syncResult = await syncFasEmployeesToD1(activeEmployees, db, {
+      HMAC_SECRET: c.env.HMAC_SECRET,
+      ENCRYPTION_KEY: c.env.ENCRYPTION_KEY,
+    });
+
+    let deactivated = 0;
+    if (retiredEmplCds.length > 0) {
+      deactivated = await deactivateRetiredEmployees(retiredEmplCds, db);
+    }
+
+    const hasMore = batch.length === batchSize;
     return c.json({
       success: true,
-      action: "updated",
-      user: { id: existing[0].id, name, phone, role: validRole },
-      login: { name, phone, dob },
+      totalFas,
+      batch: { offset, limit: batchSize, processed: batch.length },
+      active: activeEmployees.length,
+      retired: retiredEmplCds.length,
+      sync: syncResult,
+      deactivated,
+      hasMore,
+      nextOffset: hasMore ? offset + batchSize : null,
     });
+  } catch (err: unknown) {
+    const e = err as Error;
+    return c.json({ error: e.message }, 500);
   }
-
-  await db.insert(users).values({
-    phone,
-    name,
-    nameMasked,
-    phoneHash,
-    dobHash,
-    role: validRole,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-
-  return c.json({
-    success: true,
-    action: "created",
-    user: { name, phone, role: validRole },
-    login: { name, phone, dob },
-  });
 });
 
 api.route("/auth", auth);

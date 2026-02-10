@@ -24,21 +24,6 @@ test.describe("API - Smoke Tests", () => {
     expect(body.success).toBe(false);
   });
 
-  test("auth acetime-login rejects invalid credentials", async ({
-    request,
-  }) => {
-    const response = await request.post("./auth/acetime-login", {
-      data: {
-        employeeCode: "INVALID999",
-        name: "테스트",
-      },
-    });
-    expect(response.ok()).toBeFalsy();
-
-    const body = await response.json();
-    expect(body.success).toBe(false);
-  });
-
   test("protected endpoint rejects unauthenticated request", async ({
     request,
   }) => {

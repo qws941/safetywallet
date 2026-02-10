@@ -15,7 +15,11 @@ import {
   fasGetUpdatedEmployees,
   testConnection as testFasConnection,
 } from "../lib/fas-mariadb";
-import { hmac, encrypt } from "../lib/crypto";
+import {
+  syncFasEmployeesToD1,
+  deactivateRetiredEmployees,
+} from "../lib/fas-sync";
+import { hmac } from "../lib/crypto";
 import { maskName } from "../utils/common";
 
 function getKSTDate(): Date {
@@ -182,8 +186,6 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
     return;
   }
 
-  const fasHyperdrive = env.FAS_HYPERDRIVE;
-
   const db = drizzle(env.DB);
   const kstNow = getKSTDate();
   const fiveMinutesAgo = new Date(kstNow.getTime() - 5 * 60 * 1000);
@@ -203,95 +205,30 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
 
   try {
     const updatedEmployees = await withRetry(() =>
-      fasGetUpdatedEmployees(fasHyperdrive, fiveMinutesAgo.toISOString()),
+      fasGetUpdatedEmployees(env.FAS_HYPERDRIVE!, fiveMinutesAgo.toISOString()),
     );
 
     console.log(`Found ${updatedEmployees.length} updated employees`);
 
-    let updatedCount = 0;
-    let createdCount = 0;
-    let skippedCount = 0;
-    for (const employee of updatedEmployees) {
-      if (!employee.phone) {
-        skippedCount++;
-        continue;
-      }
+    if (updatedEmployees.length === 0) return;
 
-      const normalizedPhone = employee.phone.replace(/[^0-9]/g, "");
-      if (!normalizedPhone) {
-        skippedCount++;
-        continue;
-      }
+    const syncResult = await syncFasEmployeesToD1(updatedEmployees, db, {
+      HMAC_SECRET: env.HMAC_SECRET,
+      ENCRYPTION_KEY: env.ENCRYPTION_KEY,
+    });
 
-      const phoneHash = await hmac(env.HMAC_SECRET, normalizedPhone);
-      const phoneEncrypted = await encrypt(env.ENCRYPTION_KEY, normalizedPhone);
-      const dob = employee.socialNo || null;
-      const dobHash = dob ? await hmac(env.HMAC_SECRET, dob) : null;
-      const dobEncrypted = dob ? await encrypt(env.ENCRYPTION_KEY, dob) : null;
-      const nameMasked =
-        employee.name.length > 1
-          ? employee.name[0] + "*".repeat(employee.name.length - 1)
-          : employee.name;
-      const externalWorkerId = employee.emplCd;
+    // Deactivate retired employees (stateFlag !== 'W')
+    const retiredEmplCds = updatedEmployees
+      .filter((e) => e.stateFlag !== "W")
+      .map((e) => e.emplCd);
 
-      let existingUser = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(
-          and(
-            eq(users.externalSystem, "FAS"),
-            eq(users.externalWorkerId, externalWorkerId),
-          ),
-        )
-        .get();
-
-      if (!existingUser) {
-        existingUser = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.phoneHash, phoneHash))
-          .get();
-      }
-
-      if (existingUser) {
-        await db
-          .update(users)
-          .set({
-            externalWorkerId,
-            externalSystem: "FAS",
-            name: employee.name,
-            nameMasked,
-            phone: phoneHash,
-            phoneHash,
-            phoneEncrypted,
-            dobHash,
-            dobEncrypted,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, existingUser.id));
-        updatedCount++;
-      } else if (dobHash) {
-        await db.insert(users).values({
-          id: crypto.randomUUID(),
-          externalWorkerId,
-          externalSystem: "FAS",
-          name: employee.name,
-          nameMasked,
-          phone: phoneHash,
-          phoneHash,
-          phoneEncrypted,
-          dobHash,
-          dobEncrypted,
-          role: "WORKER",
-        });
-        createdCount++;
-      } else {
-        skippedCount++;
-      }
+    let deactivatedCount = 0;
+    if (retiredEmplCds.length > 0) {
+      deactivatedCount = await deactivateRetiredEmployees(retiredEmplCds, db);
     }
 
     console.log(
-      `FAS sync complete: created=${createdCount}, updated=${updatedCount}, skipped=${skippedCount}`,
+      `FAS sync complete: created=${syncResult.created}, updated=${syncResult.updated}, skipped=${syncResult.skipped}, deactivated=${deactivatedCount}`,
     );
 
     await db.insert(auditLogs).values({
@@ -301,14 +238,12 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
       targetId: "cron",
       reason: JSON.stringify({
         employeesFound: updatedEmployees.length,
-        createdCount,
-        updatedCount,
-        skippedCount,
+        ...syncResult,
+        deactivatedCount,
         since: fiveMinutesAgo.toISOString(),
       }),
     });
 
-    // Clear FAS down status on successful sync
     if (env.KV) {
       await env.KV.delete("fas-status");
     }
@@ -324,7 +259,6 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
 
     console.error("FAS incremental sync failed:", err);
 
-    // Signal FAS downtime to attendance middleware (10min TTL)
     try {
       await env.KV.put("fas-status", "down", { expirationTtl: 600 });
     } catch {
@@ -527,7 +461,7 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
         externalWorkerId: e.externalWorkerId,
         name: e.name,
         nameMasked: maskName(e.name),
-        phone: phoneHash,
+        phone: "",
         phoneHash: phoneHash,
         companyName: e.companyName,
         tradeType: e.trade,

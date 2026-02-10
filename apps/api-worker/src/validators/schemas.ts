@@ -75,11 +75,6 @@ export const LoginSchema = z.object({
   dob: z.string().min(1),
 });
 
-export const AcetimeLoginSchema = z.object({
-  employeeCode: z.string().min(1),
-  name: nonEmptyStr,
-});
-
 export const RefreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 });

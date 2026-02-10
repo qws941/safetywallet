@@ -80,6 +80,7 @@ async function getConnection(
     database: hyperdrive.database,
     namedPlaceholders: true,
     connectTimeout: 5000,
+    disableEval: true,
   });
 }
 
@@ -151,6 +152,37 @@ export async function fasGetUpdatedEmployees(
 }
 
 /**
+ * Get all employees with pagination (for bulk sync).
+ */
+export async function fasGetAllEmployeesPaginated(
+  hyperdrive: HyperdriveBinding,
+  offset: number,
+  limit: number,
+): Promise<{ employees: FasEmployee[]; total: number }> {
+  const conn = await getConnection(hyperdrive);
+  try {
+    const [countRows] = await conn.query(
+      `SELECT COUNT(*) as cnt ${EMPLOYEE_FROM} WHERE e.site_cd = ?`,
+      [SITE_CD],
+    );
+    const total = (countRows as Array<Record<string, unknown>>)[0]
+      .cnt as number;
+
+    const [rows] = await conn.query(
+      `SELECT ${EMPLOYEE_SELECT} ${EMPLOYEE_FROM}
+       WHERE e.site_cd = ?
+       ORDER BY e.empl_cd ASC
+       LIMIT ? OFFSET ?`,
+      [SITE_CD, limit, offset],
+    );
+    const results = rows as Array<Record<string, unknown>>;
+    return { employees: results.map(mapToFasEmployee), total };
+  } finally {
+    await conn.end();
+  }
+}
+
+/**
  * Get today's attendance records from `access_daily`
  */
 export async function fasGetDailyAttendance(
@@ -195,6 +227,24 @@ export async function fasSearchEmployeeByPhone(
       return null;
     }
     return mapToFasEmployee(results[0]);
+  } finally {
+    await conn.end();
+  }
+}
+
+/** Search FAS employees by name (partial match). */
+export async function fasSearchEmployeeByName(
+  hyperdrive: HyperdriveBinding,
+  name: string,
+): Promise<FasEmployee[]> {
+  const conn = await getConnection(hyperdrive);
+  try {
+    const [rows] = await conn.query(
+      `SELECT ${EMPLOYEE_SELECT} ${EMPLOYEE_FROM}
+       WHERE e.site_cd = ? AND e.empl_nm LIKE ?`,
+      [SITE_CD, `%${name}%`],
+    );
+    return (rows as Array<Record<string, unknown>>).map(mapToFasEmployee);
   } finally {
     await conn.end();
   }
