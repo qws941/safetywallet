@@ -46,10 +46,14 @@ export type AuditAction =
   | "STATUTORY_TRAINING_CREATED"
   | "TBM_CREATED"
   | "DISPUTE_STATUS_CHANGED"
+  | "ACTION_STATUS_CHANGE"
   | "FAS_SYNC_COMPLETED"
   | "FAS_SYNC_FAILED"
   | "SYNC_ERROR_RESOLVED"
-  | "ACCESS_POLICY_UPDATED";
+  | "ACCESS_POLICY_UPDATED"
+  | "USER_DELETION_REQUEST"
+  | "USER_DELETION_CANCEL"
+  | "USER_DATA_EXPORT";
 
 /**
  * Target types for audit logging
@@ -74,6 +78,7 @@ export type AuditTargetType =
   | "EDUCATION_CONTENT"
   | "QUIZ"
   | "STATUTORY_TRAINING"
+  | "ACTION"
   | "TBM_RECORD"
   | "SYSTEM"
   | "FAS_SYNC";

@@ -389,6 +389,7 @@ export const actionImages = sqliteTable(
       .references(() => actions.id, { onDelete: "cascade" }),
     fileUrl: text("file_url").notNull(),
     thumbnailUrl: text("thumbnail_url"),
+    imageType: text("image_type", { enum: ["BEFORE", "AFTER"] }),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),

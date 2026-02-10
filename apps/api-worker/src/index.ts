@@ -26,9 +26,11 @@ import approvalsRoute from "./routes/approvals";
 import educationRoute from "./routes/education";
 import acetimeRoute from "./routes/acetime";
 import recommendationsRoute from "./routes/recommendations";
+import { securityHeaders } from "./middleware/security-headers";
 
 const app = new Hono<{ Bindings: Env }>();
 
+app.use("*", securityHeaders);
 app.use("*", logger());
 app.use(
   "*",

@@ -201,13 +201,8 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
   }
 
   try {
-    const companyId = env.FAS_COMPANY_ID ? parseInt(env.FAS_COMPANY_ID, 10) : 1;
     const updatedEmployees = await withRetry(() =>
-      fasGetUpdatedEmployees(
-        fasHyperdrive,
-        companyId,
-        fiveMinutesAgo.toISOString(),
-      ),
+      fasGetUpdatedEmployees(fasHyperdrive, fiveMinutesAgo.toISOString()),
     );
 
     console.log(`Found ${updatedEmployees.length} updated employees`);
@@ -229,16 +224,14 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
 
       const phoneHash = await hmac(env.HMAC_SECRET, normalizedPhone);
       const phoneEncrypted = await encrypt(env.ENCRYPTION_KEY, normalizedPhone);
-      const dob = employee.birthDate
-        ? employee.birthDate.replace(/-/g, "")
-        : null;
+      const dob = employee.socialNo || null;
       const dobHash = dob ? await hmac(env.HMAC_SECRET, dob) : null;
       const dobEncrypted = dob ? await encrypt(env.ENCRYPTION_KEY, dob) : null;
       const nameMasked =
         employee.name.length > 1
           ? employee.name[0] + "*".repeat(employee.name.length - 1)
           : employee.name;
-      const externalWorkerId = String(employee.id);
+      const externalWorkerId = employee.emplCd;
 
       let existingUser = await db
         .select({ id: users.id })

@@ -7,6 +7,7 @@ import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { success, error } from "../lib/response";
 import { logAuditWithContext } from "../lib/audit";
+import { notifyUser, NotificationType } from "../lib/notification";
 import { ReviewActionSchema } from "../validators/schemas";
 import {
   reviews,
@@ -51,6 +52,23 @@ const validActions: ReviewAction[] = [
   "ASSIGN",
   "CLOSE",
 ];
+
+// State machine: which actions are allowed from which reviewStatus
+const VALID_TRANSITIONS: Record<ReviewStatus, ReviewAction[]> = {
+  RECEIVED: ["APPROVE", "REJECT", "REQUEST_MORE", "MARK_URGENT", "ASSIGN"],
+  IN_REVIEW: ["APPROVE", "REJECT", "REQUEST_MORE", "ASSIGN", "CLOSE"],
+  NEED_INFO: ["APPROVE", "REJECT", "MARK_URGENT", "ASSIGN"],
+  APPROVED: ["CLOSE"],
+  REJECTED: [],
+};
+
+function isValidTransition(
+  currentStatus: ReviewStatus,
+  action: ReviewAction,
+): boolean {
+  const allowed = VALID_TRANSITIONS[currentStatus];
+  return allowed ? allowed.includes(action) : false;
+}
 
 const validateJson = zValidator as (
   target: "json",
@@ -153,6 +171,16 @@ app.post("/", validateJson("json", ReviewActionSchema), async (c) => {
     );
   }
 
+  const currentReviewStatus = (post.reviewStatus as ReviewStatus) || "RECEIVED";
+  if (!isValidTransition(currentReviewStatus, data.action)) {
+    return error(
+      c,
+      "INVALID_TRANSITION",
+      `Cannot ${data.action} a post in ${currentReviewStatus} status`,
+      400,
+    );
+  }
+
   const currentActionStatus = (post.actionStatus as ActionStatus) || "NONE";
   const { newReviewStatus, newActionStatus } = determineNewStatuses(
     data.action,
@@ -248,6 +276,17 @@ app.post("/", validateJson("json", ReviewActionSchema), async (c) => {
 
     pointsAwarded = DEFAULT_APPROVAL_POINTS;
   }
+
+  // Fire-and-forget notification to post author
+  const notifType =
+    data.action === "APPROVE"
+      ? "POST_APPROVED"
+      : data.action === "REJECT"
+        ? "POST_REJECTED"
+        : "NEED_INFO";
+  notifyUser(db, c.env, post.userId, notifType as NotificationType, {
+    postId: data.postId,
+  }).catch(() => {});
 
   return success(
     c,

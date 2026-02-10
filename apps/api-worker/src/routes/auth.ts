@@ -372,16 +372,14 @@ auth.post("/login", zValidator("json", LoginSchema), async (c) => {
   // If not found in D1 and FAS_HYPERDRIVE is available, try MariaDB
   if (userResults.length === 0 && c.env.FAS_HYPERDRIVE) {
     try {
-      const fasCompanyId = parseInt(c.env.FAS_COMPANY_ID || "1", 10);
       const fasEmployee = await fasSearchEmployeeByPhone(
         c.env.FAS_HYPERDRIVE,
-        fasCompanyId,
         normalizedPhone,
       );
 
-      if (fasEmployee && fasEmployee.birthDate) {
-        // Verify DOB matches
-        const fasDobNormalized = fasEmployee.birthDate.replace(/[^0-9]/g, "");
+      if (fasEmployee && fasEmployee.socialNo) {
+        // Verify DOB matches (socialNo = first 7 digits of 주민번호, e.g. "9501011")
+        const fasDobNormalized = fasEmployee.socialNo.replace(/[^0-9]/g, "");
         if (fasDobNormalized === normalizedDob) {
           // Cache in D1 for future logins
           const phoneEncrypted = await encrypt(
@@ -771,13 +769,9 @@ auth.post(
     // If user is missing phone info, fetch from FAS and update
     if (!user.phoneHash && c.env.FAS_HYPERDRIVE) {
       try {
-        const companyId = c.env.FAS_COMPANY_ID
-          ? parseInt(c.env.FAS_COMPANY_ID, 10)
-          : 1;
         const fasEmployee = await fasGetEmployeeInfo(
           c.env.FAS_HYPERDRIVE,
-          companyId,
-          parseInt(normalizedCode, 10),
+          normalizedCode,
         );
         if (fasEmployee?.phone) {
           const normalizedPhone = fasEmployee.phone.replace(/[^0-9]/g, "");
@@ -787,8 +781,8 @@ auth.post(
               c.env.ENCRYPTION_KEY,
               normalizedPhone,
             );
-            const dob = fasEmployee.birthDate
-              ? fasEmployee.birthDate.replace(/-/g, "")
+            const dob = fasEmployee.socialNo
+              ? fasEmployee.socialNo.replace(/[^0-9]/g, "")
               : null;
             const dobHash = dob ? await hmac(c.env.HMAC_SECRET, dob) : null;
             const dobEncrypted = dob

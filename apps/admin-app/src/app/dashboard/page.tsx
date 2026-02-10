@@ -71,7 +71,9 @@ function CategoryDistributionChart({ data }: { data: Record<string, number> }) {
 }
 
 export default function DashboardPage() {
-  const { data: stats, isLoading } = useDashboardStats();
+  const { data: stats, isLoading } = useDashboardStats({
+    refetchInterval: 30000,
+  });
 
   if (isLoading) {
     return (

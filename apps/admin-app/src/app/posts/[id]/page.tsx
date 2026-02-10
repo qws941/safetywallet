@@ -27,7 +27,12 @@ import {
   SelectValue,
 } from "@safetywallet/ui";
 import { ReviewActions } from "@/components/review-actions";
-import { useAdminPost, useMembers } from "@/hooks/use-api";
+import {
+  useAdminPost,
+  useMembers,
+  useCreateAction,
+  useReviewPost,
+} from "@/hooks/use-api";
 import { ReviewStatus, Category, RiskLevel } from "@safetywallet/types";
 import { useAuthStore } from "@/stores/auth";
 
@@ -85,6 +90,36 @@ export default function PostDetailPage() {
   const [assignee, setAssignee] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [actionNote, setActionNote] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
+  const createAction = useCreateAction();
+  const reviewPost = useReviewPost();
+
+  const handleAssign = async () => {
+    if (!assignee || !dueDate) return;
+    setIsAssigning(true);
+    try {
+      await createAction.mutateAsync({
+        postId,
+        assigneeId: assignee,
+        dueDate,
+        description: actionNote || undefined,
+      });
+      await reviewPost.mutateAsync({
+        postId,
+        action: "ASSIGN" as import("@safetywallet/types").ReviewAction,
+        comment: actionNote || undefined,
+      });
+      setShowAssign(false);
+      setAssignee("");
+      setDueDate("");
+      setActionNote("");
+      refetch();
+    } catch {
+      // Error handled by react-query
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -296,8 +331,12 @@ export default function PostDetailPage() {
                       }
                     />
                   </div>
-                  <Button disabled={!assignee || !dueDate} className="w-full">
-                    시정조치 배정
+                  <Button
+                    disabled={!assignee || !dueDate || isAssigning}
+                    className="w-full"
+                    onClick={handleAssign}
+                  >
+                    {isAssigning ? "배정 중..." : "시정조치 배정"}
                   </Button>
                 </div>
               )}

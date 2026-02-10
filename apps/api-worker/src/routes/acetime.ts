@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { users } from "../db/schema";
-import { encrypt, hmac } from "../lib/crypto";
+import { hmac } from "../lib/crypto";
 import { error, success } from "../lib/response";
 import { authMiddleware } from "../middleware/auth";
 import type { AuthContext, Env } from "../types";
@@ -12,14 +12,6 @@ const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
-
-interface AceTimeEmployee {
-  externalWorkerId: string;
-  name: string;
-  phone?: string;
-  dob?: string;
-  photoFilename?: string;
-}
 
 type AppContext = {
   Bindings: Env;
@@ -59,100 +51,128 @@ app.post("/sync-db", async (c) => {
       );
     }
 
-    const object = await c.env.ACETIME_BUCKET.get("AceViewer.db3");
+    const object = await c.env.ACETIME_BUCKET.get("aceviewer-employees.json");
     if (!object) {
-      return error(c, "ACETIME_DB_NOT_FOUND", "AceViewer.db3 not found", 404);
+      return error(
+        c,
+        "ACETIME_JSON_NOT_FOUND",
+        "aceviewer-employees.json not found in R2",
+        404,
+      );
     }
 
-    const dbBytes = new Uint8Array(await object.arrayBuffer());
-    const sqliteHeader = "SQLite format 3\u0000";
-    const headerText = new TextDecoder().decode(dbBytes.slice(0, 16));
-    const isSqliteFile = headerText === sqliteHeader;
-
-    // TODO: Replace stub extraction with proper SQLite parsing in Workers (e.g. sql.js WASM).
-    // Current endpoint validates object accessibility and performs metadata sync only.
-    const extractedEmployees: AceTimeEmployee[] = [];
+    const data = (await object.json()) as {
+      employees: Array<{
+        externalWorkerId: string;
+        name: string;
+        companyName: string | null;
+        position: string | null;
+        trade: string | null;
+        lastSeen: string | null;
+      }>;
+      total: number;
+    };
+    const aceViewerEmployees = data.employees;
 
     const db = drizzle(c.env.DB);
+
+    // Step 1: Get all existing FAS users in one query
+    const existingUsers = await db
+      .select({
+        id: users.id,
+        externalWorkerId: users.externalWorkerId,
+      })
+      .from(users)
+      .where(eq(users.externalSystem, "FAS"));
+
+    const existingMap = new Map(
+      existingUsers.map((u) => [u.externalWorkerId, u.id]),
+    );
+
+    // Step 2: Pre-compute HMAC hashes for new employees
+    const newEmployees = aceViewerEmployees.filter(
+      (e) => !existingMap.has(e.externalWorkerId),
+    );
+    const updateEmployees = aceViewerEmployees.filter((e) =>
+      existingMap.has(e.externalWorkerId),
+    );
+
+    const hashMap = new Map<string, string>();
+    await Promise.all(
+      newEmployees.map(async (e) => {
+        const h = await hmac(
+          c.env.HMAC_SECRET,
+          `acetime-${e.externalWorkerId}`,
+        );
+        hashMap.set(e.externalWorkerId, h);
+      }),
+    );
+
+    // Step 3: Batch upserts using D1 raw batch API (max 100 per batch)
+    const BATCH_SIZE = 100;
     let created = 0;
     let updated = 0;
+    let skipped = 0;
+    const now = new Date().toISOString();
 
-    for (const employee of extractedEmployees) {
-      const normalizedPhone = (employee.phone || "").replace(/[^0-9]/g, "");
-      const phoneSource =
-        normalizedPhone || `acetime-${employee.externalWorkerId}`;
-      const phoneHash = await hmac(c.env.HMAC_SECRET, phoneSource);
-      const phoneEncrypted = normalizedPhone
-        ? await encrypt(c.env.ENCRYPTION_KEY, normalizedPhone)
-        : null;
-
-      const normalizedDob = employee.dob?.replace(/[^0-9]/g, "") || null;
-      const dobHash = normalizedDob
-        ? await hmac(c.env.HMAC_SECRET, normalizedDob)
-        : null;
-      const dobEncrypted = normalizedDob
-        ? await encrypt(c.env.ENCRYPTION_KEY, normalizedDob)
-        : null;
-
-      const existing = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(
-          and(
-            eq(users.externalSystem, "FAS"),
-            eq(users.externalWorkerId, employee.externalWorkerId),
-          ),
-        )
-        .get();
-
-      if (existing) {
-        await db
-          .update(users)
-          .set({
-            name: employee.name,
-            nameMasked: maskName(employee.name),
-            phone: phoneHash,
-            phoneHash,
-            phoneEncrypted,
-            dob: null,
-            dobHash,
-            dobEncrypted,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, existing.id));
-        updated++;
-      } else {
-        await db.insert(users).values({
-          externalSystem: "FAS",
-          externalWorkerId: employee.externalWorkerId,
-          name: employee.name,
-          nameMasked: maskName(employee.name),
-          phone: phoneHash,
+    // Batch inserts
+    for (let i = 0; i < newEmployees.length; i += BATCH_SIZE) {
+      const chunk = newEmployees.slice(i, i + BATCH_SIZE);
+      const stmts = chunk.map((e) => {
+        const phoneHash = hashMap.get(e.externalWorkerId) || "";
+        return c.env.DB.prepare(
+          `INSERT INTO users (id, external_system, external_worker_id, name, name_masked, phone, phone_hash, company_name, trade_type, role, created_at, updated_at)
+           VALUES (lower(hex(randomblob(16))), 'FAS', ?, ?, ?, ?, ?, ?, ?, 'WORKER', ?, ?)`,
+        ).bind(
+          e.externalWorkerId,
+          e.name,
+          maskName(e.name),
           phoneHash,
-          phoneEncrypted,
-          dob: null,
-          dobHash,
-          dobEncrypted,
-          role: "WORKER",
-        });
-        created++;
+          phoneHash,
+          e.companyName,
+          e.trade,
+          now,
+          now,
+        );
+      });
+      try {
+        await c.env.DB.batch(stmts);
+        created += chunk.length;
+      } catch {
+        skipped += chunk.length;
+      }
+    }
+
+    // Batch updates
+    for (let i = 0; i < updateEmployees.length; i += BATCH_SIZE) {
+      const chunk = updateEmployees.slice(i, i + BATCH_SIZE);
+      const stmts = chunk.map((e) => {
+        const userId = existingMap.get(e.externalWorkerId);
+        return c.env.DB.prepare(
+          `UPDATE users SET name = ?, name_masked = ?, company_name = ?, trade_type = ?, updated_at = ? WHERE id = ?`,
+        ).bind(e.name, maskName(e.name), e.companyName, e.trade, now, userId);
+      });
+      try {
+        await c.env.DB.batch(stmts);
+        updated += chunk.length;
+      } catch {
+        skipped += chunk.length;
       }
     }
 
     return success(c, {
       source: {
-        key: "AceViewer.db3",
+        key: "aceviewer-employees.json",
         size: object.size,
         uploaded: object.uploaded,
         etag: object.httpEtag,
-        sqliteHeaderValid: isSqliteFile,
       },
       sync: {
-        extracted: extractedEmployees.length,
+        extracted: aceViewerEmployees.length,
         created,
         updated,
+        skipped,
       },
-      note: "SQLite employee extraction is stubbed. TODO: implement sql.js parser.",
     });
   });
 });

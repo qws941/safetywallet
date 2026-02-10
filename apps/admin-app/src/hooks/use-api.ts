@@ -216,20 +216,53 @@ export function useReviewPost() {
       postId,
       action,
       reason,
-      note,
+      comment,
     }: {
       postId: string;
       action: ReviewAction;
       reason?: RejectReason;
-      note?: string;
+      comment?: string;
     }) =>
       apiFetch(`/reviews`, {
         method: "POST",
-        body: JSON.stringify({ postId, action, reason, note }),
+        body: JSON.stringify({ postId, action, reason, comment }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "posts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+// Actions
+export function useCreateAction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      postId,
+      assigneeId,
+      dueDate,
+      description,
+    }: {
+      postId: string;
+      assigneeId: string;
+      dueDate: string;
+      description?: string;
+    }) =>
+      apiFetch(`/actions`, {
+        method: "POST",
+        body: JSON.stringify({
+          postId,
+          assigneeType: "USER",
+          assigneeId,
+          dueDate,
+          description,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "posts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "post"] });
     },
   });
 }

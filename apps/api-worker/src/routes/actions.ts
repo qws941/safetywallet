@@ -7,11 +7,34 @@ import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { success, error } from "../lib/response";
+import { logAuditWithContext } from "../lib/audit";
+import { notifyUser } from "../lib/notification";
 import {
   CreateActionSchema,
   UpdateActionStatusSchema,
 } from "../validators/schemas";
-import { actions, actionImages, posts, siteMemberships } from "../db/schema";
+import {
+  actions,
+  actionImages,
+  posts,
+  pointsLedger,
+  siteMemberships,
+} from "../db/schema";
+
+type ActionStatus = "OPEN" | "IN_PROGRESS" | "DONE";
+
+const VALID_ACTION_TRANSITIONS: Record<ActionStatus, ActionStatus[]> = {
+  OPEN: ["IN_PROGRESS"],
+  IN_PROGRESS: ["DONE", "OPEN"],
+  DONE: ["OPEN"],
+};
+
+function isValidActionTransition(
+  from: ActionStatus,
+  to: ActionStatus,
+): boolean {
+  return VALID_ACTION_TRANSITIONS[from]?.includes(to) ?? false;
+}
 
 const app = new Hono<{
   Bindings: Env;
@@ -209,16 +232,21 @@ app.patch("/:id", validateJson("json", UpdateActionStatusSchema), async (c) => {
   }
 
   const updateData: Record<string, unknown> = {};
-  let requestedActionStatus: "OPEN" | "IN_PROGRESS" | "DONE" | undefined;
+  let requestedActionStatus: ActionStatus | undefined;
 
-  if (
-    data.actionStatus &&
-    ["OPEN", "IN_PROGRESS", "DONE"].includes(data.actionStatus)
-  ) {
-    requestedActionStatus = data.actionStatus as
-      | "OPEN"
-      | "IN_PROGRESS"
-      | "DONE";
+  if (data.actionStatus) {
+    requestedActionStatus = data.actionStatus as ActionStatus;
+    const currentStatus = action.actionStatus as ActionStatus;
+
+    if (!isValidActionTransition(currentStatus, requestedActionStatus)) {
+      return error(
+        c,
+        "INVALID_STATUS_TRANSITION",
+        `Cannot transition from ${currentStatus} to ${requestedActionStatus}`,
+        400,
+      );
+    }
+
     updateData.actionStatus = requestedActionStatus;
     if (requestedActionStatus === "DONE") {
       updateData.completedAt = new Date();
@@ -229,7 +257,9 @@ app.patch("/:id", validateJson("json", UpdateActionStatusSchema), async (c) => {
 
   const updateConditions = [eq(actions.id, actionId)];
   if (requestedActionStatus && requestedActionStatus !== action.actionStatus) {
-    updateConditions.push(eq(actions.actionStatus, action.actionStatus));
+    updateConditions.push(
+      eq(actions.actionStatus, action.actionStatus as ActionStatus),
+    );
   }
 
   const updated = await db
@@ -246,6 +276,50 @@ app.patch("/:id", validateJson("json", UpdateActionStatusSchema), async (c) => {
       "Action status changed by another request",
       409,
     );
+  }
+
+  if (requestedActionStatus === "DONE" && action.assigneeId) {
+    const now = new Date();
+    const kstMonth = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const settleMonth = `${kstMonth.getFullYear()}-${String(kstMonth.getMonth() + 1).padStart(2, "0")}`;
+
+    await db.insert(pointsLedger).values({
+      userId: action.assigneeId,
+      siteId: post.siteId,
+      postId: action.postId,
+      amount: 50,
+      reasonCode: "ACTION_COMPLETION",
+      reasonText: "시정조치 완료 보너스",
+      settleMonth,
+    });
+
+    await logAuditWithContext(
+      c,
+      db,
+      "ACTION_STATUS_CHANGE",
+      user.id,
+      "ACTION",
+      actionId,
+      { from: action.actionStatus, to: requestedActionStatus, bonusPoints: 50 },
+    );
+  } else if (requestedActionStatus) {
+    await logAuditWithContext(
+      c,
+      db,
+      "ACTION_STATUS_CHANGE",
+      user.id,
+      "ACTION",
+      actionId,
+      { from: action.actionStatus, to: requestedActionStatus },
+    );
+  }
+
+  // Fire-and-forget notification to assigned worker
+  if (action.assigneeId && requestedActionStatus) {
+    notifyUser(db, c.env, action.assigneeId, "ACTION_STATUS_CHANGED", {
+      actionId,
+      status: requestedActionStatus,
+    }).catch(() => {});
   }
 
   return success(c, { action: updated });
@@ -298,9 +372,19 @@ app.post("/:id/images", async (c) => {
 
   const formData = await c.req.formData();
   const file = formData.get("file") as File | null;
+  const imageType = formData.get("imageType") as string | null;
 
   if (!file) {
     return error(c, "NO_FILE", "No file provided", 400);
+  }
+
+  if (imageType && imageType !== "BEFORE" && imageType !== "AFTER") {
+    return error(
+      c,
+      "INVALID_IMAGE_TYPE",
+      "imageType must be BEFORE or AFTER",
+      400,
+    );
   }
 
   const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -320,6 +404,7 @@ app.post("/:id/images", async (c) => {
     .values({
       actionId,
       fileUrl: key,
+      imageType: (imageType as "BEFORE" | "AFTER") ?? null,
     })
     .returning()
     .get();

@@ -1,39 +1,72 @@
 import mysql from "mysql2/promise";
 import type { HyperdriveBinding } from "../types";
 
+// AceTime MariaDB uses EUC-KR charset (jeil_cmi database)
+// site_cd is always '10' at this construction site
+const SITE_CD = "10";
+
 // mysql2/promise의 createConnection은 Connection 타입을 반환하지만
 // 실제로는 query 메서드를 포함함. 타입 정의가 불완전하므로 any 사용.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MySqlConnection = any;
 
+/**
+ * AceTime employee record from MariaDB `employee` table
+ * Joined with `partner` table for company name
+ */
 export interface FasEmployee {
-  id: number;
+  /** 사원코드 (employee.empl_cd) e.g. '24000001' */
+  emplCd: string;
+  /** 사원명 (employee.empl_nm) e.g. '김우현' */
   name: string;
-  phone: string;
-  birthDate: string;
-  companyId: number;
+  /** 협력사코드 (employee.part_cd) FK→partner */
+  partCd: string;
+  /** 협력사명 (partner.part_nm) e.g. '제일건설' */
   companyName: string;
-  departmentId: number;
-  departmentName: string;
-  positionId: number;
-  positionName: string;
+  /** 전화번호 (employee.tel_no) e.g. '01091865156' */
+  phone: string;
+  /** 주민번호 앞7자리 (employee.social_no) e.g. '6905281' */
+  socialNo: string;
+  /** 공종코드 (employee.gojo_cd) FK→gongjong */
+  gojoCd: string;
+  /** 직종코드 (employee.jijo_cd) FK→jikjong */
+  jijoCd: string;
+  /** 직책코드 (employee.care_cd) */
+  careCd: string;
+  /** 역할코드 (employee.role_cd) */
+  roleCd: string;
+  /** 재직상태 (employee.state_flag) 'W'=재직 */
+  stateFlag: string;
+  /** 입사일 YYYYMMDD (employee.entr_day) */
+  entrDay: string;
+  /** 퇴직일 YYYYMMDD (employee.retr_day) */
+  retrDay: string;
+  /** RFID (employee.rfid) */
+  rfid: string;
+  /** 위반횟수 (employee.viol_cnt) */
+  violCnt: number;
+  /** 수정일시 (employee.update_dt) */
+  updatedAt: Date;
+  /** 재직여부 — derived from state_flag === 'W' */
   isActive: boolean;
-  modifiedAt: Date;
 }
 
+/**
+ * AceTime daily attendance from MariaDB `access_daily` table
+ */
 export interface FasAttendance {
-  employeeId: number;
-  date: string;
-  checkInTime: Date | null;
-  checkOutTime: Date | null;
-  deviceId: string;
-  siteId: number;
-}
-
-export interface FasLoginResult {
-  success: boolean;
-  userId: string;
-  userName: string;
+  /** 사원코드 */
+  emplCd: string;
+  /** 출근일 YYYYMMDD */
+  accsDay: string;
+  /** 입장시간 HHMM (null if absent) */
+  inTime: string | null;
+  /** 퇴장시간 HHMM (null if not checked out) */
+  outTime: string | null;
+  /** 상태 (0=normal) */
+  state: number;
+  /** 협력사코드 */
+  partCd: string;
 }
 
 async function getConnection(
@@ -50,129 +83,112 @@ async function getConnection(
   });
 }
 
-export async function fasLogin(
-  hyperdrive: HyperdriveBinding,
-  userId: string,
-): Promise<FasLoginResult | null> {
-  const conn = await getConnection(hyperdrive);
-  try {
-    const [rows] = await conn.query("CALL usp_login(?)", [userId]);
-    const results = rows as Array<Array<Record<string, unknown>>>;
-    if (!results[0] || results[0].length === 0) {
-      return null;
-    }
-    const row = results[0][0];
-    return {
-      success: true,
-      userId: String(row["user_id"] || ""),
-      userName: String(row["user_name"] || ""),
-    };
-  } finally {
-    await conn.end();
-  }
-}
+/** Shared SELECT columns for employee queries */
+const EMPLOYEE_SELECT = `
+  e.empl_cd, e.empl_nm, e.part_cd, e.tel_no, e.social_no,
+  e.state_flag, e.entr_day, e.retr_day, e.update_dt,
+  e.gojo_cd, e.jijo_cd, e.care_cd, e.role_cd, e.rfid,
+  e.viol_cnt, e.viol_yn,
+  p.part_nm`;
 
+/** Shared FROM + JOIN for employee queries */
+const EMPLOYEE_FROM = `
+  FROM employee e
+  LEFT JOIN partner p ON e.site_cd = p.site_cd AND e.part_cd = p.part_cd`;
+
+/**
+ * Get a single employee by empl_cd
+ */
 export async function fasGetEmployeeInfo(
   hyperdrive: HyperdriveBinding,
-  companyId: number,
-  employeeId: number,
+  emplCd: string,
 ): Promise<FasEmployee | null> {
   const conn = await getConnection(hyperdrive);
   try {
     const [rows] = await conn.query(
-      "CALL usp_viewer_employee_info_query(?, ?)",
-      [companyId, employeeId],
+      `SELECT ${EMPLOYEE_SELECT} ${EMPLOYEE_FROM}
+       WHERE e.site_cd = ? AND e.empl_cd = ?
+       LIMIT 1`,
+      [SITE_CD, emplCd],
     );
-    const results = rows as Array<Array<Record<string, unknown>>>;
-    if (!results[0] || results[0].length === 0) {
+    const results = rows as Array<Record<string, unknown>>;
+    if (results.length === 0) {
       return null;
     }
-    return mapToFasEmployee(results[0][0]);
+    return mapToFasEmployee(results[0]);
   } finally {
     await conn.end();
   }
 }
 
+/**
+ * Get employees updated since a given timestamp (for delta sync).
+ * Returns all employees if sinceTimestamp is empty/null.
+ */
 export async function fasGetUpdatedEmployees(
   hyperdrive: HyperdriveBinding,
-  companyId: number,
-  sinceTimestamp: string,
+  sinceTimestamp: string | null,
 ): Promise<FasEmployee[]> {
   const conn = await getConnection(hyperdrive);
   try {
-    const [rows] = await conn.query(
-      "CALL usp_viewer_employee_updated_query(?, ?)",
-      [companyId, sinceTimestamp],
-    );
-    const results = rows as Array<Array<Record<string, unknown>>>;
-    if (!results[0]) {
-      return [];
+    let query = `SELECT ${EMPLOYEE_SELECT} ${EMPLOYEE_FROM}
+      WHERE e.site_cd = ?`;
+    const params: unknown[] = [SITE_CD];
+
+    if (sinceTimestamp) {
+      query += ` AND e.update_dt > ?`;
+      params.push(sinceTimestamp);
     }
-    return results[0].map(mapToFasEmployee);
+
+    query += ` ORDER BY e.update_dt ASC`;
+
+    const [rows] = await conn.query(query, params);
+    const results = rows as Array<Record<string, unknown>>;
+    return results.map(mapToFasEmployee);
   } finally {
     await conn.end();
   }
 }
 
+/**
+ * Get today's attendance records from `access_daily`
+ */
 export async function fasGetDailyAttendance(
   hyperdrive: HyperdriveBinding,
-  params: {
-    companyId: number;
-    departmentId: number;
-    startDate: string;
-    endDate: string;
-    employeeId: number;
-    pageNo: number;
-    pageSize: number;
-    sortColumn: number;
-    sortOrder: number;
-    searchKeyword: string;
-  },
+  accsDay: string,
 ): Promise<FasAttendance[]> {
   const conn = await getConnection(hyperdrive);
   try {
     const [rows] = await conn.query(
-      "CALL usp_access_employee_daily_query_20(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [
-        params.companyId,
-        params.departmentId,
-        params.startDate,
-        params.endDate,
-        params.employeeId,
-        params.pageNo,
-        params.pageSize,
-        params.sortColumn,
-        params.sortOrder,
-        params.searchKeyword,
-      ],
+      `SELECT ad.empl_cd, ad.accs_day, ad.in_time, ad.out_time,
+              ad.state, ad.part_cd
+       FROM access_daily ad
+       WHERE ad.site_cd = ? AND ad.accs_day = ?
+       ORDER BY ad.in_time ASC`,
+      [SITE_CD, accsDay],
     );
-    const results = rows as Array<Array<Record<string, unknown>>>;
-    if (!results[0]) {
-      return [];
-    }
-    return results[0].map(mapToFasAttendance);
+    const results = rows as Array<Record<string, unknown>>;
+    return results.map(mapToFasAttendance);
   } finally {
     await conn.end();
   }
 }
 
+/**
+ * Search employee by phone number (normalized, dashes removed)
+ */
 export async function fasSearchEmployeeByPhone(
   hyperdrive: HyperdriveBinding,
-  companyId: number,
   phone: string,
 ): Promise<FasEmployee | null> {
   const conn = await getConnection(hyperdrive);
   try {
     const normalizedPhone = phone.replace(/-/g, "");
     const [rows] = await conn.query(
-      `SELECT e.*, c.company_name, d.department_name, p.position_name
-       FROM tb_employee e
-       LEFT JOIN tb_company c ON e.company_id = c.company_id
-       LEFT JOIN tb_department d ON e.department_id = d.department_id
-       LEFT JOIN tb_position p ON e.position_id = p.position_id
-       WHERE e.company_id = ? AND REPLACE(e.phone, '-', '') = ?
+      `SELECT ${EMPLOYEE_SELECT} ${EMPLOYEE_FROM}
+       WHERE e.site_cd = ? AND REPLACE(e.tel_no, '-', '') = ?
        LIMIT 1`,
-      [companyId, normalizedPhone],
+      [SITE_CD, normalizedPhone],
     );
     const results = rows as Array<Record<string, unknown>>;
     if (results.length === 0) {
@@ -185,36 +201,44 @@ export async function fasSearchEmployeeByPhone(
 }
 
 function mapToFasEmployee(row: Record<string, unknown>): FasEmployee {
+  const stateFlag = String(row["state_flag"] || "");
   return {
-    id: Number(row["employee_id"] || row["id"] || 0),
-    name: String(row["employee_name"] || row["name"] || ""),
-    phone: String(row["phone"] || ""),
-    birthDate: String(row["birth_date"] || row["birthdate"] || ""),
-    companyId: Number(row["company_id"] || 0),
-    companyName: String(row["company_name"] || ""),
-    departmentId: Number(row["department_id"] || 0),
-    departmentName: String(row["department_name"] || ""),
-    positionId: Number(row["position_id"] || 0),
-    positionName: String(row["position_name"] || ""),
-    isActive: row["is_active"] === 1 || row["is_active"] === true,
-    modifiedAt:
-      row["modified_at"] instanceof Date ? row["modified_at"] : new Date(),
+    emplCd: String(row["empl_cd"] || ""),
+    name: String(row["empl_nm"] || ""),
+    partCd: String(row["part_cd"] || ""),
+    companyName: String(row["part_nm"] || ""),
+    phone: String(row["tel_no"] || ""),
+    socialNo: String(row["social_no"] || ""),
+    gojoCd: String(row["gojo_cd"] || ""),
+    jijoCd: String(row["jijo_cd"] || ""),
+    careCd: String(row["care_cd"] || ""),
+    roleCd: String(row["role_cd"] || ""),
+    stateFlag,
+    entrDay: String(row["entr_day"] || ""),
+    retrDay: String(row["retr_day"] || ""),
+    rfid: String(row["rfid"] || ""),
+    violCnt: Number(row["viol_cnt"] || 0),
+    updatedAt: row["update_dt"] instanceof Date ? row["update_dt"] : new Date(),
+    isActive: stateFlag === "W",
   };
 }
 
 function mapToFasAttendance(row: Record<string, unknown>): FasAttendance {
+  const inTime = row["in_time"];
+  const outTime = row["out_time"];
   return {
-    employeeId: Number(row["employee_id"] || 0),
-    date: String(row["access_date"] || row["date"] || ""),
-    checkInTime:
-      row["check_in_time"] instanceof Date ? row["check_in_time"] : null,
-    checkOutTime:
-      row["check_out_time"] instanceof Date ? row["check_out_time"] : null,
-    deviceId: String(row["device_id"] || ""),
-    siteId: Number(row["site_id"] || 0),
+    emplCd: String(row["empl_cd"] || ""),
+    accsDay: String(row["accs_day"] || ""),
+    inTime: inTime ? String(inTime) : null,
+    outTime: outTime ? String(outTime) : null,
+    state: Number(row["state"] || 0),
+    partCd: String(row["part_cd"] || ""),
   };
 }
 
+/**
+ * Test MariaDB connectivity via Hyperdrive
+ */
 export async function testConnection(
   hyperdrive: HyperdriveBinding,
 ): Promise<boolean> {
