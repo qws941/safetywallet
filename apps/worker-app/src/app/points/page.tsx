@@ -172,20 +172,15 @@ export default function PointsPage() {
               </div>
             ) : history.length > 0 ? (
               <div className="space-y-3">
-                {(
-                  history as Array<{
-                    id: string;
-                    amount: number;
-                    reason: string;
-                    createdAt: string;
-                  }>
-                ).map((item) => (
+                {history.map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between py-2 border-b last:border-0"
                   >
                     <div>
-                      <p className="font-medium">{item.reason}</p>
+                      <p className="font-medium">
+                        {item.reasonText || item.reasonCode}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(item.createdAt).toLocaleDateString("ko-KR")}
                       </p>

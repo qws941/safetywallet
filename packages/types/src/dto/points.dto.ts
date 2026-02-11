@@ -33,6 +33,22 @@ export interface PointsBalanceDto {
   settleMonth: string;
 }
 
+export interface PointsHistoryItemDto {
+  id: string;
+  amount: number;
+  reasonCode: string;
+  reasonText: string | null;
+  createdAt: string;
+}
+
+export interface PointsHistoryItemDto {
+  id: string;
+  amount: number;
+  reasonCode: string;
+  reasonText: string | null;
+  createdAt: string;
+}
+
 export interface PointsHistoryFilterDto {
   siteId: string;
   userId?: string;

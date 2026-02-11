@@ -11,6 +11,7 @@ import type {
   UserProfileDto,
   ActionDto,
   UpdateActionStatusDto,
+  PointsHistoryItemDto,
 } from "@safetywallet/types";
 
 // Posts
@@ -79,9 +80,9 @@ export function usePoints(siteId: string) {
   return useQuery({
     queryKey: ["points", siteId],
     queryFn: () =>
-      apiFetch<ApiResponse<{ balance: number; history: unknown[] }>>(
-        `/points?siteId=${siteId}`,
-      ),
+      apiFetch<
+        ApiResponse<{ balance: number; history: PointsHistoryItemDto[] }>
+      >(`/points?siteId=${siteId}`),
     enabled: !!siteId,
   });
 }
