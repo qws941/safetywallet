@@ -57,6 +57,20 @@ type NotifyEvent =
       siteId: string;
     }
   | {
+      type: "ACTION_OVERDUE";
+      postId: string;
+      actionId: string;
+      assigneeId: string;
+      siteId: string;
+    }
+  | {
+      type: "ACTION_VERIFIED";
+      postId: string;
+      actionId: string;
+      assigneeId: string;
+      siteId: string;
+    }
+  | {
       type: "POINTS_AWARDED";
       userId: string;
       siteId: string;
@@ -105,6 +119,14 @@ const MESSAGES: Record<
     title: "시정조치 완료",
     body: "시정조치가 완료 보고되었습니다. 확인해주세요.",
   }),
+  ACTION_OVERDUE: () => ({
+    title: "⚠️ 시정조치 기한 초과",
+    body: "배정된 시정조치가 기한을 초과했습니다. 즉시 확인해주세요.",
+  }),
+  ACTION_VERIFIED: () => ({
+    title: "시정조치 확인 완료",
+    body: "시정조치가 관리자에 의해 확인되었습니다.",
+  }),
   POINTS_AWARDED: (e) => ({
     title: "포인트 적립",
     body: `${(e as { amount: number }).amount}포인트가 적립되었습니다.`,
@@ -132,6 +154,12 @@ export async function notifyEvent(env: Env, event: NotifyEvent): Promise<void> {
 
       case "ACTION_ASSIGNED":
         await sendPushToUser(db, env, event.assigneeId, payload);
+        break;
+
+      case "ACTION_OVERDUE":
+      case "ACTION_VERIFIED":
+        await sendPushToUser(db, env, event.assigneeId, payload);
+        await sendPushToSiteAdmins(db, env, event.siteId, payload);
         break;
 
       case "NEW_POST":

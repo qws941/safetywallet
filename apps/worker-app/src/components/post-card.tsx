@@ -15,19 +15,21 @@ const categoryLabels: Record<Category, string> = {
 };
 
 const reviewStatusLabels: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "접수",
+  [ReviewStatus.PENDING]: "접수",
   [ReviewStatus.IN_REVIEW]: "검토중",
   [ReviewStatus.NEED_INFO]: "추가정보",
   [ReviewStatus.APPROVED]: "승인",
   [ReviewStatus.REJECTED]: "반려",
+  [ReviewStatus.URGENT]: "긴급",
 };
 
 const reviewStatusColors: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "bg-gray-100 text-gray-700",
+  [ReviewStatus.PENDING]: "bg-gray-100 text-gray-700",
   [ReviewStatus.IN_REVIEW]: "bg-blue-100 text-blue-700",
   [ReviewStatus.NEED_INFO]: "bg-yellow-100 text-yellow-700",
   [ReviewStatus.APPROVED]: "bg-green-100 text-green-700",
   [ReviewStatus.REJECTED]: "bg-red-100 text-red-700",
+  [ReviewStatus.URGENT]: "bg-red-200 text-red-800 font-semibold",
 };
 
 interface PostCardProps {

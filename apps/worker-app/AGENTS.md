@@ -25,7 +25,8 @@ src/
 │   ├── points/page.tsx         # Leaderboard
 │   ├── announcements/page.tsx  # Site announcements
 │   ├── votes/page.tsx          # Monthly voting
-│   └── profile/page.tsx        # User profile, logout
+│   ├── profile/page.tsx        # User profile, logout
+│   └── bypass/page.tsx         # Dev-only auth bypass
 ├── components/
 │   ├── providers.tsx           # TanStack QueryClient + Toaster
 │   ├── header.tsx              # Sticky top bar + site ID
@@ -44,6 +45,7 @@ src/
 │   └── auth.ts                 # Zustand auth store (localStorage)
 └── lib/
     ├── api.ts                  # apiFetch + auto token refresh
+    ├── image-compress.ts       # Canvas resize (>1920px), JPEG 80%, skip <100KB
     └── utils.ts                # cn() re-export
 ```
 

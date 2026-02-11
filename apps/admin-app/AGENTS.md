@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-Admin dashboard for site managers. Next.js 14 App Router, static export to CF Pages (port 3001). 22 pages, 12-item sidebar.
+Admin dashboard for site managers. Next.js 14 App Router, deployed to CF Pages via `@cloudflare/next-on-pages` (port 3001). Note: does NOT use `output: 'export'` (diverges from worker-app). 22 pages, 12-item sidebar.
 
 ## STRUCTURE
 
@@ -33,7 +33,10 @@ src/
 │   ├── actions/page.tsx              # Corrective actions
 │   ├── audit/page.tsx                # Audit log
 │   ├── points/page.tsx               # Points ledger
-│   └── settings/page.tsx             # App settings
+│   ├── settings/page.tsx             # App settings
+│   ├── recommendations/page.tsx      # Safety recommendations
+│   ├── not-found.tsx                 # Custom 404
+│   └── error.tsx                     # Error boundary
 ├── components/
 │   ├── sidebar.tsx                   # 281L, 12 menu items, collapsible
 │   ├── data-table.tsx                # 269L, generic: search/sort/pagination
@@ -47,7 +50,10 @@ src/
 │   ├── use-api.ts                    # 1288L, 60+ hooks (MONOLITHIC — needs split)
 │   ├── use-votes.ts                  # Vote hooks (separated — good pattern)
 │   ├── use-attendance-logs.ts        # Attendance log hooks
-│   └── use-sync-errors.ts            # FAS sync error hooks
+│   ├── use-sync-errors.ts            # FAS sync error hooks
+│   ├── use-attendance.ts             # Attendance query hooks (80L)
+│   ├── use-recommendations.ts        # Recommendation hooks (118L)
+│   └── use-stats.ts                  # Dashboard stats hooks (33L)
 ├── stores/
 │   └── auth.ts                       # Zustand auth store
 └── lib/
@@ -77,4 +83,5 @@ src/
 
 - **Known**: `hooks/use-api.ts:~310` — `useAuditLogs()` returns `Promise.resolve()` (placeholder, HIGH priority)
 - No `alert()`/`confirm()` — use modal components
+- **Known**: `dashboard/layout.tsx:16-22` — client-side auth guard via useEffect (should be middleware)
 - **Refactor targets**: `use-api.ts` (split by domain), `education/page.tsx` (extract sub-components)

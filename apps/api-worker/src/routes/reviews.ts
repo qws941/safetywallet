@@ -31,18 +31,19 @@ type ReviewAction =
   | "ASSIGN"
   | "CLOSE";
 type ReviewStatus =
-  | "RECEIVED"
+  | "PENDING"
   | "IN_REVIEW"
   | "NEED_INFO"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "URGENT";
 type ActionStatus =
   | "NONE"
-  | "REQUIRED"
   | "ASSIGNED"
   | "IN_PROGRESS"
-  | "DONE"
-  | "REOPENED";
+  | "COMPLETED"
+  | "VERIFIED"
+  | "OVERDUE";
 
 const validActions: ReviewAction[] = [
   "APPROVE",
@@ -55,11 +56,12 @@ const validActions: ReviewAction[] = [
 
 // State machine: which actions are allowed from which reviewStatus
 const VALID_TRANSITIONS: Record<ReviewStatus, ReviewAction[]> = {
-  RECEIVED: ["APPROVE", "REJECT", "REQUEST_MORE", "MARK_URGENT", "ASSIGN"],
+  PENDING: ["APPROVE", "REJECT", "REQUEST_MORE", "MARK_URGENT", "ASSIGN"],
   IN_REVIEW: ["APPROVE", "REJECT", "REQUEST_MORE", "ASSIGN", "CLOSE"],
   NEED_INFO: ["APPROVE", "REJECT", "MARK_URGENT", "ASSIGN"],
   APPROVED: ["CLOSE"],
   REJECTED: [],
+  URGENT: ["APPROVE", "REJECT", "REQUEST_MORE", "ASSIGN", "CLOSE"],
 };
 
 function isValidTransition(
@@ -88,14 +90,14 @@ function determineNewStatuses(
     case "APPROVE":
       return {
         newReviewStatus: "APPROVED",
-        newActionStatus: currentActionStatus === "NONE" ? "DONE" : undefined,
+        newActionStatus: currentActionStatus === "NONE" ? "COMPLETED" : "VERIFIED",
       };
     case "REJECT":
       return { newReviewStatus: "REJECTED" };
     case "REQUEST_MORE":
       return { newReviewStatus: "NEED_INFO" };
     case "MARK_URGENT":
-      return { newReviewStatus: "IN_REVIEW" };
+      return { newReviewStatus: "URGENT" };
     case "ASSIGN":
       return {
         newReviewStatus: "IN_REVIEW",
@@ -104,7 +106,7 @@ function determineNewStatuses(
     case "CLOSE":
       return {
         newReviewStatus: "APPROVED",
-        newActionStatus: "DONE",
+        newActionStatus: "VERIFIED",
       };
     default:
       return { newReviewStatus: "IN_REVIEW" };
@@ -171,7 +173,7 @@ app.post("/", validateJson("json", ReviewActionSchema), async (c) => {
     );
   }
 
-  const currentReviewStatus = (post.reviewStatus as ReviewStatus) || "RECEIVED";
+  const currentReviewStatus = (post.reviewStatus as ReviewStatus) || "PENDING";
   if (!isValidTransition(currentReviewStatus, data.action)) {
     return error(
       c,

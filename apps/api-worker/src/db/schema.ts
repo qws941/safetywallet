@@ -35,19 +35,20 @@ export const categoryEnum = [
 export const riskLevelEnum = ["HIGH", "MEDIUM", "LOW"] as const;
 export const visibilityEnum = ["WORKER_PUBLIC", "ADMIN_ONLY"] as const;
 export const reviewStatusEnum = [
-  "RECEIVED",
+  "PENDING",
   "IN_REVIEW",
   "NEED_INFO",
   "APPROVED",
   "REJECTED",
+  "URGENT",
 ] as const;
 export const actionStatusEnum = [
   "NONE",
-  "REQUIRED",
   "ASSIGNED",
   "IN_PROGRESS",
-  "DONE",
-  "REOPENED",
+  "COMPLETED",
+  "VERIFIED",
+  "OVERDUE",
 ] as const;
 export const reviewActionEnum = [
   "APPROVE",
@@ -57,7 +58,7 @@ export const reviewActionEnum = [
   "ASSIGN",
   "CLOSE",
 ] as const;
-export const taskStatusEnum = ["OPEN", "IN_PROGRESS", "DONE"] as const;
+export const taskStatusEnum = ["OPEN", "IN_PROGRESS", "DONE"] as const; // @deprecated - use actionStatusEnum
 export const attendanceResultEnum = ["SUCCESS", "FAIL"] as const;
 export const attendanceSourceEnum = ["FAS", "MANUAL"] as const;
 export const voteCandidateSourceEnum = ["ADMIN", "AUTO"] as const;
@@ -233,7 +234,7 @@ export const posts = sqliteTable(
       (): AnySQLiteColumn => posts.id,
     ),
     reviewStatus: text("review_status", { enum: reviewStatusEnum })
-      .default("RECEIVED")
+      .default("PENDING")
       .notNull(),
     actionStatus: text("action_status", { enum: actionStatusEnum })
       .default("NONE")
@@ -370,8 +371,8 @@ export const actions = sqliteTable(
       onDelete: "set null",
     }),
     dueDate: integer("due_date", { mode: "timestamp" }),
-    actionStatus: text("action_status", { enum: taskStatusEnum })
-      .default("OPEN")
+    actionStatus: text("action_status", { enum: actionStatusEnum })
+      .default("NONE")
       .notNull(),
     completionNote: text("completion_note"),
     completedAt: integer("completed_at", { mode: "timestamp" }),

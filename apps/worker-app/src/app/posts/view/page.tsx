@@ -15,7 +15,8 @@ import {
   Button,
 } from "@safetywallet/ui";
 import { cn } from "@/lib/utils";
-import { Category, ReviewStatus } from "@safetywallet/types";
+import { Category, ReviewStatus, RejectReason } from "@safetywallet/types";
+import { AlertCircle, HelpCircle } from "lucide-react";
 
 const categoryLabels: Record<Category, string> = {
   [Category.HAZARD]: "위험요소",
@@ -26,19 +27,30 @@ const categoryLabels: Record<Category, string> = {
 };
 
 const reviewStatusLabels: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "접수됨",
+  [ReviewStatus.PENDING]: "접수됨",
   [ReviewStatus.IN_REVIEW]: "검토 중",
   [ReviewStatus.NEED_INFO]: "추가정보 필요",
   [ReviewStatus.APPROVED]: "승인됨",
   [ReviewStatus.REJECTED]: "반려됨",
+  [ReviewStatus.URGENT]: "긴급",
 };
 
 const reviewStatusColors: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "bg-gray-100 text-gray-700",
+  [ReviewStatus.PENDING]: "bg-gray-100 text-gray-700",
   [ReviewStatus.IN_REVIEW]: "bg-blue-100 text-blue-700",
   [ReviewStatus.NEED_INFO]: "bg-yellow-100 text-yellow-700",
   [ReviewStatus.APPROVED]: "bg-green-100 text-green-700",
   [ReviewStatus.REJECTED]: "bg-red-100 text-red-700",
+  [ReviewStatus.URGENT]: "bg-red-200 text-red-800 font-semibold",
+};
+
+const rejectReasonLabels: Record<RejectReason, string> = {
+  [RejectReason.DUPLICATE]: "중복 게시물",
+  [RejectReason.UNCLEAR_PHOTO]: "불명확한 사진",
+  [RejectReason.INSUFFICIENT]: "증거 부족",
+  [RejectReason.FALSE]: "허위 신고",
+  [RejectReason.IRRELEVANT]: "범위 밖",
+  [RejectReason.OTHER]: "기타",
 };
 
 function LoadingState() {
@@ -62,6 +74,12 @@ function PostDetailContent() {
   const { data, isLoading, error } = usePost(postId);
 
   const post = data?.data;
+
+  // reviews가 PostDto에 없을 수 있으므로 any로 처리하여 접근
+  const reviews = (post as any)?.reviews as any[];
+  const latestReview = reviews?.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )[0];
 
   if (isLoading) {
     return <LoadingState />;
@@ -104,6 +122,50 @@ function PostDetailContent() {
           </Badge>
           {post.isUrgent && <Badge variant="destructive">긴급</Badge>}
         </div>
+
+        {post.reviewStatus === ReviewStatus.REJECTED && latestReview && (
+          <Card className="border-red-200 bg-red-50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-5 w-5" />
+                <CardTitle className="text-base">반려 사유</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <span className="font-medium text-red-900">사유:</span>
+                  <span className="text-red-800">
+                    {rejectReasonLabels[
+                      latestReview.reasonCode as RejectReason
+                    ] || latestReview.reasonCode}
+                  </span>
+                </div>
+                {latestReview.comment && (
+                  <div className="text-sm text-red-700 bg-white/50 p-2 rounded">
+                    {latestReview.comment}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {post.reviewStatus === ReviewStatus.NEED_INFO && latestReview && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 text-yellow-700">
+                <HelpCircle className="h-5 w-5" />
+                <CardTitle className="text-base">추가 정보 요청</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-yellow-800 bg-white/50 p-2 rounded">
+                {latestReview.comment || "관리자가 추가 정보를 요청했습니다."}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {post.images && post.images.length > 0 && (
           <Card>

@@ -1,11 +1,12 @@
 import type { Env } from "../types";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, sql, and, gte, lt, like } from "drizzle-orm";
+import { eq, sql, and, gte, lt, like, inArray, isNull } from "drizzle-orm";
 import {
   pointsLedger,
   siteMemberships,
   auditLogs,
   users,
+  sites,
   syncErrors,
   actions,
   posts,
@@ -296,7 +297,7 @@ async function runOverdueActionCheck(env: Env): Promise<void> {
     .from(actions)
     .where(
       and(
-        sql`${actions.actionStatus} IN ('OPEN', 'IN_PROGRESS')`,
+        sql`${actions.actionStatus} IN ('ASSIGNED', 'IN_PROGRESS')`,
         lt(actions.dueDate, now),
       ),
     );
@@ -306,17 +307,27 @@ async function runOverdueActionCheck(env: Env): Promise<void> {
   for (const action of overdueActions) {
     await db
       .update(actions)
-      .set({ actionStatus: "DONE" })
+      .set({ actionStatus: "OVERDUE" })
       .where(eq(actions.id, action.id));
 
     if (action.postId) {
       await db
         .update(posts)
         .set({
-          actionStatus: "REOPENED",
+          actionStatus: "OVERDUE",
           updatedAt: now,
         })
         .where(eq(posts.id, action.postId));
+      
+      // Log audit trail for overdue action
+      await db.insert(auditLogs).values({
+        actorId: "SYSTEM",
+        action: "ACTION_STATUS_CHANGE",
+        targetType: "ACTION",
+        targetId: action.id,
+        reason: JSON.stringify({ from: "IN_PROGRESS", to: "OVERDUE", cause: "automated_overdue_check" }),
+        createdAt: now,
+      });
     }
   }
 

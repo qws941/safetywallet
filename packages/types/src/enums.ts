@@ -32,20 +32,21 @@ export enum Visibility {
 }
 
 export enum ReviewStatus {
-  RECEIVED = "RECEIVED",
+  PENDING = "PENDING",
   IN_REVIEW = "IN_REVIEW",
   NEED_INFO = "NEED_INFO",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
+  URGENT = "URGENT",
 }
 
 export enum ActionStatus {
   NONE = "NONE",
-  REQUIRED = "REQUIRED",
   ASSIGNED = "ASSIGNED",
   IN_PROGRESS = "IN_PROGRESS",
-  DONE = "DONE",
-  REOPENED = "REOPENED",
+  COMPLETED = "COMPLETED",
+  VERIFIED = "VERIFIED",
+  OVERDUE = "OVERDUE",
 }
 
 export enum ReviewAction {

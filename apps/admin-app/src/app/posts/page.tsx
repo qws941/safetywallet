@@ -19,22 +19,24 @@ import { ReviewStatus, Category } from "@safetywallet/types";
 import { X } from "lucide-react";
 
 const statusLabels: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "접수됨",
+  [ReviewStatus.PENDING]: "접수됨",
   [ReviewStatus.IN_REVIEW]: "검토 중",
   [ReviewStatus.NEED_INFO]: "추가정보 필요",
   [ReviewStatus.APPROVED]: "승인됨",
   [ReviewStatus.REJECTED]: "거절됨",
+  [ReviewStatus.URGENT]: "긴급",
 };
 
 const statusColors: Record<
   ReviewStatus,
   "default" | "secondary" | "destructive" | "outline"
 > = {
-  [ReviewStatus.RECEIVED]: "default",
+  [ReviewStatus.PENDING]: "default",
   [ReviewStatus.IN_REVIEW]: "secondary",
   [ReviewStatus.NEED_INFO]: "outline",
   [ReviewStatus.APPROVED]: "default",
   [ReviewStatus.REJECTED]: "destructive",
+  [ReviewStatus.URGENT]: "destructive",
 };
 
 const categoryLabels: Record<Category, string> = {

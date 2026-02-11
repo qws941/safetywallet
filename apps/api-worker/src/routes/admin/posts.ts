@@ -127,7 +127,7 @@ app.get("/posts/pending-review", requireManagerOrAdmin, async (c) => {
 
   const conditions = [];
   conditions.push(
-    sql`${posts.reviewStatus} IN ('RECEIVED', 'IN_REVIEW', 'NEED_INFO')`,
+    sql`${posts.reviewStatus} IN ('PENDING', 'IN_REVIEW', 'NEED_INFO')`,
   );
   if (siteId) {
     conditions.push(eq(posts.siteId, siteId));

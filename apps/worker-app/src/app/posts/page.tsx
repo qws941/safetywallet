@@ -16,7 +16,8 @@ import { Plus } from "lucide-react";
 
 const statusFilters: Array<{ label: string; value: string | null }> = [
   { label: "전체", value: null },
-  { label: "접수", value: ReviewStatus.RECEIVED },
+  { label: "긴급", value: ReviewStatus.URGENT },
+  { label: "접수", value: ReviewStatus.PENDING },
   { label: "검토중", value: ReviewStatus.IN_REVIEW },
   { label: "승인", value: ReviewStatus.APPROVED },
   { label: "반려", value: ReviewStatus.REJECTED },

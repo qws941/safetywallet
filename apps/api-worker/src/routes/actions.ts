@@ -21,12 +21,15 @@ import {
   siteMemberships,
 } from "../db/schema";
 
-type ActionStatus = "OPEN" | "IN_PROGRESS" | "DONE";
+type ActionStatus = "NONE" | "ASSIGNED" | "IN_PROGRESS" | "COMPLETED" | "VERIFIED" | "OVERDUE";
 
 const VALID_ACTION_TRANSITIONS: Record<ActionStatus, ActionStatus[]> = {
-  OPEN: ["IN_PROGRESS"],
-  IN_PROGRESS: ["DONE", "OPEN"],
-  DONE: ["OPEN"],
+  NONE: ["ASSIGNED"],
+  ASSIGNED: ["IN_PROGRESS", "NONE"],
+  IN_PROGRESS: ["COMPLETED", "ASSIGNED"],
+  COMPLETED: ["VERIFIED"],
+  VERIFIED: ["IN_PROGRESS"],
+  OVERDUE: ["ASSIGNED"],
 };
 
 function isValidActionTransition(
@@ -94,7 +97,7 @@ app.post("/", validateJson("json", CreateActionSchema), async (c) => {
       assigneeType: data.assigneeType || "UNASSIGNED",
       assigneeId: data.assigneeId || null,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      actionStatus: "OPEN",
+      actionStatus: "NONE",
     })
     .returning()
     .get();
@@ -106,9 +109,12 @@ app.get("/", async (c) => {
   const db = drizzle(c.env.DB);
   const postId = c.req.query("postId");
   const status = c.req.query("status") as
-    | "OPEN"
+    | "NONE"
+    | "ASSIGNED"
     | "IN_PROGRESS"
-    | "DONE"
+    | "COMPLETED"
+    | "VERIFIED"
+    | "OVERDUE"
     | undefined;
   const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
   const offset = parseInt(c.req.query("offset") || "0");
@@ -117,7 +123,7 @@ app.get("/", async (c) => {
   if (postId) {
     conditions.push(eq(actions.postId, postId));
   }
-  if (status && ["OPEN", "IN_PROGRESS", "DONE"].includes(status)) {
+  if (status && ["NONE", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "VERIFIED", "OVERDUE"].includes(status)) {
     conditions.push(eq(actions.actionStatus, status));
   }
 
@@ -248,7 +254,7 @@ app.patch("/:id", validateJson("json", UpdateActionStatusSchema), async (c) => {
     }
 
     updateData.actionStatus = requestedActionStatus;
-    if (requestedActionStatus === "DONE") {
+    if (requestedActionStatus === "COMPLETED") {
       updateData.completedAt = new Date();
     }
   }
@@ -278,7 +284,7 @@ app.patch("/:id", validateJson("json", UpdateActionStatusSchema), async (c) => {
     );
   }
 
-  if (requestedActionStatus === "DONE" && action.assigneeId) {
+  if (requestedActionStatus === "VERIFIED" && action.assigneeId) {
     const now = new Date();
     const kstMonth = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const settleMonth = `${kstMonth.getFullYear()}-${String(kstMonth.getMonth() + 1).padStart(2, "0")}`;

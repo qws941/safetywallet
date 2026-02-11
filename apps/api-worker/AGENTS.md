@@ -13,11 +13,11 @@ src/
 ├── index.ts           # Hono app entry, route mounting, CRON scheduled handler
 ├── routes/            # 19 route modules (18 files + admin/ subdir)
 ├── middleware/         # 6 middleware modules
-├── lib/               # 15 utility modules
+├── lib/               # 16 utility modules
 ├── validators/        # Zod validation schemas
 ├── utils/             # Common utilities
 ├── db/
-│   └── schema.ts      # Drizzle ORM schema (32 tables, 20 enums, 1472 lines)
+│   └── schema.ts      # Drizzle ORM schema (32 tables, 20 enums, 1518 lines)
 ├── scheduled/
 │   └── index.ts       # CRON job handlers (365 lines)
 ├── durable-objects/
@@ -120,25 +120,26 @@ const result = await db.select().from(users).where(eq(users.id, id));
 | rate-limit.ts       | Rate limiting logic                    |
 | security-headers.ts | HTTP security header injection         |
 
-## LIB UTILITIES (15)
+## LIB UTILITIES (16)
 
-| File                     | Purpose                                 |
-| ------------------------ | --------------------------------------- |
-| response.ts              | `success()`, `error()` response helpers |
-| jwt.ts                   | JWT sign/verify, token management       |
-| crypto.ts (95L)          | HMAC-SHA256, PII hashing (phone, DOB)   |
-| audit.ts (182L)          | Audit trail logging, 47 action types    |
-| notification.ts          | Push notification dispatch              |
-| notification-triggers.ts | Event-driven notification triggers      |
-| push.ts                  | Web Push protocol implementation        |
-| web-push.ts              | Web Push subscription management        |
-| fas-mariadb.ts           | External FAS MariaDB connector          |
-| device-registrations.ts  | Device token management                 |
-| rate-limit.ts            | Rate limiter utilities                  |
-| points-engine.ts         | Point calculation engine                |
-| state-machine.ts         | Workflow state transitions              |
-| aceviewer-parser.ts      | AceViewer data parsing                  |
-| sql-js.d.ts              | sql.js type declarations                |
+| File                     | Purpose                                                                |
+| ------------------------ | ---------------------------------------------------------------------- |
+| response.ts              | `success()`, `error()` response helpers                                |
+| jwt.ts                   | JWT sign/verify, token management                                      |
+| crypto.ts (95L)          | HMAC-SHA256→hex, AES-GCM→`iv:ciphertext:authTag` (base64), PII hashing |
+| audit.ts (182L)          | Audit trail logging, 47 action types                                   |
+| notification.ts          | Push notification dispatch                                             |
+| notification-triggers.ts | Event-driven notification triggers                                     |
+| push.ts                  | Web Push protocol implementation                                       |
+| web-push.ts              | Web Push subscription management                                       |
+| fas-mariadb.ts           | External FAS MariaDB connector                                         |
+| device-registrations.ts  | Device token management                                                |
+| rate-limit.ts            | Rate limiter utilities                                                 |
+| points-engine.ts         | Point calculation engine                                               |
+| state-machine.ts         | Post review: RECEIVED→IN_REVIEW→APPROVED/REJECTED/NEED_INFO            |
+| aceviewer-parser.ts      | AceViewer data parsing                                                 |
+| sql-js.d.ts              | sql.js type declarations                                               |
+| fas-sync.ts              | FAS employee data sync, hash/encrypt PII, upsert to D1                 |
 
 ## VALIDATORS
 

@@ -1,4 +1,4 @@
-import type { TaskStatus } from '../enums';
+import type { ActionStatus } from "../enums";
 
 export interface CreateActionDto {
   postId: string;
@@ -13,7 +13,7 @@ export interface ActionDto {
   assigneeType: string;
   assigneeId: string | null;
   dueDate: string | null;
-  actionStatus: TaskStatus;
+  actionStatus: ActionStatus;
   completionNote: string | null;
   completedAt: string | null;
   createdAt: string;
@@ -31,7 +31,7 @@ export interface ActionImageDto {
 }
 
 export interface UpdateActionStatusDto {
-  actionStatus: TaskStatus;
+  actionStatus: ActionStatus;
   completionNote?: string;
   imageUrls?: string[];
 }

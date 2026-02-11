@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, X, HelpCircle } from "lucide-react";
+import { Check, X, HelpCircle, AlertTriangle } from "lucide-react";
 import { Button, Card, Input } from "@safetywallet/ui";
-import { ReviewAction, RejectReason } from "@safetywallet/types";
+import { ReviewAction, RejectReason, ReviewStatus } from "@safetywallet/types";
 import { useReviewPost } from "@/hooks/use-api";
 
 const rejectReasons: {
@@ -45,12 +45,18 @@ const rejectReasons: {
 
 interface ReviewActionsProps {
   postId: string;
+  currentStatus?: ReviewStatus;
   onComplete?: () => void;
 }
 
-export function ReviewActions({ postId, onComplete }: ReviewActionsProps) {
+export function ReviewActions({
+  postId,
+  currentStatus,
+  onComplete,
+}: ReviewActionsProps) {
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showInfoRequest, setShowInfoRequest] = useState(false);
+  const [showUrgentConfirm, setShowUrgentConfirm] = useState(false);
   const [rejectReason, setRejectReason] = useState<RejectReason | null>(null);
   const [note, setNote] = useState("");
 
@@ -60,6 +66,18 @@ export function ReviewActions({ postId, onComplete }: ReviewActionsProps) {
     reviewMutation.mutate(
       { postId, action: ReviewAction.APPROVE },
       { onSuccess: onComplete },
+    );
+  };
+
+  const handleMarkUrgent = () => {
+    reviewMutation.mutate(
+      { postId, action: ReviewAction.MARK_URGENT },
+      {
+        onSuccess: () => {
+          setShowUrgentConfirm(false);
+          onComplete?.();
+        },
+      },
     );
   };
 
@@ -96,6 +114,33 @@ export function ReviewActions({ postId, onComplete }: ReviewActionsProps) {
       },
     );
   };
+
+  if (showUrgentConfirm) {
+    return (
+      <Card className="p-4 border-red-200 bg-red-50">
+        <h3 className="mb-3 font-medium text-red-800 flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5" />
+          긴급 건으로 지정하시겠습니까?
+        </h3>
+        <p className="mb-4 text-sm text-red-700">
+          이 제보를 긴급 상태로 변경합니다. 즉각적인 조치가 필요한 경우에만
+          사용하세요.
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="destructive"
+            onClick={handleMarkUrgent}
+            disabled={reviewMutation.isPending}
+          >
+            긴급 지정
+          </Button>
+          <Button variant="outline" onClick={() => setShowUrgentConfirm(false)}>
+            취소
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   if (showRejectForm) {
     return (
@@ -200,6 +245,22 @@ export function ReviewActions({ postId, onComplete }: ReviewActionsProps) {
         <HelpCircle size={16} />
         추가 정보 요청
       </Button>
+      {currentStatus &&
+        [
+          ReviewStatus.PENDING,
+          ReviewStatus.IN_REVIEW,
+          ReviewStatus.NEED_INFO,
+        ].includes(currentStatus) && (
+          <Button
+            variant="secondary"
+            onClick={() => setShowUrgentConfirm(true)}
+            disabled={reviewMutation.isPending}
+            className="gap-1 text-red-600 bg-red-100 hover:bg-red-200"
+          >
+            <AlertTriangle size={16} />
+            긴급 지정
+          </Button>
+        )}
     </div>
   );
 }

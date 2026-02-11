@@ -28,7 +28,8 @@ const RejectReason = [
   "IRRELEVANT",
   "OTHER",
 ] as const;
-const TaskStatus = ["OPEN", "IN_PROGRESS", "DONE"] as const;
+const TaskStatus = ["OPEN", "IN_PROGRESS", "DONE"] as const; // @deprecated
+const ActionStatusUpdate = ["ASSIGNED", "IN_PROGRESS", "COMPLETED"] as const;
 const ApprovalStatus = ["PENDING", "APPROVED", "REJECTED"] as const;
 const MembershipStatus = ["PENDING", "ACTIVE", "LEFT", "REMOVED"] as const;
 const EducationContentType = ["VIDEO", "IMAGE", "TEXT", "DOCUMENT"] as const;
@@ -125,7 +126,7 @@ export const CreateActionSchema = z.object({
 });
 
 export const UpdateActionStatusSchema = z.object({
-  actionStatus: z.enum(TaskStatus),
+  actionStatus: z.enum(ActionStatusUpdate),
   completionNote: z.string().optional(),
   imageUrls: z.array(z.string()).optional(),
 });

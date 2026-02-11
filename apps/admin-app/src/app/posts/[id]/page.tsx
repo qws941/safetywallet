@@ -37,19 +37,21 @@ import { ReviewStatus, Category, RiskLevel } from "@safetywallet/types";
 import { useAuthStore } from "@/stores/auth";
 
 const statusLabels: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "접수됨",
+  [ReviewStatus.PENDING]: "접수됨",
   [ReviewStatus.IN_REVIEW]: "검토 중",
   [ReviewStatus.NEED_INFO]: "추가정보 필요",
   [ReviewStatus.APPROVED]: "승인됨",
   [ReviewStatus.REJECTED]: "거절됨",
+  [ReviewStatus.URGENT]: "긴급",
 };
 
 const statusColors: Record<ReviewStatus, string> = {
-  [ReviewStatus.RECEIVED]: "bg-blue-100 text-blue-800",
+  [ReviewStatus.PENDING]: "bg-blue-100 text-blue-800",
   [ReviewStatus.IN_REVIEW]: "bg-yellow-100 text-yellow-800",
   [ReviewStatus.NEED_INFO]: "bg-orange-100 text-orange-800",
   [ReviewStatus.APPROVED]: "bg-green-100 text-green-800",
   [ReviewStatus.REJECTED]: "bg-red-100 text-red-800",
+  [ReviewStatus.URGENT]: "bg-red-200 text-red-800 font-semibold",
 };
 
 const categoryLabels: Record<Category, string> = {
@@ -142,7 +144,7 @@ export default function PostDetailPage() {
   }
 
   const canReview =
-    post.status === ReviewStatus.RECEIVED ||
+    post.status === ReviewStatus.PENDING ||
     post.status === ReviewStatus.IN_REVIEW;
 
   const location = [
@@ -258,7 +260,11 @@ export default function PostDetailPage() {
             {canReview && (
               <div className="border-t pt-6">
                 <h3 className="mb-4 font-medium">검토 액션</h3>
-                <ReviewActions postId={postId} onComplete={() => refetch()} />
+                <ReviewActions
+                  postId={postId}
+                  currentStatus={post.status}
+                  onComplete={() => refetch()}
+                />
               </div>
             )}
           </Card>

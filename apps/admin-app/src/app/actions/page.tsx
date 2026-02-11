@@ -20,37 +20,50 @@ interface ActionItem {
 
 const statusLabels: Record<string, string> = {
   NONE: "없음",
-  REQUIRED: "필요",
   ASSIGNED: "배정됨",
-  IN_PROGRESS: "진행 중",
-  DONE: "완료",
-  REOPENED: "재오픈",
+  IN_PROGRESS: "진행중",
+  COMPLETED: "완료",
+  VERIFIED: "확인됨",
+  OVERDUE: "기한초과",
 };
 
 const statusColors: Record<
   string,
-  "default" | "secondary" | "destructive" | "outline"
+  "default" | "secondary" | "destructive" | "outline" | "success"
 > = {
   NONE: "outline",
-  REQUIRED: "destructive",
   ASSIGNED: "secondary",
   IN_PROGRESS: "default",
-  DONE: "outline",
-  REOPENED: "destructive",
+  COMPLETED: "outline",
+  VERIFIED: "success", // Will need to check if 'success' variant exists or use 'default' with custom class
+  OVERDUE: "destructive",
 };
 
-type FilterStatus = "" | "ASSIGNED" | "IN_PROGRESS" | "DONE" | "REOPENED";
+type FilterStatus =
+  | ""
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "VERIFIED"
+  | "OVERDUE";
 
 const filterTabs: { label: string; value: FilterStatus }[] = [
   { label: "전체", value: "" },
   { label: "배정됨", value: "ASSIGNED" },
   { label: "진행 중", value: "IN_PROGRESS" },
-  { label: "완료", value: "DONE" },
-  { label: "재오픈", value: "REOPENED" },
+  { label: "완료", value: "COMPLETED" },
+  { label: "확인됨", value: "VERIFIED" },
+  { label: "기한초과", value: "OVERDUE" },
 ];
 
 function isOverdue(item: ActionItem): boolean {
-  if (item.status === "DONE") return false;
+  if (
+    item.status === "COMPLETED" ||
+    item.status === "VERIFIED" ||
+    item.status === "NONE"
+  )
+    return false;
+  if (item.status === "OVERDUE") return true;
   if (!item.dueDate) return false;
   return new Date(item.dueDate) < new Date();
 }
@@ -73,7 +86,12 @@ export default function ActionsPage() {
   const inProgressCount = allActions.filter(
     (a) => a.status === "IN_PROGRESS",
   ).length;
-  const completedCount = allActions.filter((a) => a.status === "DONE").length;
+  const completedCount = allActions.filter(
+    (a) => a.status === "COMPLETED",
+  ).length;
+  const verifiedCount = allActions.filter(
+    (a) => a.status === "VERIFIED",
+  ).length;
 
   const columns: Column<ActionItem>[] = [
     {
@@ -99,7 +117,12 @@ export default function ActionsPage() {
           variant={
             isOverdue(item)
               ? "destructive"
-              : statusColors[item.status] || "default"
+              : (statusColors[item.status] as any) || "default"
+          }
+          className={
+            item.status === "VERIFIED"
+              ? "bg-green-100 text-green-800 hover:bg-green-200 border-transparent"
+              : ""
           }
         >
           {isOverdue(item)
@@ -121,7 +144,12 @@ export default function ActionsPage() {
         if (!item.dueDate) return "-";
         const days = getDaysUntilDue(item.dueDate);
         const dateStr = new Date(item.dueDate).toLocaleDateString("ko-KR");
-        if (item.status === "DONE") return dateStr;
+        if (
+          item.status === "COMPLETED" ||
+          item.status === "VERIFIED" ||
+          item.status === "NONE"
+        )
+          return dateStr;
         if (days < 0)
           return (
             <span className="text-red-600 font-medium">
@@ -231,9 +259,10 @@ export default function ActionsPage() {
             {tab.value === "ASSIGNED" &&
               ` (${allActions.filter((a) => a.status === "ASSIGNED").length})`}
             {tab.value === "IN_PROGRESS" && ` (${inProgressCount})`}
-            {tab.value === "DONE" && ` (${completedCount})`}
-            {tab.value === "REOPENED" &&
-              ` (${allActions.filter((a) => a.status === "REOPENED").length})`}
+            {tab.value === "COMPLETED" && ` (${completedCount})`}
+            {tab.value === "VERIFIED" && ` (${verifiedCount})`}
+            {tab.value === "OVERDUE" &&
+              ` (${allActions.filter((a) => a.status === "OVERDUE").length})`}
           </Button>
         ))}
       </div>

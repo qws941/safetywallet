@@ -55,7 +55,7 @@ app.get("/stats", requireAdmin, async (c) => {
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(posts)
-      .where(sql`${posts.reviewStatus} IN ('RECEIVED', 'IN_REVIEW')`)
+      .where(sql`${posts.reviewStatus} IN ('PENDING', 'IN_REVIEW')`)
       .get(),
     db
       .select({ count: sql<number>`COUNT(*)` })

@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-02-10  
-**Branch:** master
+**Branch:** main
 
 ## OVERVIEW
 
@@ -18,7 +18,7 @@ safework2/
 ├── packages/
 │   ├── types/            # Shared TypeScript types, 15 enums, 10 DTOs
 │   └── ui/               # shadcn/ui component library (13 components)
-├── e2e/                  # Playwright smoke tests (3 specs)
+├── e2e/                  # Playwright e2e tests (4 projects, 1064 lines)
 ├── scripts/              # Build/deploy helper scripts (5 files)
 ├── docker/               # Development Docker Compose
 ├── docs/                 # PRD, implementation plans, status docs
@@ -39,7 +39,7 @@ safework2/
 | Add middleware        | `apps/api-worker/src/middleware/`  | 6 files, manual invocation      |
 | Add validation schema | `apps/api-worker/src/validators/`  | Zod schemas                     |
 | Add CRON job          | `apps/api-worker/src/scheduled/`   | Separate module, KST timezone   |
-| Add/run e2e tests     | `e2e/`                             | Playwright, 3 smoke specs       |
+| Add/run e2e tests     | `e2e/`                             | Playwright, 4 projects          |
 
 ## CODE MAP
 
@@ -190,8 +190,8 @@ docker compose -f docker/docker-compose.yml up -d
 
 - **5 AM KST cutoff**: All "today" logic uses Korea timezone with 5 AM as day boundary
 - **Package manager**: npm (declared in package.json)
-- **E2E tests only**: 3 Playwright smoke specs in `e2e/`, no unit/integration tests
-- **Static export**: Both Next.js apps use `output: 'export'` — no SSR
+- **E2E tests only**: 4 Playwright projects (api, worker-app, admin-app, cross-app), no unit tests
+- **Static export**: worker-app uses `output: 'export'`; admin-app uses `@cloudflare/next-on-pages` (no explicit `output: 'export'`)
 - **@cloudflare/next-on-pages**: Adapter for CF Pages deployment
 - **Enum sync**: 15 enums in `packages/types` MUST match Drizzle schema enums (5 additional enums are schema-only)
 - **FAS integration**: Foreign Attendance System via Hyperdrive (MariaDB proxy), 5-min CRON sync
@@ -199,3 +199,5 @@ docker compose -f docker/docker-compose.yml up -d
 - **Korean localization**: Worker-app UI fully Korean, 5 AM KST day boundary
 - **CORS origins**: safework2.jclee.me, admin.safework2.jclee.me, localhost:3000/3001
 - **Vestigial file**: `pnpm-workspace.yaml` exists but npm is used (not pnpm)
+- **State machine**: Post review workflow `RECEIVED→IN_REVIEW→APPROVED/REJECTED/NEED_INFO`
+- **Crypto formats**: HMAC-SHA256→hex string, AES-GCM→`iv:ciphertext:authTag` (base64)

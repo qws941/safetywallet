@@ -1,19 +1,20 @@
 // Review status values (matches schema reviewStatusEnum)
 type ReviewStatus =
-  | "RECEIVED"
+  | "PENDING"
   | "IN_REVIEW"
   | "NEED_INFO"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "URGENT";
 
 // Action status values (matches schema actionStatusEnum)
 type ActionStatus =
   | "NONE"
-  | "REQUIRED"
   | "ASSIGNED"
   | "IN_PROGRESS"
-  | "DONE"
-  | "REOPENED";
+  | "COMPLETED"
+  | "VERIFIED"
+  | "OVERDUE";
 
 // Review action values (matches schema reviewActionEnum)
 type ReviewAction =
@@ -35,12 +36,12 @@ export interface TransitionResult {
 }
 
 const REVIEW_TRANSITIONS: Record<ReviewAction, readonly ReviewStatus[]> = {
-  APPROVE: ["RECEIVED", "IN_REVIEW", "NEED_INFO"],
-  REJECT: ["RECEIVED", "IN_REVIEW", "NEED_INFO"],
-  REQUEST_MORE: ["RECEIVED", "IN_REVIEW"],
-  MARK_URGENT: ["RECEIVED", "IN_REVIEW", "NEED_INFO"],
-  ASSIGN: ["RECEIVED", "IN_REVIEW", "APPROVED"],
-  CLOSE: ["IN_REVIEW", "APPROVED"],
+  APPROVE: ["PENDING", "IN_REVIEW", "NEED_INFO"],
+  REJECT: ["PENDING", "IN_REVIEW", "NEED_INFO"],
+  REQUEST_MORE: ["PENDING", "IN_REVIEW"],
+  MARK_URGENT: ["PENDING", "IN_REVIEW", "NEED_INFO"],
+  ASSIGN: ["PENDING", "IN_REVIEW", "APPROVED"],
+  CLOSE: ["IN_REVIEW", "APPROVED", "URGENT"],
 };
 
 type ActionTransitionType = "ASSIGN" | "START" | "COMPLETE" | "REOPEN";
@@ -49,10 +50,10 @@ const ACTION_TRANSITIONS: Record<
   ActionTransitionType,
   readonly ActionStatus[]
 > = {
-  ASSIGN: ["NONE", "REQUIRED", "REOPENED"],
-  START: ["ASSIGNED", "REOPENED"],
+  ASSIGN: ["NONE", "OVERDUE"],
+  START: ["ASSIGNED"],
   COMPLETE: ["IN_PROGRESS"],
-  REOPEN: ["DONE"],
+  REOPEN: ["VERIFIED"],
 };
 
 const ADMIN_ONLY_ACTIONS: readonly ReviewAction[] = [
@@ -117,8 +118,8 @@ export function validateActionTransition(
   const statusMap: Record<ActionTransitionType, ActionStatus> = {
     ASSIGN: "ASSIGNED",
     START: "IN_PROGRESS",
-    COMPLETE: "DONE",
-    REOPEN: "REOPENED",
+    COMPLETE: "COMPLETED",
+    REOPEN: "IN_PROGRESS",
   };
 
   return {
@@ -135,14 +136,15 @@ function determineNewStatuses(
     case "APPROVE":
       return {
         newReviewStatus: "APPROVED",
-        newActionStatus: currentActionStatus === "NONE" ? "DONE" : undefined,
+        newActionStatus:
+          currentActionStatus === "NONE" ? "COMPLETED" : undefined,
       };
     case "REJECT":
       return { newReviewStatus: "REJECTED" };
     case "REQUEST_MORE":
       return { newReviewStatus: "NEED_INFO" };
     case "MARK_URGENT":
-      return { newReviewStatus: "IN_REVIEW" };
+      return { newReviewStatus: "URGENT" };
     case "ASSIGN":
       return {
         newReviewStatus: "IN_REVIEW",
@@ -151,7 +153,7 @@ function determineNewStatuses(
     case "CLOSE":
       return {
         newReviewStatus: "APPROVED",
-        newActionStatus: "DONE",
+        newActionStatus: "VERIFIED",
       };
     default:
       return { newReviewStatus: "IN_REVIEW" };
@@ -169,5 +171,5 @@ export function isTerminalReviewStatus(status: ReviewStatus): boolean {
 }
 
 export function isTerminalActionStatus(status: ActionStatus): boolean {
-  return status === "DONE";
+  return status === "VERIFIED" || status === "OVERDUE";
 }
