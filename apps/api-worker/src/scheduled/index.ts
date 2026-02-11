@@ -24,6 +24,10 @@ import {
 } from "../lib/fas-sync";
 import { hmac } from "../lib/crypto";
 import { maskName } from "../utils/common";
+import { createLogger } from "../lib/logger";
+import { CROSS_MATCH_CRON_BATCH } from "../lib/constants";
+
+const log = createLogger("scheduled");
 
 function getKSTDate(): Date {
   const now = new Date();
@@ -91,7 +95,7 @@ async function runMonthEndSnapshot(env: Env): Promise<void> {
   const { start, end } = getMonthRange(kstNow);
   const settleMonth = formatSettleMonth(kstNow);
 
-  console.log(`Running month-end snapshot for ${kstNow.toISOString()}`);
+  log.info("Running month-end snapshot", { kstNow: kstNow.toISOString() });
 
   const systemUserId = await getOrCreateSystemUser(db);
 
@@ -148,7 +152,7 @@ async function runMonthEndSnapshot(env: Env): Promise<void> {
     ip: "SYSTEM",
   });
 
-  console.log(`Snapshot complete: ${snapshotCount} records created`);
+  log.info("Snapshot complete", { snapshotCount });
 }
 
 async function runDataRetention(env: Env): Promise<void> {
@@ -157,9 +161,9 @@ async function runDataRetention(env: Env): Promise<void> {
   const THREE_YEARS_MS = 3 * 365 * 24 * 60 * 60 * 1000;
   const cutoffDate = new Date(kstNow.getTime() - THREE_YEARS_MS);
 
-  console.log(
-    `Running data retention cleanup, cutoff: ${cutoffDate.toISOString()}`,
-  );
+  log.info("Running data retention cleanup", {
+    cutoff: cutoffDate.toISOString(),
+  });
 
   const systemUserId = await getOrCreateSystemUser(db);
 
@@ -168,7 +172,7 @@ async function runDataRetention(env: Env): Promise<void> {
     .where(lt(auditLogs.createdAt, cutoffDate))
     .returning({ id: auditLogs.id });
 
-  console.log(`Deleted ${deletedAuditLogs.length} audit log entries`);
+  log.info("Deleted audit log entries", { count: deletedAuditLogs.length });
 
   await db.insert(auditLogs).values({
     actorId: systemUserId,
@@ -185,7 +189,7 @@ async function runDataRetention(env: Env): Promise<void> {
 
 async function runFasSyncIncremental(env: Env): Promise<void> {
   if (!env.FAS_HYPERDRIVE) {
-    console.log("FAS_HYPERDRIVE not configured, skipping sync");
+    log.info("FAS_HYPERDRIVE not configured, skipping sync");
     return;
   }
 
@@ -193,13 +197,13 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
   const kstNow = getKSTDate();
   const fiveMinutesAgo = new Date(kstNow.getTime() - 5 * 60 * 1000);
 
-  console.log(
-    `Running FAS incremental sync, since: ${fiveMinutesAgo.toISOString()}`,
-  );
+  log.info("Running FAS incremental sync", {
+    since: fiveMinutesAgo.toISOString(),
+  });
 
   const isConnected = await testFasConnection(env.FAS_HYPERDRIVE);
   if (!isConnected) {
-    console.error("FAS MariaDB connection failed");
+    log.error("FAS MariaDB connection failed");
     if (env.KV) {
       await env.KV.put("fas-status", "down", { expirationTtl: 600 });
     }
@@ -211,7 +215,7 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
       fasGetUpdatedEmployees(env.FAS_HYPERDRIVE!, fiveMinutesAgo.toISOString()),
     );
 
-    console.log(`Found ${updatedEmployees.length} updated employees`);
+    log.info("Found updated employees", { count: updatedEmployees.length });
 
     if (updatedEmployees.length === 0) return;
 
@@ -230,9 +234,12 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
       deactivatedCount = await deactivateRetiredEmployees(retiredEmplCds, db);
     }
 
-    console.log(
-      `FAS sync complete: created=${syncResult.created}, updated=${syncResult.updated}, skipped=${syncResult.skipped}, deactivated=${deactivatedCount}`,
-    );
+    log.info("FAS sync complete", {
+      created: syncResult.created,
+      updated: syncResult.updated,
+      skipped: syncResult.skipped,
+      deactivated: deactivatedCount,
+    });
 
     await db.insert(auditLogs).values({
       actorId: "SYSTEM",
@@ -260,7 +267,10 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
         ? err.code
         : "UNKNOWN";
 
-    console.error("FAS incremental sync failed:", err);
+    log.error("FAS incremental sync failed", {
+      error: errorMessage,
+      code: errorCode,
+    });
 
     try {
       await env.KV.put("fas-status", "down", { expirationTtl: 600 });
@@ -318,20 +328,24 @@ async function runOverdueActionCheck(env: Env): Promise<void> {
           updatedAt: now,
         })
         .where(eq(posts.id, action.postId));
-      
+
       // Log audit trail for overdue action
       await db.insert(auditLogs).values({
         actorId: "SYSTEM",
         action: "ACTION_STATUS_CHANGE",
         targetType: "ACTION",
         targetId: action.id,
-        reason: JSON.stringify({ from: "IN_PROGRESS", to: "OVERDUE", cause: "automated_overdue_check" }),
+        reason: JSON.stringify({
+          from: "IN_PROGRESS",
+          to: "OVERDUE",
+          cause: "automated_overdue_check",
+        }),
         createdAt: now,
       });
     }
   }
 
-  console.log(`Overdue action check: ${overdueActions.length} actions marked`);
+  log.info("Overdue action check complete", { count: overdueActions.length });
 }
 
 async function runPiiLifecycleCleanup(env: Env): Promise<void> {
@@ -370,18 +384,13 @@ async function runPiiLifecycleCleanup(env: Env): Promise<void> {
   }
 
   if (usersToHardDelete.length > 0) {
-    console.log(
-      `PII lifecycle: ${usersToHardDelete.length} users hard-deleted`,
-    );
+    log.info("PII lifecycle cleanup", {
+      usersHardDeleted: usersToHardDelete.length,
+    });
   }
 
-  const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-  const deletedLogs = await db
-    .delete(auditLogs)
-    .where(lt(auditLogs.createdAt, oneYearAgo));
-  console.log(
-    `PII lifecycle: old audit logs cleaned (${deletedLogs.meta?.changes ?? 0} rows)`,
-  );
+  // Audit log cleanup is handled by runDataRetention (3-year retention, weekly Sunday 3AM).
+  // Removed duplicate 1-year daily cleanup here to prevent conflict. See #43.
 }
 
 async function publishScheduledAnnouncements(env: Env): Promise<void> {
@@ -400,7 +409,7 @@ async function publishScheduledAnnouncements(env: Env): Promise<void> {
 
   const count = result.meta?.changes ?? 0;
   if (count > 0) {
-    console.log(`Announcements: published ${count} scheduled announcement(s)`);
+    log.info("Published scheduled announcements", { count });
   }
 }
 
@@ -409,13 +418,13 @@ async function publishScheduledAnnouncements(env: Env): Promise<void> {
 // Does NOT handle PII (phone/dob encryption) — that's runFasSyncIncremental's job.
 async function runAcetimeSyncFromR2(env: Env): Promise<void> {
   if (!env.ACETIME_BUCKET) {
-    console.log("ACETIME_BUCKET not configured, skipping R2 sync");
+    log.info("ACETIME_BUCKET not configured, skipping R2 sync");
     return;
   }
 
   const object = await env.ACETIME_BUCKET.get("aceviewer-employees.json");
   if (!object) {
-    console.log("aceviewer-employees.json not found in R2, skipping");
+    log.info("aceviewer-employees.json not found in R2, skipping");
     return;
   }
 
@@ -481,7 +490,11 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
         role: "WORKER",
       });
       created++;
-    } catch {
+    } catch (err) {
+      log.error("Failed to insert employee", {
+        externalWorkerId: e.externalWorkerId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       skipped++;
     }
   }
@@ -504,7 +517,11 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
         })
         .where(eq(users.id, userId));
       updated++;
-    } catch {
+    } catch (err) {
+      log.error("Failed to update employee", {
+        externalWorkerId: e.externalWorkerId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       skipped++;
     }
   }
@@ -529,7 +546,7 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
       );
 
     // Batch limit to stay within CF Workers CPU time
-    const batch = placeholderUsers.slice(0, 10);
+    const batch = placeholderUsers.slice(0, CROSS_MATCH_CRON_BATCH);
 
     for (const pu of batch) {
       if (!pu.externalWorkerId) {
@@ -550,15 +567,24 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
         } else {
           fasCrossSkipped++;
         }
-      } catch {
+      } catch (err) {
+        log.error("FAS cross-match failed", {
+          externalWorkerId: pu.externalWorkerId,
+          error: err instanceof Error ? err.message : String(err),
+        });
         fasCrossSkipped++;
       }
     }
   }
 
-  console.log(
-    `AceTime R2 sync complete: total=${aceViewerEmployees.length}, created=${created}, updated=${updated}, skipped=${skipped}, fasCrossMatched=${fasCrossMatched}, fasCrossSkipped=${fasCrossSkipped}`,
-  );
+  log.info("AceTime R2 sync complete", {
+    total: aceViewerEmployees.length,
+    created,
+    updated,
+    skipped,
+    fasCrossMatched,
+    fasCrossSkipped,
+  });
 }
 
 export async function scheduled(
@@ -566,7 +592,7 @@ export async function scheduled(
   env: Env,
 ): Promise<void> {
   const trigger = controller.cron;
-  console.log(`Scheduled trigger: ${trigger}`);
+  log.info("Scheduled trigger", { trigger });
 
   try {
     if (trigger.startsWith("*/5 ") || trigger === "*/5 * * * *") {
@@ -589,7 +615,9 @@ export async function scheduled(
       await runPiiLifecycleCleanup(env);
     }
   } catch (error) {
-    console.error("Scheduled task error:", error);
+    log.error("Scheduled task error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }

@@ -111,6 +111,7 @@ attendanceRoute.post(
             .insert(attendance)
             .values({
               siteId: event.siteId as string,
+              userId: userResults[0].id,
               externalWorkerId: event.fasUserId,
               result: "SUCCESS",
               source: "FAS",

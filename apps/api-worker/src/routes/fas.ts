@@ -13,10 +13,12 @@ import { AdminSyncWorkersSchema } from "../validators/schemas";
 
 const app = new Hono<{ Bindings: Env }>();
 
-app.use("*", fasAuthMiddleware);
+// Manual fasAuthMiddleware invocation per project convention (see AGENTS.md).
+// Previously used app.use("*", fasAuthMiddleware) which violates the pattern. See #46.
 
 app.post(
   "/workers/sync",
+  fasAuthMiddleware,
   zValidator("json", AdminSyncWorkersSchema),
   async (c) => {
     const db = drizzle(c.env.DB);

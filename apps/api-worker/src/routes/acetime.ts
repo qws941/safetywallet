@@ -5,10 +5,17 @@ import { users } from "../db/schema";
 import { hmac } from "../lib/crypto";
 import { fasGetEmployeeInfo } from "../lib/fas-mariadb";
 import { syncSingleFasEmployee } from "../lib/fas-sync";
+import {
+  CROSS_MATCH_DEFAULT_BATCH,
+  CROSS_MATCH_MAX_BATCH,
+} from "../lib/constants";
+import { createLogger } from "../lib/logger";
 import { error, success } from "../lib/response";
 import { authMiddleware } from "../middleware/auth";
 import type { AuthContext, Env } from "../types";
 import { maskName } from "../utils/common";
+
+const log = createLogger("acetime");
 
 const app = new Hono<{
   Bindings: Env;
@@ -153,10 +160,11 @@ app.post("/sync-db", async (c) => {
         });
         created++;
       } catch (insertErr) {
-        console.error(
-          `[sync-db] Failed to insert worker ${e.externalWorkerId}:`,
-          insertErr instanceof Error ? insertErr.message : insertErr,
-        );
+        log.error("Failed to insert worker", {
+          externalWorkerId: e.externalWorkerId,
+          error:
+            insertErr instanceof Error ? insertErr.message : String(insertErr),
+        });
         skipped++;
       }
     }
@@ -180,10 +188,11 @@ app.post("/sync-db", async (c) => {
           .where(eq(users.id, userId));
         updated++;
       } catch (updateErr) {
-        console.error(
-          `[sync-db] Failed to update worker ${e.externalWorkerId}:`,
-          updateErr instanceof Error ? updateErr.message : updateErr,
-        );
+        log.error("Failed to update worker", {
+          externalWorkerId: e.externalWorkerId,
+          error:
+            updateErr instanceof Error ? updateErr.message : String(updateErr),
+        });
         skipped++;
       }
     }
@@ -216,7 +225,12 @@ app.post("/sync-db", async (c) => {
           ENCRYPTION_KEY: c.env.ENCRYPTION_KEY,
         };
 
-        for (const pu of placeholderUsers) {
+        // Limit cross-match batch to avoid CF Workers CPU timeout (30s) — #44
+        const crossMatchBatch = placeholderUsers.slice(
+          0,
+          CROSS_MATCH_DEFAULT_BATCH,
+        );
+        for (const pu of crossMatchBatch) {
           if (!pu.externalWorkerId) {
             fasCrossSkipped++;
             continue;
@@ -233,10 +247,11 @@ app.post("/sync-db", async (c) => {
               fasCrossSkipped++;
             }
           } catch (crossErr) {
-            console.error(
-              `[sync-db] FAS cross-match failed for ${pu.externalWorkerId}:`,
-              crossErr instanceof Error ? crossErr.message : crossErr,
-            );
+            log.error("FAS cross-match failed in sync-db", {
+              externalWorkerId: pu.externalWorkerId,
+              error:
+                crossErr instanceof Error ? crossErr.message : String(crossErr),
+            });
             fasCrossErrors++;
           }
         }
@@ -285,7 +300,10 @@ app.post("/fas-cross-match", async (c) => {
       );
     }
 
-    const limit = Math.min(Number(c.req.query("limit")) || 50, 200);
+    const limit = Math.min(
+      Number(c.req.query("limit")) || CROSS_MATCH_DEFAULT_BATCH,
+      CROSS_MATCH_MAX_BATCH,
+    );
 
     const db = drizzle(c.env.DB);
 
@@ -332,10 +350,11 @@ app.post("/fas-cross-match", async (c) => {
             skipped++;
           }
         } catch (crossErr) {
-          console.error(
-            `[fas-cross-match] Failed for ${pu.externalWorkerId}:`,
-            crossErr instanceof Error ? crossErr.message : crossErr,
-          );
+          log.error("FAS cross-match failed", {
+            externalWorkerId: pu.externalWorkerId,
+            error:
+              crossErr instanceof Error ? crossErr.message : String(crossErr),
+          });
           errors++;
         }
       }
