@@ -57,10 +57,6 @@ export default function HomePage() {
 
   const recentPosts = postsData?.data?.slice(0, 3) || [];
   const pointsBalance = pointsData?.data?.balance || 0;
-  const lastMonthBalance = (pointsData?.data as Record<string, unknown>)
-    ?.lastMonthBalance as number | undefined;
-  const pointsDelta =
-    lastMonthBalance != null ? pointsBalance - lastMonthBalance : null;
   const myRank = leaderboardData?.myRank || null;
   const totalParticipants = leaderboardData?.leaderboard?.length || 0;
 
@@ -122,10 +118,7 @@ export default function HomePage() {
           {pointsLoading ? (
             <Skeleton className="h-full w-full" />
           ) : (
-            <PointsCard
-              balance={pointsBalance}
-              delta={pointsDelta ?? undefined}
-            />
+            <PointsCard balance={pointsBalance} />
           )}
 
           <RankingCard
