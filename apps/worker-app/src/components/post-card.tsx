@@ -56,7 +56,7 @@ interface PostCardProps {
 
 export function PostCard({ post }: PostCardProps) {
   return (
-    <Link href={`/posts/${post.id}`}>
+    <Link href={`/posts/view?id=${post.id}`}>
       <Card className="mb-3 hover:shadow-md transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">

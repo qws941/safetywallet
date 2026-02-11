@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, lt, sql } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
@@ -261,14 +261,51 @@ app.get("/me", async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
-  const myPosts = await db
-    .select()
+  const siteId = c.req.query("siteId");
+  const reviewStatus = c.req.query("reviewStatus");
+  const cursor = c.req.query("cursor");
+  const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
+
+  const conditions = [eq(posts.userId, user.id)];
+  if (siteId) conditions.push(eq(posts.siteId, siteId));
+  if (reviewStatus)
+    conditions.push(sql`${posts.reviewStatus} = ${reviewStatus}`);
+  if (cursor) conditions.push(lt(posts.createdAt, new Date(Number(cursor))));
+
+  const imageCountSq = db
+    .select({
+      postId: postImages.postId,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(postImages)
+    .groupBy(postImages.postId)
+    .as("img_count");
+
+  const results = await db
+    .select({
+      id: posts.id,
+      category: posts.category,
+      content: posts.content,
+      reviewStatus: posts.reviewStatus,
+      actionStatus: posts.actionStatus,
+      isUrgent: posts.isUrgent,
+      createdAt: posts.createdAt,
+      imageCount: sql<number>`coalesce(${imageCountSq.count}, 0)`,
+    })
     .from(posts)
-    .where(eq(posts.userId, user.id))
+    .leftJoin(imageCountSq, eq(posts.id, imageCountSq.postId))
+    .where(and(...conditions))
     .orderBy(desc(posts.createdAt))
+    .limit(limit + 1)
     .all();
 
-  return success(c, { posts: myPosts });
+  const hasMore = results.length > limit;
+  const items = hasMore ? results.slice(0, limit) : results;
+  const nextCursor = hasMore
+    ? String(items[items.length - 1].createdAt)
+    : undefined;
+
+  return success(c, { items, nextCursor });
 });
 
 app.get("/:id", async (c) => {
