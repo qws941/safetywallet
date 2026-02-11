@@ -12,6 +12,7 @@ import {
   posts,
   announcements,
 } from "../db/schema";
+import { dbBatchChunked } from "../db/helpers";
 import {
   fasGetUpdatedEmployees,
   fasGetEmployeeInfo,
@@ -25,6 +26,7 @@ import {
 import { hmac } from "../lib/crypto";
 import { maskName } from "../utils/common";
 import { createLogger } from "../lib/logger";
+import { acquireSyncLock, releaseSyncLock } from "../lib/sync-lock";
 import { CROSS_MATCH_CRON_BATCH } from "../lib/constants";
 
 const log = createLogger("scheduled");
@@ -108,7 +110,12 @@ async function runMonthEndSnapshot(env: Env): Promise<void> {
     .where(eq(siteMemberships.status, "ACTIVE"))
     .all();
 
-  let snapshotCount = 0;
+  const balances: Array<{
+    userId: string;
+    siteId: string;
+    balance: number;
+  }> = [];
+
   for (const membership of memberships) {
     const result = await db
       .select({
@@ -127,32 +134,45 @@ async function runMonthEndSnapshot(env: Env): Promise<void> {
 
     const monthlyBalance = result?.balance || 0;
     if (monthlyBalance !== 0) {
-      await db.insert(pointsLedger).values({
+      balances.push({
         userId: membership.userId,
         siteId: membership.siteId,
-        amount: 0,
-        reasonCode: "MONTHLY_SNAPSHOT",
-        reasonText: `월간 정산 스냅샷 - ${kstNow.getFullYear()}년 ${kstNow.getMonth() + 1}월 (잔액: ${monthlyBalance})`,
-        settleMonth,
+        balance: monthlyBalance,
       });
-      snapshotCount++;
     }
   }
 
-  await db.insert(auditLogs).values({
-    actorId: systemUserId,
-    action: "MONTH_END_SNAPSHOT",
-    targetType: "POINTS",
-    targetId: settleMonth,
-    reason: JSON.stringify({
-      period: settleMonth,
-      membershipCount: memberships.length,
-      snapshotCount,
-    }),
-    ip: "SYSTEM",
-  });
+  if (balances.length > 0) {
+    const ops: Promise<unknown>[] = balances.map((b) =>
+      db.insert(pointsLedger).values({
+        userId: b.userId,
+        siteId: b.siteId,
+        amount: 0,
+        reasonCode: "MONTHLY_SNAPSHOT",
+        reasonText: `월간 정산 스냅샷 - ${kstNow.getFullYear()}년 ${kstNow.getMonth() + 1}월 (잔액: ${b.balance})`,
+        settleMonth,
+      }),
+    );
 
-  log.info("Snapshot complete", { snapshotCount });
+    ops.push(
+      db.insert(auditLogs).values({
+        actorId: systemUserId,
+        action: "MONTH_END_SNAPSHOT",
+        targetType: "POINTS",
+        targetId: settleMonth,
+        reason: JSON.stringify({
+          period: settleMonth,
+          membershipCount: memberships.length,
+          snapshotCount: balances.length,
+        }),
+        ip: "SYSTEM",
+      }),
+    );
+
+    await dbBatchChunked(db, ops);
+  }
+
+  log.info("Snapshot complete", { snapshotCount: balances.length });
 }
 
 async function runDataRetention(env: Env): Promise<void> {
@@ -193,6 +213,12 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
     return;
   }
 
+  const locked = await acquireSyncLock(env.KV, "fas", 240);
+  if (!locked) {
+    log.info("FAS sync already in progress, skipping");
+    return;
+  }
+
   const db = drizzle(env.DB);
   const kstNow = getKSTDate();
   const fiveMinutesAgo = new Date(kstNow.getTime() - 5 * 60 * 1000);
@@ -204,6 +230,7 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
   const isConnected = await testFasConnection(env.FAS_HYPERDRIVE);
   if (!isConnected) {
     log.error("FAS MariaDB connection failed");
+    await releaseSyncLock(env.KV, "fas");
     if (env.KV) {
       await env.KV.put("fas-status", "down", { expirationTtl: 600 });
     }
@@ -295,6 +322,8 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
     });
 
     throw err;
+  } finally {
+    await releaseSyncLock(env.KV, "fas");
   }
 }
 
@@ -314,36 +343,42 @@ async function runOverdueActionCheck(env: Env): Promise<void> {
 
   if (overdueActions.length === 0) return;
 
+  const ops: Promise<unknown>[] = [];
+
   for (const action of overdueActions) {
-    await db
-      .update(actions)
-      .set({ actionStatus: "OVERDUE" })
-      .where(eq(actions.id, action.id));
+    ops.push(
+      db
+        .update(actions)
+        .set({ actionStatus: "OVERDUE" })
+        .where(eq(actions.id, action.id)),
+    );
 
     if (action.postId) {
-      await db
-        .update(posts)
-        .set({
-          actionStatus: "OVERDUE",
-          updatedAt: now,
-        })
-        .where(eq(posts.id, action.postId));
+      ops.push(
+        db
+          .update(posts)
+          .set({ actionStatus: "OVERDUE", updatedAt: now })
+          .where(eq(posts.id, action.postId)),
+      );
 
-      // Log audit trail for overdue action
-      await db.insert(auditLogs).values({
-        actorId: "SYSTEM",
-        action: "ACTION_STATUS_CHANGE",
-        targetType: "ACTION",
-        targetId: action.id,
-        reason: JSON.stringify({
-          from: "IN_PROGRESS",
-          to: "OVERDUE",
-          cause: "automated_overdue_check",
+      ops.push(
+        db.insert(auditLogs).values({
+          actorId: "SYSTEM",
+          action: "ACTION_STATUS_CHANGE",
+          targetType: "ACTION",
+          targetId: action.id,
+          reason: JSON.stringify({
+            from: "IN_PROGRESS",
+            to: "OVERDUE",
+            cause: "automated_overdue_check",
+          }),
+          createdAt: now,
         }),
-        createdAt: now,
-      });
+      );
     }
   }
+
+  await dbBatchChunked(db, ops);
 
   log.info("Overdue action check complete", { count: overdueActions.length });
 }
@@ -364,8 +399,10 @@ async function runPiiLifecycleCleanup(env: Env): Promise<void> {
       ),
     );
 
-  for (const user of usersToHardDelete) {
-    await db
+  if (usersToHardDelete.length === 0) return;
+
+  const ops = usersToHardDelete.map((user) =>
+    db
       .update(users)
       .set({
         phone: "",
@@ -380,17 +417,14 @@ async function runPiiLifecycleCleanup(env: Env): Promise<void> {
         deletedAt: now,
         updatedAt: now,
       })
-      .where(eq(users.id, user.id));
-  }
+      .where(eq(users.id, user.id)),
+  );
 
-  if (usersToHardDelete.length > 0) {
-    log.info("PII lifecycle cleanup", {
-      usersHardDeleted: usersToHardDelete.length,
-    });
-  }
+  await dbBatchChunked(db, ops);
 
-  // Audit log cleanup is handled by runDataRetention (3-year retention, weekly Sunday 3AM).
-  // Removed duplicate 1-year daily cleanup here to prevent conflict. See #43.
+  log.info("PII lifecycle cleanup", {
+    usersHardDeleted: usersToHardDelete.length,
+  });
 }
 
 async function publishScheduledAnnouncements(env: Env): Promise<void> {
@@ -422,169 +456,195 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
     return;
   }
 
-  const object = await env.ACETIME_BUCKET.get("aceviewer-employees.json");
-  if (!object) {
-    log.info("aceviewer-employees.json not found in R2, skipping");
+  const locked = await acquireSyncLock(env.KV, "acetime", 240);
+  if (!locked) {
+    log.info("AceTime sync already in progress, skipping");
     return;
   }
 
-  const data = (await object.json()) as {
-    employees: Array<{
-      externalWorkerId: string;
-      name: string;
-      companyName: string | null;
-      position: string | null;
-      trade: string | null;
-      lastSeen: string | null;
-    }>;
-    total: number;
-  };
-  const aceViewerEmployees = data.employees;
-
-  const db = drizzle(env.DB);
-
-  const existingUsers = await db
-    .select({
-      id: users.id,
-      externalWorkerId: users.externalWorkerId,
-    })
-    .from(users)
-    .where(eq(users.externalSystem, "FAS"));
-
-  const existingMap = new Map(
-    existingUsers.map((u) => [u.externalWorkerId, u.id]),
-  );
-
-  const newEmployees = aceViewerEmployees.filter(
-    (e) => !existingMap.has(e.externalWorkerId),
-  );
-  const updateEmployees = aceViewerEmployees.filter((e) =>
-    existingMap.has(e.externalWorkerId),
-  );
-
-  const hashMap = new Map<string, string>();
-  await Promise.all(
-    newEmployees.map(async (e) => {
-      const h = await hmac(env.HMAC_SECRET, `acetime-${e.externalWorkerId}`);
-      hashMap.set(e.externalWorkerId, h);
-    }),
-  );
-
-  let created = 0;
-  let updated = 0;
-  let skipped = 0;
-
-  for (const e of newEmployees) {
-    const phoneHash = hashMap.get(e.externalWorkerId) || "";
-    try {
-      await db.insert(users).values({
-        id: crypto.randomUUID(),
-        externalSystem: "FAS",
-        externalWorkerId: e.externalWorkerId,
-        name: e.name,
-        nameMasked: maskName(e.name),
-        phone: "",
-        phoneHash: phoneHash,
-        companyName: e.companyName,
-        tradeType: e.trade,
-        role: "WORKER",
-      });
-      created++;
-    } catch (err) {
-      log.error("Failed to insert employee", {
-        externalWorkerId: e.externalWorkerId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      skipped++;
+  try {
+    const object = await env.ACETIME_BUCKET.get("aceviewer-employees.json");
+    if (!object) {
+      log.info("aceviewer-employees.json not found in R2, skipping");
+      return;
     }
-  }
 
-  for (const e of updateEmployees) {
-    const userId = existingMap.get(e.externalWorkerId);
-    if (!userId) {
-      skipped++;
-      continue;
-    }
-    try {
-      await db
-        .update(users)
-        .set({
-          name: e.name,
-          nameMasked: maskName(e.name),
-          companyName: e.companyName,
-          tradeType: e.trade,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
-      updated++;
-    } catch (err) {
-      log.error("Failed to update employee", {
-        externalWorkerId: e.externalWorkerId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      skipped++;
-    }
-  }
+    const data = (await object.json()) as {
+      employees: Array<{
+        externalWorkerId: string;
+        name: string;
+        companyName: string | null;
+        position: string | null;
+        trade: string | null;
+        lastSeen: string | null;
+      }>;
+      total: number;
+    };
+    const aceViewerEmployees = data.employees;
 
-  // Step 3: Cross-match placeholder users with FAS MariaDB to fill in phone/dob
-  let fasCrossMatched = 0;
-  let fasCrossSkipped = 0;
+    const db = drizzle(env.DB);
 
-  if (env.FAS_HYPERDRIVE) {
-    const placeholderUsers = await db
+    const existingUsers = await db
       .select({
         id: users.id,
         externalWorkerId: users.externalWorkerId,
-        phoneHash: users.phoneHash,
       })
       .from(users)
-      .where(
-        and(
-          eq(users.externalSystem, "FAS"),
-          like(users.phoneHash, "acetime-%"),
-        ),
+      .where(eq(users.externalSystem, "FAS"));
+
+    const existingMap = new Map(
+      existingUsers.map((u) => [u.externalWorkerId, u.id]),
+    );
+
+    const newEmployees = aceViewerEmployees.filter(
+      (e) => !existingMap.has(e.externalWorkerId),
+    );
+    const updateEmployees = aceViewerEmployees.filter((e) =>
+      existingMap.has(e.externalWorkerId),
+    );
+
+    const hashMap = new Map<string, string>();
+    await Promise.all(
+      newEmployees.map(async (e) => {
+        const h = await hmac(env.HMAC_SECRET, `acetime-${e.externalWorkerId}`);
+        hashMap.set(e.externalWorkerId, h);
+      }),
+    );
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    // Batch inserts for new employees
+    const insertOps: Promise<unknown>[] = [];
+    for (const e of newEmployees) {
+      const phoneHash = hashMap.get(e.externalWorkerId) || "";
+      insertOps.push(
+        db.insert(users).values({
+          id: crypto.randomUUID(),
+          externalSystem: "FAS",
+          externalWorkerId: e.externalWorkerId,
+          name: e.name,
+          nameMasked: maskName(e.name),
+          phone: "",
+          phoneHash: phoneHash,
+          companyName: e.companyName,
+          tradeType: e.trade,
+          role: "WORKER",
+        }),
       );
+    }
 
-    // Batch limit to stay within CF Workers CPU time
-    const batch = placeholderUsers.slice(0, CROSS_MATCH_CRON_BATCH);
-
-    for (const pu of batch) {
-      if (!pu.externalWorkerId) {
-        fasCrossSkipped++;
-        continue;
-      }
+    if (insertOps.length > 0) {
       try {
-        const fasEmployee = await fasGetEmployeeInfo(
-          env.FAS_HYPERDRIVE,
-          pu.externalWorkerId,
-        );
-        if (fasEmployee && fasEmployee.phone) {
-          await syncSingleFasEmployee(fasEmployee, db, {
-            HMAC_SECRET: env.HMAC_SECRET,
-            ENCRYPTION_KEY: env.ENCRYPTION_KEY,
-          });
-          fasCrossMatched++;
-        } else {
-          fasCrossSkipped++;
-        }
+        await dbBatchChunked(db, insertOps);
+        created = insertOps.length;
       } catch (err) {
-        log.error("FAS cross-match failed", {
-          externalWorkerId: pu.externalWorkerId,
+        log.error("Failed to batch insert new employees", {
+          count: insertOps.length,
           error: err instanceof Error ? err.message : String(err),
         });
-        fasCrossSkipped++;
+        skipped += insertOps.length;
       }
     }
-  }
 
-  log.info("AceTime R2 sync complete", {
-    total: aceViewerEmployees.length,
-    created,
-    updated,
-    skipped,
-    fasCrossMatched,
-    fasCrossSkipped,
-  });
+    // Batch updates for existing employees
+    const updateOps: Promise<unknown>[] = [];
+    for (const e of updateEmployees) {
+      const userId = existingMap.get(e.externalWorkerId);
+      if (!userId) {
+        skipped++;
+        continue;
+      }
+      updateOps.push(
+        db
+          .update(users)
+          .set({
+            name: e.name,
+            nameMasked: maskName(e.name),
+            companyName: e.companyName,
+            tradeType: e.trade,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, userId)),
+      );
+    }
+
+    if (updateOps.length > 0) {
+      try {
+        await dbBatchChunked(db, updateOps);
+        updated = updateOps.length;
+      } catch (err) {
+        log.error("Failed to batch update employees", {
+          count: updateOps.length,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        skipped += updateOps.length;
+      }
+    }
+
+    // Step 3: Cross-match placeholder users with FAS MariaDB to fill in phone/dob
+    let fasCrossMatched = 0;
+    let fasCrossSkipped = 0;
+
+    if (env.FAS_HYPERDRIVE) {
+      const placeholderUsers = await db
+        .select({
+          id: users.id,
+          externalWorkerId: users.externalWorkerId,
+          phoneHash: users.phoneHash,
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.externalSystem, "FAS"),
+            like(users.phoneHash, "acetime-%"),
+          ),
+        );
+
+      // Batch limit to stay within CF Workers CPU time
+      const batch = placeholderUsers.slice(0, CROSS_MATCH_CRON_BATCH);
+
+      for (const pu of batch) {
+        if (!pu.externalWorkerId) {
+          fasCrossSkipped++;
+          continue;
+        }
+        try {
+          const fasEmployee = await fasGetEmployeeInfo(
+            env.FAS_HYPERDRIVE,
+            pu.externalWorkerId,
+          );
+          if (fasEmployee && fasEmployee.phone) {
+            await syncSingleFasEmployee(fasEmployee, db, {
+              HMAC_SECRET: env.HMAC_SECRET,
+              ENCRYPTION_KEY: env.ENCRYPTION_KEY,
+            });
+            fasCrossMatched++;
+          } else {
+            fasCrossSkipped++;
+          }
+        } catch (err) {
+          log.error("FAS cross-match failed", {
+            externalWorkerId: pu.externalWorkerId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          fasCrossSkipped++;
+        }
+      }
+    }
+
+    log.info("AceTime R2 sync complete", {
+      total: aceViewerEmployees.length,
+      created,
+      updated,
+      skipped,
+      fasCrossMatched,
+      fasCrossSkipped,
+    });
+  } finally {
+    await releaseSyncLock(env.KV, "acetime");
+  }
 }
 
 export async function scheduled(

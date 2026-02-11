@@ -11,9 +11,11 @@ import {
 } from "../lib/constants";
 import { createLogger } from "../lib/logger";
 import { error, success } from "../lib/response";
+import { acquireSyncLock, releaseSyncLock } from "../lib/sync-lock";
 import { authMiddleware } from "../middleware/auth";
 import type { AuthContext, Env } from "../types";
 import { maskName } from "../utils/common";
+import { dbBatchChunked } from "../db/helpers";
 
 const log = createLogger("acetime");
 
@@ -89,196 +91,218 @@ app.post("/sync-db", async (c) => {
 
     const db = drizzle(c.env.DB);
 
-    // Step 1: Get all existing FAS users in one query
-    // Include phoneHash to prefer records with real PII data when duplicates exist
-    const existingUsers = await db
-      .select({
-        id: users.id,
-        externalWorkerId: users.externalWorkerId,
-        phoneHash: users.phoneHash,
-        updatedAt: users.updatedAt,
-      })
-      .from(users)
-      .where(eq(users.externalSystem, "FAS"));
-
-    // Build map preferring records with real phone data (FAS CRON > AceViewer sync)
-    const existingMap = new Map<string | null, string>();
-    for (const u of existingUsers) {
-      const current = existingMap.get(u.externalWorkerId);
-      if (!current) {
-        existingMap.set(u.externalWorkerId, u.id);
-      } else {
-        // Prefer the record with real phoneHash (not acetime- placeholder)
-        const isRealPhone = u.phoneHash && !u.phoneHash.startsWith("acetime-");
-        const currentUser = existingUsers.find((eu) => eu.id === current);
-        const currentIsReal =
-          currentUser?.phoneHash &&
-          !currentUser.phoneHash.startsWith("acetime-");
-        if (isRealPhone && !currentIsReal) {
-          existingMap.set(u.externalWorkerId, u.id);
-        }
-      }
+    // Acquire lock to prevent concurrent sync (#48)
+    const locked = await acquireSyncLock(c.env.KV, "acetime");
+    if (!locked) {
+      return error(
+        c,
+        "SYNC_IN_PROGRESS",
+        "AceTime sync is already running",
+        409,
+      );
     }
 
-    // Step 2: Pre-compute HMAC hashes for new employees
-    const newEmployees = aceViewerEmployees.filter(
-      (e) => !existingMap.has(e.externalWorkerId),
-    );
-    const updateEmployees = aceViewerEmployees.filter((e) =>
-      existingMap.has(e.externalWorkerId),
-    );
-
-    const hashMap = new Map<string, string>();
-    await Promise.all(
-      newEmployees.map(async (e) => {
-        const h = await hmac(
-          c.env.HMAC_SECRET,
-          `acetime-${e.externalWorkerId}`,
-        );
-        hashMap.set(e.externalWorkerId, h);
-      }),
-    );
-
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
-
-    for (const e of newEmployees) {
-      const phoneHash = hashMap.get(e.externalWorkerId) || "";
-      try {
-        await db.insert(users).values({
-          id: crypto.randomUUID(),
-          externalSystem: "FAS",
-          externalWorkerId: e.externalWorkerId,
-          name: e.name,
-          nameMasked: maskName(e.name),
-          phone: "",
-          phoneHash: phoneHash,
-          companyName: e.companyName,
-          tradeType: e.trade,
-          role: "WORKER",
-        });
-        created++;
-      } catch (insertErr) {
-        log.error("Failed to insert worker", {
-          externalWorkerId: e.externalWorkerId,
-          error:
-            insertErr instanceof Error ? insertErr.message : String(insertErr),
-        });
-        skipped++;
-      }
-    }
-
-    for (const e of updateEmployees) {
-      const userId = existingMap.get(e.externalWorkerId);
-      if (!userId) {
-        skipped++;
-        continue;
-      }
-      try {
-        await db
-          .update(users)
-          .set({
-            name: e.name,
-            nameMasked: maskName(e.name),
-            companyName: e.companyName,
-            tradeType: e.trade,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, userId));
-        updated++;
-      } catch (updateErr) {
-        log.error("Failed to update worker", {
-          externalWorkerId: e.externalWorkerId,
-          error:
-            updateErr instanceof Error ? updateErr.message : String(updateErr),
-        });
-        skipped++;
-      }
-    }
-
-    // Step 3: FAS cross-matching — update acetime-* placeholder hashes with real PII from FAS MariaDB
-    let fasCrossMatched = 0;
-    let fasCrossSkipped = 0;
-    let fasCrossErrors = 0;
-
-    if (c.env.FAS_HYPERDRIVE) {
-      // Find all users still using acetime-* placeholder hashes
-      const placeholderUsers = await db
+    try {
+      // Step 1: Get all existing FAS users in one query
+      // Include phoneHash to prefer records with real PII data when duplicates exist
+      const existingUsers = await db
         .select({
           id: users.id,
           externalWorkerId: users.externalWorkerId,
           phoneHash: users.phoneHash,
+          updatedAt: users.updatedAt,
         })
         .from(users)
-        .where(
-          and(
-            eq(users.externalSystem, "FAS"),
-            like(users.phoneHash, "acetime-%"),
-          ),
-        );
+        .where(eq(users.externalSystem, "FAS"));
 
-      if (placeholderUsers.length > 0) {
-        const hd = c.env.FAS_HYPERDRIVE;
-        const env = {
-          HMAC_SECRET: c.env.HMAC_SECRET,
-          ENCRYPTION_KEY: c.env.ENCRYPTION_KEY,
-        };
-
-        // Limit cross-match batch to avoid CF Workers CPU timeout (30s) — #44
-        const crossMatchBatch = placeholderUsers.slice(
-          0,
-          CROSS_MATCH_DEFAULT_BATCH,
-        );
-        for (const pu of crossMatchBatch) {
-          if (!pu.externalWorkerId) {
-            fasCrossSkipped++;
-            continue;
-          }
-          try {
-            const fasEmployee = await fasGetEmployeeInfo(
-              hd,
-              pu.externalWorkerId,
-            );
-            if (fasEmployee && fasEmployee.phone) {
-              await syncSingleFasEmployee(fasEmployee, db, env);
-              fasCrossMatched++;
-            } else {
-              fasCrossSkipped++;
-            }
-          } catch (crossErr) {
-            log.error("FAS cross-match failed in sync-db", {
-              externalWorkerId: pu.externalWorkerId,
-              error:
-                crossErr instanceof Error ? crossErr.message : String(crossErr),
-            });
-            fasCrossErrors++;
+      // Build map preferring records with real phone data (FAS CRON > AceViewer sync)
+      const existingMap = new Map<string | null, string>();
+      for (const u of existingUsers) {
+        const current = existingMap.get(u.externalWorkerId);
+        if (!current) {
+          existingMap.set(u.externalWorkerId, u.id);
+        } else {
+          // Prefer the record with real phoneHash (not acetime- placeholder)
+          const isRealPhone =
+            u.phoneHash && !u.phoneHash.startsWith("acetime-");
+          const currentUser = existingUsers.find((eu) => eu.id === current);
+          const currentIsReal =
+            currentUser?.phoneHash &&
+            !currentUser.phoneHash.startsWith("acetime-");
+          if (isRealPhone && !currentIsReal) {
+            existingMap.set(u.externalWorkerId, u.id);
           }
         }
       }
-    }
 
-    return success(c, {
-      source: {
-        key: "aceviewer-employees.json",
-        size: object.size,
-        uploaded: object.uploaded,
-        etag: object.httpEtag,
-      },
-      sync: {
-        extracted: aceViewerEmployees.length,
-        created,
-        updated,
-        skipped,
-      },
-      fasCrossMatch: {
-        attempted: fasCrossMatched + fasCrossSkipped + fasCrossErrors,
-        matched: fasCrossMatched,
-        skipped: fasCrossSkipped,
-        errors: fasCrossErrors,
-        available: !!c.env.FAS_HYPERDRIVE,
-      },
-    });
+      // Step 2: Pre-compute HMAC hashes for new employees
+      const newEmployees = aceViewerEmployees.filter(
+        (e) => !existingMap.has(e.externalWorkerId),
+      );
+      const updateEmployees = aceViewerEmployees.filter((e) =>
+        existingMap.has(e.externalWorkerId),
+      );
+
+      const hashMap = new Map<string, string>();
+      await Promise.all(
+        newEmployees.map(async (e) => {
+          const h = await hmac(
+            c.env.HMAC_SECRET,
+            `acetime-${e.externalWorkerId}`,
+          );
+          hashMap.set(e.externalWorkerId, h);
+        }),
+      );
+
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      for (const e of newEmployees) {
+        const phoneHash = hashMap.get(e.externalWorkerId) || "";
+        try {
+          await db.insert(users).values({
+            id: crypto.randomUUID(),
+            externalSystem: "FAS",
+            externalWorkerId: e.externalWorkerId,
+            name: e.name,
+            nameMasked: maskName(e.name),
+            phone: "",
+            phoneHash: phoneHash,
+            companyName: e.companyName,
+            tradeType: e.trade,
+            role: "WORKER",
+          });
+          created++;
+        } catch (insertErr) {
+          log.error("Failed to insert worker", {
+            externalWorkerId: e.externalWorkerId,
+            error:
+              insertErr instanceof Error
+                ? insertErr.message
+                : String(insertErr),
+          });
+          skipped++;
+        }
+      }
+
+      for (const e of updateEmployees) {
+        const userId = existingMap.get(e.externalWorkerId);
+        if (!userId) {
+          skipped++;
+          continue;
+        }
+        try {
+          await db
+            .update(users)
+            .set({
+              name: e.name,
+              nameMasked: maskName(e.name),
+              companyName: e.companyName,
+              tradeType: e.trade,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, userId));
+          updated++;
+        } catch (updateErr) {
+          log.error("Failed to update worker", {
+            externalWorkerId: e.externalWorkerId,
+            error:
+              updateErr instanceof Error
+                ? updateErr.message
+                : String(updateErr),
+          });
+          skipped++;
+        }
+      }
+
+      // Step 3: FAS cross-matching — update acetime-* placeholder hashes with real PII from FAS MariaDB
+      let fasCrossMatched = 0;
+      let fasCrossSkipped = 0;
+      let fasCrossErrors = 0;
+
+      if (c.env.FAS_HYPERDRIVE) {
+        // Find all users still using acetime-* placeholder hashes
+        const placeholderUsers = await db
+          .select({
+            id: users.id,
+            externalWorkerId: users.externalWorkerId,
+            phoneHash: users.phoneHash,
+          })
+          .from(users)
+          .where(
+            and(
+              eq(users.externalSystem, "FAS"),
+              like(users.phoneHash, "acetime-%"),
+            ),
+          );
+
+        if (placeholderUsers.length > 0) {
+          const hd = c.env.FAS_HYPERDRIVE;
+          const env = {
+            HMAC_SECRET: c.env.HMAC_SECRET,
+            ENCRYPTION_KEY: c.env.ENCRYPTION_KEY,
+          };
+
+          // Limit cross-match batch to avoid CF Workers CPU timeout (30s) — #44
+          const crossMatchBatch = placeholderUsers.slice(
+            0,
+            CROSS_MATCH_DEFAULT_BATCH,
+          );
+          for (const pu of crossMatchBatch) {
+            if (!pu.externalWorkerId) {
+              fasCrossSkipped++;
+              continue;
+            }
+            try {
+              const fasEmployee = await fasGetEmployeeInfo(
+                hd,
+                pu.externalWorkerId,
+              );
+              if (fasEmployee && fasEmployee.phone) {
+                await syncSingleFasEmployee(fasEmployee, db, env);
+                fasCrossMatched++;
+              } else {
+                fasCrossSkipped++;
+              }
+            } catch (crossErr) {
+              log.error("FAS cross-match failed in sync-db", {
+                externalWorkerId: pu.externalWorkerId,
+                error:
+                  crossErr instanceof Error
+                    ? crossErr.message
+                    : String(crossErr),
+              });
+              fasCrossErrors++;
+            }
+          }
+        }
+      }
+
+      return success(c, {
+        source: {
+          key: "aceviewer-employees.json",
+          size: object.size,
+          uploaded: object.uploaded,
+          etag: object.httpEtag,
+        },
+        sync: {
+          extracted: aceViewerEmployees.length,
+          created,
+          updated,
+          skipped,
+        },
+        fasCrossMatch: {
+          attempted: fasCrossMatched + fasCrossSkipped + fasCrossErrors,
+          matched: fasCrossMatched,
+          skipped: fasCrossSkipped,
+          errors: fasCrossErrors,
+          available: !!c.env.FAS_HYPERDRIVE,
+        },
+      });
+    } finally {
+      await releaseSyncLock(c.env.KV, "acetime");
+    }
   });
 });
 

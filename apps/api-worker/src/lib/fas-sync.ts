@@ -13,6 +13,7 @@
 import { eq, and } from "drizzle-orm";
 import { DrizzleD1Database } from "drizzle-orm/d1";
 import { users } from "../db/schema";
+import { dbBatchChunked } from "../db/helpers";
 import { hmac, encrypt } from "./crypto";
 import type { FasEmployee } from "./fas-mariadb";
 
@@ -283,7 +284,6 @@ export async function deactivateRetiredEmployees(
 
   const retiredSet = new Set(retiredEmplCds);
 
-  // D1에서 FAS 연동 유저 중 퇴직자 코드에 해당하는 유저만 조회
   const fasUsers = await db
     .select({
       id: users.id,
@@ -294,7 +294,8 @@ export async function deactivateRetiredEmployees(
     .where(eq(users.externalSystem, "FAS"))
     .all();
 
-  let deactivated = 0;
+  const deactivateOps: Promise<unknown>[] = [];
+  const now = new Date();
 
   for (const u of fasUsers) {
     if (
@@ -302,15 +303,20 @@ export async function deactivateRetiredEmployees(
       retiredSet.has(u.externalWorkerId) &&
       !u.deletedAt
     ) {
-      await db
-        .update(users)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
-        .where(eq(users.id, u.id));
-      deactivated++;
+      deactivateOps.push(
+        db
+          .update(users)
+          .set({ deletedAt: now, updatedAt: now })
+          .where(eq(users.id, u.id)),
+      );
     }
   }
 
-  return deactivated;
+  if (deactivateOps.length > 0) {
+    await dbBatchChunked(db, deactivateOps);
+  }
+
+  return deactivateOps.length;
 }
 
 // ─── 이름 마스킹 ────────────────────────────────────────────────
