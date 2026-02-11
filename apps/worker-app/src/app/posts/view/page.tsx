@@ -75,8 +75,18 @@ function PostDetailContent() {
 
   const post = data?.data;
 
-  // reviews가 PostDto에 없을 수 있으므로 any로 처리하여 접근
-  const reviews = (post as any)?.reviews as any[];
+  // API 응답에 reviews가 포함될 수 있으나 PostDto에 미정의
+  interface ReviewEntry {
+    createdAt: string;
+    action: string;
+    rejectionReason?: string;
+    rejectionNote?: string;
+    reasonCode?: string;
+    comment?: string;
+    adminId?: string;
+  }
+  const postWithReviews = post as typeof post & { reviews?: ReviewEntry[] };
+  const reviews = postWithReviews?.reviews;
   const latestReview = reviews?.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )[0];

@@ -33,7 +33,12 @@ import {
   useCreateAction,
   useReviewPost,
 } from "@/hooks/use-api";
-import { ReviewStatus, Category, RiskLevel } from "@safetywallet/types";
+import {
+  ReviewStatus,
+  ActionStatus,
+  Category,
+  RiskLevel,
+} from "@safetywallet/types";
 import { useAuthStore } from "@/stores/auth";
 
 const statusLabels: Record<ReviewStatus, string> = {
@@ -78,6 +83,24 @@ const reviewActionLabels: Record<string, string> = {
   MARK_URGENT: "긴급 지정",
   ASSIGN: "시정조치 배정",
   CLOSE: "종결",
+};
+
+const actionStatusLabels: Record<ActionStatus, string> = {
+  [ActionStatus.NONE]: "없음",
+  [ActionStatus.ASSIGNED]: "배정됨",
+  [ActionStatus.IN_PROGRESS]: "진행 중",
+  [ActionStatus.COMPLETED]: "완료",
+  [ActionStatus.VERIFIED]: "확인됨",
+  [ActionStatus.OVERDUE]: "기한초과",
+};
+
+const actionStatusColors: Record<ActionStatus, string> = {
+  [ActionStatus.NONE]: "",
+  [ActionStatus.ASSIGNED]: "bg-blue-100 text-blue-800",
+  [ActionStatus.IN_PROGRESS]: "bg-yellow-100 text-yellow-800",
+  [ActionStatus.COMPLETED]: "bg-green-100 text-green-800",
+  [ActionStatus.VERIFIED]: "bg-emerald-100 text-emerald-800",
+  [ActionStatus.OVERDUE]: "bg-red-200 text-red-800 font-semibold",
 };
 
 export default function PostDetailPage() {
@@ -145,7 +168,8 @@ export default function PostDetailPage() {
 
   const canReview =
     post.status === ReviewStatus.PENDING ||
-    post.status === ReviewStatus.IN_REVIEW;
+    post.status === ReviewStatus.IN_REVIEW ||
+    post.status === ReviewStatus.NEED_INFO;
 
   const location = [
     post.locationFloor && `${post.locationFloor}층`,
@@ -188,6 +212,21 @@ export default function PostDetailPage() {
                   {post.isUrgent && (
                     <Badge className="bg-red-600 text-white">긴급</Badge>
                   )}
+                  {post.actionStatus &&
+                    post.actionStatus !== ActionStatus.NONE && (
+                      <Badge
+                        className={
+                          actionStatusColors[
+                            post.actionStatus as ActionStatus
+                          ] || ""
+                        }
+                      >
+                        조치:{" "}
+                        {actionStatusLabels[
+                          post.actionStatus as ActionStatus
+                        ] || post.actionStatus}
+                      </Badge>
+                    )}
                 </div>
               </div>
               <div className="text-right text-sm text-muted-foreground">

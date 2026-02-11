@@ -32,6 +32,24 @@ const reviewStatusColors: Record<ReviewStatus, string> = {
   [ReviewStatus.URGENT]: "bg-red-200 text-red-800 font-semibold",
 };
 
+const actionStatusLabels: Record<ActionStatus, string> = {
+  [ActionStatus.NONE]: "",
+  [ActionStatus.ASSIGNED]: "조치배정",
+  [ActionStatus.IN_PROGRESS]: "조치진행",
+  [ActionStatus.COMPLETED]: "조치완료",
+  [ActionStatus.VERIFIED]: "조치확인",
+  [ActionStatus.OVERDUE]: "기한초과",
+};
+
+const actionStatusColors: Record<ActionStatus, string> = {
+  [ActionStatus.NONE]: "",
+  [ActionStatus.ASSIGNED]: "bg-purple-100 text-purple-700",
+  [ActionStatus.IN_PROGRESS]: "bg-blue-100 text-blue-700",
+  [ActionStatus.COMPLETED]: "bg-teal-100 text-teal-700",
+  [ActionStatus.VERIFIED]: "bg-green-100 text-green-700",
+  [ActionStatus.OVERDUE]: "bg-red-200 text-red-800 font-semibold",
+};
+
 interface PostCardProps {
   post: PostListDto;
 }
@@ -61,6 +79,17 @@ export function PostCard({ post }: PostCardProps) {
                   </Badge>
                 )}
                 {post.isUrgent && <Badge variant="destructive">긴급</Badge>}
+                {post.actionStatus &&
+                  post.actionStatus !== ActionStatus.NONE && (
+                    <Badge
+                      className={cn(
+                        actionStatusColors[post.actionStatus as ActionStatus],
+                      )}
+                    >
+                      {actionStatusLabels[post.actionStatus as ActionStatus] ||
+                        post.actionStatus}
+                    </Badge>
+                  )}
               </div>
               <p className="text-sm text-foreground line-clamp-2">
                 {post.content}

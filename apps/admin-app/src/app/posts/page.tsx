@@ -15,7 +15,7 @@ import {
 } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import { useAdminPosts, type PostFilters, type Post } from "@/hooks/use-api";
-import { ReviewStatus, Category } from "@safetywallet/types";
+import { ReviewStatus, ActionStatus, Category } from "@safetywallet/types";
 import { X } from "lucide-react";
 
 const statusLabels: Record<ReviewStatus, string> = {
@@ -37,6 +37,27 @@ const statusColors: Record<
   [ReviewStatus.APPROVED]: "default",
   [ReviewStatus.REJECTED]: "destructive",
   [ReviewStatus.URGENT]: "destructive",
+};
+
+const actionStatusLabels: Record<ActionStatus, string> = {
+  [ActionStatus.NONE]: "없음",
+  [ActionStatus.ASSIGNED]: "배정됨",
+  [ActionStatus.IN_PROGRESS]: "진행 중",
+  [ActionStatus.COMPLETED]: "완료",
+  [ActionStatus.VERIFIED]: "확인됨",
+  [ActionStatus.OVERDUE]: "기한초과",
+};
+
+const actionStatusColors: Record<
+  ActionStatus,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  [ActionStatus.NONE]: "outline",
+  [ActionStatus.ASSIGNED]: "secondary",
+  [ActionStatus.IN_PROGRESS]: "default",
+  [ActionStatus.COMPLETED]: "default",
+  [ActionStatus.VERIFIED]: "default",
+  [ActionStatus.OVERDUE]: "destructive",
 };
 
 const categoryLabels: Record<Category, string> = {
@@ -100,12 +121,35 @@ export default function PostsPage() {
     },
     {
       key: "status",
-      header: "상태",
+      header: "검토상태",
       render: (item) => (
         <Badge variant={statusColors[item.status]}>
           {statusLabels[item.status] || item.status}
         </Badge>
       ),
+    },
+    {
+      key: "actionStatus",
+      header: "조치상태",
+      render: (item) => {
+        const as = (item.actionStatus ?? "NONE") as ActionStatus;
+        if (as === ActionStatus.NONE)
+          return <span className="text-muted-foreground">-</span>;
+        return (
+          <Badge
+            variant={actionStatusColors[as] || "outline"}
+            className={
+              as === ActionStatus.VERIFIED
+                ? "bg-green-100 text-green-800 hover:bg-green-200 border-transparent"
+                : as === ActionStatus.OVERDUE
+                  ? ""
+                  : ""
+            }
+          >
+            {actionStatusLabels[as] || as}
+          </Badge>
+        );
+      },
     },
     {
       key: "author.nameMasked",
