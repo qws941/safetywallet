@@ -25,8 +25,7 @@ src/
 │   ├── points/page.tsx         # Leaderboard
 │   ├── announcements/page.tsx  # Site announcements
 │   ├── votes/page.tsx          # Monthly voting
-│   ├── profile/page.tsx        # User profile, logout
-│   └── bypass/page.tsx         # Dev-only auth bypass
+│   └── profile/page.tsx        # User profile, logout
 ├── components/
 │   ├── providers.tsx           # TanStack QueryClient + Toaster
 │   ├── header.tsx              # Sticky top bar + site ID
@@ -61,8 +60,8 @@ src/
 
 ## ANTI-PATTERNS
 
-- **Known**: `posts/new/page.tsx:167` — `as any`
 - No `alert()`/`confirm()` — use modal components
+- **Known**: `app/points/page.tsx:180` — type assertion on history array (not `as any`, but loose cast)
 
 ## LOGIN FLOW
 

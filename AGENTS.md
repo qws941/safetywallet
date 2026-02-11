@@ -141,9 +141,9 @@ await attendanceMiddleware(
 
 ### Known Violations (TODO)
 
-- `apps/api-worker/src/routes/approvals.ts:34` — `as any`
-- `apps/worker-app/src/app/posts/new/page.tsx:167` — `as any`
-- `apps/admin-app/src/hooks/use-api.ts:309` — `Promise.resolve()` placeholder
+- `apps/api-worker/src/db/helpers.ts:12` — `(db as any).batch(operations)`
+- `apps/admin-app/src/app/actions/page.tsx:120` — `(statusColors[item.status] as any)`
+- `apps/admin-app/src/app/votes/page.tsx:63` — `window.confirm()` anti-pattern
 
 ## COMMANDS
 

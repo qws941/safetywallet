@@ -81,7 +81,8 @@ src/
 
 ## ANTI-PATTERNS
 
-- **Known**: `hooks/use-api.ts:~310` — `useAuditLogs()` returns `Promise.resolve()` (placeholder, HIGH priority)
+- **Known**: `app/votes/page.tsx:63` — `window.confirm()` anti-pattern (should use dialog component)
+- **Known**: `app/actions/page.tsx:120` — `(statusColors[item.status] as any)` type assertion
 - No `alert()`/`confirm()` — use modal components
 - **Known**: `dashboard/layout.tsx:16-22` — client-side auth guard via useEffect (should be middleware)
 - **Refactor targets**: `use-api.ts` (split by domain), `education/page.tsx` (extract sub-components)
