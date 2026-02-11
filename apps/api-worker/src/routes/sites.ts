@@ -16,7 +16,7 @@ import { success, error } from "../lib/response";
 import {
   CreateSiteSchema,
   JoinSiteSchema,
-  UpdateMemberStatusSchema,
+  UpdateSiteSchema,
 } from "../validators/schemas";
 
 const app = new Hono<{
@@ -253,53 +253,51 @@ app.post("/", zValidator("json", CreateSiteSchema as never), async (c) => {
   return success(c, { site: newSite }, 201);
 });
 
-app.patch(
-  "/:id",
-  zValidator("json", UpdateMemberStatusSchema as never),
-  async (c) => {
-    const db = drizzle(c.env.DB);
-    const { user } = c.get("auth");
-    const siteId = c.req.param("id");
-    const data = c.req.valid("json") as Record<string, unknown>;
+app.patch("/:id", zValidator("json", UpdateSiteSchema), async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const siteId = c.req.param("id");
+  const data = c.req.valid("json");
 
-    if (user.role !== "ADMIN") {
-      const membership = await db
-        .select()
-        .from(siteMemberships)
-        .where(
-          and(
-            eq(siteMemberships.userId, user.id),
-            eq(siteMemberships.siteId, siteId),
-            eq(siteMemberships.role, "SITE_ADMIN"),
-            eq(siteMemberships.status, "ACTIVE"),
-          ),
-        )
-        .get();
-
-      if (!membership) {
-        return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
-      }
-    }
-
-    const updateData: Record<string, unknown> = {};
-
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.active !== undefined) updateData.active = data.active;
-
-    const updated = await db
-      .update(sites)
-      .set(updateData)
-      .where(eq(sites.id, siteId))
-      .returning()
+  if (user.role !== "ADMIN") {
+    const membership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, siteId),
+          eq(siteMemberships.role, "SITE_ADMIN"),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
       .get();
 
-    if (!updated) {
-      return error(c, "SITE_NOT_FOUND", "Site not found", 404);
+    if (!membership) {
+      return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
     }
+  }
 
-    return success(c, { site: updated });
-  },
-);
+  const updateData: Record<string, unknown> = {};
+
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.active !== undefined) updateData.active = data.active;
+  if (data.leaderboardEnabled !== undefined)
+    updateData.leaderboardEnabled = data.leaderboardEnabled;
+
+  const updated = await db
+    .update(sites)
+    .set(updateData)
+    .where(eq(sites.id, siteId))
+    .returning()
+    .get();
+
+  if (!updated) {
+    return error(c, "SITE_NOT_FOUND", "Site not found", 404);
+  }
+
+  return success(c, { site: updated });
+});
 
 app.post("/:id/reissue-join-code", async (c) => {
   const db = drizzle(c.env.DB);

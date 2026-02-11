@@ -7,6 +7,7 @@ import { authMiddleware } from "../middleware/auth";
 import {
   pointsLedger,
   pointPolicies,
+  sites,
   siteMemberships,
   users,
 } from "../db/schema";
@@ -201,6 +202,44 @@ app.get("/history", async (c) => {
   const limit = Math.min(parseInt(query.limit || "20"), 100);
   const offset = parseInt(query.offset || "0");
 
+  const targetUserId = query.userId || user.id;
+
+  // Security: viewing another user's history requires admin privileges
+  if (targetUserId !== user.id) {
+    if (user.role !== "SUPER_ADMIN") {
+      if (!query.siteId) {
+        return error(
+          c,
+          "SITE_ID_REQUIRED",
+          "siteId is required when viewing another user's history",
+          400,
+        );
+      }
+
+      const adminMembership = await db
+        .select()
+        .from(siteMemberships)
+        .where(
+          and(
+            eq(siteMemberships.userId, user.id),
+            eq(siteMemberships.siteId, query.siteId),
+            eq(siteMemberships.status, "ACTIVE"),
+            eq(siteMemberships.role, "SITE_ADMIN"),
+          ),
+        )
+        .get();
+
+      if (!adminMembership) {
+        return error(
+          c,
+          "ADMIN_REQUIRED",
+          "Admin access required to view another user's point history",
+          403,
+        );
+      }
+    }
+  }
+
   if (query.siteId) {
     const membership = await db
       .select()
@@ -219,7 +258,6 @@ app.get("/history", async (c) => {
     }
   }
 
-  const targetUserId = query.userId || user.id;
   const conditions = [eq(pointsLedger.userId, targetUserId)];
 
   if (query.siteId) {
@@ -251,6 +289,40 @@ app.get("/leaderboard/:siteId", async (c) => {
   const limitParam = c.req.query("limit");
   const limit = Math.min(parseInt(limitParam || "10"), 50);
   const type = c.req.query("type");
+
+  const site = await db
+    .select({ leaderboardEnabled: sites.leaderboardEnabled })
+    .from(sites)
+    .where(eq(sites.id, siteId))
+    .get();
+
+  if (!site) {
+    return error(c, "SITE_NOT_FOUND", "Site not found", 404);
+  }
+
+  if (!site.leaderboardEnabled && user.role !== "SUPER_ADMIN") {
+    const adminMembership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+          eq(siteMemberships.role, "SITE_ADMIN"),
+        ),
+      )
+      .get();
+
+    if (!adminMembership) {
+      return error(
+        c,
+        "LEADERBOARD_DISABLED",
+        "Leaderboard is disabled for this site",
+        403,
+      );
+    }
+  }
 
   const membership = await db
     .select()

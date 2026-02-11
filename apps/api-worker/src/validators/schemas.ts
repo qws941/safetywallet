@@ -149,6 +149,12 @@ export const UpdateMemberStatusSchema = z.object({
   reason: z.string().optional(),
 });
 
+export const UpdateSiteSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  active: z.boolean().optional(),
+  leaderboardEnabled: z.boolean().optional(),
+});
+
 // ─── Points Schemas ──────────────────────────────────────────────────────────
 
 export const AwardPointsSchema = z.object({

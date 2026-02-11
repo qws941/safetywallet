@@ -164,6 +164,9 @@ export const sites = sqliteTable("sites", {
   requiresApproval: integer("requires_approval", { mode: "boolean" })
     .default(false)
     .notNull(),
+  leaderboardEnabled: integer("leaderboard_enabled", { mode: "boolean" })
+    .default(true)
+    .notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(),
   ),
