@@ -14,6 +14,15 @@ workers_dev = true
 ENVIRONMENT = "production"
 REQUIRE_ATTENDANCE_FOR_LOGIN = "false"
 REQUIRE_ATTENDANCE_FOR_POST = "false"
+# Aligo SMS + 알림톡 (replace with your credentials)
+ALIGO_API_KEY = "your_api_key_here"
+ALIGO_USER_ID = "your_user_id_here"
+ALIGO_SENDER = "02-1234-5678"
+KAKAO_SENDER_KEY = "your_kakao_sender_key_here"
+# Security secrets (dev only - use Cloudflare Secrets in production)
+JWT_SECRET = "dev-jwt-secret-32-chars-long-abcdefghijklmnopqrstuvwxyz0123456789"
+HMAC_SECRET = "dev-hmac-secret-32-chars-long-abcdefghijklmnopqrstuvwxyz012345678"
+ENCRYPTION_KEY = "kbyIahBgmFW47YwMoPxykdPe7DV8LycSzHrp0wwgE28="
 
 # D1 Database
 [[d1_databases]]
@@ -47,6 +56,15 @@ localConnectionString = "postgresql://root:root@localhost:5432/fas_local"
 binding = "KV"
 id = "57ab28dca9dd4193a8f59f93e57122d8"
 
+# Analytics Engine for observability
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+
+# Workers Logs observability
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # Durable Objects for rate limiting
 [durable_objects]
 bindings = [
@@ -55,7 +73,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RateLimiter"]
+new_sqlite_classes = ["RateLimiter"]
 
 # Queue for async notification processing
 [[queues.producers]]
@@ -70,12 +88,61 @@ binding = "NOTIFICATION_QUEUE"
 [triggers]
 crons = ["*/5 * * * *", "0 0 1 * *", "0 3 * * SUN", "0 21 * * *"]
 
+# Development Environment
 [env.dev]
 name = "safework2-api-dev"
-vars = { ENVIRONMENT = "development" }
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+REQUIRE_ATTENDANCE_FOR_LOGIN = "false"
+REQUIRE_ATTENDANCE_FOR_POST = "false"
+ALIGO_API_KEY = "your_api_key_here"
+ALIGO_USER_ID = "your_user_id_here"
+ALIGO_SENDER = "02-1234-5678"
+KAKAO_SENDER_KEY = "your_kakao_sender_key_here"
+# Security secrets (dev only - use Cloudflare Secrets in production)
+JWT_SECRET = "dev-jwt-secret-32-chars-long-abcdefghijklmnopqrstuvwxyz0123456789"
+HMAC_SECRET = "dev-hmac-secret-32-chars-long-abcdefghijklmnopqrstuvwxyz012345678"
+ENCRYPTION_KEY = "kbyIahBgmFW47YwMoPxykdPe7DV8LycSzHrp0wwgE28="
 
 [[env.dev.d1_databases]]
 binding = "DB"
 database_name = "safework2-db-dev"
-database_id = "f0a2bc59-80b6-483e-87ed-09a234acfe8b"
+database_id = "edeb67f3-0135-4ccc-bf5c-dd1914460b06"
 
+[[env.dev.r2_buckets]]
+binding = "R2"
+bucket_name = "safework2-images"
+
+[[env.dev.r2_buckets]]
+binding = "STATIC"
+bucket_name = "safework2-static"
+
+[[env.dev.r2_buckets]]
+binding = "ACETIME_BUCKET"
+bucket_name = "safework2-acetime"
+
+[[env.dev.hyperdrive]]
+binding = "FAS_HYPERDRIVE"
+id = "83c32c884d3b42b18c4b0601c0e2e0dc"
+localConnectionString = "postgresql://root:root@localhost:5432/fas_local"
+
+[[env.dev.kv_namespaces]]
+binding = "KV"
+id = "57ab28dca9dd4193a8f59f93e57122d8"
+
+[[env.dev.analytics_engine_datasets]]
+binding = "ANALYTICS"
+
+[env.dev.observability]
+enabled = true
+head_sampling_rate = 1
+
+[env.dev.durable_objects]
+bindings = [
+  { name = "RATE_LIMITER", class_name = "RateLimiter" }
+]
+
+[[env.dev.queues.producers]]
+queue = "safework2-notifications"
+binding = "NOTIFICATION_QUEUE"

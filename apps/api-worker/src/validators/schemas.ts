@@ -441,3 +441,41 @@ export const FasSyncRequestSchema = z.object({
     )
     .optional(),
 });
+
+// ─── Alimtalk (알림톡) Schemas ────────────────────────────────────────────────
+
+export const AlimtalkSendSchema = z.object({
+  siteId: uuid,
+  userIds: z.array(uuid).min(1).max(100),
+  templateCode: z.string().min(1).max(50),
+  message: z.string().min(1).max(1000),
+  button: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(28),
+        linkType: z.enum(['WL', 'AL', 'DS', 'BK', 'MD', 'BC']),
+        linkTypeName: z.string().min(1),
+      }),
+    )
+    .max(5)
+    .optional(),
+  fallbackSms: z.boolean().optional(),
+});
+
+export const SmartNotificationSendSchema = z.object({
+  siteId: uuid,
+  userIds: z.array(uuid).min(1).max(100),
+  templateCode: z.string().min(1).max(50),
+  message: z.string().min(1).max(1000),
+  smsTitle: z.string().max(40).optional(),
+  button: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(28),
+        linkType: z.enum(['WL', 'AL', 'DS', 'BK', 'MD', 'BC']),
+        linkTypeName: z.string().min(1),
+      }),
+    )
+    .max(5)
+    .optional(),
+});

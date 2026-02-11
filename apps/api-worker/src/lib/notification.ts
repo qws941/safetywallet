@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import { users, pushSubscriptions } from "../db/schema";
 import { encryptPayload, generateVapidHeaders } from "./web-push";
+import { sendAligoSms } from "./aligo";
 
 export interface SMSResult {
   success: boolean;
@@ -23,58 +24,21 @@ export interface PushResult {
   error?: string;
 }
 
+/**
+ * Send SMS via Aligo
+ * This replaces the old Solapi implementation
+ */
 export async function sendSMS(
   env: Env,
   to: string,
   message: string,
 ): Promise<SMSResult> {
-  if (!env.SMS_API_KEY || !env.SMS_API_SECRET || !env.SMS_SENDER) {
-    console.warn("SMS credentials not configured");
-    return { success: false, error: "SMS_NOT_CONFIGURED" };
-  }
-
-  const cleanPhone = to.replace(/[^0-9]/g, "");
-  if (cleanPhone.length < 10) {
-    return { success: false, error: "INVALID_PHONE" };
-  }
-
-  try {
-    const timestamp = Date.now().toString();
-    const signature = await generateHMAC(
-      `${timestamp}${env.SMS_API_KEY}`,
-      env.SMS_API_SECRET,
-    );
-
-    const response = await fetch("https://api.solapi.com/messages/v4/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `HMAC-SHA256 apiKey=${env.SMS_API_KEY}, date=${timestamp}, salt=${timestamp}, signature=${signature}`,
-      },
-      body: JSON.stringify({
-        message: {
-          to: cleanPhone,
-          from: env.SMS_SENDER,
-          text: message,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("SMS API error:", errorText);
-      return { success: false, error: `API_ERROR: ${response.status}` };
-    }
-
-    const result = (await response.json()) as { messageId?: string };
-    return { success: true, messageId: result.messageId };
-  } catch (error) {
-    console.error("SMS send failed:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
-    };
-  }
+  const result = await sendAligoSms(env, to, message);
+  return {
+    success: result.success,
+    messageId: result.messageId,
+    error: result.error,
+  };
 }
 
 export async function sendPushNotification(
@@ -291,18 +255,4 @@ export async function notifyUser(
   } catch {
     // Notification failures should never block business logic
   }
-}
-
-async function generateHMAC(data: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
-  return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }

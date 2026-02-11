@@ -8,6 +8,15 @@ export interface HyperdriveBinding {
   database: string;
 }
 
+// Analytics Engine binding for observability metrics
+export interface AnalyticsEngineDataset {
+  writeDataPoint(event: {
+    indexes?: string[];
+    blobs?: string[];
+    doubles?: number[];
+  }): void;
+}
+
 export interface Env {
   DB: D1Database;
   R2: R2Bucket;
@@ -37,6 +46,13 @@ export interface Env {
   ADMIN_PASSWORD?: string;
   // Cloudflare Queue for async notifications
   NOTIFICATION_QUEUE?: Queue;
+  // Analytics Engine for observability
+  ANALYTICS?: AnalyticsEngineDataset;
+  // Aligo SMS + 알림톡 credentials
+  ALIGO_API_KEY?: string;
+  ALIGO_USER_ID?: string;
+  ALIGO_SENDER?: string;
+  KAKAO_SENDER_KEY?: string;
 }
 
 export interface User {
@@ -51,3 +67,4 @@ export interface AuthContext {
   user: User;
   loginDate: string;
 }
+
