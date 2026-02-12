@@ -96,7 +96,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-worker-app:
-    name: Deploy Worker App to Pages
+    name: Deploy Worker App to Pages + R2
     runs-on: ubuntu-latest
     needs: build
     environment: production
@@ -116,6 +116,45 @@ jobs:
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sync to R2 Static Bucket
+        env:
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          get_ct() {
+            case "${1##*.}" in
+              html)        echo "text/html; charset=utf-8" ;;
+              js)          echo "application/javascript" ;;
+              css)         echo "text/css" ;;
+              json)        echo "application/json" ;;
+              png)         echo "image/png" ;;
+              jpg|jpeg)    echo "image/jpeg" ;;
+              svg)         echo "image/svg+xml" ;;
+              ico)         echo "image/x-icon" ;;
+              woff2)       echo "font/woff2" ;;
+              woff)        echo "font/woff" ;;
+              ttf)         echo "font/ttf" ;;
+              txt)         echo "text/plain" ;;
+              xml)         echo "application/xml" ;;
+              webmanifest) echo "application/manifest+json" ;;
+              map)         echo "application/json" ;;
+              *)           echo "application/octet-stream" ;;
+            esac
+          }
+          total=$(find out -type f | wc -l)
+          echo "::group::Uploading $total files to R2 safework2-static"
+          n=0
+          find out -type f | while read -r f; do
+            key="${f#out/}"
+            ct=$(get_ct "$f")
+            wrangler r2 object put "safework2-static/$key" --file "$f" --content-type "$ct"
+            n=$((n + 1))
+            echo "[$n/$total] $key"
+          done
+          echo "::endgroup::"
+          echo "R2 sync complete: $total files uploaded"
 
   deploy-admin-app:
     name: Deploy Admin App to Pages
