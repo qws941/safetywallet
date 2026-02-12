@@ -42,14 +42,27 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
+      - name: Set environment URLs
+        id: urls
+        run: |
+          if [ "${{ inputs.environment }}" = "staging" ]; then
+            echo "worker_url=https://staging.safework2-worker.pages.dev" >> "$GITHUB_OUTPUT"
+            echo "admin_url=https://staging.safework2-admin.pages.dev" >> "$GITHUB_OUTPUT"
+            echo "api_url=https://safework2-api-dev.jclee.workers.dev" >> "$GITHUB_OUTPUT"
+          else
+            echo "worker_url=https://safework2.jclee.me" >> "$GITHUB_OUTPUT"
+            echo "admin_url=https://admin.safework2.jclee.me" >> "$GITHUB_OUTPUT"
+            echo "api_url=https://safework2.jclee.me/api" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run smoke tests
         working-directory: e2e
         run: npx playwright test --grep @smoke
         env:
-          # TODO: Use different base URLs for staging environment
-          # For now, both environments point to production URLs
-          # (configured in e2e/playwright.config.ts)
           CI: "true"
+          WORKER_APP_URL: ${{ steps.urls.outputs.worker_url }}
+          ADMIN_APP_URL: ${{ steps.urls.outputs.admin_url }}
+          API_URL: ${{ steps.urls.outputs.api_url }}
 
       - name: Upload Playwright report
         if: failure()

@@ -182,7 +182,6 @@ jobs:
     name: Post-Deploy Smoke Tests
     runs-on: ubuntu-latest
     needs: [deploy-api-worker, deploy-worker-app, deploy-admin-app]
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -203,6 +202,9 @@ jobs:
         run: npx playwright test --grep @smoke
         env:
           CI: "true"
+          WORKER_APP_URL: "https://safework2.jclee.me"
+          ADMIN_APP_URL: "https://admin.safework2.jclee.me"
+          API_URL: "https://safework2.jclee.me/api"
 
       - name: Upload Playwright report
         if: failure()
