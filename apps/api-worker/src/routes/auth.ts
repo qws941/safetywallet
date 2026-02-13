@@ -241,58 +241,21 @@ auth.post(
     const dobEncrypted = await encrypt(c.env.ENCRYPTION_KEY, normalizedDob);
     const nameMasked = maskName(body.name);
 
-    // Try insert first - if unique constraint fails, query existing user
-    let newUser;
-    try {
-      newUser = await db
-        .insert(users)
-        .values({
-          name: body.name,
-          nameMasked,
-          phone: normalizedPhone,
-          phoneHash,
-          phoneEncrypted,
-          dob: normalizedDob,
-          dobHash,
-          dobEncrypted,
-          role: "WORKER",
-        })
-        .returning()
-        .get();
-    } catch (err) {
-      // Unique constraint violation - user already exists
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg.includes("UNIQUE constraint failed") || errMsg.includes("unique")) {
-        newUser = null; // Fall through to existing user handling
-      } else {
-        // Unexpected error - log details and rethrow
-        console.error("User registration insert error:", {
-          message: errMsg,
-          phone: normalizedPhone.slice(0, 3) + "***",
-          dob: normalizedDob.slice(0, 4) + "**",
-        });
-        throw err;
-      }
-    }
+    // Check if user already exists before insert
+    const existingUser = await db
+      .select({
+        id: users.id,
+        phoneEncrypted: users.phoneEncrypted,
+        dobEncrypted: users.dobEncrypted,
+      })
+      .from(users)
+      .where(and(eq(users.phoneHash, phoneHash), eq(users.dobHash, dobHash)))
+      .get();
 
-    if (!newUser) {
+    if (existingUser) {
       // --- Migration: backfill encrypted PII on duplicate registration ---
       try {
-        const existingUser = await db
-          .select({
-            id: users.id,
-            phoneEncrypted: users.phoneEncrypted,
-            dobEncrypted: users.dobEncrypted,
-          })
-          .from(users)
-          .where(
-            and(eq(users.phoneHash, phoneHash), eq(users.dobHash, dobHash)),
-          )
-          .get();
-        if (
-          existingUser &&
-          (!existingUser.phoneEncrypted || !existingUser.dobEncrypted)
-        ) {
+        if (!existingUser.phoneEncrypted || !existingUser.dobEncrypted) {
           const encUpdates: Record<string, unknown> = {};
           if (!existingUser.phoneEncrypted) {
             encUpdates.phoneEncrypted = phoneEncrypted;
@@ -313,6 +276,22 @@ auth.post(
       }
       return error(c, "USER_EXISTS", "User already registered", 409);
     }
+
+    const newUser = await db
+      .insert(users)
+      .values({
+        name: body.name,
+        nameMasked,
+        phone: normalizedPhone,
+        phoneHash,
+        phoneEncrypted,
+        dob: normalizedDob,
+        dobHash,
+        dobEncrypted,
+        role: "WORKER",
+      })
+      .returning()
+      .get();
 
     if (deviceId) {
       await recordDeviceRegistration(
