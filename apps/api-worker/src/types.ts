@@ -44,8 +44,10 @@ export interface Env {
   // Admin credentials
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;
+  ADMIN_PASSWORD_HASH?: string;
   // Analytics Engine for observability
   ANALYTICS?: AnalyticsEngineDataset;
+  ELASTICSEARCH_URL?: string;
 }
 
 export interface User {

@@ -32,6 +32,8 @@ import imagesRoute from "./routes/images";
 import { securityHeaders } from "./middleware/security-headers";
 import { analyticsMiddleware } from "./middleware/analytics";
 
+import { createLogger } from "./lib/logger";
+
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", securityHeaders);
@@ -225,7 +227,15 @@ app.get("*", async (c) => {
 });
 
 app.onError((err, c) => {
-  console.error("Unhandled error:", err);
+  const log = createLogger("onError", {
+    elasticsearchUrl: c.env.ELASTICSEARCH_URL,
+  });
+
+  log.error(err.message, {
+    stack: err.stack,
+    path: c.req.path,
+    method: c.req.method,
+  });
 
   // Handle HTTPException properly (auth errors, validation errors, etc.)
   if (err instanceof Error && "getResponse" in err) {

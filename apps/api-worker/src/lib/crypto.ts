@@ -162,3 +162,57 @@ export async function decrypt(
 
   return new TextDecoder().decode(plaintext);
 }
+
+// ---------------------------------------------------------------------------
+// PBKDF2 Password Hashing  (Web Crypto API — CF Workers compatible)
+// ---------------------------------------------------------------------------
+
+const PBKDF2_ITERATIONS = 100_000;
+const SALT_BYTES = 16;
+const KEY_BYTES = 32;
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
+    keyMaterial,
+    KEY_BYTES * 8,
+  );
+  const saltB64 = bytesToBase64(salt);
+  const hashB64 = bytesToBase64(new Uint8Array(derived));
+  return `pbkdf2:${PBKDF2_ITERATIONS}:${saltB64}:${hashB64}`;
+}
+
+export async function verifyPassword(
+  password: string,
+  stored: string,
+): Promise<boolean> {
+  const parts = stored.split(":");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
+
+  const iterations = parseInt(parts[1], 10);
+  const salt = base64ToBytes(parts[2]);
+  const expectedHash = base64ToBytes(parts[3]);
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derived = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    keyMaterial,
+    expectedHash.length * 8,
+  );
+
+  return crypto.subtle.timingSafeEqual(expectedHash, new Uint8Array(derived));
+}

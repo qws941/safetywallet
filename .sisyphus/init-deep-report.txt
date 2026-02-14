@@ -1,0 +1,34 @@
+=== init-deep Complete ===
+
+Mode: update
+
+Files:
+  [OK] ./AGENTS.md (root, 92 lines)
+  [OK] ./AceTime/AGENTS.md (26 lines)
+  [SKIPPED] apps/api-worker/AGENTS.md (Existing, high quality)
+  [SKIPPED] apps/admin-app/AGENTS.md (Existing, high quality)
+  [SKIPPED] apps/worker-app/AGENTS.md (Existing, high quality)
+  [SKIPPED] packages/types/AGENTS.md (Existing, high quality)
+  [SKIPPED] packages/ui/AGENTS.md (Existing, high quality)
+  [SKIPPED] e2e/AGENTS.md (Existing, high quality)
+  [SKIPPED] scripts/AGENTS.md (Existing, high quality)
+
+Dirs Analyzed: 23
+AGENTS.md Created: 1
+AGENTS.md Updated: 1
+
+Hierarchy:
+  ./AGENTS.md
+  ├── apps/
+  │   ├── api-worker/AGENTS.md
+  │   │   ├── src/middleware/AGENTS.md
+  │   │   └── src/routes/admin/AGENTS.md
+  │   ├── admin-app/AGENTS.md
+  │   │   └── src/app/AGENTS.md
+  │   └── worker-app/AGENTS.md
+  ├── packages/
+  │   ├── types/AGENTS.md
+  │   └── ui/AGENTS.md
+  ├── AceTime/AGENTS.md (NEW)
+  ├── e2e/AGENTS.md
+  └── scripts/AGENTS.md

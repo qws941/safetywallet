@@ -1,79 +1,50 @@
-# WORKER-APP (Next.js 14 PWA)
+# WORKER-APP: Next.js 14 PWA
 
 ## OVERVIEW
 
-Construction worker mobile PWA. Next.js 14 App Router, static export to CF Pages.
+Mobile-first safety reporting PWA for construction workers.
+
+- **Tech Stack**: Next.js 14 (Client-only), Zustand, TanStack Query.
+- **Deployment**: Cloudflare Pages (Static Export: `output: 'export'`).
+- **Domain**: High-frequency reporting, attendance, and education (Korean UI).
 
 ## STRUCTURE
 
 ```
 src/
-├── app/
-│   ├── layout.tsx              # Root layout, PWA metadata, Providers
-│   ├── page.tsx                # Root redirect (→ login | join | home)
-│   ├── login/page.tsx          # Employee code + name login form
-│   ├── join/page.tsx           # Site join (QR scan or code entry)
-│   ├── home/page.tsx           # Dashboard (attendance, points, ranking)
-│   ├── posts/
-│   │   ├── page.tsx            # Posts list
-│   │   ├── new/page.tsx        # Create post (R2 image upload)
-│   │   └── view/page.tsx       # View single post
-│   ├── education/
-│   │   ├── page.tsx            # Education hub (316L, tabs: Contents/Quizzes/TBM)
-│   │   ├── view/page.tsx       # Course detail
-│   │   └── quiz-take/page.tsx  # Take quiz
-│   ├── points/page.tsx         # Leaderboard
-│   ├── announcements/page.tsx  # Site announcements
-│   ├── votes/page.tsx          # Monthly voting
-│   ├── actions/
-│   │   ├── page.tsx            # Corrective actions list
-│   │   └── view/page.tsx       # Action detail view
-│   └── profile/page.tsx        # User profile, logout
-├── components/
-│   ├── providers.tsx           # TanStack QueryClient + Toaster
-│   ├── header.tsx              # Sticky top bar + site ID
-│   ├── bottom-nav.tsx          # 5-item bottom navigation
-│   ├── post-card.tsx           # Post display
-│   ├── points-card.tsx         # Points balance
-│   ├── ranking-card.tsx        # User ranking
-│   ├── qr-scanner.tsx          # QR code scanner (@yudiel/react-qr-scanner)
-│   ├── attendance-guard.tsx    # Attendance check wrapper
-│   └── unsafe-warning-modal.tsx
-├── hooks/
-│   ├── use-auth.ts             # Auth store wrapper
-│   ├── use-api.ts              # TanStack Query hooks (279L, 20+ hooks)
-│   └── use-leaderboard.ts      # Leaderboard hook
-├── stores/
-│   └── auth.ts                 # Zustand auth store (localStorage)
-└── lib/
-    ├── api.ts                  # apiFetch + auto token refresh
-    ├── image-compress.ts       # Canvas resize (>1920px), JPEG 80%, skip <100KB
-    └── utils.ts                # cn() re-export
+├── app/                # App Router (ALL 'use client')
+│   ├── layout.tsx      # PWA Metadata & Providers
+│   ├── login/          # AceTime/Phone dual-auth
+│   ├── education/      # Quizzes, TBM, education hub
+│   ├── posts/          # Safety reports (R2 image uploads)
+│   └── points/         # Leaderboard & rewards
+├── components/         # Mobile UI (BottomNav, QRScanner)
+├── hooks/              # use-api (20+ TanStack Query hooks)
+├── stores/             # auth.ts (Zustand + localStorage)
+└── lib/                # apiFetch (auto-refresh), image-compress
 ```
+
+## WHERE TO LOOK
+
+| Task            | Location                                   |
+| :-------------- | :----------------------------------------- |
+| Add new page    | `src/app/` (Must have `'use client'`)      |
+| API Integration | `src/hooks/use-api.ts` (Shared hooks)      |
+| Auth logic      | `src/stores/auth.ts` + `src/lib/api.ts`    |
+| Image handling  | `src/lib/image-compress.ts` (Canvas-based) |
+| QR Scanning     | `src/components/qr-scanner.tsx`            |
 
 ## CONVENTIONS
 
-- **ALL pages `'use client'`** — zero RSC, static export
-- **Auth state**: Zustand → localStorage key `safetywallet-auth`
-- **Server data**: TanStack Query (staleTime: 60s, no auto-refetch)
-- **API base**: `NEXT_PUBLIC_API_URL` env or `http://localhost:3333`
-- **Auto 401 handling**: `lib/api.ts` intercepts → refresh → retry → logout
-- **Korean (ko-KR)** localization, **mobile-first** (`pb-nav` / `safe-bottom` padding)
+- **Mobile-First**: Use `pb-nav` and `safe-bottom` for notch/navbar padding.
+- **Static Export**: Zero RSC components. No `headers()` or `cookies()` from `next/headers`.
+- **Localization**: Pure Korean (ko-KR) strings only.
+- **State Management**: Zustand for auth; TanStack Query for server state.
+- **Image Upload**: Compress to JPEG 80%, skip if <100KB, max width 1920px.
 
 ## ANTI-PATTERNS
 
-- No `alert()`/`confirm()` — use modal components
-- **Known**: `app/points/page.tsx:180` — type assertion on history array (not `as any`, but loose cast)
-
-## LOGIN FLOW
-
-1. `/` → redirects to `/login` if unauthenticated
-2. LoginPage: dual-auth — AceTime (`employee_code` + `name`) OR Phone (`phone` + `dob`)
-3. Response: `{ accessToken, refreshToken, user }`
-4. `login()` → updates Zustand store → redirects to `/join`
-5. After site join → `/home` (dashboard)
-
-## PWA
-
-- **Manifest**: Korean, portrait, standalone, `#ff8c42` theme. Viewport: no-zoom
-- **Service worker**: next-pwa generated `sw.js`
+- **No RSC**: Do not use Server Components; static export will fail.
+- **No Native Dialogs**: Use `unsafe-warning-modal.tsx` or similar shadcn primitives.
+- **No Manual Token Storage**: Use `useAuth` hook/store to manage tokens.
+- **Avoid Loose Casts**: Specifically check `app/points/page.tsx:180` for history array casts.

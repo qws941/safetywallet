@@ -10,7 +10,7 @@ import {
   auditLogs,
   deviceRegistrations,
 } from "../db/schema";
-import { hmac, decrypt, encrypt } from "../lib/crypto";
+import { hmac, decrypt, encrypt, verifyPassword } from "../lib/crypto";
 import { signJwt } from "../lib/jwt";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
@@ -831,9 +831,10 @@ auth.post(
 
     // Admin credentials from environment variables (required)
     const ADMIN_USERNAME = c.env.ADMIN_USERNAME;
+    const ADMIN_PASSWORD_HASH = c.env.ADMIN_PASSWORD_HASH;
     const ADMIN_PASSWORD = c.env.ADMIN_PASSWORD;
 
-    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    if (!ADMIN_USERNAME || (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD)) {
       return respondWithDelay(
         error(
           c,
@@ -844,7 +845,18 @@ auth.post(
       );
     }
 
-    if (body.username !== ADMIN_USERNAME || body.password !== ADMIN_PASSWORD) {
+    // Username check (constant-time via PBKDF2 path regardless of result)
+    const usernameMatch = body.username === ADMIN_USERNAME;
+
+    // Password verification: prefer PBKDF2 hash, fall back to plain-text
+    let passwordMatch = false;
+    if (ADMIN_PASSWORD_HASH) {
+      passwordMatch = await verifyPassword(body.password, ADMIN_PASSWORD_HASH);
+    } else if (ADMIN_PASSWORD) {
+      passwordMatch = body.password === ADMIN_PASSWORD;
+    }
+
+    if (!usernameMatch || !passwordMatch) {
       return respondWithDelay(
         error(
           c,

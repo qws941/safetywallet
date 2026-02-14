@@ -1,123 +1,103 @@
-# PROJECT KNOWLEDGE BASE
+# PROJECT KNOWLEDGE BASE: SAFEWORK2
 
-**Generated:** 2026-02-12  
+**Updated:** 2026-02-13
 **Branch:** master
 
 ## OVERVIEW
 
-SafetyWallet - Construction site safety reporting PWA. Turborepo monorepo with Cloudflare Workers backend (Hono + Drizzle ORM) and two Next.js 14 frontends deployed to CF Pages.
+SafetyWallet - Construction site safety reporting PWA. A high-performance Turborepo monorepo leveraging Cloudflare Workers (Hono + Drizzle ORM) for the backend and Next.js 14 for multiple frontends (Worker App & Admin Dashboard).
 
 ## STRUCTURE
 
-```
+\`\`\`
 safework2/
 ├── apps/
-│   ├── api-worker/       # Cloudflare Workers API (Hono + Drizzle)
-│   ├── worker-app/       # Next.js 14 Worker PWA (CF Pages, port 3000)
-│   └── admin-app/        # Next.js 14 Admin Dashboard (CF Pages, port 3001)
+│ ├── api-worker/ # Cloudflare Workers API (Hono + Drizzle)
+│ ├── worker-app/ # Next.js 14 Worker PWA (CF Pages, port 3000)
+│ └── admin-app/ # Next.js 14 Admin Dashboard (CF Pages, port 3001)
 ├── packages/
-│   ├── types/            # Shared TypeScript types, 15 enums, 10 DTOs
-│   └── ui/               # shadcn/ui component library (13 components)
-├── e2e/                  # Playwright e2e tests (4 projects, 1064 lines)
-├── scripts/              # Build/deploy helper scripts (7 files)
-├── docker/               # Development Docker Compose
-├── docs/                 # PRD, implementation plans, status docs
-└── .sisyphus/            # AI agent planning artifacts
-```
+│ ├── types/ # Shared TS types, enums, and DTOs
+│ └── ui/ # Shared shadcn/ui component library
+├── AceTime/ # Attendance system integration (Win32 binaries/logs)
+├── e2e/ # Playwright end-to-end tests
+├── scripts/ # Build, deployment, and sync helpers
+├── docs/ # PRDs, plans, and technical specs
+└── .sisyphus/ # AI agent planning artifacts
+\`\`\`
 
 ## WHERE TO LOOK
 
-| Task                  | Location                           | Notes                           |
-| --------------------- | ---------------------------------- | ------------------------------- |
-| Add API endpoint      | `apps/api-worker/src/routes/`      | Hono routes, 19 modules         |
-| Add/modify DB table   | `apps/api-worker/src/db/schema.ts` | Drizzle ORM, 32 tables          |
-| Add shared type/DTO   | `packages/types/src/`              | Export via barrel in `index.ts` |
-| Add UI component      | `packages/ui/src/components/`      | shadcn conventions              |
-| Add worker page       | `apps/worker-app/src/app/`         | Next.js 14 App Router           |
-| Add admin page        | `apps/admin-app/src/app/`          | Next.js 14 App Router           |
-| Configure CF bindings | `apps/api-worker/wrangler.toml`    | D1, R2×3, KV, DO, CRON          |
-| Add middleware        | `apps/api-worker/src/middleware/`  | 7 files, manual invocation      |
-| Add validation schema | `apps/api-worker/src/validators/`  | Zod schemas                     |
-| Add CRON job          | `apps/api-worker/src/scheduled/`   | Separate module, KST timezone   |
-| Add/run e2e tests     | `e2e/`                             | Playwright, 4 projects          |
+| Task             | Location                             | Notes                            |
+| :--------------- | :----------------------------------- | :------------------------------- |
+| Add API endpoint | \`apps/api-worker/src/routes/\`      | Hono route modules               |
+| Modify DB schema | \`apps/api-worker/src/db/schema.ts\` | Drizzle ORM definitions          |
+| Add shared DTO   | \`packages/types/src/\`              | Export via \`index.ts\`          |
+| UI Components    | \`packages/ui/src/components/\`      | shadcn conventions               |
+| Worker App pages | \`apps/worker-app/src/app/\`         | Next.js App Router (Client-only) |
+| Admin App pages  | \`apps/admin-app/src/app/\`          | Next.js App Router               |
+| CF Bindings      | \`apps/api-worker/wrangler.toml\`    | D1, R2, KV, DO, CRON             |
+| E2E Tests        | \`e2e/\`                             | Playwright projects              |
 
 ## CODE MAP
 
 ### Entry Points
 
-| App        | Entry                | Framework  | Port        |
-| ---------- | -------------------- | ---------- | ----------- |
-| api-worker | `src/index.ts`       | Hono 4     | - (Workers) |
-| worker-app | `src/app/layout.tsx` | Next.js 14 | 3000        |
-| admin-app  | `src/app/layout.tsx` | Next.js 14 | 3001        |
+| App        | Path                                   | Framework  | Port    |
+| :--------- | :------------------------------------- | :--------- | :------ |
+| api-worker | \`apps/api-worker/src/index.ts\`       | Hono 4     | Workers |
+| worker-app | \`apps/worker-app/src/app/layout.tsx\` | Next.js 14 | 3000    |
+| admin-app  | \`apps/admin-app/src/app/layout.tsx\`  | Next.js 14 | 3001    |
+
+### Worker App (PWA)
+
+- **Context**: Mobile-first Next.js 14 PWA for construction site field use.
+- **Structure**:
+  - \`src/app/\`: App Router pages (Client-only).
+  - \`src/components/\`: PWA-specific UI components.
+  - \`src/stores/\`: Zustand state (Auth, Offline Cache).
 
 ## CONVENTIONS
 
-### Code Style
+- **Strict TypeScript**: No \`any\`, no \`ignore\`.
+- **Barrel Exports**: Use \`index.ts\` for clean package imports.
+- **Path Aliases**: \`@/\` maps to \`src/\` within applications.
+- **Response Format**: Always use \`success(c, data)\` or \`error(c, code, msg)\` helpers.
+- **Authentication**: JWT based on \`loginDate\` with daily rotation. PII is HMAC-SHA256 hashed.
+- **Zustand Store**: Auth and offline state managed exclusively via Zustand with persistence.
+- **Offline First**: Submission queue logic to handle intermittent site connectivity.
 
-- **TypeScript strict mode** everywhere
-- **Barrel exports** in packages (index.ts re-exports)
-- **Path aliases**: `@/` → `src/` in apps
-- **All pages `'use client'`** — zero React Server Components
-- **No ESLint/Prettier** — typecheck only quality gate
+## ANTI-PATTERNS
 
-### Naming
+- **No \`as any\`**: Active removal of legacy type casts.
+- **No Browser Dialogs**: Use UI modal components instead of \`alert()\` or \`confirm()\`.
+- **No \`console.log\`**: Use structured logging for production observability.
+- **No Secrets in Git**: Specifically check \`.env\` and Splunk/Wrangler configs.
+- **No Manual Tokens**: Never use \`localStorage\` or cookies directly for JWTs; use Zustand stores.
+- **No RSC (Worker App)**: Absolute Zero RSC policy; all components must use \`'use client'\`.
+- **No Placeholder Promises**: Do not ship \`Promise.resolve()\` mocks.
 
-- **Files**: kebab-case (`auth.guard.ts`, `create-post.dto.ts`)
-- **DB fields**: snake_case via Drizzle column definitions
-- **API routes**: `/` prefix (Hono Workers)
+## UNIQUE STYLES
 
-### API Response Format
-
-```typescript
-// Response helpers — context c is FIRST param
-success(c, data); // { success: true, data, timestamp }
-error(c, code, msg); // { success: false, error: { code, message }, timestamp }
-```
-
-### Authentication
-
-- **JWT**: Uses `loginDate` field (NOT standard `exp`), daily reset at 5 AM KST
-- **PII**: HMAC-SHA256 hashed (phoneHash, dobHash)
-- **Refresh**: UUID token, rotated on each refresh
-
-## ANTI-PATTERNS (THIS PROJECT)
-
-| Pattern                            | Why Forbidden                          |
-| ---------------------------------- | -------------------------------------- |
-| `as unknown as Type`               | Defeats TypeScript safety              |
-| `as any`                           | Defeats TypeScript safety              |
-| `confirm()` / `alert()`            | Use modal components instead           |
-| `console.*` in production          | Use structured logging                 |
-| `Record<string, unknown>` for DTOs | Use strict Zod schemas                 |
-| Padding crypto keys with "0"       | Use proper key derivation              |
-| `Promise.resolve()` mocks          | Never ship placeholder implementations |
-
-### Known Violations (TODO)
-
-- `apps/api-worker/src/db/helpers.ts:12` — `(db as any).batch(operations)`
-- `apps/admin-app/src/app/actions/page.tsx:120` — `(statusColors[item.status] as any)`
-- `apps/admin-app/src/app/votes/page.tsx:63` — `window.confirm()` anti-pattern
+- **5 AM KST Cutoff**: The logical "day" starts at 5:00 AM Korea Standard Time.
+- **Client-Side Only**: All Next.js pages use \`'use client'\` (Zero RSC pattern).
+- **Korean Localization**: The Worker PWA is fully localized in Korean.
+- **Review Workflow**: Strict state machine: \`RECEIVED\` → \`IN_REVIEW\` → \`APPROVED\`/\`REJECTED\`/\`NEED_INFO\`.
 
 ## COMMANDS
 
-```bash
-npm run dev              # Start all apps (Turborepo)
-npm run dev:worker       # Start worker-app only
-npm run dev:admin        # Start admin-app only
-npx drizzle-kit generate # Generate migration SQL
-npx drizzle-kit push     # Push schema to D1
-npm run build            # Build all apps
-tsc --noEmit             # Typecheck (only quality gate)
-```
+\`\`\`bash
+npm run dev # Start all apps via Turborepo
+npm run dev:worker # Start worker-app only
+npm run dev:admin # Start admin-app only
+npx drizzle-kit generate # Create DB migration SQL
+npx drizzle-kit push # Sync schema directly to D1
+npm run build # Full monorepo build
+tsc --noEmit # Global type check (Quality Gate)
+\`\`\`
 
 ## NOTES
 
-- **5 AM KST cutoff**: All "today" logic uses Korea timezone with 5 AM as day boundary
-- **Package manager**: npm (`pnpm-workspace.yaml` is vestigial)
-- **E2E tests only**: 4 Playwright projects, no unit tests
-- **Static export**: worker-app uses `output: 'export'`; admin-app uses `@cloudflare/next-on-pages`
-- **Enum sync**: 15 enums in `packages/types` MUST match Drizzle schema enums (5 additional schema-only)
-- **FAS integration**: Foreign Attendance System via Hyperdrive (MariaDB proxy), 5-min CRON sync
-- **Korean localization**: Worker-app UI fully Korean
-- **State machine**: Post review workflow `RECEIVED→IN_REVIEW→APPROVED/REJECTED/NEED_INFO`
+- **Package Manager**: npm (standardized; avoid pnpm usage here).
+- **Static Export**: \`worker-app\` is a static export for CF Pages.
+- **Integration**: FAS (Foreign Attendance System) syncs via Hyperdrive (MariaDB) every 5 minutes.
+- **E2E Obsession**: 1000+ lines of Playwright tests; the primary verification method.

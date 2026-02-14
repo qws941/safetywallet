@@ -5,7 +5,10 @@ test.describe("Worker App - Smoke Tests", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.waitForURL("**/login", { timeout: 30_000 });
+    await page.waitForURL("**/login**", {
+      timeout: 30_000,
+      waitUntil: "domcontentloaded",
+    });
     expect(page.url()).toContain("/login");
   });
 

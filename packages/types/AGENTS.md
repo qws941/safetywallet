@@ -1,43 +1,39 @@
-# PACKAGES/TYPES
+# AGENTS: PACKAGES/TYPES
+
+**Context:** Shared Type Definitions
+**Scope:** Internal types, Enums, and DTOs
 
 ## OVERVIEW
 
-Shared TypeScript types, 15 enums, and 10 DTO interfaces consumed by all apps.
+This package is the Source of Truth (SoT) for all TypeScript definitions used across the Safework2 monorepo. It is a logic-less library strictly restricted to types, interfaces, and enums consumed by both the API and frontend applications.
 
 ## STRUCTURE
 
 ```
 src/
-├── index.ts              # Barrel export (ALL types/enums/DTOs)
-├── enums.ts              # 15 enum definitions
-├── api.ts                # ApiResponse<T> generic interface
-└── dto/
-    ├── index.ts          # DTO barrel export
-    ├── action.dto.ts     # Corrective action types
-    ├── announcement.dto.ts
-    ├── auth.dto.ts       # Auth request/response types
-    ├── education.dto.ts  # Course, material, quiz types
-    ├── points.dto.ts     # Point ledger types
-    ├── post.dto.ts       # Post CRUD types
-    ├── review.dto.ts     # Review workflow types
-    ├── site.dto.ts       # Site types
-    ├── user.dto.ts       # User types
-    └── vote.dto.ts       # Vote types
+├── index.ts              # Global barrel export (Source of Truth)
+├── enums.ts              # System-wide enum definitions (15 total)
+├── api.ts                # Generic API response envelopes
+└── dto/                  # Domain-specific Data Transfer Objects
+    ├── action.dto.ts     # Corrective actions
+    ├── auth.dto.ts       # Authentication & Login
+    ├── education.dto.ts  # Courses, Materials, Quizzes
+    ├── user.dto.ts       # Profiles & Identity
+    └── ...               # (See directory for full list)
 ```
 
 ## CONVENTIONS
 
-- **Barrel exports**: Everything re-exported from `src/index.ts`
-- **Import as**: `import { UserRole, CreatePostDto } from "@safetywallet/types"`
-- **DTOs are interfaces** — no runtime validation (Zod is on API side)
-- **Enums MUST match** Drizzle schema enums in `api-worker/src/db/schema.ts`
-
-## ENUMS (15)
-
-UserRole, MembershipStatus, Category, RiskLevel, Visibility, ReviewStatus, ActionStatus, ReviewAction, TaskStatus, RejectReason, ApprovalStatus, EducationContentType, QuizStatus, StatutoryTrainingType, TrainingCompletionStatus
+- **Barrel Exports**: Every public type, interface, or enum MUST be re-exported in `src/index.ts`.
+- **Interface vs Type**: Prefer `interface` for DTOs and object structures to allow for extension.
+- **Naming**: DTOs must be suffixed with `Dto` (e.g., `CreatePostDto`, `UserResponseDto`).
+- **Enum Parity**: Enums defined here must match the Drizzle schema enums in `apps/api-worker/src/db/schema.ts`.
+- **Workspace Aliasing**: Always import via `@safetywallet/types` rather than relative paths from other packages.
 
 ## ANTI-PATTERNS
 
-- **Never add runtime logic** — types-only package
-- **Never import from sub-paths** — always import from `@safetywallet/types`
-- **Enum sync**: Adding/changing an enum HERE requires matching change in `api-worker/src/db/schema.ts`
+- **No Runtime Code**: NEVER include functions, classes with methods, or logic. Enums are the only exception.
+- **No Deep Imports**: NEVER import from sub-paths (e.g., `src/dto/user`). Use the root barrel.
+- **No Validation Logic**: Keep Zod schemas and validation logic in `apps/api-worker`.
+- **No External Dependencies**: Avoid adding runtime dependencies; `devDependencies` for types only.
+- **No `any`**: Strictly prohibited. Use `unknown` if a type is truly dynamic.

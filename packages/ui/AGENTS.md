@@ -1,47 +1,47 @@
-# PACKAGES/UI
+# PROJECT KNOWLEDGE BASE: PACKAGES/UI
+
+**Updated:** 2026-02-13  
+**Package:** @safetywallet/ui
 
 ## OVERVIEW
 
-Shared shadcn/ui component library. 13 components consumed by worker-app and admin-app.
+Shared component library for the SafetyWallet ecosystem. Built on **shadcn/ui** primitives using Tailwind CSS v4. This package is consumed by `worker-app` and `admin-app` to ensure visual consistency across the construction site safety platform.
 
 ## STRUCTURE
 
 ```
 src/
-├── components/
-│   ├── button.tsx
-│   ├── card.tsx
-│   ├── input.tsx
-│   ├── badge.tsx
-│   ├── skeleton.tsx
-│   ├── avatar.tsx
-│   ├── alert-dialog.tsx
-│   ├── dialog.tsx
-│   ├── select.tsx
-│   ├── switch.tsx
-│   ├── toaster.tsx
-│   ├── toast.tsx
-│   └── use-toast.tsx    # Toast hook (not a component)
-├── index.ts              # Barrel export
-└── lib/
-    └── utils.ts          # cn() (clsx + tailwind-merge)
+├── components/       # Atomic shadcn/ui components (Button, Card, Input, etc.)
+├── lib/              # Shared UI utilities
+│   └── utils.ts      # cn() helper (clsx + tailwind-merge)
+├── index.ts          # Barrel export for all public components
+└── globals.css       # Tailwind v4 directives and base styles
 ```
 
 ## CONVENTIONS
 
-- **Import as**: `import { Button, Card } from "@safetywallet/ui"`
-- **shadcn/ui conventions**: CVA variants, forwardRef, Slot composition
-- **Styling**: Tailwind CSS v4, dark mode via `class` strategy
-- **No custom wrappers** — use shadcn primitives directly
+### Component Standards
 
-## ADDING COMPONENTS
+- **shadcn Consistency**: Follow the shadcn/ui pattern: Radix UI primitives + Tailwind CSS + CVA (Class Variance Authority).
+- **Atomic Only**: Components must remain generic and decoupled from business logic. They should receive data via props and emit events via callbacks.
+- **forwardRef**: Always use `React.forwardRef` to allow parent components to access DOM elements for focus management and animations.
+- **Composition**: Prefer the `Slot` pattern (from `@radix-ui/react-slot`) for high-flexibility components.
 
-1. Copy shadcn component to `src/components/`
-2. Update dependencies in `package.json` if needed
-3. Export from `src/index.ts` barrel
+### Styling & Theming
 
-## ANTI-PATTERNS
+- **Tailwind CSS v4**: Use modern Tailwind syntax. Avoid legacy `@apply` in CSS files; prefer utility classes in TSX.
+- **Dark Mode**: Support the `class` strategy for dark mode. Use `dark:` variants for themed colors.
+- **CVA**: Use `class-variance-authority` for managing component variants (e.g., button sizes, colors).
 
-- **No business logic** — UI primitives only
-- **No direct Tailwind `@apply`** — use CVA variants
-- **No app-specific styling** — keep generic
+### Workflow for New Components
+
+1. **Source**: Pull primitives from shadcn/ui.
+2. **Placement**: Store in `src/components/{name}.tsx`.
+3. **Export**: Register the component in `src/index.ts` to make it available to the monorepo.
+4. **Validation**: Ensure components are accessible (ARIA labels, keyboard navigation) before committing.
+
+### Anti-Patterns
+
+- **No Data Fetching**: Never perform API calls or use hooks that depend on specific backend data.
+- **No Hardcoded Values**: Use Tailwind variables and theme colors instead of magic hex/rgb values.
+- **No Direct Imports**: Apps should import from `@safetywallet/ui`, not reach into sub-paths.

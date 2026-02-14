@@ -12,6 +12,7 @@ import {
 } from "@safetywallet/ui";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api";
+import Link from "next/link";
 import type {
   ApiResponse,
   AuthResponseDto,
@@ -46,13 +47,7 @@ function parseErrorMessage(err: unknown): string {
 }
 
 export default function LoginPage() {
-  const {
-    login,
-    setCurrentSite,
-    currentSiteId,
-    isAuthenticated,
-    _hasHydrated,
-  } = useAuth();
+  const { login, setCurrentSite, isAuthenticated, _hasHydrated } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -63,9 +58,9 @@ export default function LoginPage() {
   useEffect(() => {
     // Skip redirect during active login submission to avoid duplicate navigation
     if (_hasHydrated && isAuthenticated && !loading) {
-      window.location.replace(currentSiteId ? "/home/" : "/join/");
+      window.location.replace("/home/");
     }
-  }, [_hasHydrated, isAuthenticated, currentSiteId, loading]);
+  }, [_hasHydrated, isAuthenticated, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,20 +83,18 @@ export default function LoginPage() {
       const data = response.data;
 
       login(data.user, data.accessToken, data.refreshToken);
-      let siteId: string | null = null;
 
       try {
         const meResponse =
           await apiFetch<ApiResponse<MeResponseDto>>("/auth/me");
         if (meResponse.data.siteId) {
           setCurrentSite(meResponse.data.siteId);
-          siteId = meResponse.data.siteId;
         }
       } catch {
-        siteId = null;
+        // No site assignment — user can proceed without site
       }
 
-      window.location.replace(siteId ? "/home/" : "/join/");
+      window.location.replace("/home/");
     } catch (err) {
       setError(parseErrorMessage(err));
     } finally {
@@ -182,6 +175,13 @@ export default function LoginPage() {
               등록된 전화번호, 이름, 생년월일로 로그인합니다.
               <br />
               최초 이용 시 출근 기록이 필요할 수 있습니다.
+            </p>
+
+            <p className="text-sm text-muted-foreground text-center">
+              계정이 없으신가요?{" "}
+              <Link href="/register" className="text-primary underline">
+                회원가입
+              </Link>
             </p>
           </form>
         </CardContent>

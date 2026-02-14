@@ -1,75 +1,36 @@
-# E2E TESTS
+# AGENT CONTEXT: E2E TESTING
 
 ## OVERVIEW
 
-Playwright end-to-end tests. 4 test projects targeting production URLs. 7 spec files, ~1064 total lines.
+This directory contains the Playwright-based end-to-end testing suite for the SafetyWallet platform. Unlike unit tests, these verify full user flows and API integrity against **live production environments**. High reliability and deterministic behavior are the primary goals for all automation in this domain.
 
 ## STRUCTURE
 
-```
-e2e/
-├── admin-app/               # 261L total
-│   ├── pages.spec.ts        # Admin page navigation tests
-│   └── smoke.spec.ts        # Admin smoke tests
-├── api/                     # 391L total
-│   ├── endpoints.spec.ts    # API endpoint tests (largest spec)
-│   └── smoke.spec.ts        # API health/smoke tests
-├── cross-app/               # 119L total
-│   └── integration.spec.ts  # Cross-app integration flows
-└── worker-app/              # 293L total
-    ├── pages.spec.ts        # Worker page navigation tests
-    └── smoke.spec.ts        # Worker smoke tests
-```
+The suite is organized into subdirectories matching the Playwright projects defined in the root `playwright.config.ts`:
 
-## PROJECTS
-
-| Project      | Base URL                                       | Tests          |
-| ------------ | ---------------------------------------------- | -------------- |
-| `api`        | `https://safework2-api.jclee.workers.dev/api/` | 2 specs (391L) |
-| `worker-app` | `https://safework2-api.jclee.workers.dev`      | 2 specs (293L) |
-| `admin-app`  | `https://safework2-admin.pages.dev`            | 2 specs (261L) |
-| `cross-app`  | _(uses worker-app baseURL)_                    | 1 spec (119L)  |
-
-## CONFIG
-
-Config file: `playwright.config.ts` (repo root)
-
-- **Timeout**: 30 seconds
-- **Retries**: 2 (CI), 0 (local)
-- **Reporter**: github (CI), list (local)
-- **Test directory**: `./e2e` (relative to repo root)
-- **Each project**: own subdirectory matching project name
-
-## RUNNING TESTS
-
-```bash
-# All tests (from repo root)
-npx playwright test
-
-# Single project
-npx playwright test --project=api
-
-# Specific file
-npx playwright test e2e/api/endpoints.spec.ts
-```
+- `admin-app/`: Tests for the Next.js 14 Admin Dashboard (navigation, stats, user management).
+- `worker-app/`: Tests for the Next.js 14 PWA Worker App (reporting, profile, attendance).
+- `api/`: Direct API request/response validation targeting the Cloudflare Worker backend.
+- `cross-app/`: Complex integration flows that span multiple applications (e.g., Worker report → Admin review).
 
 ## CONVENTIONS
 
-- **Test against production URLs** (safework2.jclee.me)
-- **Smoke tests**: Basic page load / health checks
-- **Page tests**: Navigation, element presence
-- **Endpoint tests**: API request/response validation
-- **Integration tests**: Cross-app workflows
+- **Production-First**: Tests target production URLs (safework2.jclee.me). Never mock the backend.
+- **Execution Modes**:
+  - Use `test.describe.configure({ mode: 'serial' })` for dependent sequences (Auth flow).
+  - Use `parallel` mode for independent smoke and page navigation tests.
+- **Tagging Strategy**:
+  - Use `@smoke` for critical health checks.
+  - Use descriptive feature-based naming for all `test.describe` blocks.
+- **Reliability**:
+  - Handle API rate limiting (429) with explicit retry logic in test setups.
+  - Use Playwright's auto-waiting locators; avoid `page.waitForTimeout`.
+- **API Testing**: Use the `request` fixture for endpoint validation. Verify JSON schema and status codes.
+- **Localization**: `worker-app` tests must validate Korean (ko) UI strings.
+- **Naming**: Files must follow the `{feature}.spec.ts` pattern.
 
-## ADDING TESTS
+### Key Commands
 
-1. Create spec file in appropriate project directory
-2. Follow `{feature}.spec.ts` naming
-3. Use `test.describe()` for grouping
-4. Target production URLs (configured in playwright.config.ts)
-
-## ANTI-PATTERNS
-
-- **No unit tests** — this project uses e2e only
-- **No mocking API responses** — tests hit real endpoints
-- **No test-specific env variables** — URLs hardcoded in config
+- Run all: `npx playwright test`
+- Specific project: `npx playwright test --project=worker-app`
+- UI Mode: `npx playwright test --ui`
