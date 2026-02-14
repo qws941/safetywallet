@@ -13,7 +13,11 @@ import {
 } from "@safetywallet/ui";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api";
-import type { ApiResponse, AuthResponseDto } from "@safetywallet/types";
+import type {
+  ApiResponse,
+  AuthResponseDto,
+  MeResponseDto,
+} from "@safetywallet/types";
 
 const ERROR_MESSAGES: Record<string, string> = {
   USER_NOT_FOUND: "등록되지 않은 사용자입니다. 현장 관리자에게 문의하세요.",
@@ -44,7 +48,7 @@ function parseErrorMessage(err: unknown): string {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, _hasHydrated } = useAuth();
+  const { login, setCurrentSite, isAuthenticated, _hasHydrated } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -79,6 +83,17 @@ export default function LoginPage() {
       const data = response.data;
 
       login(data.user, data.accessToken, data.refreshToken);
+
+      try {
+        const meResponse =
+          await apiFetch<ApiResponse<MeResponseDto>>("/auth/me");
+        if (meResponse.data.siteId) {
+          setCurrentSite(meResponse.data.siteId);
+        }
+      } catch {
+        // Non-blocking: site can be set later, proceed to home
+      }
+
       router.replace("/home");
     } catch (err) {
       setError(parseErrorMessage(err));
