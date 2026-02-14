@@ -348,7 +348,10 @@
         "selectAnswer": "Please select an answer",
         "networkError": "A network error occurred",
         "submitFailed": "Failed to submit quiz"
-      }
+      },
+      "score": "Score",
+      "scorePoints": "points",
+      "passingScoreWithPoints": "Passing Score: {score} points"
     },
     "tbm": {
       "toolBoxMeeting": "Toolbox Meeting",
@@ -555,5 +558,17 @@
     "unsafeWarning": "An unsafe situation has been detected",
     "confirmDelete": "Are you sure you want to delete?",
     "confirmLogout": "Are you sure you want to logout?"
+  },
+  "pointsCard": {
+    "myPoints": "My Points",
+    "thisMonth": "This Month",
+    "monthlyChange": "vs. Last Month"
+  },
+  "rankingCard": {
+    "monthlyRank": "Monthly Rank",
+    "participants": " participants",
+    "challengeRank1": "Collect more to rank #1!",
+    "noRank": "No rank yet",
+    "collectPoints": "Start earning points!"
   }
 }

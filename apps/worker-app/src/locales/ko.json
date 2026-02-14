@@ -373,7 +373,10 @@
       "backToListButton": "목록으로 돌아가기",
       "submitting": "제출 중...",
       "submitButton": "제출하기",
-      "maximumLabel": "최대"
+      "maximumLabel": "최대",
+      "score": "점수",
+      "scorePoints": "점",
+      "passingScoreWithPoints": "합격기준: {score}점"
     },
     "tbm": "TBM",
     "form": {
@@ -664,10 +667,25 @@
     "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",
     "unsafeWarningPrivacyNote": "제보 시 얼굴이나 개인정보가 노출되지 않도록 주의해 주세요.",
     "unsafeWarningAdminNote": "이 제보는 관리자만 확인할 수 있습니다.",
-    "unsafeWarningConfirm": "확인하고 제출"
+    "unsafeWarningConfirm": "확인하고 제출",
+    "attendanceCheckingLabel": "출근 확인 중...",
+    "attendanceRequiredTitle": "출근 후 이용 가능합니다",
+    "attendanceRequiredDescription": "해당 현장에 출근 기록이 확인되어야 이 기능을 사용할 수 있습니다."
   },
   "postCard": {
     "reviewStatusNeedInfo": "추가정보",
     "actionStatusVerified": "조치확인"
+  },
+  "pointsCard": {
+    "myPoints": "내 포인트",
+    "thisMonth": "이번 달",
+    "monthlyChange": "전월 대비"
+  },
+  "rankingCard": {
+    "monthlyRank": "이번 달 순위",
+    "participants": "명",
+    "challengeRank1": "더 모아서 1등 도전!",
+    "noRank": "아직 순위가 없어요",
+    "collectPoints": "포인트를 모아보세요!"
   }
 }

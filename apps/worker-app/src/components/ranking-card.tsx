@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "@/hooks/use-translation";
 import { Card, CardContent, Skeleton } from "@safetywallet/ui";
 import { Trophy } from "lucide-react";
 import Link from "next/link";
@@ -15,6 +16,8 @@ export function RankingCard({
   totalParticipants,
   isLoading,
 }: RankingCardProps) {
+  const t = useTranslation();
+
   if (isLoading) {
     return <Skeleton className="h-full w-full min-h-[120px]" />;
   }
@@ -32,7 +35,7 @@ export function RankingCard({
               <Trophy className="w-4 h-4" />
             </div>
             <span className="font-bold text-amber-800 text-sm tracking-tight">
-              이번 달 순위
+              {t("rankingCard.monthlyRank")}
             </span>
           </div>
 
@@ -45,19 +48,19 @@ export function RankingCard({
                   </span>
                   {totalParticipants && (
                     <span className="text-xs text-amber-700 font-medium">
-                      / {totalParticipants}명
+                      / {totalParticipants}{t("rankingCard.participants")}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-amber-600 mt-1 font-medium">
-                  더 모아서 1등 도전!
+                  {t("rankingCard.challengeRank1")}
                 </p>
               </>
             ) : (
               <div className="text-amber-800 font-medium text-sm">
-                아직 순위가 없어요
+                {t("rankingCard.noRank")}
                 <span className="block text-xs text-amber-600 mt-0.5 font-normal">
-                  포인트를 모아보세요!
+                  {t("rankingCard.collectPoints")}
                 </span>
               </div>
             )}

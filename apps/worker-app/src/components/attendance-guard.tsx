@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useAttendanceToday } from "@/hooks/use-api";
+import { useTranslation } from "@/hooks/use-translation";
 import { ShieldAlert, Loader2 } from "lucide-react";
 
 interface AttendanceGuardProps {
@@ -10,6 +11,7 @@ interface AttendanceGuardProps {
 }
 
 export function AttendanceGuard({ children, fallback }: AttendanceGuardProps) {
+  const t = useTranslation();
   const { currentSiteId, isAuthenticated } = useAuth();
   const { data, isLoading } = useAttendanceToday(currentSiteId);
 
@@ -21,7 +23,9 @@ export function AttendanceGuard({ children, fallback }: AttendanceGuardProps) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">출근 확인 중...</p>
+        <p className="text-sm text-muted-foreground">
+          {t("components.attendanceCheckingLabel")}
+        </p>
       </div>
     );
   }
@@ -34,10 +38,11 @@ export function AttendanceGuard({ children, fallback }: AttendanceGuardProps) {
             <ShieldAlert className="h-10 w-10 text-orange-600" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold">출근 후 이용 가능합니다</h2>
-            <p className="text-sm text-muted-foreground">
-              해당 현장에 출근 기록이 확인되어야
-              <br />이 기능을 사용할 수 있습니다.
+            <h2 className="text-lg font-semibold">
+              {t("components.attendanceRequiredTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground whitespace-pre-line">
+              {t("components.attendanceRequiredDescription")}
             </p>
           </div>
         </div>
