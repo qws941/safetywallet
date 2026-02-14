@@ -100,7 +100,8 @@ export function useExportRecommendations() {
     if (endDate) params.set("endDate", endDate);
 
     const API_BASE =
-      process.env.NEXT_PUBLIC_API_URL || "https://safework2.jclee.me/api";
+      process.env.NEXT_PUBLIC_API_URL ||
+      "https://safework2-api.jclee.workers.dev/api";
     const res = await fetch(
       `${API_BASE}/admin/recommendations/export?${params}`,
       {

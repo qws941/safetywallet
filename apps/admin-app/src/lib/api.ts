@@ -1,7 +1,8 @@
 import { useAuthStore } from "@/stores/auth";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://safework2.jclee.me/api";
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://safework2-api.jclee.workers.dev/api";
 
 export class ApiError extends Error {
   constructor(
@@ -66,5 +67,6 @@ export async function apiFetch<T>(
     );
   }
 
-  return response.json();
+  const json = await response.json();
+  return json.data !== undefined ? json.data : json;
 }

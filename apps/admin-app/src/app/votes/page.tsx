@@ -147,7 +147,7 @@ export default function VotesPage() {
     try {
       const { tokens } = useAuthStore.getState();
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://safework2.jclee.me/api"}/admin/votes/results?siteId=${siteId}&month=${month}&format=csv`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://safework2-api.jclee.workers.dev/api"}/admin/votes/results?siteId=${siteId}&month=${month}&format=csv`,
         {
           headers: {
             Authorization: `Bearer ${tokens?.accessToken}`,
