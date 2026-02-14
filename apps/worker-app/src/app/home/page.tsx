@@ -81,6 +81,25 @@ export default function HomePage() {
     });
   };
 
+  if (!currentSiteId) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-nav">
+        <Header />
+        <main className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+          <div className="text-4xl">🏗️</div>
+          <h2 className="text-lg font-semibold text-gray-700">
+            현장이 배정되지 않았습니다
+          </h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            관리자에게 현장 배정을 요청해 주세요. 배정 후 앱을 다시 열어주시면
+            됩니다.
+          </p>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-nav">
       <Header />

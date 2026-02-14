@@ -61,9 +61,16 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         currentSiteId: state.currentSiteId,
       }),
-      onRehydrateStorage: () => (state) => {
-        state && useAuthStore.setState({ _hasHydrated: true });
-      },
     },
   ),
 );
+
+// onRehydrateStorage callback fails silently in CF Pages static exports
+if (typeof window !== "undefined") {
+  useAuthStore.persist.onFinishHydration(() => {
+    useAuthStore.setState({ _hasHydrated: true });
+  });
+  if (useAuthStore.persist.hasHydrated()) {
+    useAuthStore.setState({ _hasHydrated: true });
+  }
+}
