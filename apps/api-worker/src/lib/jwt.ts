@@ -17,6 +17,11 @@ function getKSTDateString(date: Date = new Date()): string {
   return formatter.format(date); // "YYYY-MM-DD"
 }
 
+/**
+ * Signs a JWT with KST loginDate. Effective validity is min(expiresIn, KST midnight)
+ * because checkSameDay() invalidates tokens from a different KST calendar day.
+ * Login at 23:59 KST = ~1 min validity. Login at 00:01 KST = ~24h validity.
+ */
 export async function signJwt(
   payload: Omit<JwtPayload, "loginDate">,
   secret: string,

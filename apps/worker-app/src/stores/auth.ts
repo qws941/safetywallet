@@ -24,7 +24,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       refreshToken: null,
@@ -42,14 +42,26 @@ export const useAuthStore = create<AuthState>()(
           refreshToken,
           isAuthenticated: true,
         }),
-      logout: () =>
+      logout: () => {
+        const currentRefreshToken = get().refreshToken;
+        if (currentRefreshToken) {
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL ||
+            "https://safework2-api.jclee.workers.dev/api";
+          fetch(`${apiUrl}/auth/logout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: currentRefreshToken }),
+          }).catch(() => {});
+        }
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
           currentSiteId: null,
-        }),
+        });
+      },
     }),
     {
       name: "safetywallet-auth",

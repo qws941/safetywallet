@@ -606,10 +606,13 @@ auth.post(
       c.env.JWT_SECRET,
     );
     const refreshToken = crypto.randomUUID();
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000,
+    );
 
     await db
       .update(users)
-      .set({ refreshToken, updatedAt: new Date() })
+      .set({ refreshToken, refreshTokenExpiresAt, updatedAt: new Date() })
       .where(eq(users.id, user.id));
 
     const loginDeviceId = resolveDeviceId(c);
@@ -733,7 +736,24 @@ auth.post("/refresh", zValidator("json", RefreshTokenSchema), async (c) => {
   }
 
   const user = userResults[0];
+
+  if (
+    user.refreshTokenExpiresAt &&
+    new Date(user.refreshTokenExpiresAt) < new Date()
+  ) {
+    await db
+      .update(users)
+      .set({
+        refreshToken: null,
+        refreshTokenExpiresAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+    return error(c, "REFRESH_TOKEN_EXPIRED", "Refresh token has expired", 401);
+  }
+
   const newRefreshToken = crypto.randomUUID();
+  const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const phoneForToken =
     user.piiViewFull && user.phoneEncrypted
       ? await decrypt(c.env.ENCRYPTION_KEY, user.phoneEncrypted)
@@ -745,7 +765,11 @@ auth.post("/refresh", zValidator("json", RefreshTokenSchema), async (c) => {
 
   await db
     .update(users)
-    .set({ refreshToken: newRefreshToken, updatedAt: new Date() })
+    .set({
+      refreshToken: newRefreshToken,
+      refreshTokenExpiresAt,
+      updatedAt: new Date(),
+    })
     .where(eq(users.id, user.id));
 
   return success(
@@ -829,7 +853,6 @@ auth.post(
       );
     }
 
-    // Admin credentials from environment variables (required)
     const ADMIN_USERNAME = c.env.ADMIN_USERNAME;
     const ADMIN_PASSWORD_HASH = c.env.ADMIN_PASSWORD_HASH;
     const ADMIN_PASSWORD = c.env.ADMIN_PASSWORD;
@@ -845,10 +868,7 @@ auth.post(
       );
     }
 
-    // Username check (constant-time via PBKDF2 path regardless of result)
     const usernameMatch = body.username === ADMIN_USERNAME;
-
-    // Password verification: prefer PBKDF2 hash, fall back to plain-text
     let passwordMatch = false;
     if (ADMIN_PASSWORD_HASH) {
       passwordMatch = await verifyPassword(body.password, ADMIN_PASSWORD_HASH);
@@ -899,10 +919,13 @@ auth.post(
       c.env.JWT_SECRET,
     );
     const refreshToken = crypto.randomUUID();
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000,
+    );
 
     await db
       .update(users)
-      .set({ refreshToken, updatedAt: new Date() })
+      .set({ refreshToken, refreshTokenExpiresAt, updatedAt: new Date() })
       .where(eq(users.id, adminUser.id));
 
     return respondWithDelay(

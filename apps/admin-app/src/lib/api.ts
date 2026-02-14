@@ -46,12 +46,24 @@ export async function apiFetch<T>(
     if (refreshResponse.ok) {
       const refreshResult = await refreshResponse.json();
       const newTokens = refreshResult.data ?? refreshResult;
+      if (!newTokens?.accessToken || !newTokens?.refreshToken) {
+        logout();
+        throw new ApiError("Invalid refresh response", 401, "SESSION_EXPIRED");
+      }
       setTokens(newTokens);
       headers["Authorization"] = `Bearer ${newTokens.accessToken}`;
       response = await fetch(`${API_BASE}${path}`, {
         ...options,
         headers,
       });
+      if (response.status === 401) {
+        logout();
+        throw new ApiError(
+          "Session invalid after refresh",
+          401,
+          "SESSION_INVALID",
+        );
+      }
     } else {
       logout();
       throw new ApiError("Session expired", 401, "SESSION_EXPIRED");

@@ -8,6 +8,9 @@ interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
+// Mutex for concurrent token refresh (prevents race conditions)
+let refreshPromise: Promise<boolean> | null = null;
+
 export async function apiFetch<T>(
   endpoint: string,
   options: FetchOptions = {},
@@ -15,42 +18,39 @@ export async function apiFetch<T>(
   const { skipAuth = false, headers: customHeaders, ...rest } = options;
 
   const isFormData = rest.body instanceof FormData;
-  const headers: HeadersInit = {
+  const baseHeaders: Record<string, string> = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...customHeaders,
+    ...(customHeaders as Record<string, string>),
   };
 
-  if (!skipAuth) {
-    const accessToken = useAuthStore.getState().accessToken;
-    if (accessToken) {
-      (headers as Record<string, string>)["Authorization"] =
-        `Bearer ${accessToken}`;
+  function getHeaders(): Record<string, string> {
+    const h = { ...baseHeaders };
+    if (!skipAuth) {
+      const accessToken = useAuthStore.getState().accessToken;
+      if (accessToken) {
+        h["Authorization"] = `Bearer ${accessToken}`;
+      }
     }
+    return h;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...rest,
-    headers,
+    headers: getHeaders(),
   });
 
   if (response.status === 401 && !skipAuth) {
-    // Try to refresh token
     const refreshed = await refreshToken();
     if (refreshed) {
-      // Retry the request with new token
-      const newAccessToken = useAuthStore.getState().accessToken;
-      (headers as Record<string, string>)["Authorization"] =
-        `Bearer ${newAccessToken}`;
       const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...rest,
-        headers,
+        headers: getHeaders(),
       });
       if (!retryResponse.ok) {
         throw new ApiError(retryResponse.status, await retryResponse.text());
       }
       return retryResponse.json();
     } else {
-      // Logout user
       useAuthStore.getState().logout();
       throw new ApiError(401, "Session expired");
     }
@@ -64,6 +64,17 @@ export async function apiFetch<T>(
 }
 
 async function refreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = doRefresh();
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefresh(): Promise<boolean> {
   const storedRefreshToken = useAuthStore.getState().refreshToken;
   if (!storedRefreshToken) return false;
 
@@ -77,9 +88,11 @@ async function refreshToken(): Promise<boolean> {
     if (!response.ok) return false;
 
     const data = await response.json();
-    useAuthStore
-      .getState()
-      .setTokens(data.data.accessToken, data.data.refreshToken);
+    const accessToken = data?.data?.accessToken;
+    const newRefreshToken = data?.data?.refreshToken;
+    if (!accessToken || !newRefreshToken) return false;
+
+    useAuthStore.getState().setTokens(accessToken, newRefreshToken);
     return true;
   } catch {
     return false;

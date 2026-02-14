@@ -122,6 +122,9 @@ export const users = sqliteTable(
     otpExpiresAt: integer("otp_expires_at", { mode: "timestamp" }),
     otpAttemptCount: integer("otp_attempt_count").default(0).notNull(),
     refreshToken: text("refresh_token"),
+    refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+      mode: "timestamp",
+    }),
     deletionRequestedAt: integer("deletion_requested_at", {
       mode: "timestamp",
     }),

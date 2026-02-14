@@ -40,7 +40,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    router.replace("/login");
+    window.location.replace("/login/");
   };
 
   const handleLeaveSite = () => {

@@ -102,8 +102,11 @@ export default function LoginPage() {
     }
   };
 
-  const isFormValid =
-    phone.trim().length > 0 && name.trim().length > 0 && dob.trim().length > 0;
+  const phoneClean = phone.trim().replace(/-/g, "");
+  const dobClean = dob.trim().replace(/-/g, "");
+  const isPhoneValid = /^\d{10,11}$/.test(phoneClean);
+  const isDobValid = /^\d{6,8}$/.test(dobClean);
+  const isFormValid = isPhoneValid && name.trim().length > 0 && isDobValid;
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-gray-50">

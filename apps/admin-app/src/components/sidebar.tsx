@@ -21,6 +21,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@safetywallet/ui";
 import { useAuthStore } from "@/stores/auth";
@@ -46,6 +47,12 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const logout = useAuthStore((s) => s.logout);
+  const queryClient = useQueryClient();
+
+  const handleLogout = () => {
+    queryClient.clear();
+    logout();
+  };
 
   return (
     <aside
@@ -98,7 +105,7 @@ export function Sidebar() {
             "w-full justify-start gap-3 text-slate-300 hover:bg-slate-800 hover:text-white",
             collapsed && "justify-center",
           )}
-          onClick={logout}
+          onClick={handleLogout}
         >
           <LogOut size={20} />
           {!collapsed && <span>로그아웃</span>}

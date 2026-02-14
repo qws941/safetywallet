@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/sidebar';
-import { useAuthStore } from '@/stores/auth';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Sidebar } from "@/components/sidebar";
+import { useAuthStore } from "@/stores/auth";
 
 export default function DashboardLayout({
   children,
@@ -11,17 +11,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, isAdmin } = useAuthStore();
+  const { user, isAdmin, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-    } else if (!isAdmin) {
-      router.push('/login');
+    if (!_hasHydrated) return;
+    if (!user || !isAdmin) {
+      router.push("/login");
     }
-  }, [user, isAdmin, router]);
+  }, [user, isAdmin, _hasHydrated, router]);
 
-  if (!user || !isAdmin) {
+  if (!_hasHydrated || !user || !isAdmin) {
     return null;
   }
 

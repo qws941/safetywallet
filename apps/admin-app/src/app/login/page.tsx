@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Input } from "@safetywallet/ui";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { UserRole } from "@safetywallet/types";
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const _hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+  useEffect(() => {
+    if (_hasHydrated && user && isAdmin) {
+      router.replace("/dashboard");
+    }
+  }, [_hasHydrated, user, isAdmin, router]);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -44,8 +53,14 @@ export default function LoginPage() {
       login(result.user, result.tokens);
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof Error && "status" in err) {
-        setError("아이디 또는 비밀번호가 올바르지 않습니다");
+      if (err instanceof ApiError) {
+        if (err.code === "RATE_LIMIT_EXCEEDED") {
+          setError("요청이 너무 많습니다. 잠시 후 다시 시도하세요.");
+        } else if (err.status === 401) {
+          setError("아이디 또는 비밀번호가 올바르지 않습니다");
+        } else {
+          setError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+        }
       } else {
         setError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
       }

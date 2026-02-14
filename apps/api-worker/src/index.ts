@@ -42,14 +42,22 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: [
-      "https://safework2.jclee.me",
-      "https://admin.safework2.jclee.me",
-      "https://safework2-api.jclee.workers.dev",
-      "https://safework2-admin.pages.dev",
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ],
+    origin: (origin) => {
+      const allowed = [
+        "https://safework2.jclee.me",
+        "https://admin.safework2.jclee.me",
+        "https://safework2-api.jclee.workers.dev",
+        "https://safework2-admin.pages.dev",
+      ];
+      if (allowed.includes(origin)) return origin;
+      if (
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:")
+      ) {
+        return origin;
+      }
+      return null;
+    },
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "Device-Id", "X-Device-Id"],
     credentials: true,

@@ -1,6 +1,9 @@
 import { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 import { verifyJwt, checkSameDay } from "../lib/jwt";
+import { users } from "../db/schema";
 import type { Env, AuthContext } from "../types";
 
 export async function authMiddleware(
@@ -25,13 +28,20 @@ export async function authMiddleware(
     });
   }
 
+  const db = drizzle(c.env.DB);
+  const [user] = await db
+    .select({ name: users.name, nameMasked: users.nameMasked })
+    .from(users)
+    .where(eq(users.id, payload.sub))
+    .limit(1);
+
   c.set("auth", {
     user: {
       id: payload.sub,
       phone: payload.phone,
       role: payload.role,
-      name: "",
-      nameMasked: "",
+      name: user?.name ?? "",
+      nameMasked: user?.nameMasked ?? "",
     },
     loginDate: payload.loginDate,
   });
