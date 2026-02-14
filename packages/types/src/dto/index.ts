@@ -8,3 +8,4 @@ export * from "./action.dto";
 export * from "./announcement.dto";
 export * from "./education.dto";
 export * from "./vote.dto";
+export * from "./analytics.dto";
