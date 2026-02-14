@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("A) Login Page Deep Tests", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
