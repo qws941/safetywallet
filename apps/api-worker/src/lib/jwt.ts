@@ -7,17 +7,23 @@ export interface JwtPayload {
   loginDate: string;
 }
 
+function getKSTDateString(date: Date = new Date()): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(date); // "YYYY-MM-DD"
+}
+
 export async function signJwt(
   payload: Omit<JwtPayload, "loginDate">,
   secret: string,
   expiresIn: string = "24h",
 ): Promise<string> {
   const secretKey = new TextEncoder().encode(secret);
-  const now = new Date();
-  const koreaDate = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-  );
-  const loginDate = koreaDate.toISOString().split("T")[0];
+  const loginDate = getKSTDateString();
 
   return await new jose.SignJWT({ ...payload, loginDate })
     .setProtectedHeader({ alg: "HS256" })
@@ -56,10 +62,5 @@ export async function verifyJwt(
 }
 
 export function checkSameDay(loginDate: string): boolean {
-  const now = new Date();
-  const koreaTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-  );
-  const currentDate = koreaTime.toISOString().split("T")[0];
-  return loginDate === currentDate;
+  return loginDate === getKSTDateString();
 }

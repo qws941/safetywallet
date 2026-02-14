@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { UserRole } from '@safetywallet/types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { UserRole } from "@safetywallet/types";
 
 interface User {
   id: string;
@@ -19,6 +19,7 @@ interface AuthState {
   tokens: Tokens | null;
   currentSiteId: string | null;
   isAdmin: boolean;
+  _hasHydrated: boolean;
   login: (user: User, tokens: Tokens) => void;
   logout: () => void;
   setTokens: (tokens: Tokens) => void;
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
       tokens: null,
       currentSiteId: null,
       isAdmin: false,
+      _hasHydrated: false,
       login: (user, tokens) =>
         set({
           user,
@@ -51,7 +53,10 @@ export const useAuthStore = create<AuthState>()(
       setSiteId: (siteId) => set({ currentSiteId: siteId }),
     }),
     {
-      name: 'safetywallet-admin-auth',
-    }
-  )
+      name: "safetywallet-admin-auth",
+      onRehydrateStorage: () => () => {
+        useAuthStore.setState({ _hasHydrated: true });
+      },
+    },
+  ),
 );

@@ -43,7 +43,8 @@ export async function apiFetch<T>(
     });
 
     if (refreshResponse.ok) {
-      const newTokens = await refreshResponse.json();
+      const refreshResult = await refreshResponse.json();
+      const newTokens = refreshResult.data ?? refreshResult;
       setTokens(newTokens);
       headers["Authorization"] = `Bearer ${newTokens.accessToken}`;
       response = await fetch(`${API_BASE}${path}`, {

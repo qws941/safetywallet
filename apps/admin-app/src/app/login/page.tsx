@@ -44,7 +44,11 @@ export default function LoginPage() {
       login(result.user, result.tokens);
       router.push("/dashboard");
     } catch (err) {
-      setError("아이디 또는 비밀번호가 올바르지 않습니다");
+      if (err instanceof Error && "status" in err) {
+        setError("아이디 또는 비밀번호가 올바르지 않습니다");
+      } else {
+        setError("서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.");
+      }
     } finally {
       setIsLoading(false);
     }
