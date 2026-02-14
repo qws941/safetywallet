@@ -7,6 +7,7 @@ import {
   useSubmitQuizAttempt,
   useMyQuizAttempts,
 } from "@/hooks/use-api";
+import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -38,6 +39,7 @@ function LoadingState() {
 function QuizTakeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslation();
   const quizId = searchParams.get("id") || "";
   const { data: quiz, isLoading: isQuizLoading } = useQuiz(quizId);
   const { data: attempts, isLoading: isAttemptsLoading } =
@@ -74,9 +76,9 @@ function QuizTakeContent() {
         <Header />
         <main className="p-4 text-center py-12">
           <p className="text-4xl mb-4">❌</p>
-          <p className="text-muted-foreground">퀴즈를 찾을 수 없습니다.</p>
+          <p className="text-muted-foreground">{t("education.quiz.quizNotFound")}</p>
           <Button className="mt-4" onClick={() => router.back()}>
-            돌아가기
+            {t("common.back")}
           </Button>
         </main>
         <BottomNav />
@@ -94,7 +96,7 @@ function QuizTakeContent() {
   const handleSubmit = () => {
     if (Object.keys(answers).length < quiz.questions.length) {
       toast({
-        title: "모든 문제를 풀어주세요.",
+        title: t("education.quiz.selectAllAnswers"),
         variant: "destructive",
       });
       return;
@@ -111,15 +113,15 @@ function QuizTakeContent() {
           setShowResult(true);
           toast({
             title: data.attempt.passed
-              ? "축하합니다! 합격입니다."
-              : "불합격입니다.",
-            description: `점수: ${data.attempt.score}점`,
+              ? t("education.quiz.congratulations")
+              : t("education.quiz.failedMessage"),
+            description: t("education.quiz.scoreDisplay").replace("${score}", String(data.attempt.score)),
             variant: data.attempt.passed ? "default" : "destructive",
           });
         },
         onError: () => {
           toast({
-            title: "제출에 실패했습니다.",
+            title: t("education.quiz.submitError"),
             variant: "destructive",
           });
         },
@@ -141,14 +143,14 @@ function QuizTakeContent() {
           <div className="text-6xl mb-2">{lastResult.passed ? "🎉" : "😢"}</div>
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold">
-              {lastResult.passed ? "합격입니다!" : "아쉽게도 불합격입니다."}
+              {lastResult.passed ? t("education.quiz.passedMessage") : t("education.quiz.failedMessage")}
             </h2>
             <p className="text-muted-foreground">
-              점수:{" "}
+              {t("common.score")}{" "}
               <span className="font-bold text-primary text-xl">
                 {lastResult.score}
               </span>
-              점 (합격기준: {quiz.passingScore}점)
+              점 ({t("education.quiz.passingScoreLabel")} {quiz.passingScore}점)
             </p>
           </div>
 
@@ -156,7 +158,7 @@ function QuizTakeContent() {
             {!lastResult.passed && (
               <Button className="w-full gap-2" size="lg" onClick={resetQuiz}>
                 <RotateCcw className="w-4 h-4" />
-                다시 풀기
+                {t("education.retake")}
               </Button>
             )}
             <Button
@@ -164,7 +166,7 @@ function QuizTakeContent() {
               variant={lastResult.passed ? "default" : "outline"}
               onClick={() => router.push("/education")}
             >
-              목록으로 돌아가기
+              {t("education.quiz.backToListButton")}
             </Button>
           </div>
         </main>
@@ -183,16 +185,16 @@ function QuizTakeContent() {
           <div className="flex gap-2 text-xs text-muted-foreground">
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="w-3 h-3" />
-              합격 {quiz.passingScore}점
+              {t("education.quiz.passingScore")} {quiz.passingScore}점
             </Badge>
             <Badge variant="outline" className="gap-1">
               <AlertCircle className="w-3 h-3" />
-              최대 {quiz.maxAttempts}회
+              {t("education.quiz.maximumLabel")} {quiz.maxAttempts}{t("education.attempts")}
             </Badge>
             {quiz.timeLimitMinutes && (
               <Badge variant="outline" className="gap-1">
                 <Clock className="w-3 h-3" />
-                {quiz.timeLimitMinutes}분
+                {quiz.timeLimitMinutes}{t("education.minutes")}
               </Badge>
             )}
           </div>
@@ -257,7 +259,7 @@ function QuizTakeContent() {
           onClick={handleSubmit}
           disabled={isSubmitting}
         >
-          {isSubmitting ? "제출 중..." : "제출하기"}
+          {isSubmitting ? t("education.quiz.submitting") : t("education.quiz.submitButton")}
         </Button>
       </main>
 

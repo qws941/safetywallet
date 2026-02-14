@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePoints } from "@/hooks/use-api";
 import { useLeaderboard } from "@/hooks/use-leaderboard";
+import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import { PointsCard } from "@/components/points-card";
@@ -13,6 +14,7 @@ import { Trophy, Medal, Crown, Calendar, TrendingUp } from "lucide-react";
 type RankingTab = "monthly" | "cumulative";
 
 export default function PointsPage() {
+  const t = useTranslation();
   const { currentSiteId } = useAuth();
   const [rankingTab, setRankingTab] = useState<RankingTab>("cumulative");
   const { data, isLoading: pointsLoading } = usePoints(currentSiteId || "");
@@ -53,7 +55,7 @@ export default function PointsPage() {
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 border-b border-amber-100">
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-5 h-5 text-amber-600" />
-              <h3 className="font-bold text-amber-900">랭킹</h3>
+              <h3 className="font-bold text-amber-900">{t("points.ranking")}</h3>
             </div>
             <div className="flex gap-1 bg-amber-100/50 rounded-lg p-1">
               <button
@@ -66,7 +68,7 @@ export default function PointsPage() {
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
-                이번 달
+                {t("points.monthlyTab")}
               </button>
               <button
                 type="button"
@@ -78,7 +80,7 @@ export default function PointsPage() {
                 }`}
               >
                 <TrendingUp className="w-3.5 h-3.5" />
-                누적
+                {t("points.cumulativeTab")}
               </button>
             </div>
           </div>
@@ -109,7 +111,7 @@ export default function PointsPage() {
                             variant="outline"
                             className="ml-2 text-xs border-amber-500 text-amber-600 bg-white"
                           >
-                            나
+                            {t("points.me")}
                           </Badge>
                         )}
                       </div>
@@ -134,12 +136,12 @@ export default function PointsPage() {
                         </div>
                         <div className="font-medium text-gray-900">
                           {leaderboard.find((e) => e.isCurrentUser)
-                            ?.nameMasked || "나"}
+                            ?.nameMasked || t("points.me")}
                           <Badge
                             variant="outline"
                             className="ml-2 text-xs border-amber-500 text-amber-600 bg-white"
                           >
-                            나
+                            {t("points.me")}
                           </Badge>
                         </div>
                       </div>
@@ -155,7 +157,7 @@ export default function PointsPage() {
               </div>
             ) : (
               <div className="p-8 text-center text-gray-500 text-sm">
-                아직 랭킹 데이터가 없습니다.
+                {t("points.noRankingData")}
               </div>
             )}
           </CardContent>
@@ -163,7 +165,7 @@ export default function PointsPage() {
 
         <Card>
           <CardContent className="py-4">
-            <h3 className="font-medium mb-4">포인트 내역</h3>
+            <h3 className="font-medium mb-4">{t("points.pointsHistory")}</h3>
             {pointsLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />
@@ -196,7 +198,7 @@ export default function PointsPage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                포인트 내역이 없습니다.
+                {t("points.noPointsHistory")}
               </p>
             )}
           </CardContent>

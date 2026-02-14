@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
 import {
   useEducationContents,
   useQuizzes,
@@ -35,13 +36,6 @@ import {
 
 type Tab = "contents" | "quizzes" | "tbm";
 
-const contentTypeLabels: Record<string, string> = {
-  VIDEO: "영상",
-  IMAGE: "이미지",
-  TEXT: "텍스트",
-  DOCUMENT: "문서",
-};
-
 const contentTypeIcons: Record<string, React.ElementType> = {
   VIDEO: Video,
   IMAGE: FileText,
@@ -51,6 +45,7 @@ const contentTypeIcons: Record<string, React.ElementType> = {
 
 export default function EducationPage() {
   const { currentSiteId } = useAuth();
+  const t = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("contents");
 
   return (
@@ -68,7 +63,7 @@ export default function EducationPage() {
                 : "border-transparent text-muted-foreground",
             )}
           >
-            교육자료
+            {t("education.materials")}
           </button>
           <button
             onClick={() => setActiveTab("quizzes")}
@@ -79,7 +74,7 @@ export default function EducationPage() {
                 : "border-transparent text-muted-foreground",
             )}
           >
-            퀴즈
+            {t("education.quizzes")}
           </button>
           <button
             onClick={() => setActiveTab("tbm")}
@@ -90,7 +85,7 @@ export default function EducationPage() {
                 : "border-transparent text-muted-foreground",
             )}
           >
-            TBM
+            {t("education.tbm")}
           </button>
         </div>
       </div>
@@ -109,6 +104,7 @@ export default function EducationPage() {
 }
 
 function ContentsTab({ siteId }: { siteId: string }) {
+  const t = useTranslation();
   const { data: contents, isLoading } = useEducationContents(siteId);
 
   if (isLoading) {
@@ -122,13 +118,14 @@ function ContentsTab({ siteId }: { siteId: string }) {
   }
 
   if (!contents || contents.length === 0) {
-    return <EmptyState message="등록된 교육자료가 없습니다." />;
+    return <EmptyState message={t("education.noMaterials")} />;
   }
 
   return (
     <div className="space-y-3">
       {contents.map((content) => {
         const Icon = contentTypeIcons[content.contentType] || FileText;
+        const contentTypeKey = `education.contentTypes.${content.contentType}` as const;
         return (
           <AttendanceGuard key={content.id}>
             <Link href={`/education/view?id=${content.id}`}>
@@ -143,15 +140,14 @@ function ContentsTab({ siteId }: { siteId: string }) {
                         variant="outline"
                         className="text-[10px] px-1.5 h-5"
                       >
-                        {contentTypeLabels[content.contentType] ||
-                          content.contentType}
+                        {t(contentTypeKey) || content.contentType}
                       </Badge>
                       {content.isRequired && (
                         <Badge
                           variant="destructive"
                           className="text-[10px] px-1.5 h-5"
                         >
-                          필수
+                          {t("education.required")}
                         </Badge>
                       )}
                     </div>
@@ -173,6 +169,7 @@ function ContentsTab({ siteId }: { siteId: string }) {
 }
 
 function QuizzesTab({ siteId }: { siteId: string }) {
+  const t = useTranslation();
   const { data: quizzes, isLoading } = useQuizzes(siteId);
 
   if (isLoading) {
@@ -185,7 +182,7 @@ function QuizzesTab({ siteId }: { siteId: string }) {
   }
 
   if (!quizzes || quizzes.length === 0) {
-    return <EmptyState message="진행 중인 퀴즈가 없습니다." />;
+    return <EmptyState message={t("education.noQuizzes")} />;
   }
 
   return (
@@ -196,26 +193,26 @@ function QuizzesTab({ siteId }: { siteId: string }) {
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <Badge variant={quiz.isActive ? "default" : "secondary"}>
-                  {quiz.isActive ? "진행중" : "마감됨"}
+                  {quiz.isActive ? t("education.active") : t("education.closed")}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   {quiz.timeLimitMinutes
-                    ? `${quiz.timeLimitMinutes}분`
-                    : "시간제한 없음"}
+                    ? `${quiz.timeLimitMinutes}${t("education.minutes")}`
+                    : t("education.unlimited")}
                 </span>
               </div>
               <h3 className="font-bold mb-2">{quiz.title}</h3>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {quiz.description || "설명이 없습니다."}
+                {quiz.description || t("education.noDescription")}
               </p>
               <div className="flex items-center gap-4 text-xs text-muted-foreground bg-gray-50 p-2 rounded">
                 <div className="flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>합격기준 {quiz.passingScore}점</span>
+                  <span>{t("education.passingScore")} {quiz.passingScore}점</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
-                  <span>최대 {quiz.maxAttempts}회 시도</span>
+                  <span>{t("education.maxAttempts")} {quiz.maxAttempts}{t("education.attempts")}</span>
                 </div>
               </div>
             </CardContent>
@@ -227,13 +224,15 @@ function QuizzesTab({ siteId }: { siteId: string }) {
 }
 
 function TbmTab({ siteId }: { siteId: string }) {
+  const t = useTranslation();
   const { data: records, isLoading } = useTbmRecords(siteId);
   const { mutate: attendTbm, isPending } = useAttendTbm();
   const { toast } = useToast();
 
   const handleAttend = (id: string) => {
     attendTbm(id, {
-      onSuccess: () => toast({ title: "참석 확인되었습니다." }),
+      onSuccess: () =>
+        toast({ title: t("education.attendanceConfirmed") }),
       onError: (error) => {
         let errorCode = "";
         try {
@@ -241,9 +240,15 @@ function TbmTab({ siteId }: { siteId: string }) {
           errorCode = parsed?.error?.code ?? "";
         } catch {}
         if (errorCode === "ALREADY_ATTENDED") {
-          toast({ title: "이미 참석하셨습니다.", variant: "destructive" });
+          toast({
+            title: t("education.alreadyAttended"),
+            variant: "destructive",
+          });
         } else {
-          toast({ title: "참석 확인에 실패했습니다.", variant: "destructive" });
+          toast({
+            title: t("education.attendanceConfirmFailed"),
+            variant: "destructive",
+          });
         }
       },
     });
@@ -259,7 +264,7 @@ function TbmTab({ siteId }: { siteId: string }) {
   }
 
   if (!records || records.length === 0) {
-    return <EmptyState message="TBM 기록이 없습니다." />;
+    return <EmptyState message={t("education.noRecords")} />;
   }
 
   return (
@@ -270,11 +275,11 @@ function TbmTab({ siteId }: { siteId: string }) {
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-base mb-1">
-                  {record.title || record.safetyTopic || "안전 조회"}
+                  {record.title || record.safetyTopic || t("education.tbm")}
                 </h3>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Users className="w-3 h-3" />
-                  <span>참석 {record._count?.attendees || 0}명</span>
+                  <span>{t("education.attendance")} {record._count?.attendees || 0}{t("education.attendees")}</span>
                   <span className="mx-1">·</span>
                   <span>{record.leader?.nameMasked}</span>
                 </p>
@@ -291,14 +296,14 @@ function TbmTab({ siteId }: { siteId: string }) {
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="w-3.5 h-3.5" />
-                {record.location || "현장 내"}
+                {record.location || t("education.onSite")}
               </div>
               <Button
                 size="sm"
                 onClick={() => handleAttend(record.id)}
                 disabled={isPending}
               >
-                참석확인
+                {t("education.attendanceConfirm")}
               </Button>
             </div>
           </CardContent>

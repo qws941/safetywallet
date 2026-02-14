@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useSiteInfo, useLeaveSite } from "@/hooks/use-api";
+import { useTranslation } from "@/hooks/use-translation";
 
 import { Header } from "@/components/header";
 
@@ -29,6 +30,7 @@ import {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const t = useTranslation();
   const { logout, currentSiteId, setCurrentSite } = useAuth();
   const { data, isLoading } = useProfile();
   const { data: siteData } = useSiteInfo(currentSiteId);
@@ -50,14 +52,17 @@ export default function ProfilePage() {
       {
         onSuccess: () => {
           setLeaveOpen(false);
-          toast({ title: "완료", description: "현장에서 탈퇴했습니다." });
+          toast({
+            title: t("common.success"),
+            description: t("profile.leaveSuccess"),
+          });
           setCurrentSite(null);
           router.replace("/home");
         },
         onError: () => {
           toast({
-            title: "오류",
-            description: "탈퇴에 실패했습니다. 다시 시도해주세요.",
+            title: t("common.error"),
+            description: t("profile.leaveFailed"),
             variant: "destructive",
           });
         },
@@ -90,7 +95,7 @@ export default function ProfilePage() {
                 </Avatar>
                 <div>
                   <h2 className="text-xl font-bold">
-                    {user?.nameMasked || "이름 없음"}
+                    {user?.nameMasked || t("profile.noName")}
                   </h2>
                   <p className="text-sm text-muted-foreground">{user?.phone}</p>
                 </div>
@@ -103,9 +108,9 @@ export default function ProfilePage() {
         {currentSiteId && (
           <Card>
             <CardContent className="py-4">
-              <h3 className="font-medium mb-2">현재 현장</h3>
+              <h3 className="font-medium mb-2">{t("profile.currentSite")}</h3>
               <p className="text-sm font-medium">
-                {site?.name || "로딩 중..."}
+                {site?.name || t("profile.loading")}
               </p>
               {site?.address && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -127,24 +132,23 @@ export default function ProfilePage() {
                 disabled={!currentSiteId}
               >
                 <span className="mr-2">📍</span>
-                현장 탈퇴하기
+                {t("profile.leaveSiteButton")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>현장 탈퇴</AlertDialogTitle>
+                <AlertDialogTitle>{t("profile.leaveSiteTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  정말로 현재 현장에서 탈퇴하시겠습니까? 탈퇴 후에는 다시
-                  가입해야 합니다.
+                  {t("profile.leaveSiteDescription")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleLeaveSite}
                   disabled={leaveSite.isPending}
                 >
-                  {leaveSite.isPending ? "처리 중..." : "탈퇴하기"}
+                  {leaveSite.isPending ? t("profile.processing") : t("profile.leaveSiteButton")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -155,7 +159,7 @@ export default function ProfilePage() {
             onClick={handleLogout}
           >
             <span className="mr-2">🚶</span>
-            로그아웃
+            {t("profile.logout")}
           </Button>
         </div>
 

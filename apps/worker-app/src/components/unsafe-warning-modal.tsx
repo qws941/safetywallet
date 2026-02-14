@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "@/hooks/use-translation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,29 +23,29 @@ export function UnsafeWarningModal({
   onConfirm,
   onCancel,
 }: UnsafeWarningModalProps) {
+  const t = useTranslation();
+
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>⚠️ 불안전행동 제보 안내</AlertDialogTitle>
+          <AlertDialogTitle>{t("components.unsafeWarningTitle")}</AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <p>
-              불안전행동 제보는 <strong>개인 처벌이 아닌 개선 목적</strong>으로
-              활용됩니다.
+              {t("components.unsafeWarningImprovementNote")}
             </p>
             <p>
-              제보 시 <strong>얼굴이나 개인정보가 노출되지 않도록</strong>{" "}
-              주의해 주세요.
+              {t("components.unsafeWarningPrivacyNote")}
             </p>
             <p className="text-sm text-muted-foreground">
-              이 제보는 관리자만 확인할 수 있습니다.
+              {t("components.unsafeWarningAdminNote")}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>취소</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm}>
-            확인하고 제출
+            {t("components.unsafeWarningConfirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

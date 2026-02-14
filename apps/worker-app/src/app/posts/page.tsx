@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import { PostCard } from "@/components/post-card";
@@ -14,18 +15,19 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-const statusFilters: Array<{ label: string; value: string | null }> = [
-  { label: "전체", value: null },
-  { label: "긴급", value: ReviewStatus.URGENT },
-  { label: "접수", value: ReviewStatus.PENDING },
-  { label: "검토중", value: ReviewStatus.IN_REVIEW },
-  { label: "승인", value: ReviewStatus.APPROVED },
-  { label: "반려", value: ReviewStatus.REJECTED },
-  { label: "추가정보", value: ReviewStatus.NEED_INFO },
-];
-
 export default function PostsPage() {
   const { currentSiteId } = useAuth();
+  const t = useTranslation();
+
+  const statusFilters: Array<{ label: string; value: string | null }> = [
+    { label: t("posts.pageList.all"), value: null },
+    { label: t("posts.pageList.urgent"), value: ReviewStatus.URGENT },
+    { label: t("posts.pageList.received"), value: ReviewStatus.PENDING },
+    { label: t("posts.pageList.inReview"), value: ReviewStatus.IN_REVIEW },
+    { label: t("posts.pageList.approved"), value: ReviewStatus.APPROVED },
+    { label: t("posts.pageList.rejected"), value: ReviewStatus.REJECTED },
+    { label: t("posts.pageList.needInfo"), value: ReviewStatus.NEED_INFO },
+  ];
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement>(null);
 
@@ -81,10 +83,10 @@ export default function PostsPage() {
 
       <main className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">내 제보 목록</h2>
+          <h2 className="text-lg font-bold">{t("posts.pageList.myReportsList")}</h2>
           <Link href="/posts/new">
             <Button size="sm" type="button" className="gap-1">
-              <Plus className="w-4 h-4" />새 제보
+              <Plus className="w-4 h-4" />{t("posts.pageList.newReport")}
             </Button>
           </Link>
         </div>
@@ -128,8 +130,8 @@ export default function PostsPage() {
         ) : (
           <div className="text-center text-muted-foreground py-12">
             <p className="text-4xl mb-4">📝</p>
-            <p>아직 제보한 내역이 없습니다.</p>
-            <p className="text-sm mt-2">위험요소를 발견하면 제보해주세요!</p>
+            <p>{t("posts.pageList.noReportsYet")}</p>
+            <p className="text-sm mt-2">{t("posts.pageList.findHazards")}</p>
           </div>
         )}
       </main>

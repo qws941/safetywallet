@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEducationContent } from "@/hooks/use-api";
+import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -22,13 +23,6 @@ import {
   Calendar,
 } from "lucide-react";
 
-const contentTypeLabels: Record<string, string> = {
-  VIDEO: "영상",
-  IMAGE: "이미지",
-  TEXT: "텍스트",
-  DOCUMENT: "문서",
-};
-
 function LoadingState() {
   return (
     <div className="min-h-screen bg-gray-50 pb-nav">
@@ -45,9 +39,15 @@ function LoadingState() {
 
 function EducationDetailContent() {
   const router = useRouter();
+  const t = useTranslation();
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
   const { data, isLoading, error } = useEducationContent(id);
+
+  const getContentTypeLabel = (contentType: string) => {
+    const typeKey = `education.contentTypes.${contentType}` as const;
+    return t(typeKey) || contentType;
+  };
 
   if (isLoading) {
     return <LoadingState />;
@@ -61,10 +61,10 @@ function EducationDetailContent() {
           <div className="text-center py-12">
             <p className="text-4xl mb-4">❌</p>
             <p className="text-muted-foreground">
-              교육자료를 찾을 수 없습니다.
+              {t("education.notFound")}
             </p>
             <Button className="mt-4" onClick={() => router.back()}>
-              돌아가기
+              {t("common.back")}
             </Button>
           </div>
         </main>
@@ -80,9 +80,13 @@ function EducationDetailContent() {
       <main className="p-4 space-y-4">
         <div className="flex items-center gap-2">
           <Badge variant="outline">
-            {contentTypeLabels[data.contentType] || data.contentType}
+            {getContentTypeLabel(data.contentType)}
           </Badge>
-          {data.isRequired && <Badge variant="destructive">필수 교육</Badge>}
+          {data.isRequired && (
+            <Badge variant="destructive">
+              {t("education.requiredEducation")}
+            </Badge>
+          )}
         </div>
 
         <h1 className="text-xl font-bold">{data.title}</h1>
@@ -124,7 +128,9 @@ function EducationDetailContent() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">상세 내용</CardTitle>
+            <CardTitle className="text-base">
+              {t("education.details")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap">
@@ -140,7 +146,7 @@ function EducationDetailContent() {
             onClick={() => window.open(data.contentUrl, "_blank")}
           >
             <Download className="w-4 h-4" />
-            문서 다운로드
+            {t("education.documentDownload")}
           </Button>
         )}
 
@@ -149,7 +155,7 @@ function EducationDetailContent() {
           variant="secondary"
           onClick={() => router.back()}
         >
-          목록으로 돌아가기
+          {t("education.backToList")}
         </Button>
       </main>
 

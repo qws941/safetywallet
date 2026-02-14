@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/hooks/use-translation";
 import { useMyActions } from "@/hooks/use-api";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
@@ -10,46 +11,47 @@ import { ActionStatus, ActionPriority } from "@safetywallet/types";
 import { cn } from "@/lib/utils";
 import { Calendar } from "lucide-react";
 
-const statusFilters: Array<{ label: string; value: string | null }> = [
-  { label: "전체", value: null },
-  { label: "배정됨", value: ActionStatus.ASSIGNED },
-  { label: "진행중", value: ActionStatus.IN_PROGRESS },
-  { label: "완료", value: ActionStatus.COMPLETED },
-  { label: "확인됨", value: ActionStatus.VERIFIED },
-  { label: "기한초과", value: ActionStatus.OVERDUE },
-];
-
-const statusColors: Record<string, string> = {
-  [ActionStatus.ASSIGNED]: "bg-blue-100 text-blue-800",
-  [ActionStatus.IN_PROGRESS]: "bg-amber-100 text-amber-800",
-  [ActionStatus.COMPLETED]: "bg-green-100 text-green-800",
-  [ActionStatus.VERIFIED]: "bg-emerald-100 text-emerald-800",
-  [ActionStatus.OVERDUE]: "bg-red-100 text-red-800",
-};
-
-const statusLabels: Record<string, string> = {
-  [ActionStatus.ASSIGNED]: "배정됨",
-  [ActionStatus.IN_PROGRESS]: "진행중",
-  [ActionStatus.COMPLETED]: "완료",
-  [ActionStatus.VERIFIED]: "확인됨",
-  [ActionStatus.OVERDUE]: "기한초과",
-};
-
-const priorityColors: Record<string, string> = {
-  [ActionPriority.HIGH]: "bg-red-50 text-red-700",
-  [ActionPriority.MEDIUM]: "bg-amber-50 text-amber-700",
-  [ActionPriority.LOW]: "bg-gray-50 text-gray-600",
-};
-
-const priorityLabels: Record<string, string> = {
-  [ActionPriority.HIGH]: "높음",
-  [ActionPriority.MEDIUM]: "중간",
-  [ActionPriority.LOW]: "낮음",
-};
-
 export default function ActionsPage() {
   const router = useRouter();
+  const t = useTranslation();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  const statusFilters: Array<{ label: string; value: string | null }> = [
+    { label: t("actions.filter.all"), value: null },
+    { label: t("actions.filter.assigned"), value: ActionStatus.ASSIGNED },
+    { label: t("actions.filter.inProgress"), value: ActionStatus.IN_PROGRESS },
+    { label: t("actions.filter.completed"), value: ActionStatus.COMPLETED },
+    { label: t("actions.filter.verified"), value: ActionStatus.VERIFIED },
+    { label: t("actions.filter.overdue"), value: ActionStatus.OVERDUE },
+  ];
+
+  const statusLabels: Record<string, string> = {
+    [ActionStatus.ASSIGNED]: t("actions.status.assigned"),
+    [ActionStatus.IN_PROGRESS]: t("actions.status.inProgress"),
+    [ActionStatus.COMPLETED]: t("actions.status.completed"),
+    [ActionStatus.VERIFIED]: t("actions.status.verified"),
+    [ActionStatus.OVERDUE]: t("actions.status.overdue"),
+  };
+
+  const statusColors: Record<string, string> = {
+    [ActionStatus.ASSIGNED]: "bg-blue-100 text-blue-800",
+    [ActionStatus.IN_PROGRESS]: "bg-amber-100 text-amber-800",
+    [ActionStatus.COMPLETED]: "bg-green-100 text-green-800",
+    [ActionStatus.VERIFIED]: "bg-emerald-100 text-emerald-800",
+    [ActionStatus.OVERDUE]: "bg-red-100 text-red-800",
+  };
+
+  const priorityLabels: Record<string, string> = {
+    [ActionPriority.HIGH]: t("actions.priority.high"),
+    [ActionPriority.MEDIUM]: t("actions.priority.medium"),
+    [ActionPriority.LOW]: t("actions.priority.low"),
+  };
+
+  const priorityColors: Record<string, string> = {
+    [ActionPriority.HIGH]: "bg-red-50 text-red-700",
+    [ActionPriority.MEDIUM]: "bg-amber-50 text-amber-700",
+    [ActionPriority.LOW]: "bg-gray-50 text-gray-600",
+  };
 
   const { data, isLoading } = useMyActions({
     status: activeFilter || undefined,
@@ -63,7 +65,7 @@ export default function ActionsPage() {
 
       <main className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">내 시정조치 목록</h2>
+          <h2 className="text-lg font-bold">{t("actions.list.myList")}</h2>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
@@ -144,12 +146,12 @@ export default function ActionsPage() {
                     </div>
 
                     <p className="font-medium line-clamp-2">
-                      {action.description || "내용 없음"}
+                      {action.description || t("actions.list.noContent")}
                     </p>
 
                     {action.post && (
                       <p className="text-sm text-muted-foreground line-clamp-1">
-                        관련 제보: {action.post.title || "제목 없음"}
+                        {t("actions.view.relatedReport")}: {action.post.title || t("actions.list.noTitle")}
                       </p>
                     )}
                   </CardContent>
@@ -160,8 +162,8 @@ export default function ActionsPage() {
         ) : (
           <div className="text-center text-muted-foreground py-12">
             <p className="text-4xl mb-4">✅</p>
-            <p>할당된 시정조치가 없습니다.</p>
-            <p className="text-sm mt-2">안전한 하루 되세요!</p>
+            <p>{t("actions.list.empty")}</p>
+            <p className="text-sm mt-2">{t("actions.list.noAssignments")}</p>
           </div>
         )}
       </main>

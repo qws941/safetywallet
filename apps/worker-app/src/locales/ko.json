@@ -82,11 +82,11 @@
     "createReport": "보고서 작성",
     "selectCategory": "카테고리를 선택하세요",
     "category": {
-      "hazard": "위험 상황",
-      "unsafeBehavior": "안전하지 않은 행동",
+      "hazard": "위험요소",
+      "unsafeBehavior": "불안전행동",
       "inconvenience": "불편사항",
-      "suggestion": "제안",
-      "bestPractice": "베스트 프랙티스"
+      "suggestion": "개선제안",
+      "bestPractice": "우수사례"
     },
     "title_field": "제목",
     "description": "설명",
@@ -137,6 +137,58 @@
       "submitFailed": "보고서 제출에 실패했습니다",
       "deleteSuccess": "보고서가 삭제되었습니다",
       "deleteFailed": "보고서 삭제에 실패했습니다"
+    },
+    "pageList": {
+      "myReportsList": "내 제보 목록",
+      "newReport": "새 제보",
+      "noReportsYet": "아직 제보한 내역이 없습니다.",
+      "findHazards": "위험요소를 발견하면 제보해주세요!",
+      "all": "전체",
+      "urgent": "긴급",
+      "received": "접수",
+      "inReview": "검토중",
+      "approved": "승인",
+      "rejected": "반려",
+      "needInfo": "추가정보"
+    },
+    "view": {
+      "title": "제보 상세보기",
+      "categoryLabel": "카테고리",
+      "statusLabel": "상태",
+      "urgent": "긴급",
+      "received": "접수됨",
+      "inReview": "검토 중",
+      "needInfo": "추가정보 필요",
+      "approved": "승인됨",
+      "rejected": "반려됨",
+      "notFound": "제보를 찾을 수 없습니다.",
+      "back": "돌아가기",
+      "rejectReasonTitle": "반려 사유",
+      "reason": "사유",
+      "infoRequestTitle": "추가 정보 요청",
+      "adminRequestedInfo": "관리자가 추가 정보를 요청했습니다.",
+      "photo": "사진",
+      "details": "상세 내용",
+      "createdAt": "작성일",
+      "submittedAt": "제출일",
+      "approvedAt": "승인일",
+      "rejectedAt": "반려일"
+    },
+    "rejectReasons": {
+      "duplicate": "중복 게시물",
+      "unclearPhoto": "불명확한 사진",
+      "insufficient": "증거 부족",
+      "false": "허위 신고",
+      "irrelevant": "범위 밖",
+      "other": "기타"
+    },
+    "status": {
+      "pending": "접수됨",
+      "inReview": "검토 중",
+      "approved": "승인됨",
+      "rejected": "반려됨",
+      "needInfo": "추가정보 필요",
+      "urgent": "긴급"
     }
   },
   "profile": {
@@ -180,7 +232,15 @@
       "newPasswordRequired": "새 비밀번호를 입력하세요",
       "passwordMismatch": "비밀번호가 일치하지 않습니다",
       "invalidPassword": "비밀번호가 잘못되었습니다"
-    }
+    },
+    "currentSite": "현재 현장",
+    "leaveSiteTitle": "현장 탈퇴",
+    "leaveSiteButton": "현장 탈퇴하기",
+    "leaveSiteDescription": "정말로 현재 현장에서 탈퇴하시겠습니까? 탈퇴 후에는 다시 가입해야 합니다.",
+    "leaveSuccess": "현장에서 탈퇴했습니다.",
+    "leaveFailed": "탈퇴에 실패했습니다. 다시 시도해주세요.",
+    "loading": "로딩 중...",
+    "processing": "처리 중..."
   },
   "announcements": {
     "title": "공지사항",
@@ -211,7 +271,7 @@
       "update": "업데이트",
       "emergency": "긴급"
     },
-    "readMore": "더 읽기",
+    "readMore": "더 보기",
     "errors": {
       "titleRequired": "제목을 입력하세요",
       "contentRequired": "내용을 입력하세요"
@@ -220,7 +280,16 @@
       "creating": "공지사항 생성 중...",
       "createSuccess": "공지사항이 생성되었습니다",
       "createFailed": "공지사항 생성에 실패했습니다"
-    }
+    },
+    "types": {
+      "RANKING": "랭킹",
+      "BEST_PRACTICE": "우수사례",
+      "ACTION_COMPLETE": "시정조치 완료",
+      "REWARD": "보상",
+      "GENERAL": "일반"
+    },
+    "empty": "공지사항이 없습니다",
+    "noContent": "내용이 없습니다"
   },
   "education": {
     "title": "교육",
@@ -232,7 +301,11 @@
       "training": "교육",
       "video": "영상",
       "document": "문서",
-      "interactive": "상호작용형"
+      "interactive": "상호작용형",
+      "VIDEO": "영상",
+      "IMAGE": "이미지",
+      "TEXT": "텍스트",
+      "DOCUMENT": "문서"
     },
     "myLearning": "나의 학습",
     "completedCourses": "완료된 과정",
@@ -288,18 +361,21 @@
         "selectAnswer": "답변을 선택하세요",
         "networkError": "네트워크 오류가 발생했습니다",
         "submitFailed": "퀴즈 제출에 실패했습니다"
-      }
+      },
+      "quizNotFound": "퀴즈를 찾을 수 없습니다.",
+      "selectAllAnswers": "모든 문제를 풀어주세요.",
+      "congratulations": "축하합니다! 합격입니다.",
+      "scoreDisplay": "점수: ${score}점",
+      "submitError": "제출에 실패했습니다.",
+      "passedMessage": "합격입니다!",
+      "failedMessage": "아쉽게도 불합격입니다.",
+      "passingScoreLabel": "합격기준:",
+      "backToListButton": "목록으로 돌아가기",
+      "submitting": "제출 중...",
+      "submitButton": "제출하기",
+      "maximumLabel": "최대"
     },
-    "tbm": {
-      "toolBoxMeeting": "공구 상자 회의",
-      "date": "날짜",
-      "presenter": "진행자",
-      "topic": "주제",
-      "attendance": "참석",
-      "completed": "완료됨",
-      "pending": "대기 중",
-      "notes": "비고"
-    },
+    "tbm": "TBM",
     "form": {
       "title": "제목",
       "titlePlaceholder": "교육 제목을 입력하세요",
@@ -325,7 +401,34 @@
       "completing": "교육 완료 중...",
       "completeSuccess": "교육을 완료했습니다",
       "completeFailed": "교육 완료에 실패했습니다"
-    }
+    },
+    "materials": "교육자료",
+    "quizzes": "퀴즈",
+    "noMaterials": "등록된 교육자료가 없습니다.",
+    "required": "필수",
+    "noQuizzes": "진행 중인 퀴즈가 없습니다.",
+    "active": "진행중",
+    "closed": "마감됨",
+    "unlimited": "시간제한 없음",
+    "noDescription": "설명이 없습니다.",
+    "passingScore": "합격기준",
+    "maxAttempts": "최대",
+    "attempts": "회 시도",
+    "noRecords": "TBM 기록이 없습니다.",
+    "attendance": "참석",
+    "attendees": "명",
+    "location": "위치",
+    "attendanceConfirm": "참석확인",
+    "onSite": "현장 내",
+    "attendanceConfirmed": "참석 확인되었습니다.",
+    "alreadyAttended": "이미 참석하셨습니다.",
+    "attendanceConfirmFailed": "참석 확인에 실패했습니다.",
+    "minutes": "분",
+    "notFound": "교육자료를 찾을 수 없습니다.",
+    "requiredEducation": "필수 교육",
+    "details": "상세 내용",
+    "documentDownload": "문서 다운로드",
+    "backToList": "목록으로 돌아가기"
   },
   "actions": {
     "title": "시정조치",
@@ -334,23 +437,48 @@
     "new": "새 개선조치",
     "list": {
       "title": "개선조치 목록",
-      "empty": "개선조치가 없습니다",
-      "loading": "로딩 중...",
-      "filter": "필터",
-      "sort": "정렬"
+      "myList": "내 시정조치 목록",
+      "empty": "할당된 시정조치가 없습니다",
+      "noAssignments": "안전한 하루 되세요!"
     },
     "view": {
-      "title": "개선조치 상세보기",
-      "edit": "수정",
+      "title": "개선조치 상세",
+      "notFound": "시정조치를 찾을 수 없습니다",
+      "back": "돌아가기",
+      "backList": "목록으로",
+      "noContent": "내용 없음",
+      "noTitle": "제목 없음",
+      "relatedReport": "관련 제보",
+      "description": "조치 내용",
+      "deadline": "기한",
+      "notSet": "미지정",
+      "assignee": "담당",
+      "progressStatus": "진행 상태",
+      "startProgress": "진행 시작",
+      "requiredCompletion": "완료 내용 (필수)",
+      "completionPlaceholder": "조치 내용을 입력해주세요.",
+      "reportCompletion": "완료 보고",
+      "completionMessage": "조치 완료",
+      "awaitingReview": "관리자 확인 대기중입니다.",
+      "completionContent": "완료 내용",
+      "verificationComplete": "확인 완료",
+      "allCompleted": "모든 절차가 완료되었습니다.",
+      "overdue": "기한 초과",
+      "overdueMessage": "조치 기한이 지났습니다. 다시 진행해주세요.",
+      "resumeProgress": "다시 진행",
+      "beforePhotos": "조치 전 사진",
+      "afterPhotos": "조치 후 사진",
+      "upload": "업로드",
+      "noPhotos": "등록된 사진이 없습니다",
+      "deletePhoto": "사진 삭제",
+      "confirmDelete": "정말 이 사진을 삭제하시겠습니까?",
+      "cancel": "취소",
       "delete": "삭제",
-      "deleteConfirm": "이 개선조치를 삭제하시겠습니까?",
-      "back": "뒤로가기",
-      "actionPlan": "개선계획",
-      "responsible": "담당자",
-      "deadline": "마감일",
-      "status": "상태",
-      "progress": "진행률",
-      "steps": "단계별 계획"
+      "beforeCaption": "조치 전",
+      "afterCaption": "조치 후",
+      "inputRequired": "입력 필요",
+      "pleaseEnterCompletion": "완료 내용을 입력해주세요.",
+      "uploadError": "이미지 업로드에 실패했습니다."
     },
     "status": {
       "assigned": "배정됨",
@@ -409,12 +537,20 @@
       "updating": "개선조치 수정 중...",
       "updateSuccess": "개선조치가 수정되었습니다",
       "updateFailed": "개선조치 수정에 실패했습니다"
+    },
+    "filter": {
+      "all": "전체",
+      "assigned": "배정됨",
+      "inProgress": "진행중",
+      "completed": "완료",
+      "verified": "확인됨",
+      "overdue": "기한초과"
     }
   },
   "points": {
     "title": "포인트",
     "myPoints": "나의 포인트",
-    "ranking": "순위",
+    "ranking": "랭킹",
     "totalPoints": "총 포인트",
     "monthlyPoints": "월간 포인트",
     "leaderboard": "리더보드",
@@ -426,14 +562,21 @@
     "earnedPoints": "획득한 포인트",
     "deductedPoints": "차감된 포인트",
     "history": "포인트 내역",
-    "empty": "포인트 내역이 없습니다",
+    "empty": "포인트 기록이 없습니다",
     "detail": "상세내용",
-    "reason": "사유"
+    "reason": "사유",
+    "pageTitle": "포인트",
+    "monthlyTab": "이번 달",
+    "cumulativeTab": "누적",
+    "me": "나",
+    "noRankingData": "아직 랭킹 데이터가 없습니다.",
+    "pointsHistory": "포인트 내역",
+    "noPointsHistory": "포인트 내역이 없습니다."
   },
   "votes": {
     "title": "추천",
     "recommendation": "추천",
-    "recommend": "추천",
+    "recommend": "추천하기",
     "unrecommend": "추천 취소",
     "recommendedBy": "추천자",
     "recommendationCount": "추천 수",
@@ -441,7 +584,7 @@
     "thankYou": "추천해주셔서 감사합니다",
     "selectWorker": "근로자를 선택하세요",
     "reason": "추천사유",
-    "reasonPlaceholder": "추천사유를 입력하세요",
+    "reasonPlaceholder": "추천 사유를 작성해주세요",
     "submit": "제출",
     "submitting": "제출 중...",
     "submitSuccess": "추천이 제출되었습니다",
@@ -454,7 +597,23 @@
       "workerRequired": "근로자를 선택하세요",
       "reasonRequired": "추천사유를 입력하세요",
       "reasonTooShort": "추천사유는 10자 이상이어야 합니다"
-    }
+    },
+    "empty": "추천이 없습니다",
+    "selectSiteFirst": "현장을 먼저 선택해주세요.",
+    "backHome": "홈으로",
+    "recommendWorkerTitle": "우수 근로자 추천",
+    "recommendWorkerDesc": "함께 일하는 우수한 동료를 추천해주세요 (하루 1회)",
+    "recommendedToday": "오늘 추천 완료!",
+    "canRecommendTomorrow": "내일 다시 추천할 수 있습니다.",
+    "tradeType": "공종명",
+    "tradeTypePlaceholder": "예: 철근, 형틀, 전기, 설비",
+    "workerName": "근로자 이름",
+    "workerNamePlaceholder": "추천할 근로자의 이름",
+    "recommendationReason": "추천 사유",
+    "submitError": "추천에 실패했습니다.",
+    "hideHistory": "내 추천 내역 숨기기",
+    "showHistory": "내 추천 내역 보기",
+    "noHistory": "추천 내역이 없습니다."
   },
   "common": {
     "loading": "로드 중...",
@@ -494,6 +653,21 @@
     "serverError": "서버 오류",
     "unsafeWarning": "안전하지 않은 상황이 감지되었습니다",
     "confirmDelete": "삭제하시겠습니까?",
-    "confirmLogout": "로그아웃하시겠습니까?"
+    "confirmLogout": "로그아웃하시겠습니까?",
+    "score": "점수",
+    "home": "홈으로"
+  },
+  "components": {
+    "appTitle": "안전지갑",
+    "siteIdLabel": "현장 ID:",
+    "unsafeWarningTitle": "⚠️ 불안전행동 제보 안내",
+    "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",
+    "unsafeWarningPrivacyNote": "제보 시 얼굴이나 개인정보가 노출되지 않도록 주의해 주세요.",
+    "unsafeWarningAdminNote": "이 제보는 관리자만 확인할 수 있습니다.",
+    "unsafeWarningConfirm": "확인하고 제출"
+  },
+  "postCard": {
+    "reviewStatusNeedInfo": "추가정보",
+    "actionStatusVerified": "조치확인"
   }
 }

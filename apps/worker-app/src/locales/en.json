@@ -1,44 +1,66 @@
 {
   "auth": {
     "login": "Login",
-    "register": "Register",
+    "register": "Sign Up",
     "phoneNumber": "Phone Number",
     "name": "Name",
     "dateOfBirth": "Date of Birth",
     "site": "Site",
     "selectSite": "Select a site",
-    "noSitesAvailable": "No assigned sites available",
+    "noSitesAvailable": "No sites available",
+    "siteId": "Site ID",
+    "siteIdPlaceholder": "Enter Site ID",
     "password": "Password",
     "confirmPassword": "Confirm Password",
     "loginButton": "Login",
-    "registerButton": "Register",
-    "switchToRegister": "Register",
+    "registerButton": "Sign Up",
+    "switchToRegister": "Sign Up",
     "switchToLogin": "Login",
     "or": "or",
     "faceIdLogin": "Login with Face ID",
+    "logout": "Logout",
+    "logoutConfirm": "Are you sure you want to logout?",
     "error": {
-      "emptyPhone": "Please enter a phone number",
+      "emptyPhone": "Please enter your phone number",
       "invalidPhone": "Please enter a valid phone number",
       "emptyName": "Please enter your name",
       "emptyDob": "Please enter your date of birth",
-      "emptyPassword": "Please enter a password",
+      "emptyPassword": "Please enter your password",
       "passwordMismatch": "Passwords do not match",
       "weakPassword": "Password must be at least 6 characters",
       "accountNotFound": "Account not found",
       "invalidCredentials": "Invalid phone number or password",
       "accountLocked": "Account is locked. Please contact support",
       "tooManyAttempts": "Too many attempts. Please try again later",
-      "networkError": "Network error occurred",
-      "unknown": "An unknown error occurred"
+      "networkError": "A network error occurred",
+      "unknown": "An unknown error occurred",
+      "userNotFound": "User not found",
+      "invalidPassword": "Password is incorrect",
+      "serverError": "A server error occurred",
+      "siteIdRequired": "Please enter Site ID",
+      "phoneRequired": "Please enter phone number",
+      "passwordRequired": "Please enter password",
+      "invalidPhoneFormat": "Invalid phone number format",
+      "acetimeDisconnected": "AceTime is not connected",
+      "acetimeSyncFailed": "AceTime sync failed"
     },
     "success": {
       "loginSuccess": "Login successful",
-      "registerSuccess": "Registration successful"
-    }
+      "registerSuccess": "Registration successful",
+      "loggingIn": "Logging in...",
+      "loginFailed": "Login failed",
+      "sessionExpired": "Session expired",
+      "checkAttendance": "Please check in first"
+    },
+    "loginPageTitle": "SafetyWallet",
+    "loginPageSubtitle": "Login with phone, name, and date of birth",
+    "loginPageHint": "Login with your registered phone number, name, and date of birth.",
+    "loginPageNote": "Attendance check-in may be required for first-time use.",
+    "noAccount": "Don't have an account?"
   },
   "home": {
     "title": "Home",
-    "welcome": "Welcome",
+    "welcome": "Hello",
     "myPoints": "My Points",
     "myRank": "My Rank",
     "recentReports": "Recent Reports",
@@ -76,27 +98,17 @@
     "submit": "Submit",
     "cancel": "Cancel",
     "loading": "Loading...",
-    "error": {
-      "emptyTitle": "Please enter a title",
-      "emptyCategory": "Please select a category",
-      "emptyDescription": "Please enter a description",
-      "uploadFailed": "Upload failed",
-      "invalidImage": "Please select a valid image file"
-    },
-    "success": {
-      "submitted": "Report submitted successfully"
-    },
     "detail": {
       "status": "Status",
-      "createdBy": "Created By",
-      "createdAt": "Created At",
+      "createdBy": "Created by",
+      "createdAt": "Created at",
       "category": "Category",
       "approvalStatus": {
         "pending": "Pending Review",
         "inReview": "In Review",
         "approved": "Approved",
         "rejected": "Rejected",
-        "needInfo": "Need Information"
+        "needInfo": "Info Needed"
       }
     },
     "list": {
@@ -105,49 +117,187 @@
       "noReports": "No reports",
       "filter": "Filter",
       "sort": "Sort"
+    },
+    "error": {
+      "emptyTitle": "Please enter a title",
+      "emptyCategory": "Please select a category",
+      "emptyDescription": "Please enter a description",
+      "uploadFailed": "Upload failed",
+      "invalidImage": "Please select a valid image file",
+      "categoryRequired": "Please select a category",
+      "descriptionRequired": "Please enter a description",
+      "locationRequired": "Please enter a location",
+      "imageUploadFailed": "Image upload failed",
+      "invalidImageFormat": "Unsupported image format",
+      "imageTooLarge": "Image size is too large"
+    },
+    "success": {
+      "submitted": "Report has been submitted",
+      "submitSuccess": "Report submitted successfully",
+      "submitFailed": "Failed to submit report",
+      "deleteSuccess": "Report deleted successfully",
+      "deleteFailed": "Failed to delete report"
+    },
+    "pageList": {
+      "myReportsList": "My Reports",
+      "newReport": "New Report",
+      "noReportsYet": "No reports yet.",
+      "findHazards": "Report any hazards you find!",
+      "all": "All",
+      "urgent": "Urgent",
+      "received": "Received",
+      "inReview": "In Review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "needInfo": "Need Info"
+    },
+    "view": {
+      "title": "Report Detail",
+      "categoryLabel": "Category",
+      "statusLabel": "Status",
+      "urgent": "Urgent",
+      "received": "Received",
+      "inReview": "In Review",
+      "needInfo": "Need More Info",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "notFound": "Report not found.",
+      "back": "Go Back",
+      "rejectReasonTitle": "Rejection Reason",
+      "reason": "Reason",
+      "infoRequestTitle": "Additional Info Request",
+      "adminRequestedInfo": "Admin has requested additional information.",
+      "photo": "Photo",
+      "details": "Details",
+      "createdAt": "Created At",
+      "submittedAt": "Submitted At",
+      "approvedAt": "Approved At",
+      "rejectedAt": "Rejected At"
+    },
+    "rejectReasons": {
+      "duplicate": "Duplicate Post",
+      "unclearPhoto": "Unclear Photo",
+      "insufficient": "Insufficient Evidence",
+      "false": "False Report",
+      "irrelevant": "Out of Scope",
+      "other": "Other"
+    },
+    "status": {
+      "pending": "Received",
+      "inReview": "In Review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "needInfo": "Need Info",
+      "urgent": "Urgent"
     }
   },
   "profile": {
     "title": "Profile",
+    "myProfile": "My Profile",
     "name": "Name",
     "phone": "Phone Number",
-    "dateOfBirth": "Date of Birth",
+    "phoneNumber": "Phone Number",
+    "email": "Email",
     "site": "Site",
+    "department": "Department",
+    "position": "Position",
+    "dateOfBirth": "Date of Birth",
     "joinDate": "Join Date",
+    "avatar": "Profile Picture",
     "logout": "Logout",
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
+    "settings": "Settings",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "updateProfile": "Update Profile",
+    "updateSuccess": "Profile updated successfully",
+    "updateFailed": "Failed to update profile",
+    "changePasswordSuccess": "Password changed successfully",
+    "changePasswordFailed": "Failed to change password",
+    "logoutConfirm": "Are you sure you want to logout?",
+    "sites": "Managed Sites",
+    "selectSite": "Select a site",
     "actions": {
       "editProfile": "Edit Profile",
       "changePassword": "Change Password",
       "logOut": "Logout"
     },
-    "logoutConfirm": "Are you sure you want to logout?"
+    "errors": {
+      "nameRequired": "Please enter your name",
+      "currentPasswordRequired": "Please enter current password",
+      "newPasswordRequired": "Please enter new password",
+      "passwordMismatch": "Passwords do not match",
+      "invalidPassword": "Invalid password"
+    },
+    "currentSite": "Current Site",
+    "leaveSiteTitle": "Leave Site",
+    "leaveSiteButton": "Leave Site",
+    "leaveSiteDescription": "Are you sure you want to leave this site? You will need to rejoin.",
+    "leaveSuccess": "You have left the site.",
+    "leaveFailed": "Failed to leave. Please try again.",
+    "loading": "Loading...",
+    "processing": "Processing..."
   },
   "announcements": {
     "title": "Announcements",
     "noAnnouncements": "No announcements",
+    "new": "New Announcement",
+    "list": {
+      "title": "Announcements",
+      "empty": "No announcements",
+      "loading": "Loading..."
+    },
+    "view": {
+      "title": "Announcement Detail",
+      "back": "Back",
+      "date": "Date",
+      "author": "Author",
+      "content": "Content"
+    },
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "Enter title",
+      "content": "Content",
+      "contentPlaceholder": "Enter content",
+      "publish": "Publish",
+      "draft": "Save as Draft"
+    },
     "type": {
       "notice": "Notice",
       "update": "Update",
       "emergency": "Emergency"
     },
-    "readMore": "Read More"
+    "readMore": "Read More",
+    "errors": {
+      "titleRequired": "Please enter a title",
+      "contentRequired": "Please enter content"
+    },
+    "messages": {
+      "creating": "Creating announcement...",
+      "createSuccess": "Announcement created successfully",
+      "createFailed": "Failed to create announcement"
+    }
   },
   "education": {
     "title": "Education",
+    "hub": "Education Hub",
+    "new": "New Content",
     "contentTypes": {
       "quiz": "Quiz",
       "tbm": "TBM",
       "training": "Training",
       "video": "Video",
-      "document": "Document"
+      "document": "Document",
+      "interactive": "Interactive"
     },
     "myLearning": "My Learning",
     "completedCourses": "Completed Courses",
     "availableCourses": "Available Courses",
-    "noCourses": "No courses",
+    "noCourses": "No courses available",
     "progress": "Progress",
     "completed": "Completed",
     "notStarted": "Not Started",
@@ -162,7 +312,24 @@
     "failed": "Failed",
     "retake": "Retake",
     "viewCertificate": "View Certificate",
+    "duration": "Duration",
+    "difficulty": "Difficulty",
+    "list": {
+      "title": "Education List",
+      "empty": "No education content",
+      "loading": "Loading...",
+      "filter": "Filter",
+      "sort": "Sort"
+    },
+    "view": {
+      "title": "Education Detail",
+      "back": "Back",
+      "takeQuiz": "Take Quiz",
+      "quizResults": "Quiz Results",
+      "content": "Content"
+    },
     "quiz": {
+      "title": "Quiz",
       "question": "Question",
       "answer": "Answer",
       "submit": "Submit",
@@ -172,26 +339,88 @@
       "results": "Results",
       "correct": "Correct",
       "incorrect": "Incorrect",
-      "youAnswered": "Your Answer"
+      "youAnswered": "Your Answer",
+      "confirm": "Submit your answers?",
+      "timeRemaining": "Time Remaining",
+      "result": "Result",
+      "retake": "Retake",
+      "errors": {
+        "selectAnswer": "Please select an answer",
+        "networkError": "A network error occurred",
+        "submitFailed": "Failed to submit quiz"
+      }
     },
     "tbm": {
-      "toolBoxMeeting": "Tool Box Meeting",
+      "toolBoxMeeting": "Toolbox Meeting",
       "date": "Date",
       "presenter": "Presenter",
       "topic": "Topic",
-      "attendance": "Attendance"
+      "attendance": "Attendance",
+      "completed": "Completed",
+      "pending": "Pending",
+      "notes": "Notes"
+    },
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "Enter education title",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter detailed description",
+      "type": "Type",
+      "selectType": "Select type",
+      "durationPlaceholder": "30",
+      "selectDifficulty": "Select difficulty",
+      "content": "Content",
+      "contentPlaceholder": "Enter content"
+    },
+    "errors": {
+      "titleRequired": "Please enter a title",
+      "descriptionRequired": "Please enter a description",
+      "typeRequired": "Please select a type",
+      "durationRequired": "Please enter duration"
+    },
+    "messages": {
+      "creating": "Creating education content...",
+      "createSuccess": "Education content created successfully",
+      "createFailed": "Failed to create education content",
+      "completing": "Completing education...",
+      "completeSuccess": "Education completed",
+      "completeFailed": "Failed to complete education"
     }
   },
   "actions": {
     "title": "Corrective Actions",
     "correctiveActions": "Corrective Actions",
-    "noActions": "No actions",
+    "noActions": "No corrective actions",
+    "new": "New Action",
+    "list": {
+      "title": "Actions List",
+      "empty": "No actions",
+      "loading": "Loading...",
+      "filter": "Filter",
+      "sort": "Sort"
+    },
+    "view": {
+      "title": "Action Detail",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this action?",
+      "back": "Back",
+      "actionPlan": "Action Plan",
+      "responsible": "Responsible",
+      "deadline": "Deadline",
+      "status": "Status",
+      "progress": "Progress",
+      "steps": "Steps"
+    },
     "status": {
       "assigned": "Assigned",
       "inProgress": "In Progress",
       "completed": "Completed",
       "verified": "Verified",
-      "overdue": "Overdue"
+      "overdue": "Overdue",
+      "pending": "Pending",
+      "onHold": "On Hold",
+      "cancelled": "Cancelled"
     },
     "priority": {
       "low": "Low",
@@ -207,7 +436,40 @@
     "viewDetails": "View Details",
     "updateStatus": "Update Status",
     "markAsComplete": "Mark as Complete",
-    "markAsVerified": "Mark as Verified"
+    "markAsVerified": "Mark as Verified",
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "Enter action title",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter details",
+      "responsible": "Responsible",
+      "selectResponsible": "Select responsible person",
+      "deadline": "Deadline",
+      "selectDeadline": "Select deadline",
+      "selectStatus": "Select status",
+      "selectPriority": "Select priority",
+      "relatedPost": "Related Report",
+      "step1": "Step 1",
+      "step2": "Step 2",
+      "step3": "Step 3",
+      "step4": "Step 4",
+      "step5": "Step 5"
+    },
+    "errors": {
+      "titleRequired": "Please enter a title",
+      "descriptionRequired": "Please enter a description",
+      "responsibleRequired": "Please select a responsible person",
+      "deadlineRequired": "Please select a deadline",
+      "invalidDeadline": "Please select a valid date"
+    },
+    "messages": {
+      "creating": "Creating action...",
+      "createSuccess": "Action created successfully",
+      "createFailed": "Failed to create action",
+      "updating": "Updating action...",
+      "updateSuccess": "Action updated successfully",
+      "updateFailed": "Failed to update action"
+    }
   },
   "points": {
     "title": "Points",
@@ -217,19 +479,42 @@
     "monthlyPoints": "Monthly Points",
     "leaderboard": "Leaderboard",
     "noHistory": "No point history",
-    "earnedFrom": "Earned From",
+    "earnedFrom": "Source",
     "date": "Date",
-    "amount": "Points"
+    "amount": "Points",
+    "rank": "Rank",
+    "earnedPoints": "Earned Points",
+    "deductedPoints": "Deducted Points",
+    "history": "Point History",
+    "empty": "No point history",
+    "detail": "Details",
+    "reason": "Reason"
   },
   "votes": {
     "title": "Recommendations",
     "recommendation": "Recommendation",
     "recommend": "Recommend",
-    "unrecommend": "Unrecommend",
-    "recommendedBy": "Recommended By",
-    "recommendationCount": "Recommendation Count",
+    "unrecommend": "Cancel Recommendation",
+    "recommendedBy": "Recommended by",
+    "recommendationCount": "Recommendations",
     "noVotes": "No recommendations",
-    "thankYou": "Thank you for your recommendation"
+    "thankYou": "Thank you for your recommendation",
+    "selectWorker": "Select a worker",
+    "reason": "Reason",
+    "reasonPlaceholder": "Enter reason for recommendation",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "submitSuccess": "Recommendation submitted",
+    "submitFailed": "Failed to submit recommendation",
+    "vote": "Vote",
+    "voteSuccess": "Voted successfully",
+    "voteFailed": "Failed to vote",
+    "alreadyVoted": "Already voted",
+    "errors": {
+      "workerRequired": "Please select a worker",
+      "reasonRequired": "Please enter a reason",
+      "reasonTooShort": "Reason must be at least 10 characters"
+    }
   },
   "common": {
     "loading": "Loading...",
@@ -262,12 +547,12 @@
     "noData": "No data",
     "errorOccurred": "An error occurred",
     "tryAgain": "Please try again",
-    "networkError": "Network error",
+    "networkError": "Network Error",
     "unauthorized": "Unauthorized",
-    "forbidden": "Access denied",
-    "notFound": "Not found",
-    "serverError": "Server error",
-    "unsafeWarning": "Unsafe situation detected",
+    "forbidden": "Access Denied",
+    "notFound": "Not Found",
+    "serverError": "Server Error",
+    "unsafeWarning": "An unsafe situation has been detected",
     "confirmDelete": "Are you sure you want to delete?",
     "confirmLogout": "Are you sure you want to logout?"
   }

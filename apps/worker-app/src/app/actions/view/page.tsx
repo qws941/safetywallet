@@ -2,6 +2,7 @@
 
 import { useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslation } from "@/hooks/use-translation";
 import {
   useAction,
   useUpdateActionStatus,
@@ -42,39 +43,12 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-const statusColors: Record<string, string> = {
-  [ActionStatus.ASSIGNED]: "bg-blue-100 text-blue-800",
-  [ActionStatus.IN_PROGRESS]: "bg-amber-100 text-amber-800",
-  [ActionStatus.COMPLETED]: "bg-green-100 text-green-800",
-  [ActionStatus.VERIFIED]: "bg-emerald-100 text-emerald-800",
-  [ActionStatus.OVERDUE]: "bg-red-100 text-red-800",
-};
-
-const statusLabels: Record<string, string> = {
-  [ActionStatus.ASSIGNED]: "배정됨",
-  [ActionStatus.IN_PROGRESS]: "진행중",
-  [ActionStatus.COMPLETED]: "완료",
-  [ActionStatus.VERIFIED]: "확인됨",
-  [ActionStatus.OVERDUE]: "기한초과",
-};
-
-const priorityColors: Record<string, string> = {
-  [ActionPriority.HIGH]: "bg-red-50 text-red-700",
-  [ActionPriority.MEDIUM]: "bg-amber-50 text-amber-700",
-  [ActionPriority.LOW]: "bg-gray-50 text-gray-600",
-};
-
-const priorityLabels: Record<string, string> = {
-  [ActionPriority.HIGH]: "높음",
-  [ActionPriority.MEDIUM]: "중간",
-  [ActionPriority.LOW]: "낮음",
-};
-
 function ActionDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const actionId = searchParams.get("id");
   const { toast } = useToast();
+  const t = useTranslation();
 
   const { data, isLoading, error } = useAction(actionId);
   const updateStatus = useUpdateActionStatus();
@@ -84,6 +58,34 @@ function ActionDetailContent() {
   const [completionNote, setCompletionNote] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<"BEFORE" | "AFTER">("BEFORE");
+
+  const statusLabels: Record<string, string> = {
+    [ActionStatus.ASSIGNED]: t("actions.status.assigned"),
+    [ActionStatus.IN_PROGRESS]: t("actions.status.inProgress"),
+    [ActionStatus.COMPLETED]: t("actions.status.completed"),
+    [ActionStatus.VERIFIED]: t("actions.status.verified"),
+    [ActionStatus.OVERDUE]: t("actions.status.overdue"),
+  };
+
+  const statusColors: Record<string, string> = {
+    [ActionStatus.ASSIGNED]: "bg-blue-100 text-blue-800",
+    [ActionStatus.IN_PROGRESS]: "bg-amber-100 text-amber-800",
+    [ActionStatus.COMPLETED]: "bg-green-100 text-green-800",
+    [ActionStatus.VERIFIED]: "bg-emerald-100 text-emerald-800",
+    [ActionStatus.OVERDUE]: "bg-red-100 text-red-800",
+  };
+
+  const priorityLabels: Record<string, string> = {
+    [ActionPriority.HIGH]: t("actions.priority.high"),
+    [ActionPriority.MEDIUM]: t("actions.priority.medium"),
+    [ActionPriority.LOW]: t("actions.priority.low"),
+  };
+
+  const priorityColors: Record<string, string> = {
+    [ActionPriority.HIGH]: "bg-red-50 text-red-700",
+    [ActionPriority.MEDIUM]: "bg-amber-50 text-amber-700",
+    [ActionPriority.LOW]: "bg-gray-50 text-gray-600",
+  };
 
   const action = data?.data;
 
@@ -107,9 +109,9 @@ function ActionDetailContent() {
         <Header />
         <main className="p-4 flex flex-col items-center justify-center h-full">
           <p className="text-4xl mb-4">❌</p>
-          <p className="text-muted-foreground">시정조치를 찾을 수 없습니다.</p>
+          <p className="text-muted-foreground">{t("actions.view.notFound")}</p>
           <Button className="mt-4" onClick={() => router.back()}>
-            돌아가기
+            {t("actions.view.back")}
           </Button>
         </main>
         <BottomNav />
@@ -120,8 +122,8 @@ function ActionDetailContent() {
   const handleStatusChange = (newStatus: ActionStatus) => {
     if (newStatus === ActionStatus.COMPLETED && !completionNote.trim()) {
       toast({
-        title: "입력 필요",
-        description: "완료 내용을 입력해주세요.",
+        title: t("actions.view.inputRequired"),
+        description: t("actions.view.pleaseEnterCompletion"),
         variant: "destructive",
       });
       return;
@@ -150,8 +152,8 @@ function ActionDetailContent() {
       uploadImage.mutate({ actionId: action.id, formData });
     } catch (_err) {
       toast({
-        title: "업로드 실패",
-        description: "이미지 업로드에 실패했습니다.",
+        title: t("common.error"),
+        description: t("actions.view.uploadError"),
         variant: "destructive",
       });
     } finally {
@@ -187,7 +189,7 @@ function ActionDetailContent() {
             className="gap-1 p-0 h-auto hover:bg-transparent"
             onClick={() => router.back()}
           >
-            <ArrowLeft className="w-4 h-4" /> 목록으로
+            <ArrowLeft className="w-4 h-4" /> {t("actions.view.backList")}
           </Button>
         </div>
 
@@ -211,7 +213,7 @@ function ActionDetailContent() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">조치 내용</CardTitle>
+            <CardTitle className="text-base">{t("actions.view.description")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="whitespace-pre-wrap">{action.description}</p>
@@ -220,21 +222,21 @@ function ActionDetailContent() {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  기한:{" "}
+                  {t("actions.view.deadline")}:{" "}
                   {action.dueDate
                     ? new Date(action.dueDate).toLocaleDateString()
-                    : "미지정"}
+                    : t("actions.view.notSet")}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4" />
-                <span>담당: {action.assignee?.nameMasked || "미지정"}</span>
+                <span>{t("actions.view.assignee")}: {action.assignee?.nameMasked || t("actions.view.notSet")}</span>
               </div>
             </div>
 
             {action.post && (
               <div className="bg-gray-50 p-3 rounded-lg text-sm">
-                <span className="font-medium text-gray-700">관련 제보:</span>{" "}
+                <span className="font-medium text-gray-700">{t("actions.view.relatedReport")}:</span>{" "}
                 <span className="text-gray-600">{action.post.title}</span>
               </div>
             )}
@@ -243,7 +245,7 @@ function ActionDetailContent() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">진행 상태</CardTitle>
+            <CardTitle className="text-base">{t("actions.view.progressStatus")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {action.actionStatus === ActionStatus.ASSIGNED && (
@@ -252,7 +254,7 @@ function ActionDetailContent() {
                 onClick={() => handleStatusChange(ActionStatus.IN_PROGRESS)}
                 disabled={updateStatus.isPending}
               >
-                진행 시작
+                {t("actions.view.startProgress")}
               </Button>
             )}
 
@@ -263,11 +265,11 @@ function ActionDetailContent() {
                     htmlFor="completionNote"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    완료 내용 (필수)
+                    {t("actions.view.requiredCompletion")}
                   </label>
                   <textarea
                     id="completionNote"
-                    placeholder="조치 내용을 입력해주세요."
+                    placeholder={t("actions.view.completionPlaceholder")}
                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={completionNote}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -281,7 +283,7 @@ function ActionDetailContent() {
                   onClick={() => handleStatusChange(ActionStatus.COMPLETED)}
                   disabled={updateStatus.isPending || !completionNote.trim()}
                 >
-                  완료 보고
+                  {t("actions.view.reportCompletion")}
                 </Button>
               </div>
             )}
@@ -289,13 +291,13 @@ function ActionDetailContent() {
             {action.actionStatus === ActionStatus.COMPLETED && (
               <div className="bg-green-50 p-4 rounded-lg text-center space-y-2">
                 <CheckCircle className="w-8 h-8 text-green-600 mx-auto" />
-                <p className="font-medium text-green-900">조치 완료</p>
+                <p className="font-medium text-green-900">{t("actions.view.completionMessage")}</p>
                 <p className="text-sm text-green-700">
-                  관리자 확인 대기중입니다.
+                  {t("actions.view.awaitingReview")}
                 </p>
                 {action.completionNote && (
                   <div className="mt-4 text-left bg-white p-3 rounded border border-green-100">
-                    <p className="text-xs text-green-600 mb-1">완료 내용</p>
+                    <p className="text-xs text-green-600 mb-1">{t("actions.view.completionContent")}</p>
                     <p className="text-sm text-gray-700">
                       {action.completionNote}
                     </p>
@@ -307,9 +309,9 @@ function ActionDetailContent() {
             {action.actionStatus === ActionStatus.VERIFIED && (
               <div className="bg-emerald-50 p-4 rounded-lg text-center space-y-2">
                 <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
-                <p className="font-medium text-emerald-900">확인 완료</p>
+                <p className="font-medium text-emerald-900">{t("actions.view.verificationComplete")}</p>
                 <p className="text-sm text-emerald-700">
-                  모든 절차가 완료되었습니다.
+                  {t("actions.view.allCompleted")}
                 </p>
               </div>
             )}
@@ -317,9 +319,9 @@ function ActionDetailContent() {
             {action.actionStatus === ActionStatus.OVERDUE && (
               <div className="bg-red-50 p-4 rounded-lg text-center space-y-2">
                 <AlertTriangle className="w-8 h-8 text-red-600 mx-auto" />
-                <p className="font-medium text-red-900">기한 초과</p>
+                <p className="font-medium text-red-900">{t("actions.view.overdue")}</p>
                 <p className="text-sm text-red-700">
-                  조치 기한이 지났습니다. 다시 진행해주세요.
+                  {t("actions.view.overdueMessage")}
                 </p>
                 <Button
                   variant="outline"
@@ -327,7 +329,7 @@ function ActionDetailContent() {
                   onClick={() => handleStatusChange(ActionStatus.IN_PROGRESS)}
                   disabled={updateStatus.isPending}
                 >
-                  다시 진행
+                  {t("actions.view.resumeProgress")}
                 </Button>
               </div>
             )}
@@ -336,7 +338,7 @@ function ActionDetailContent() {
 
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base">조치 전 사진</CardTitle>
+            <CardTitle className="text-base">{t("actions.view.beforePhotos")}</CardTitle>
             <Button
               variant="outline"
               size="sm"
@@ -344,7 +346,7 @@ function ActionDetailContent() {
               disabled={uploadImage.isPending}
             >
               <Upload className="w-4 h-4 mr-1" />
-              업로드
+              {t("actions.view.upload")}
             </Button>
           </CardHeader>
           <CardContent>
@@ -354,7 +356,7 @@ function ActionDetailContent() {
                   <div key={img.id} className="relative group">
                     <img
                       src={img.fileUrl}
-                      alt="조치 전"
+                      alt={t("actions.view.beforeCaption")}
                       className="w-full h-32 object-cover rounded-md"
                     />
                     <AlertDialog>
@@ -365,17 +367,17 @@ function ActionDetailContent() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>사진 삭제</AlertDialogTitle>
+                          <AlertDialogTitle>{t("actions.view.deletePhoto")}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            정말 이 사진을 삭제하시겠습니까?
+                            {t("actions.view.confirmDelete")}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogCancel>{t("actions.view.cancel")}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDeleteImage(img.id)}
                           >
-                            삭제
+                            {t("actions.view.delete")}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -385,7 +387,7 @@ function ActionDetailContent() {
               </div>
             ) : (
               <div className="text-center py-8 bg-gray-50 rounded-lg text-muted-foreground text-sm">
-                등록된 사진이 없습니다.
+                {t("actions.view.noPhotos")}
               </div>
             )}
           </CardContent>
@@ -393,7 +395,7 @@ function ActionDetailContent() {
 
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base">조치 후 사진</CardTitle>
+            <CardTitle className="text-base">{t("actions.view.afterPhotos")}</CardTitle>
             <Button
               variant="outline"
               size="sm"
@@ -401,7 +403,7 @@ function ActionDetailContent() {
               disabled={uploadImage.isPending}
             >
               <Upload className="w-4 h-4 mr-1" />
-              업로드
+              {t("actions.view.upload")}
             </Button>
           </CardHeader>
           <CardContent>
@@ -411,7 +413,7 @@ function ActionDetailContent() {
                   <div key={img.id} className="relative group">
                     <img
                       src={img.fileUrl}
-                      alt="조치 후"
+                      alt={t("actions.view.afterCaption")}
                       className="w-full h-32 object-cover rounded-md"
                     />
                     <AlertDialog>
@@ -422,17 +424,17 @@ function ActionDetailContent() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>사진 삭제</AlertDialogTitle>
+                          <AlertDialogTitle>{t("actions.view.deletePhoto")}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            정말 이 사진을 삭제하시겠습니까?
+                            {t("actions.view.confirmDelete")}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogCancel>{t("actions.view.cancel")}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDeleteImage(img.id)}
                           >
-                            삭제
+                            {t("actions.view.delete")}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -442,7 +444,7 @@ function ActionDetailContent() {
               </div>
             ) : (
               <div className="text-center py-8 bg-gray-50 rounded-lg text-muted-foreground text-sm">
-                등록된 사진이 없습니다.
+                {t("actions.view.noPhotos")}
               </div>
             )}
           </CardContent>
@@ -462,21 +464,23 @@ function ActionDetailContent() {
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-gray-50 pb-nav">
+      <Header />
+      <main className="p-4 space-y-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </main>
+      <BottomNav />
+    </div>
+  );
+}
+
 export default function ActionDetailPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gray-50 pb-nav">
-          <Header />
-          <main className="p-4 space-y-4">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </main>
-          <BottomNav />
-        </div>
-      }
-    >
+    <Suspense fallback={<LoadingState />}>
       <ActionDetailContent />
     </Suspense>
   );

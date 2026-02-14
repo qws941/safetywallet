@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { usePost } from "@/hooks/use-api";
+import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -17,41 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Category, ReviewStatus, RejectReason } from "@safetywallet/types";
 import { AlertCircle, HelpCircle } from "lucide-react";
-
-const categoryLabels: Record<Category, string> = {
-  [Category.HAZARD]: "위험요소",
-  [Category.UNSAFE_BEHAVIOR]: "불안전행동",
-  [Category.INCONVENIENCE]: "불편사항",
-  [Category.SUGGESTION]: "개선제안",
-  [Category.BEST_PRACTICE]: "우수사례",
-};
-
-const reviewStatusLabels: Record<ReviewStatus, string> = {
-  [ReviewStatus.PENDING]: "접수됨",
-  [ReviewStatus.IN_REVIEW]: "검토 중",
-  [ReviewStatus.NEED_INFO]: "추가정보 필요",
-  [ReviewStatus.APPROVED]: "승인됨",
-  [ReviewStatus.REJECTED]: "반려됨",
-  [ReviewStatus.URGENT]: "긴급",
-};
-
-const reviewStatusColors: Record<ReviewStatus, string> = {
-  [ReviewStatus.PENDING]: "bg-gray-100 text-gray-700",
-  [ReviewStatus.IN_REVIEW]: "bg-blue-100 text-blue-700",
-  [ReviewStatus.NEED_INFO]: "bg-yellow-100 text-yellow-700",
-  [ReviewStatus.APPROVED]: "bg-green-100 text-green-700",
-  [ReviewStatus.REJECTED]: "bg-red-100 text-red-700",
-  [ReviewStatus.URGENT]: "bg-red-200 text-red-800 font-semibold",
-};
-
-const rejectReasonLabels: Record<RejectReason, string> = {
-  [RejectReason.DUPLICATE]: "중복 게시물",
-  [RejectReason.UNCLEAR_PHOTO]: "불명확한 사진",
-  [RejectReason.INSUFFICIENT]: "증거 부족",
-  [RejectReason.FALSE]: "허위 신고",
-  [RejectReason.IRRELEVANT]: "범위 밖",
-  [RejectReason.OTHER]: "기타",
-};
 
 function LoadingState() {
   return (
@@ -70,6 +36,7 @@ function LoadingState() {
 function PostDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslation();
   const postId = searchParams.get("id") || "";
   const { data, isLoading, error } = usePost(postId);
 
@@ -91,6 +58,50 @@ function PostDetailContent() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )[0];
 
+  const getCategoryLabel = (category: Category) => {
+    const categoryMap: Record<Category, string> = {
+      [Category.HAZARD]: t("posts.category.hazard"),
+      [Category.UNSAFE_BEHAVIOR]: t("posts.category.unsafeBehavior"),
+      [Category.INCONVENIENCE]: t("posts.category.inconvenience"),
+      [Category.SUGGESTION]: t("posts.category.suggestion"),
+      [Category.BEST_PRACTICE]: t("posts.category.bestPractice"),
+    };
+    return categoryMap[category] || category;
+  };
+
+  const getReviewStatusLabel = (status: ReviewStatus) => {
+    const statusMap: Record<ReviewStatus, string> = {
+      [ReviewStatus.PENDING]: t("posts.view.received"),
+      [ReviewStatus.IN_REVIEW]: t("posts.view.inReview"),
+      [ReviewStatus.NEED_INFO]: t("posts.view.needInfo"),
+      [ReviewStatus.APPROVED]: t("posts.view.approved"),
+      [ReviewStatus.REJECTED]: t("posts.view.rejected"),
+      [ReviewStatus.URGENT]: t("posts.view.urgent"),
+    };
+    return statusMap[status] || status;
+  };
+
+  const getRejectReasonLabel = (reason: RejectReason) => {
+    const reasonMap: Record<RejectReason, string> = {
+      [RejectReason.DUPLICATE]: t("posts.rejectReasons.duplicate"),
+      [RejectReason.UNCLEAR_PHOTO]: t("posts.rejectReasons.unclearPhoto"),
+      [RejectReason.INSUFFICIENT]: t("posts.rejectReasons.insufficient"),
+      [RejectReason.FALSE]: t("posts.rejectReasons.false"),
+      [RejectReason.IRRELEVANT]: t("posts.rejectReasons.irrelevant"),
+      [RejectReason.OTHER]: t("posts.rejectReasons.other"),
+    };
+    return reasonMap[reason] || reason;
+  };
+
+  const reviewStatusColors: Record<ReviewStatus, string> = {
+    [ReviewStatus.PENDING]: "bg-gray-100 text-gray-700",
+    [ReviewStatus.IN_REVIEW]: "bg-blue-100 text-blue-700",
+    [ReviewStatus.NEED_INFO]: "bg-yellow-100 text-yellow-700",
+    [ReviewStatus.APPROVED]: "bg-green-100 text-green-700",
+    [ReviewStatus.REJECTED]: "bg-red-100 text-red-700",
+    [ReviewStatus.URGENT]: "bg-red-200 text-red-800 font-semibold",
+  };
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -102,9 +113,9 @@ function PostDetailContent() {
         <main className="p-4">
           <div className="text-center py-12">
             <p className="text-4xl mb-4">❌</p>
-            <p className="text-muted-foreground">제보를 찾을 수 없습니다.</p>
+            <p className="text-muted-foreground">{t("posts.view.notFound")}</p>
             <Button className="mt-4" onClick={() => router.back()}>
-              돌아가기
+              {t("posts.view.back")}
             </Button>
           </div>
         </main>
@@ -120,17 +131,18 @@ function PostDetailContent() {
       <main className="p-4 space-y-4">
         <div className="flex items-center gap-2">
           <Badge variant="outline">
-            {categoryLabels[post.category as Category] || post.category}
+            {getCategoryLabel(post.category as Category)}
           </Badge>
           <Badge
             className={cn(
               reviewStatusColors[post.reviewStatus as ReviewStatus],
             )}
           >
-            {reviewStatusLabels[post.reviewStatus as ReviewStatus] ||
-              post.reviewStatus}
+            {getReviewStatusLabel(post.reviewStatus as ReviewStatus)}
           </Badge>
-          {post.isUrgent && <Badge variant="destructive">긴급</Badge>}
+          {post.isUrgent && (
+            <Badge variant="destructive">{t("posts.view.urgent")}</Badge>
+          )}
         </div>
 
         {post.reviewStatus === ReviewStatus.REJECTED && latestReview && (
@@ -138,17 +150,21 @@ function PostDetailContent() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-red-700">
                 <AlertCircle className="h-5 w-5" />
-                <CardTitle className="text-base">반려 사유</CardTitle>
+                <CardTitle className="text-base">
+                  {t("posts.view.rejectReasonTitle")}
+                </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="flex gap-2">
-                  <span className="font-medium text-red-900">사유:</span>
+                  <span className="font-medium text-red-900">
+                    {t("posts.view.reason")}
+                  </span>
                   <span className="text-red-800">
-                    {rejectReasonLabels[
-                      latestReview.reasonCode as RejectReason
-                    ] || latestReview.reasonCode}
+                    {getRejectReasonLabel(
+                      latestReview.reasonCode as RejectReason,
+                    )}
                   </span>
                 </div>
                 {latestReview.comment && (
@@ -166,12 +182,14 @@ function PostDetailContent() {
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-yellow-700">
                 <HelpCircle className="h-5 w-5" />
-                <CardTitle className="text-base">추가 정보 요청</CardTitle>
+                <CardTitle className="text-base">
+                  {t("posts.view.infoRequestTitle")}
+                </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-sm text-yellow-800 bg-white/50 p-2 rounded">
-                {latestReview.comment || "관리자가 추가 정보를 요청했습니다."}
+                {latestReview.comment || t("posts.view.adminRequestedInfo")}
               </div>
             </CardContent>
           </Card>
@@ -185,7 +203,7 @@ function PostDetailContent() {
                   <img
                     key={img.id || idx}
                     src={img.fileUrl}
-                    alt={`사진 ${idx + 1}`}
+                    alt={`${t("posts.view.photo")} ${idx + 1}`}
                     className="w-full h-32 object-cover rounded"
                   />
                 ))}
@@ -196,7 +214,9 @@ function PostDetailContent() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">상세 내용</CardTitle>
+            <CardTitle className="text-base">
+              {t("posts.view.details")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-wrap">{post.content}</p>
@@ -206,7 +226,7 @@ function PostDetailContent() {
         {(post.locationFloor || post.locationZone) && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">위치</CardTitle>
+              <CardTitle className="text-base">{t("posts.location")}</CardTitle>
             </CardHeader>
             <CardContent>
               <p>
@@ -222,7 +242,7 @@ function PostDetailContent() {
           <CardContent className="py-4">
             <div className="text-sm text-muted-foreground space-y-1">
               <p>
-                제보일:{" "}
+                {t("posts.view.createdAt")}:{" "}
                 {new Date(post.createdAt).toLocaleDateString("ko-KR", {
                   year: "numeric",
                   month: "long",
@@ -231,7 +251,11 @@ function PostDetailContent() {
                   minute: "2-digit",
                 })}
               </p>
-              {post.author && <p>제보자: {post.author.nameMasked}</p>}
+              {post.author && (
+                <p>
+                  {t("posts.view.createdBy")}: {post.author.nameMasked}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

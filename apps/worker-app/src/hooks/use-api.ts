@@ -12,6 +12,7 @@ import type {
   ActionDto,
   UpdateActionStatusDto,
   PointsHistoryItemDto,
+  AnnouncementDto,
 } from "@safetywallet/types";
 
 // Posts
@@ -92,7 +93,7 @@ export function useAnnouncements(siteId: string) {
   return useQuery({
     queryKey: ["announcements", siteId],
     queryFn: () =>
-      apiFetch<PaginatedResponse<unknown>>(`/announcements?siteId=${siteId}`),
+      apiFetch<PaginatedResponse<AnnouncementDto>>(`/announcements?siteId=${siteId}`),
     enabled: !!siteId,
   });
 }

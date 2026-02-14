@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { compressImages } from "@/lib/image-compress";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
 import { apiFetch } from "@/lib/api";
 import { useCreatePost } from "@/hooks/use-api";
 import { Header } from "@/components/header";
@@ -20,35 +21,11 @@ import { UnsafeWarningModal } from "@/components/unsafe-warning-modal";
 import { Category, RiskLevel, Visibility } from "@safetywallet/types";
 import type { CreatePostDto } from "@safetywallet/types";
 
-const categoryOptions = [
-  { value: Category.HAZARD, label: "위험요소", icon: "⚠️" },
-  { value: Category.UNSAFE_BEHAVIOR, label: "불안전행동", icon: "🚨" },
-  { value: Category.INCONVENIENCE, label: "불편사항", icon: "🛠️" },
-  { value: Category.SUGGESTION, label: "개선제안", icon: "💡" },
-];
-
-const riskOptions = [
-  {
-    value: RiskLevel.HIGH,
-    label: "높음",
-    color: "bg-red-100 border-red-500 text-red-700",
-  },
-  {
-    value: RiskLevel.MEDIUM,
-    label: "중간",
-    color: "bg-yellow-100 border-yellow-500 text-yellow-700",
-  },
-  {
-    value: RiskLevel.LOW,
-    label: "낮음",
-    color: "bg-green-100 border-green-500 text-green-700",
-  },
-];
-
 export default function NewPostPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { currentSiteId } = useAuth();
+  const t = useTranslation();
   const createPost = useCreatePost();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +40,31 @@ export default function NewPostPage() {
   const [showWarningModal, setShowWarningModal] = useState(false);
 
   const DRAFT_KEY = `safework2_post_draft_${currentSiteId || "default"}`;
+
+  const categoryOptions = [
+    { value: Category.HAZARD, label: "posts.category.hazard", icon: "⚠️" },
+    { value: Category.UNSAFE_BEHAVIOR, label: "posts.category.unsafeBehavior", icon: "🚨" },
+    { value: Category.INCONVENIENCE, label: "posts.category.inconvenience", icon: "🛠️" },
+    { value: Category.SUGGESTION, label: "posts.category.suggestion", icon: "💡" },
+  ];
+
+  const riskOptions = [
+    {
+      value: RiskLevel.HIGH,
+      label: "actions.priority.high",
+      color: "bg-red-100 border-red-500 text-red-700",
+    },
+    {
+      value: RiskLevel.MEDIUM,
+      label: "actions.priority.medium",
+      color: "bg-yellow-100 border-yellow-500 text-yellow-700",
+    },
+    {
+      value: RiskLevel.LOW,
+      label: "actions.priority.low",
+      color: "bg-green-100 border-green-500 text-green-700",
+    },
+  ];
 
   const saveDraft = useCallback(() => {
     if (!category && !content) return;
@@ -132,7 +134,7 @@ export default function NewPostPage() {
 
       if (files.length + selectedFiles.length > 5) {
         toast({
-          title: "사진은 최대 5장까지 첨부할 수 있습니다.",
+          title: t("posts.error.uploadFailed"),
           variant: "destructive",
         });
         return;
@@ -148,7 +150,7 @@ export default function NewPostPage() {
 
       if (skippedCount > 0) {
         toast({
-          title: `${skippedCount}개의 파일이 10MB를 초과하여 제외되었습니다.`,
+          title: t("common.error"),
           variant: "destructive",
         });
       }
@@ -205,22 +207,22 @@ export default function NewPostPage() {
 
         if (failCount > 0) {
           toast({
-            title: "일부 이미지 업로드 실패",
-            description: `${successCount}장 성공, ${failCount}장 실패했습니다.`,
+            title: t("posts.error.uploadFailed"),
+            description: `${successCount} ${t("common.ok")}, ${failCount} ${t("common.error")}`,
             variant: "destructive",
           });
         }
       }
 
       toast({
-        title: "제보가 등록되었습니다.",
+        title: t("posts.success.submitted"),
       });
       clearDraft();
       router.replace("/posts");
     } catch (error) {
       toast({
-        title: "제보 등록 실패",
-        description: "잠시 후 다시 시도해주세요.",
+        title: t("posts.error.uploadFailed"),
+        description: t("common.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -248,7 +250,7 @@ export default function NewPostPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">제보 유형</CardTitle>
+              <CardTitle className="text-base">{t("posts.selectCategory")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-2">
@@ -266,7 +268,7 @@ export default function NewPostPage() {
                     }`}
                   >
                     <div className="text-2xl mb-1">{opt.icon}</div>
-                    <div className="text-xs">{opt.label}</div>
+                    <div className="text-xs">{t(opt.label)}</div>
                   </button>
                 ))}
               </div>
@@ -275,10 +277,9 @@ export default function NewPostPage() {
 
           {category === Category.UNSAFE_BEHAVIOR && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-              <p className="font-medium">⚠️ 불안전행동 제보 안내</p>
+              <p className="font-medium">⚠️ {t("posts.category.unsafeBehavior")} {t("common.info")}</p>
               <p>
-                개인 처벌이 아닌 개선 목적입니다. 얼굴/개인정보 노출에
-                주의하세요.
+                {t("posts.new.unsafeBehaviorWarning")}
               </p>
             </div>
           )}
@@ -287,7 +288,7 @@ export default function NewPostPage() {
             category === Category.UNSAFE_BEHAVIOR) && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">위험 수준</CardTitle>
+                <CardTitle className="text-base">{t("common.info")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
@@ -297,10 +298,10 @@ export default function NewPostPage() {
                       type="button"
                       onClick={() => setRiskLevel(opt.value)}
                       className={`flex-1 py-2 px-4 rounded-lg border-2 text-center transition-colors ${
-                        riskLevel === opt.value ? opt.color : "border-gray-200"
-                      }`}
+                        riskLevel === opt.value ? "border-current" : "border-gray-200"
+                      } ${opt.color}`}
                     >
-                      {opt.label}
+                      {t(opt.label)}
                     </button>
                   ))}
                 </div>
@@ -310,16 +311,30 @@ export default function NewPostPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">위치 (선택)</CardTitle>
+              <CardTitle className="text-base">{t("posts.description")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
+              <textarea
+                placeholder={t("posts.description")}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary resize-none"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{t("posts.location")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
               <Input
-                placeholder="층수 (예: B1, 3층)"
+                placeholder={t("posts.location")}
                 value={locationFloor}
                 onChange={(e) => setLocationFloor(e.target.value)}
               />
               <Input
-                placeholder="구역 (예: A동, 주차장)"
+                placeholder={t("posts.new.zone")}
                 value={locationZone}
                 onChange={(e) => setLocationZone(e.target.value)}
               />
@@ -328,114 +343,88 @@ export default function NewPostPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">상세 내용</CardTitle>
+              <CardTitle className="text-base">{t("posts.addPhoto")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <textarea
-                placeholder="발견한 내용을 자세히 작성해주세요..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full min-h-[120px] p-3 rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                required
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
               />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary transition-colors"
+              >
+                {t("posts.addPhoto")}
+              </button>
+
+              {files.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {files.map((file, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2 bg-gray-100 rounded"
+                    >
+                      <span className="text-sm">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(idx)}
+                        className="text-xs text-destructive hover:underline"
+                      >
+                        {t("common.delete")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">
-                사진 첨부 ({files.length}/5)
-              </CardTitle>
+              <CardTitle className="text-base">{t("common.info")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                {files.map((file, index) => (
-                  <div
-                    key={index}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group"
-                  >
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      onLoad={(e) => URL.revokeObjectURL(e.currentTarget.src)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 hover:bg-black/70 transition-colors"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-
-                {files.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors bg-gray-50"
-                  >
-                    <span className="text-2xl mb-1">📷</span>
-                    <span className="text-xs">사진 추가</span>
-                  </button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="py-4">
-              <label className="flex items-center justify-between cursor-pointer">
-                <span>익명으로 제보하기</span>
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isAnonymous}
                   onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="w-5 h-5 rounded"
                 />
+                <span className="text-sm">{t("posts.new.anonymous")}</span>
               </label>
             </CardContent>
           </Card>
 
-          <Button
-            type="submit"
-            className="w-full h-12 text-lg"
-            disabled={
-              !category || !content || createPost.isPending || isUploading
-            }
-          >
-            {isUploading || createPost.isPending ? "등록 중..." : "제보하기"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={!category || isUploading}
+              className="flex-1"
+            >
+              {isUploading ? t("common.loading") : t("posts.submit")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="flex-1"
+            >
+              {t("common.cancel")}
+            </Button>
+          </div>
         </form>
-        <UnsafeWarningModal
-          open={showWarningModal}
-          onConfirm={submitPost}
-          onCancel={() => setShowWarningModal(false)}
-        />
       </main>
+
+      <UnsafeWarningModal
+        open={showWarningModal}
+        onConfirm={submitPost}
+        onCancel={() => setShowWarningModal(false)}
+      />
     </div>
   );
 }

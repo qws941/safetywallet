@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiFetch } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Award, CheckCircle, Send, History } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface TodayData {
   hasRecommendedToday: boolean;
@@ -38,6 +39,7 @@ interface RecommendationRecord {
 
 export default function RecommendationsPage() {
   const router = useRouter();
+  const t = useTranslation();
   const { currentSiteId } = useAuth();
   const queryClient = useQueryClient();
 
@@ -106,9 +108,9 @@ export default function RecommendationsPage() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">현장을 먼저 선택해주세요.</p>
+            <p className="text-muted-foreground">{t("votes.selectSiteFirst")}</p>
             <Button onClick={() => router.push("/home")} className="mt-4">
-              홈으로
+              {t("votes.backHome")}
             </Button>
           </CardContent>
         </Card>
@@ -119,7 +121,7 @@ export default function RecommendationsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>로딩 중...</p>
+        <p>{t("common.loading")}</p>
       </div>
     );
   }
@@ -131,10 +133,10 @@ export default function RecommendationsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5 text-yellow-500" />
-              우수 근로자 추천
+              {t("votes.recommendWorkerTitle")}
             </CardTitle>
             <CardDescription>
-              함께 일하는 우수한 동료를 추천해주세요 (하루 1회)
+              {t("votes.recommendWorkerDesc")}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -143,9 +145,9 @@ export default function RecommendationsPage() {
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-6 text-center">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <p className="font-medium text-green-700">오늘 추천 완료!</p>
+              <p className="font-medium text-green-700">{t("votes.recommendedToday")}</p>
               <p className="text-sm text-green-600 mt-1">
-                내일 다시 추천할 수 있습니다.
+                {t("votes.canRecommendTomorrow")}
               </p>
               {todayData.recommendation && (
                 <div className="mt-4 p-3 bg-white rounded-lg text-left">
@@ -170,11 +172,11 @@ export default function RecommendationsPage() {
                   htmlFor="tradeType"
                   className="text-sm font-medium leading-none"
                 >
-                  공종명
+                  {t("votes.tradeType")}
                 </label>
                 <Input
                   id="tradeType"
-                  placeholder="예: 철근, 형틀, 전기, 설비"
+                  placeholder={t("votes.tradeTypePlaceholder")}
                   value={tradeType}
                   onChange={(e) => setTradeType(e.target.value)}
                 />
@@ -185,11 +187,11 @@ export default function RecommendationsPage() {
                   htmlFor="recommendedName"
                   className="text-sm font-medium leading-none"
                 >
-                  근로자 이름
+                  {t("votes.workerName")}
                 </label>
                 <Input
                   id="recommendedName"
-                  placeholder="추천할 근로자의 이름"
+                  placeholder={t("votes.workerNamePlaceholder")}
                   value={recommendedName}
                   onChange={(e) => setRecommendedName(e.target.value)}
                 />
@@ -200,11 +202,11 @@ export default function RecommendationsPage() {
                   htmlFor="reason"
                   className="text-sm font-medium leading-none"
                 >
-                  추천 사유
+                  {t("votes.recommendationReason")}
                 </label>
                 <textarea
                   id="reason"
-                  placeholder="추천 사유를 작성해주세요"
+                  placeholder={t("votes.reasonPlaceholder")}
                   value={reason}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                     setReason(e.target.value)
@@ -220,11 +222,11 @@ export default function RecommendationsPage() {
                 onClick={handleSubmit}
               >
                 {submitMutation.isPending ? (
-                  "제출 중..."
+                  t("votes.submitting")
                 ) : (
                   <span className="flex items-center gap-2">
                     <Send className="h-4 w-4" />
-                    추천하기
+                    {t("votes.recommend")}
                   </span>
                 )}
               </Button>
@@ -233,7 +235,7 @@ export default function RecommendationsPage() {
                 <p className="text-sm text-destructive text-center">
                   {submitMutation.error instanceof Error
                     ? submitMutation.error.message
-                    : "추천에 실패했습니다."}
+                    : t("votes.submitError")}
                 </p>
               )}
             </CardContent>
@@ -246,7 +248,7 @@ export default function RecommendationsPage() {
           onClick={() => setShowHistory(!showHistory)}
         >
           <History className="h-4 w-4 mr-2" />
-          {showHistory ? "내 추천 내역 숨기기" : "내 추천 내역 보기"}
+          {showHistory ? t("votes.hideHistory") : t("votes.showHistory")}
         </Button>
 
         {showHistory && history && (
@@ -255,7 +257,7 @@ export default function RecommendationsPage() {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-sm text-muted-foreground">
-                    추천 내역이 없습니다.
+                    {t("votes.noHistory")}
                   </p>
                 </CardContent>
               </Card>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
 import { useAnnouncements } from "@/hooks/use-api";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
@@ -13,7 +14,7 @@ import {
   Skeleton,
   Badge,
 } from "@safetywallet/ui";
-import { apiFetch } from "@/lib/api";
+import type { AnnouncementDto } from "@safetywallet/types";
 
 type AnnouncementType =
   | "RANKING"
@@ -22,139 +23,135 @@ type AnnouncementType =
   | "REWARD"
   | "GENERAL";
 
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  isPinned?: boolean;
-  type?: AnnouncementType;
-  isRead?: boolean;
-}
-
-const TYPE_CONFIG: Record<
-  AnnouncementType,
-  { icon: string; label: string; color: string }
-> = {
-  RANKING: {
-    icon: "🏆",
-    label: "랭킹",
-    color: "bg-yellow-100 text-yellow-800",
-  },
-  BEST_PRACTICE: {
-    icon: "⭐",
-    label: "우수사례",
-    color: "bg-blue-100 text-blue-800",
-  },
-  ACTION_COMPLETE: {
-    icon: "✅",
-    label: "조치완료",
-    color: "bg-green-100 text-green-800",
-  },
-  REWARD: { icon: "🎁", label: "포상", color: "bg-purple-100 text-purple-800" },
-  GENERAL: { icon: "📣", label: "일반", color: "bg-gray-100 text-gray-800" },
-};
+// Type guard for announcements
+type Announcement = AnnouncementDto & { type?: AnnouncementType }
 
 export default function AnnouncementsPage() {
+  const t = useTranslation();
   const { currentSiteId } = useAuth();
-  const { data, isLoading } = useAnnouncements(currentSiteId || "");
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const { data: announcements, isLoading } = useAnnouncements(
+    currentSiteId || "",
+  );
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const announcements = (data?.data || []) as Announcement[];
-
-  const handleExpand = async (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-    if (!readIds.has(id)) {
-      setReadIds((prev) => new Set(prev).add(id));
-      try {
-        await apiFetch(`/announcements/${id}/read`, { method: "POST" });
-      } catch {
-        // read tracking is best-effort
-      }
-    }
+  const getTypeConfig = (
+    type?: AnnouncementType,
+  ): { icon: string; label: string; color: string } => {
+    const configs: Partial<
+      Record<
+        AnnouncementType,
+        { icon: string; label: string; color: string }
+      >
+    > = {
+      RANKING: {
+        icon: "🏆",
+        label: t("announcements.types.RANKING"),
+        color: "bg-yellow-100 text-yellow-800",
+      },
+      BEST_PRACTICE: {
+        icon: "⭐",
+        label: t("announcements.types.BEST_PRACTICE"),
+        color: "bg-blue-100 text-blue-800",
+      },
+      ACTION_COMPLETE: {
+        icon: "✅",
+        label: t("announcements.types.ACTION_COMPLETE"),
+        color: "bg-green-100 text-green-800",
+      },
+      REWARD: {
+        icon: "🎁",
+        label: t("announcements.types.REWARD"),
+        color: "bg-purple-100 text-purple-800",
+      },
+      GENERAL: {
+        icon: "📢",
+        label: t("announcements.types.GENERAL"),
+        color: "bg-gray-100 text-gray-800",
+      },
+    };
+    return configs[type || "GENERAL"] || { icon: "📢", label: t("announcements.types.GENERAL"), color: "bg-gray-100 text-gray-800" };
   };
 
-  const unreadCount = announcements.filter(
-    (a) => !a.isRead && !readIds.has(a.id),
-  ).length;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-nav">
+        <Header />
+        <main className="p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))}
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  const items = announcements?.data || [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-nav">
       <Header />
 
       <main className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">공지사항</h2>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              {unreadCount}개 새 공지
-            </Badge>
-          )}
-        </div>
+        <h2 className="text-lg font-bold mb-4">{t("announcements.title")}</h2>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
+        {items.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-4xl mb-4">📭</p>
+            <p>{t("announcements.empty")}</p>
           </div>
-        ) : announcements.length > 0 ? (
+        ) : (
           <div className="space-y-3">
-            {announcements.map((announcement) => {
-              const type = announcement.type || "GENERAL";
-              const config = TYPE_CONFIG[type];
-              const isRead =
-                announcement.isRead || readIds.has(announcement.id);
+            {items.map((announcement) => {
+              const typeConfig = getTypeConfig(
+                (announcement as any).type as AnnouncementType,
+              );
               const isExpanded = expandedId === announcement.id;
 
               return (
                 <Card
                   key={announcement.id}
-                  className={`cursor-pointer transition-colors ${
-                    announcement.isPinned ? "border-primary" : ""
-                  } ${!isRead ? "bg-white border-l-4 border-l-primary" : "bg-gray-50/50"}`}
-                  onClick={() => handleExpand(announcement.id)}
+                  className="active:scale-[0.98] transition-transform cursor-pointer"
+                  onClick={() =>
+                    setExpandedId(isExpanded ? null : announcement.id)
+                  }
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      {announcement.isPinned && (
-                        <span className="text-sm">📌</span>
-                      )}
-                      <span className="text-sm">{config.icon}</span>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${config.color}`}
-                      >
-                        {config.label}
-                      </Badge>
-                      {!isRead && (
-                        <span className="w-2 h-2 bg-primary rounded-full" />
-                      )}
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="text-2xl shrink-0">
+                        {typeConfig.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge
+                            className={typeConfig.color}
+                            variant="secondary"
+                          >
+                            {typeConfig.label}
+                          </Badge>
+                          {announcement.isPinned && (
+                            <Badge variant="destructive">📌</Badge>
+                          )}
+                        </div>
+                        <h3 className="font-medium text-sm line-clamp-2 mb-1">
+                          {announcement.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(announcement.createdAt).toLocaleDateString(
+                            "ko-KR",
+                          )}
+                        </p>
+                        {isExpanded && (
+                          <div className="mt-3 pt-3 border-t text-sm text-gray-600">
+                            {announcement.content || t("announcements.noContent")}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <CardTitle className="text-base mt-1">
-                      {announcement.title}
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(announcement.createdAt).toLocaleDateString(
-                        "ko-KR",
-                      )}
-                    </p>
-                  </CardHeader>
-                  {isExpanded && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {announcement.content}
-                      </p>
-                    </CardContent>
-                  )}
+                  </CardContent>
                 </Card>
               );
             })}
-          </div>
-        ) : (
-          <div className="text-center text-muted-foreground py-12">
-            <p className="text-4xl mb-4">📣</p>
-            <p>공지사항이 없습니다.</p>
           </div>
         )}
       </main>
