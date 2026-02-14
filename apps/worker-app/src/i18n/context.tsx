@@ -12,7 +12,7 @@ interface I18nContextType {
   isLoading: boolean;
 }
 
-const I18nContext = createContext<I18nContextType | undefined>(undefined);
+export const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export function I18nProvider({
   children,
@@ -29,7 +29,7 @@ export function I18nProvider({
 
   useEffect(() => {
     // Load messages from localStorage on mount
-    const savedLocale = localStorage.getItem('locale') as Locale | null;
+    const savedLocale = localStorage.getItem('i18n-locale') as Locale | null;
     if (savedLocale && locales.includes(savedLocale)) {
       loadLocale(savedLocale);
     } else if (!initialMessages) {
@@ -43,7 +43,7 @@ export function I18nProvider({
       const newMessages = await getLocale(newLocale);
       setLocaleState(newLocale);
       setMessages(newMessages);
-      localStorage.setItem('locale', newLocale);
+      localStorage.setItem('i18n-locale', newLocale);
     } catch (error) {
       console.error('Failed to load locale:', error);
       setLocaleState(defaultLocale);

@@ -280,7 +280,16 @@
       "creating": "Creating announcement...",
       "createSuccess": "Announcement created successfully",
       "createFailed": "Failed to create announcement"
-    }
+    },
+    "types": {
+      "RANKING": "Ranking",
+      "BEST_PRACTICE": "Best Practice",
+      "ACTION_COMPLETE": "Action Complete",
+      "REWARD": "Reward",
+      "GENERAL": "General"
+    },
+    "empty": "No announcements",
+    "noContent": "No announcements available"
   },
   "education": {
     "title": "Education",
@@ -292,7 +301,11 @@
       "training": "Training",
       "video": "Video",
       "document": "Document",
-      "interactive": "Interactive"
+      "interactive": "Interactive",
+      "VIDEO": "Video",
+      "IMAGE": "Image",
+      "TEXT": "Text",
+      "DOCUMENT": "Document"
     },
     "myLearning": "My Learning",
     "completedCourses": "Completed Courses",
@@ -351,18 +364,21 @@
       },
       "score": "Score",
       "scorePoints": "points",
-      "passingScoreWithPoints": "Passing Score: {score} points"
+      "passingScoreWithPoints": "Passing Score: {score} points",
+      "quizNotFound": "Quiz not found",
+      "selectAllAnswers": "Select all correct answers",
+      "congratulations": "Congratulations!",
+      "scoreDisplay": "Score",
+      "submitError": "An error occurred while submitting the quiz",
+      "passedMessage": "You passed the quiz!",
+      "failedMessage": "You did not pass. Please try again.",
+      "passingScoreLabel": "Passing Score",
+      "backToListButton": "Back to List",
+      "submitting": "제출 중...",
+      "submitButton": "제출하기",
+      "maximumLabel": "최대"
     },
-    "tbm": {
-      "toolBoxMeeting": "Toolbox Meeting",
-      "date": "Date",
-      "presenter": "Presenter",
-      "topic": "Topic",
-      "attendance": "Attendance",
-      "completed": "Completed",
-      "pending": "Pending",
-      "notes": "Notes"
-    },
+    "tbm": "TBM",
     "form": {
       "title": "Title",
       "titlePlaceholder": "Enter education title",
@@ -388,7 +404,34 @@
       "completing": "Completing education...",
       "completeSuccess": "Education completed",
       "completeFailed": "Failed to complete education"
-    }
+    },
+    "materials": "교육자료",
+    "quizzes": "퀴즈",
+    "noMaterials": "등록된 교육자료가 없습니다.",
+    "required": "필수",
+    "noQuizzes": "진행 중인 퀴즈가 없습니다.",
+    "active": "진행중",
+    "closed": "마감됨",
+    "unlimited": "시간제한 없음",
+    "noDescription": "설명이 없습니다.",
+    "passingScore": "합격기준",
+    "maxAttempts": "최대",
+    "attempts": "회 시도",
+    "noRecords": "TBM 기록이 없습니다.",
+    "attendance": "참석",
+    "attendees": "명",
+    "location": "위치",
+    "attendanceConfirm": "참석확인",
+    "onSite": "현장 내",
+    "attendanceConfirmed": "참석 확인되었습니다.",
+    "alreadyAttended": "이미 참석하셨습니다.",
+    "attendanceConfirmFailed": "참석 확인에 실패했습니다.",
+    "minutes": "분",
+    "notFound": "교육자료를 찾을 수 없습니다.",
+    "requiredEducation": "필수 교육",
+    "details": "상세 내용",
+    "documentDownload": "문서 다운로드",
+    "backToList": "목록으로 돌아가기"
   },
   "actions": {
     "title": "Corrective Actions",
@@ -400,7 +443,9 @@
       "empty": "No actions",
       "loading": "Loading...",
       "filter": "Filter",
-      "sort": "Sort"
+      "sort": "Sort",
+      "myList": "내 시정조치 목록",
+      "noAssignments": "안전한 하루 되세요!"
     },
     "view": {
       "title": "Action Detail",
@@ -413,7 +458,40 @@
       "deadline": "Deadline",
       "status": "Status",
       "progress": "Progress",
-      "steps": "Steps"
+      "steps": "Steps",
+      "notFound": "시정조치를 찾을 수 없습니다",
+      "backList": "목록으로",
+      "noContent": "내용 없음",
+      "noTitle": "제목 없음",
+      "relatedReport": "관련 제보",
+      "description": "조치 내용",
+      "notSet": "미지정",
+      "assignee": "담당",
+      "progressStatus": "진행 상태",
+      "startProgress": "진행 시작",
+      "requiredCompletion": "완료 내용 (필수)",
+      "completionPlaceholder": "조치 내용을 입력해주세요.",
+      "reportCompletion": "완료 보고",
+      "completionMessage": "조치 완료",
+      "awaitingReview": "관리자 확인 대기중입니다.",
+      "completionContent": "완료 내용",
+      "verificationComplete": "확인 완료",
+      "allCompleted": "모든 절차가 완료되었습니다.",
+      "overdue": "기한 초과",
+      "overdueMessage": "조치 기한이 지났습니다. 다시 진행해주세요.",
+      "resumeProgress": "다시 진행",
+      "beforePhotos": "조치 전 사진",
+      "afterPhotos": "조치 후 사진",
+      "upload": "업로드",
+      "noPhotos": "등록된 사진이 없습니다",
+      "deletePhoto": "사진 삭제",
+      "confirmDelete": "정말 이 사진을 삭제하시겠습니까?",
+      "cancel": "취소",
+      "beforeCaption": "조치 전",
+      "afterCaption": "조치 후",
+      "inputRequired": "입력 필요",
+      "pleaseEnterCompletion": "완료 내용을 입력해주세요.",
+      "uploadError": "이미지 업로드에 실패했습니다."
     },
     "status": {
       "assigned": "Assigned",
@@ -472,6 +550,14 @@
       "updating": "Updating action...",
       "updateSuccess": "Action updated successfully",
       "updateFailed": "Failed to update action"
+    },
+    "filter": {
+      "all": "전체",
+      "assigned": "배정됨",
+      "inProgress": "진행중",
+      "completed": "완료",
+      "verified": "확인됨",
+      "overdue": "기한초과"
     }
   },
   "points": {
@@ -491,7 +577,14 @@
     "history": "Point History",
     "empty": "No point history",
     "detail": "Details",
-    "reason": "Reason"
+    "reason": "Reason",
+    "pageTitle": "포인트",
+    "monthlyTab": "이번 달",
+    "cumulativeTab": "누적",
+    "me": "나",
+    "noRankingData": "아직 랭킹 데이터가 없습니다.",
+    "pointsHistory": "포인트 내역",
+    "noPointsHistory": "포인트 내역이 없습니다."
   },
   "votes": {
     "title": "Recommendations",
@@ -517,7 +610,23 @@
       "workerRequired": "Please select a worker",
       "reasonRequired": "Please enter a reason",
       "reasonTooShort": "Reason must be at least 10 characters"
-    }
+    },
+    "empty": "추천이 없습니다",
+    "selectSiteFirst": "현장을 먼저 선택해주세요.",
+    "backHome": "홈으로",
+    "recommendWorkerTitle": "우수 근로자 추천",
+    "recommendWorkerDesc": "함께 일하는 우수한 동료를 추천해주세요 (하루 1회)",
+    "recommendedToday": "오늘 추천 완료!",
+    "canRecommendTomorrow": "내일 다시 추천할 수 있습니다.",
+    "tradeType": "공종명",
+    "tradeTypePlaceholder": "예: 철근, 형틀, 전기, 설비",
+    "workerName": "근로자 이름",
+    "workerNamePlaceholder": "추천할 근로자의 이름",
+    "recommendationReason": "추천 사유",
+    "submitError": "추천에 실패했습니다.",
+    "hideHistory": "내 추천 내역 숨기기",
+    "showHistory": "내 추천 내역 보기",
+    "noHistory": "추천 내역이 없습니다."
   },
   "common": {
     "loading": "Loading...",
@@ -557,7 +666,10 @@
     "serverError": "Server Error",
     "unsafeWarning": "An unsafe situation has been detected",
     "confirmDelete": "Are you sure you want to delete?",
-    "confirmLogout": "Are you sure you want to logout?"
+    "confirmLogout": "Are you sure you want to logout?",
+    "language": "Language",
+    "score": "점수",
+    "home": "홈으로"
   },
   "pointsCard": {
     "myPoints": "My Points",
@@ -570,5 +682,21 @@
     "challengeRank1": "Collect more to rank #1!",
     "noRank": "No rank yet",
     "collectPoints": "Start earning points!"
+  },
+  "components": {
+    "appTitle": "안전지갑",
+    "siteIdLabel": "현장 ID:",
+    "unsafeWarningTitle": "⚠️ 불안전행동 제보 안내",
+    "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",
+    "unsafeWarningPrivacyNote": "제보 시 얼굴이나 개인정보가 노출되지 않도록 주의해 주세요.",
+    "unsafeWarningAdminNote": "이 제보는 관리자만 확인할 수 있습니다.",
+    "unsafeWarningConfirm": "확인하고 제출",
+    "attendanceCheckingLabel": "출근 확인 중...",
+    "attendanceRequiredTitle": "출근 후 이용 가능합니다",
+    "attendanceRequiredDescription": "해당 현장에 출근 기록이 확인되어야 이 기능을 사용할 수 있습니다."
+  },
+  "postCard": {
+    "reviewStatusNeedInfo": "추가정보",
+    "actionStatusVerified": "조치확인"
   }
 }

@@ -658,7 +658,8 @@
     "confirmDelete": "삭제하시겠습니까?",
     "confirmLogout": "로그아웃하시겠습니까?",
     "score": "점수",
-    "home": "홈으로"
+    "home": "홈으로",
+    "language": "언어"
   },
   "components": {
     "appTitle": "안전지갑",
