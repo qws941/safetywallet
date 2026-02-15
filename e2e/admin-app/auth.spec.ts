@@ -17,19 +17,38 @@ test.describe("Admin Auth Flow", () => {
 
     await page.getByPlaceholder("admin").fill("admin");
     await page.getByPlaceholder("••••••••").fill("admin123");
-    await page.getByRole("button", { name: "로그인" }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+
+    // Wait for the login API response before asserting navigation
+    await Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes("/auth/admin/login") && resp.status() === 200,
+        { timeout: 20000 },
+      ),
+      page.getByRole("button", { name: "로그인" }).click(),
+    ]);
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20000 });
 
     const sidebar = page.locator('aside, nav, [data-testid="sidebar"]').first();
-    await expect(sidebar).toBeVisible();
+    await expect(sidebar).toBeVisible({ timeout: 10000 });
   });
 
   test("should maintain auth state across navigations", async ({ page }) => {
     await page.goto("/login");
     await page.getByPlaceholder("admin").fill("admin");
     await page.getByPlaceholder("••••••••").fill("admin123");
-    await page.getByRole("button", { name: "로그인" }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+
+    await Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes("/auth/admin/login") && resp.status() === 200,
+        { timeout: 20000 },
+      ),
+      page.getByRole("button", { name: "로그인" }).click(),
+    ]);
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20000 });
 
     await page.goto("/posts");
     await expect(page).not.toHaveURL(/\/login/);

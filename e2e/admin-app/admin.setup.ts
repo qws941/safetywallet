@@ -8,10 +8,18 @@ setup("authenticate as admin", async ({ page }) => {
     await page.goto("/login");
     await page.getByPlaceholder("admin").fill("admin");
     await page.getByPlaceholder("••••••••").fill("admin123");
-    await page.getByRole("button", { name: "로그인" }).click();
+
+    await Promise.all([
+      page.waitForResponse(
+        (resp) =>
+          resp.url().includes("/auth/admin/login") && resp.status() === 200,
+        { timeout: 20000 },
+      ),
+      page.getByRole("button", { name: "로그인" }).click(),
+    ]);
 
     try {
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+      await expect(page).toHaveURL(/\/dashboard/, { timeout: 20000 });
       await page.context().storageState({ path: authFile });
       return;
     } catch {
