@@ -24,7 +24,7 @@ type AnnouncementType =
   | "GENERAL";
 
 // Type guard for announcements
-type Announcement = AnnouncementDto & { type?: AnnouncementType }
+type Announcement = AnnouncementDto & { type?: AnnouncementType };
 
 export default function AnnouncementsPage() {
   const t = useTranslation();
@@ -38,10 +38,7 @@ export default function AnnouncementsPage() {
     type?: AnnouncementType,
   ): { icon: string; label: string; color: string } => {
     const configs: Partial<
-      Record<
-        AnnouncementType,
-        { icon: string; label: string; color: string }
-      >
+      Record<AnnouncementType, { icon: string; label: string; color: string }>
     > = {
       RANKING: {
         icon: "🏆",
@@ -69,7 +66,13 @@ export default function AnnouncementsPage() {
         color: "bg-gray-100 text-gray-800",
       },
     };
-    return configs[type || "GENERAL"] || { icon: "📢", label: t("announcements.types.GENERAL"), color: "bg-gray-100 text-gray-800" };
+    return (
+      configs[type || "GENERAL"] || {
+        icon: "📢",
+        label: t("announcements.types.GENERAL"),
+        color: "bg-gray-100 text-gray-800",
+      }
+    );
   };
 
   if (isLoading) {
@@ -104,7 +107,7 @@ export default function AnnouncementsPage() {
           <div className="space-y-3">
             {items.map((announcement) => {
               const typeConfig = getTypeConfig(
-                (announcement as any).type as AnnouncementType,
+                (announcement as Announcement).type ?? "GENERAL",
               );
               const isExpanded = expandedId === announcement.id;
 
@@ -118,9 +121,7 @@ export default function AnnouncementsPage() {
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="text-2xl shrink-0">
-                        {typeConfig.icon}
-                      </div>
+                      <div className="text-2xl shrink-0">{typeConfig.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
@@ -143,7 +144,8 @@ export default function AnnouncementsPage() {
                         </p>
                         {isExpanded && (
                           <div className="mt-3 pt-3 border-t text-sm text-gray-600">
-                            {announcement.content || t("announcements.noContent")}
+                            {announcement.content ||
+                              t("announcements.noContent")}
                           </div>
                         )}
                       </div>
