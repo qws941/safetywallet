@@ -4,21 +4,30 @@ import { ActionStatus, Category } from "@safetywallet/types";
 import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
+  useAttendTbm,
   useAction,
   useAnnouncements,
   useAttendanceToday,
   useCreatePost,
+  useDeleteActionImage,
   useEducationContent,
   useEducationContents,
+  useLeaveSite,
   useMyActions,
+  useMyQuizAttempts,
   usePoints,
   usePost,
   usePosts,
   useProfile,
+  useQuiz,
+  useQuizzes,
   useRecommendationHistory,
   useSiteInfo,
+  useSubmitQuizAttempt,
   useSubmitRecommendation,
+  useTbmRecords,
   useTodayRecommendation,
+  useUploadActionImage,
   useUpdateActionStatus,
 } from "@/hooks/use-api";
 import { apiFetch } from "@/lib/api";
@@ -200,10 +209,46 @@ describe("use-api hooks", () => {
     });
   });
 
+  it("useMyActions sets each search param branch when provided", async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ items: [], total: 0 });
+    const { wrapper } = createWrapper();
+
+    renderHook(() => useMyActions({ status: "ASSIGNED" }), { wrapper });
+    renderHook(() => useMyActions({ limit: 10 }), { wrapper });
+    renderHook(() => useMyActions({ offset: 30 }), { wrapper });
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/actions/my?status=ASSIGNED");
+      expect(apiFetch).toHaveBeenCalledWith("/actions/my?limit=10");
+      expect(apiFetch).toHaveBeenCalledWith("/actions/my?offset=30");
+    });
+  });
+
+  it("useMyActions with no params calls /actions/my without query string", async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ items: [], total: 0 });
+    const { wrapper } = createWrapper();
+
+    renderHook(() => useMyActions(), { wrapper });
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/actions/my");
+    });
+  });
+
   it("useAction does not fetch when actionId is null", () => {
     const { wrapper } = createWrapper();
     renderHook(() => useAction(null), { wrapper });
     expect(apiFetch).not.toHaveBeenCalled();
+  });
+
+  it("useAction fetches action when actionId is provided", async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      data: { id: "a1", title: "Fix railing" },
+    });
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useAction("a1"), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(apiFetch).toHaveBeenCalledWith("/actions/a1");
   });
 
   it("useUpdateActionStatus patches action and invalidates action queries", async () => {
@@ -279,5 +324,187 @@ describe("use-api hooks", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["recommendations"],
     });
+  });
+
+  it("quiz hooks fetch lists/details, submit attempt, and fetch my attempts", async () => {
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (url === "/education/quizzes?siteId=site-q") {
+        return Promise.resolve({
+          quizzes: [
+            {
+              id: "q1",
+              title: "안전 퀴즈",
+              description: null,
+              passingScore: 80,
+              timeLimitMinutes: 10,
+              maxAttempts: 3,
+              isActive: true,
+              createdAt: "2026-01-01",
+            },
+          ],
+        });
+      }
+
+      if (url === "/education/quizzes/q1") {
+        return Promise.resolve({
+          quiz: {
+            id: "q1",
+            title: "안전 퀴즈",
+            description: null,
+            passingScore: 80,
+            timeLimitMinutes: 10,
+            maxAttempts: 3,
+            questions: [],
+          },
+        });
+      }
+
+      if (url === "/education/quizzes/q1/my-attempts") {
+        return Promise.resolve({ attempts: [] });
+      }
+
+      if (url === "/education/quizzes/q1/attempt") {
+        return Promise.resolve({
+          attempt: {
+            id: "qa1",
+            score: 100,
+            passed: true,
+            totalQuestions: 2,
+            correctAnswers: 2,
+          },
+        });
+      }
+
+      return Promise.resolve({});
+    });
+
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const list = renderHook(() => useQuizzes("site-q"), { wrapper });
+    const detail = renderHook(() => useQuiz("q1"), { wrapper });
+    const attempts = renderHook(() => useMyQuizAttempts("q1"), { wrapper });
+    const submit = renderHook(() => useSubmitQuizAttempt(), { wrapper });
+
+    await waitFor(() => {
+      expect(list.result.current.data?.[0]?.id).toBe("q1");
+      expect(detail.result.current.data?.id).toBe("q1");
+      expect(attempts.result.current.data).toEqual([]);
+    });
+
+    await act(async () => {
+      await submit.result.current.mutateAsync({
+        quizId: "q1",
+        answers: { question1: 1 },
+      });
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith("/education/quizzes?siteId=site-q");
+    expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1");
+    expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1/my-attempts");
+    expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1/attempt", {
+      method: "POST",
+      body: JSON.stringify({ answers: { question1: 1 } }),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["quiz-attempts", "q1"],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["quizzes"] });
+  });
+
+  it("tbm hooks fetch records and attendance mutation invalidates tbm list", async () => {
+    vi.mocked(apiFetch).mockImplementation((url) => {
+      if (url === "/education/tbm?siteId=site-t") {
+        return Promise.resolve({ records: [] });
+      }
+
+      if (url === "/education/tbm/tbm-1/attend") {
+        return Promise.resolve({ ok: true });
+      }
+
+      return Promise.resolve({});
+    });
+
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderHook(() => useTbmRecords("site-t"), { wrapper });
+    const attend = renderHook(() => useAttendTbm(), { wrapper });
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/education/tbm?siteId=site-t");
+    });
+
+    await act(async () => {
+      await attend.result.current.mutateAsync("tbm-1");
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith("/education/tbm/tbm-1/attend", {
+      method: "POST",
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["tbm-records"] });
+  });
+
+  it("action image hooks upload/delete and invalidate action detail", async () => {
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce({ data: { id: "img-1", fileUrl: "https://file" } })
+      .mockResolvedValueOnce({ data: null });
+
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const upload = renderHook(() => useUploadActionImage(), { wrapper });
+    const del = renderHook(() => useDeleteActionImage(), { wrapper });
+    const formData = new FormData();
+    formData.set("file", "blob");
+
+    await act(async () => {
+      await upload.result.current.mutateAsync({
+        actionId: "action-1",
+        formData,
+      });
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith("/actions/action-1/images", {
+      method: "POST",
+      body: formData,
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["actions", "action-1"],
+    });
+
+    await act(async () => {
+      await del.result.current.mutateAsync({
+        actionId: "action-1",
+        imageId: "img-1",
+      });
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith("/actions/action-1/images/img-1", {
+      method: "DELETE",
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["actions", "action-1"],
+    });
+  });
+
+  it("useLeaveSite posts reason and invalidates site/profile", async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ data: { message: "ok" } });
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useLeaveSite(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        siteId: "site-55",
+        reason: "퇴근",
+      });
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith("/sites/site-55/leave", {
+      method: "POST",
+      body: JSON.stringify({ reason: "퇴근" }),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["site"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["profile"] });
   });
 });

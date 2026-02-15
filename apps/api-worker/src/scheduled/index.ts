@@ -45,13 +45,15 @@ import { CROSS_MATCH_CRON_BATCH } from "../lib/constants";
 
 const log = createLogger("scheduled");
 
-function getKSTDate(): Date {
+/** @internal Exported for testing */
+export function getKSTDate(): Date {
   const now = new Date();
   const kstOffset = 9 * 60;
   return new Date(now.getTime() + kstOffset * 60 * 1000);
 }
 
-function getMonthRange(date: Date): { start: Date; end: Date } {
+/** @internal Exported for testing */
+export function getMonthRange(date: Date): { start: Date; end: Date } {
   const year = date.getFullYear();
   const month = date.getMonth();
   const start = new Date(Date.UTC(year, month, 1, 0, 0, 0));
@@ -59,11 +61,13 @@ function getMonthRange(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
-function formatSettleMonth(date: Date): string {
+/** @internal Exported for testing */
+export function formatSettleMonth(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-async function withRetry<T>(
+/** @internal Exported for testing */
+export async function withRetry<T>(
   fn: () => Promise<T>,
   maxAttempts = 3,
   baseDelayMs = 1000,

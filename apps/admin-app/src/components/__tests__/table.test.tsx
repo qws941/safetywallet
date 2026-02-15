@@ -5,6 +5,7 @@ import {
   TableBody,
   TableCaption,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -33,5 +34,19 @@ describe("Table UI primitives", () => {
       screen.getByRole("columnheader", { name: "이름" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "홍길동" })).toBeInTheDocument();
+  });
+
+  it("renders table footer", () => {
+    render(
+      <Table>
+        <TableFooter>
+          <TableRow>
+            <TableCell>합계</TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>,
+    );
+
+    expect(screen.getByText("합계")).toBeInTheDocument();
   });
 });

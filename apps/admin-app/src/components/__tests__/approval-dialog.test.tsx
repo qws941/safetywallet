@@ -140,4 +140,46 @@ describe("ApprovalDialog", () => {
     });
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("shows error toast on mutation failure", async () => {
+    mockMutate.mockImplementation(
+      (_payload: unknown, options: { onError?: (e: Error) => void }) => {
+        options.onError?.(new Error("서버 오류"));
+      },
+    );
+
+    render(<ApprovalDialog isOpen onClose={vi.fn()} />);
+
+    const [siteSelect, memberSelect] = screen.getAllByRole("combobox");
+    fireEvent.change(siteSelect, { target: { value: "site-1" } });
+    fireEvent.change(memberSelect, { target: { value: "user-1" } });
+    fireEvent.change(screen.getByPlaceholderText("승인 사유를 입력하세요"), {
+      target: { value: "충분한 사유를 입력합니다 테스트" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "승인" }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      );
+    });
+  });
+
+  it("shows pending state on submit button", () => {
+    mockUseCreateManualApproval.mockReturnValue({
+      mutate: mockMutate,
+      isPending: true,
+    });
+
+    render(<ApprovalDialog isOpen onClose={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "처리 중..." }),
+    ).toBeInTheDocument();
+  });
+
+  it("validates empty fields before submission", () => {
+    render(<ApprovalDialog isOpen onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "승인" }));
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
 });

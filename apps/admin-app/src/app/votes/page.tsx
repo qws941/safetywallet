@@ -179,7 +179,7 @@ export default function VotesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold">투표 관리</h1>
         <div className="flex items-center space-x-2">
           <Input
@@ -198,7 +198,7 @@ export default function VotesPage() {
           {getPeriodStatus()}
         </CardHeader>
         <CardContent>
-          <div className="flex items-end space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="space-y-2">
               <label htmlFor="startDate" className="text-sm font-medium">
                 시작일
@@ -293,7 +293,7 @@ export default function VotesPage() {
             </Dialog>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -399,7 +399,7 @@ export default function VotesPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -1,6 +1,10 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useAttendanceLogs, useUnmatchedWorkers } from "@/hooks/use-attendance";
+import {
+  useAttendanceLogs,
+  useUnmatchedRecords,
+  useUnmatchedWorkers,
+} from "@/hooks/use-attendance";
 import { createWrapper } from "@/hooks/__tests__/test-utils";
 
 const mockApiFetch = vi.fn();
@@ -53,5 +57,82 @@ describe("use-attendance", () => {
       records: [{ id: "w1" }],
       pagination: { page: 1 },
     });
+  });
+
+  it("fetches unmatched records for current site", async () => {
+    mockApiFetch.mockResolvedValue({ data: [{ id: "r1" }] });
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useUnmatchedRecords(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/admin/attendance/unmatched?siteId=site-1",
+    );
+  });
+
+  it("normalizes unmatched worker response with data wrapper", async () => {
+    mockApiFetch.mockResolvedValue({
+      data: { records: [{ id: "w2" }], pagination: { page: 1 } },
+    });
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useUnmatchedWorkers(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({
+      records: [{ id: "w2" }],
+      pagination: { page: 1 },
+    });
+  });
+
+  it("includes result filter in attendance logs query", async () => {
+    mockApiFetch.mockResolvedValue({ data: { items: [], pagination: {} } });
+    const { wrapper } = createWrapper();
+    renderHook(() => useAttendanceLogs(1, 10, { result: "FAIL" }), { wrapper });
+
+    await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("result=FAIL"),
+    );
+  });
+
+  it("fetches unmatched workers without date param", async () => {
+    mockApiFetch.mockResolvedValue({ records: [], pagination: {} });
+    const { wrapper } = createWrapper();
+    renderHook(() => useUnmatchedWorkers("site-50", { page: 1, limit: 10 }), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
+    const url = mockApiFetch.mock.calls[0][0] as string;
+    expect(url).toContain("siteId=site-50");
+    expect(url).not.toContain("date=");
+  });
+
+  it("passes explicit siteId and optional params to unmatched workers", async () => {
+    mockApiFetch.mockResolvedValue({ records: [], pagination: {} });
+    const { wrapper } = createWrapper();
+    renderHook(
+      () =>
+        useUnmatchedWorkers("site-99", {
+          date: "2026-02-14",
+          page: 2,
+          limit: 5,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("siteId=site-99"),
+    );
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("date=2026-02-14"),
+    );
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("page=2"),
+    );
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("limit=5"),
+    );
   });
 });

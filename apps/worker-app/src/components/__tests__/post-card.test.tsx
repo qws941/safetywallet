@@ -73,4 +73,36 @@ describe("PostCard", () => {
       screen.queryByText("actions.status.assigned"),
     ).not.toBeInTheDocument();
   });
+
+  it("falls back to raw values for unknown category, reviewStatus, and actionStatus", () => {
+    const unknownValuePost = {
+      ...basePost,
+      category: "CUSTOM_CATEGORY",
+      reviewStatus: "CUSTOM_REVIEW",
+      actionStatus: "CUSTOM_ACTION",
+    } as unknown as PostListDto;
+
+    render(<PostCard post={unknownValuePost} />);
+
+    expect(screen.getByText("CUSTOM_CATEGORY")).toBeInTheDocument();
+    expect(screen.getByText("CUSTOM_REVIEW")).toBeInTheDocument();
+    expect(screen.getByText("CUSTOM_ACTION")).toBeInTheDocument();
+  });
+
+  it("does not render action badge when action status is missing", () => {
+    const postWithoutActionStatus = {
+      ...basePost,
+      actionStatus: undefined,
+    } as unknown as PostListDto;
+
+    render(<PostCard post={postWithoutActionStatus} />);
+
+    expect(screen.queryByText("CUSTOM_ACTION")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("actions.status.assigned"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("actions.status.inProgress"),
+    ).not.toBeInTheDocument();
+  });
 });

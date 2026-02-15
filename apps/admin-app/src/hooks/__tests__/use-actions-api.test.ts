@@ -1,6 +1,10 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useActionItems, useCreateAction } from "@/hooks/use-actions-api";
+import {
+  useActionItems,
+  useCreateAction,
+  useUpdateAction,
+} from "@/hooks/use-actions-api";
 import { createWrapper } from "@/hooks/__tests__/test-utils";
 
 const mockApiFetch = vi.fn();
@@ -57,5 +61,25 @@ describe("use-actions-api", () => {
       queryKey: ["admin", "posts"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["admin", "post"] });
+  });
+
+  it("updates action status and invalidates action queries", async () => {
+    mockApiFetch.mockResolvedValue({ ok: true });
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpdateAction(), { wrapper });
+    await result.current.mutateAsync({
+      id: "action-1",
+      status: "COMPLETED",
+    });
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/actions/action-1",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["admin", "actions"],
+    });
   });
 });

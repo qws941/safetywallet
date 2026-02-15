@@ -98,4 +98,36 @@ describe("RejectDialog", () => {
       expect.objectContaining({ description: "요청이 거절되었습니다." }),
     );
   });
+
+  it("shows pending state on submit button", () => {
+    mockUseRejectManualRequest.mockReturnValue({
+      mutate: mockMutate,
+      isPending: true,
+    });
+
+    render(<RejectDialog approvalId="approval-1" isOpen onClose={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "처리 중..." }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows error toast on mutation failure", async () => {
+    mockMutate.mockImplementation(
+      (_payload: unknown, options: { onError?: (e: Error) => void }) => {
+        options.onError?.(new Error("서버 오류"));
+      },
+    );
+
+    render(<RejectDialog approvalId="approval-1" isOpen onClose={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("거절 사유를 입력하세요"), {
+      target: { value: "충분한 거절 사유를 입력합니다" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "거절" }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      );
+    });
+  });
 });

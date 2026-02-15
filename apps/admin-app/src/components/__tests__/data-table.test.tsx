@@ -69,4 +69,83 @@ describe("DataTable", () => {
     fireEvent.click(checkboxes[0]);
     expect(onSelectionChange).toHaveBeenCalledWith(rows.slice(0, 2));
   });
+
+  it("toggles select-all checkbox on and off", () => {
+    const onSelectionChange = vi.fn();
+    render(
+      <DataTable
+        columns={columns}
+        data={rows}
+        selectable
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox");
+    // Select all
+    fireEvent.click(checkbox);
+    expect(onSelectionChange).toHaveBeenCalledWith(rows);
+
+    // Deselect all
+    fireEvent.click(checkbox);
+    expect(onSelectionChange).toHaveBeenCalledWith([]);
+  });
+
+  it("toggles sort direction when clicking same column twice", () => {
+    render(<DataTable columns={columns} data={rows} pageSize={10} />);
+    fireEvent.click(screen.getByText("이름"));
+    fireEvent.click(screen.getByText("이름"));
+
+    const cells = screen
+      .getAllByRole("cell")
+      .filter((cell) =>
+        ["김철수", "이영희", "홍길동"].includes(cell.textContent ?? ""),
+      );
+    expect(cells[0]).toHaveTextContent("홍길동");
+  });
+
+  it("shows pagination and navigates pages", () => {
+    const manyRows: Row[] = Array.from({ length: 15 }, (_, i) => ({
+      name: `사용자 ${i}`,
+      status: "대기",
+    }));
+
+    render(<DataTable columns={columns} data={manyRows} pageSize={5} />);
+
+    expect(screen.getByText("사용자 0")).toBeInTheDocument();
+    expect(screen.queryByText("사용자 5")).not.toBeInTheDocument();
+
+    const buttons = screen.getAllByRole("button");
+    const nextButton = buttons[buttons.length - 1];
+    fireEvent.click(nextButton);
+    expect(screen.getByText("사용자 5")).toBeInTheDocument();
+    expect(screen.queryByText("사용자 0")).not.toBeInTheDocument();
+
+    const prevButtons = screen.getAllByRole("button");
+    const prevButton = prevButtons[prevButtons.length - 2];
+    fireEvent.click(prevButton);
+    expect(screen.getByText("사용자 0")).toBeInTheDocument();
+  });
+
+  it("resets selection on search change", () => {
+    const onSelectionChange = vi.fn();
+    render(
+      <DataTable
+        columns={columns}
+        data={rows}
+        searchable
+        selectable
+        onSelectionChange={onSelectionChange}
+        searchPlaceholder="검색"
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox");
+    fireEvent.click(checkbox);
+
+    fireEvent.change(screen.getByPlaceholderText("검색"), {
+      target: { value: "김" },
+    });
+    expect(onSelectionChange).toHaveBeenCalledWith([]);
+  });
 });

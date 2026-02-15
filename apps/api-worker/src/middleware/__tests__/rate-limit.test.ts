@@ -140,6 +140,39 @@ describe("rateLimitMiddleware", () => {
     expect(body.error.code).toBe("RATE_LIMIT_ERROR");
   });
 
+  it("uses user ID for key when auth has user.id", async () => {
+    const rateLimiter = createRateLimiter(
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            allowed: true,
+            remaining: 99,
+            resetAt: Date.now() + 60_000,
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const app = new Hono<{
+      Bindings: { RATE_LIMITER?: MockNamespace };
+      Variables: { auth?: { user?: { id?: string } } };
+    }>();
+    app.use("*", async (c, next) => {
+      c.set("auth", { user: { id: "user-42" } });
+      await next();
+    });
+    app.use("*", rateLimitMiddleware());
+    app.get("/resource", (c) => c.json({ ok: true }));
+
+    const res = await app.request("http://localhost/resource", undefined, {
+      RATE_LIMITER: rateLimiter,
+    });
+
+    expect(res.status).toBe(200);
+    expect(rateLimiter.idFromName).toHaveBeenCalledWith("user:user-42");
+  });
+
   it("authRateLimitMiddleware keys by auth IP prefix", async () => {
     const rateLimiter = createRateLimiter(
       vi.fn().mockResolvedValue(

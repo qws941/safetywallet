@@ -35,6 +35,35 @@ describe("use-sync-errors", () => {
     );
   });
 
+  it("includes status and syncType in sync errors query", async () => {
+    mockApiFetch.mockResolvedValue({ errors: [], total: 0 });
+    const { wrapper } = createWrapper();
+    renderHook(
+      () => useSyncErrors({ status: "FAILED", syncType: "ATTENDANCE" }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("status=FAILED"),
+    );
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining("syncType=ATTENDANCE"),
+    );
+  });
+
+  it("excludes siteId when currentSiteId is null", async () => {
+    currentSiteId = null;
+    mockApiFetch.mockResolvedValue({ errors: [], total: 0 });
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useSyncErrors(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/admin/sync-errors?limit=50&offset=0",
+    );
+  });
+
   it("updates sync error status and invalidates sync error cache", async () => {
     mockApiFetch.mockResolvedValue({ error: { id: "err-1" } });
     const { wrapper, queryClient } = createWrapper();

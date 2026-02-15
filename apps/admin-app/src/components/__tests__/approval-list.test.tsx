@@ -120,4 +120,77 @@ describe("ApprovalList", () => {
     expect(screen.getByText("처리자")).toBeInTheDocument();
     expect(screen.getByText("근거 부족")).toBeInTheDocument();
   });
+
+  it("shows error toast when approve fails", async () => {
+    mockApproveMutate.mockImplementation(
+      (_id: unknown, options: { onError?: (e: Error) => void }) => {
+        options.onError?.(new Error("서버 오류"));
+      },
+    );
+
+    render(<ApprovalList status="PENDING" selectable />);
+    fireEvent.click(screen.getByRole("button", { name: "승인" }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      );
+    });
+  });
+
+  it("shows error toast when bulk approve fails", async () => {
+    mockUseManualApprovals.mockReturnValue({
+      isLoading: false,
+      data: [sharedItem],
+    });
+    mockApproveMutateAsync.mockRejectedValue(new Error("서버 오류"));
+
+    render(<ApprovalList status="PENDING" selectable />);
+
+    const checkboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
+    fireEvent.click(screen.getByRole("button", { name: /일괄 승인/ }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      );
+    });
+  });
+
+  it("bulk approves selected items", async () => {
+    mockUseManualApprovals.mockReturnValue({
+      isLoading: false,
+      data: [
+        sharedItem,
+        {
+          ...sharedItem,
+          id: "approval-2",
+          user: {
+            id: "u2",
+            name: "김철수",
+            companyName: "건설사2",
+            tradeType: null,
+          },
+        },
+      ],
+    });
+    mockApproveMutateAsync.mockResolvedValue({});
+
+    render(<ApprovalList status="PENDING" selectable />);
+
+    // Select all via header checkbox
+    const checkboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
+
+    // Click bulk approve button
+    fireEvent.click(screen.getByRole("button", { name: /일괄 승인/ }));
+
+    await waitFor(() => {
+      expect(mockApproveMutateAsync).toHaveBeenCalledTimes(2);
+    });
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.stringContaining("건") }),
+    );
+  });
 });

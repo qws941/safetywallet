@@ -39,7 +39,7 @@ export default function RecommendationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Award className="h-6 w-6" />
@@ -65,7 +65,7 @@ export default function RecommendationsPage() {
           <CardTitle>기간 필터</CardTitle>
           <CardDescription>조회할 기간을 선택하세요</CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-4">
+        <CardContent className="flex flex-col sm:flex-row gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               시작일
@@ -133,36 +133,38 @@ export default function RecommendationsPage() {
             </p>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>추천일</TableHead>
-                    <TableHead>추천자</TableHead>
-                    <TableHead>소속</TableHead>
-                    <TableHead>피추천자</TableHead>
-                    <TableHead>공종</TableHead>
-                    <TableHead className="max-w-[300px]">추천 사유</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.items.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {r.recommendationDate}
-                      </TableCell>
-                      <TableCell>{r.recommenderName ?? "-"}</TableCell>
-                      <TableCell>{r.recommenderCompany ?? "-"}</TableCell>
-                      <TableCell className="font-medium">
-                        {r.recommendedName}
-                      </TableCell>
-                      <TableCell>{r.tradeType}</TableCell>
-                      <TableCell className="max-w-[300px] truncate">
-                        {r.reason}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>추천일</TableHead>
+                      <TableHead>추천자</TableHead>
+                      <TableHead>소속</TableHead>
+                      <TableHead>피추천자</TableHead>
+                      <TableHead>공종</TableHead>
+                      <TableHead className="max-w-[300px]">추천 사유</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {r.recommendationDate}
+                        </TableCell>
+                        <TableCell>{r.recommenderName ?? "-"}</TableCell>
+                        <TableCell>{r.recommenderCompany ?? "-"}</TableCell>
+                        <TableCell className="font-medium">
+                          {r.recommendedName}
+                        </TableCell>
+                        <TableCell>{r.tradeType}</TableCell>
+                        <TableCell className="max-w-[300px] truncate">
+                          {r.reason}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               {data.pagination.totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-4">
                   <Button

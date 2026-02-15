@@ -30,4 +30,11 @@ describe("use-stats", () => {
     expect(result.current.data).toEqual({ totalUsers: 12 });
     expect(mockApiFetch).toHaveBeenCalledWith("/admin/stats?siteId=site-1");
   });
+
+  it("disables stats query when siteId is null", () => {
+    currentSiteId = null;
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useStats(), { wrapper });
+    expect(result.current.fetchStatus).toBe("idle");
+  });
 });

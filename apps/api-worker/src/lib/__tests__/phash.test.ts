@@ -40,4 +40,12 @@ describe("phash utilities", () => {
   it("uses duplicate threshold of 10 bits", () => {
     expect(DUPLICATE_THRESHOLD).toBe(10);
   });
+
+  it("handles small image buffer with fewer bytes than expected", async () => {
+    // Create a tiny buffer — much smaller than 32*32*3=3072 bytes
+    // This triggers the single-byte sampling branch in extractGrayscalePixels
+    const tinyBuffer = new Uint8Array(100).fill(128).buffer;
+    const hash = await computeImageHash(tinyBuffer);
+    expect(hash).toMatch(/^[a-f0-9]{16}$/);
+  });
 });

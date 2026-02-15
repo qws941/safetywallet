@@ -145,12 +145,12 @@ export function DataTable<T extends object>({
             setSelectedIndices(new Set());
             onSelectionChange?.([]);
           }}
-          className="max-w-sm"
+          className="max-w-sm w-full"
         />
       )}
 
-      <div className="rounded-md border">
-        <table className="w-full">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-muted/50">
             <tr>
               {selectable && (

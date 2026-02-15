@@ -1,0 +1,375 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Hono } from "hono";
+
+// ---------- mocks ----------
+
+const mockGet = vi.fn();
+const mockAll = vi.fn();
+const mockRun = vi.fn();
+
+let shouldTransitionBeValid = true;
+
+vi.mock("drizzle-orm/d1", () => ({
+  drizzle: () => ({
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          get: mockGet,
+          orderBy: () => ({ all: mockAll }),
+        }),
+        leftJoin: () => ({
+          where: () => ({
+            orderBy: () => ({ all: mockAll }),
+          }),
+        }),
+      }),
+    }),
+    insert: () => ({
+      values: () => ({
+        returning: () => ({ get: mockGet }),
+        run: mockRun,
+      }),
+    }),
+    update: () => ({
+      set: () => ({
+        where: () => ({
+          returning: () => ({ get: mockGet }),
+          run: mockRun,
+        }),
+      }),
+    }),
+  }),
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: vi.fn(),
+  and: vi.fn(),
+  desc: vi.fn(),
+  sql: vi.fn(),
+}));
+
+vi.mock("../../db/schema", () => ({
+  posts: {
+    id: "id",
+    status: "status",
+    reviewStatus: "reviewStatus",
+    userId: "userId",
+    siteId: "siteId",
+  },
+  reviews: {
+    id: "id",
+    postId: "postId",
+    reviewerId: "reviewerId",
+    adminId: "adminId",
+  },
+  users: { id: "id", name: "name", nameMasked: "nameMasked" },
+  siteMemberships: {
+    userId: "userId",
+    siteId: "siteId",
+    role: "role",
+    status: "status",
+  },
+  pointsLedger: { id: "id" },
+}));
+
+vi.mock("../../middleware/auth", () => ({
+  authMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) =>
+    next(),
+  ),
+}));
+
+vi.mock("../../lib/response", async () => {
+  return await vi.importActual<typeof import("../../lib/response")>(
+    "../../lib/response",
+  );
+});
+
+vi.mock("../../lib/state-machine", () => ({
+  isValidTransition: vi.fn((..._args: unknown[]) => shouldTransitionBeValid),
+  determineNewStatuses: vi.fn(() => ({
+    postStatus: "APPROVED",
+    reviewStatus: "APPROVED",
+  })),
+}));
+
+vi.mock("../../lib/audit", () => ({ logAuditWithContext: vi.fn() }));
+
+// zValidator mock: parses JSON body and sets it via Hono's addValidatedData
+vi.mock("@hono/zod-validator", () => ({
+  zValidator: (_target: string, _schema: unknown) => {
+    return async (
+      c: {
+        req: {
+          json: () => Promise<unknown>;
+          addValidatedData: (target: string, data: unknown) => void;
+        };
+      },
+      next: () => Promise<void>,
+    ) => {
+      const body = await c.req.json();
+      c.req.addValidatedData("json", body);
+      await next();
+    };
+  },
+}));
+
+import reviewsRoute from "../reviews";
+
+// ---------- helpers ----------
+
+interface AuthContext {
+  user: {
+    id: string;
+    name: string;
+    nameMasked: string;
+    phone: string;
+    role: string;
+  };
+  loginDate: string;
+}
+
+function makeAuth(role = "SITE_ADMIN", userId = "user-1"): AuthContext {
+  return {
+    user: {
+      id: userId,
+      name: "Test",
+      nameMasked: "Te**",
+      phone: "010-0000",
+      role,
+    },
+    loginDate: "2025-01-01",
+  };
+}
+
+type AppEnv = {
+  Bindings: Record<string, unknown>;
+  Variables: { auth: AuthContext };
+};
+
+function createApp(auth?: AuthContext) {
+  const app = new Hono<AppEnv>();
+  app.use("*", async (c, next) => {
+    if (auth) c.set("auth", auth);
+    await next();
+  });
+  app.route("/reviews", reviewsRoute);
+  const env = { DB: {} } as Record<string, unknown>;
+  return { app, env };
+}
+
+// ---------- tests ----------
+
+describe("reviews routes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGet.mockReset();
+    mockAll.mockReset();
+    mockRun.mockReset();
+    mockGet.mockResolvedValue(null);
+    mockAll.mockResolvedValue([]);
+    mockRun.mockResolvedValue({ success: true });
+    shouldTransitionBeValid = true;
+  });
+
+  describe("POST /reviews", () => {
+    const postBody = (data: Record<string, unknown>) => ({
+      method: "POST" as const,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    it("returns 400 without required fields", async () => {
+      const { app, env } = createApp(makeAuth());
+      const res = await app.request("/reviews", postBody({}), env);
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 400 for invalid action", async () => {
+      const { app, env } = createApp(makeAuth());
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "INVALID" }),
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 404 when post not found", async () => {
+      const { app, env } = createApp(makeAuth());
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 403 when not site admin", async () => {
+      const { app, env } = createApp(makeAuth("WORKER"));
+      mockGet
+        .mockResolvedValueOnce({
+          id: "p1",
+          siteId: "s1",
+          userId: "u2",
+          reviewStatus: "RECEIVED",
+        })
+        .mockResolvedValueOnce(null); // no membership
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 400 for invalid state transition", async () => {
+      shouldTransitionBeValid = false;
+      const { app, env } = createApp(makeAuth());
+      mockGet
+        .mockResolvedValueOnce({
+          id: "p1",
+          siteId: "s1",
+          userId: "u2",
+          reviewStatus: "RECEIVED",
+        })
+        .mockResolvedValueOnce({ userId: "user-1", role: "SITE_ADMIN" });
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 409 when post status conflict", async () => {
+      const { app, env } = createApp(makeAuth());
+      mockGet
+        .mockResolvedValueOnce({
+          id: "p1",
+          siteId: "s1",
+          userId: "u2",
+          reviewStatus: "PENDING",
+          actionStatus: "NONE",
+        }) // post
+        .mockResolvedValueOnce({ userId: "user-1", role: "SITE_ADMIN" }) // membership
+        .mockResolvedValueOnce({ id: "r1" }) // insert review
+        .mockResolvedValueOnce(null); // update post = conflict
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(409);
+    });
+
+    it("creates review successfully", async () => {
+      const { app, env } = createApp(makeAuth());
+      mockGet
+        .mockResolvedValueOnce({
+          id: "p1",
+          siteId: "s1",
+          userId: "u2",
+          reviewStatus: "PENDING",
+          actionStatus: "NONE",
+        }) // post
+        .mockResolvedValueOnce({ userId: "user-1", role: "SITE_ADMIN" }) // membership
+        .mockResolvedValueOnce({ id: "r1", action: "APPROVE", postId: "p1" }) // insert review
+        .mockResolvedValueOnce({ id: "p1", status: "APPROVED" }); // update post
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { data: { review: { id: string } } };
+      expect(body.data.review.id).toBe("r1");
+    });
+
+    it("awards points on APPROVE", async () => {
+      const { app, env } = createApp(makeAuth());
+      mockGet
+        .mockResolvedValueOnce({
+          id: "p1",
+          siteId: "s1",
+          userId: "u2",
+          reviewStatus: "PENDING",
+          actionStatus: "NONE",
+        }) // post
+        .mockResolvedValueOnce({ userId: "user-1", role: "SITE_ADMIN" }) // membership
+        .mockResolvedValueOnce({ id: "r1", action: "APPROVE", postId: "p1" }) // insert review
+        .mockResolvedValueOnce({ id: "p1", status: "APPROVED" }); // update post
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { data: { pointsAwarded: number } };
+      expect(body.data.pointsAwarded).toBeGreaterThan(0);
+    });
+
+    it("SUPER_ADMIN can review without membership", async () => {
+      const { app, env } = createApp(makeAuth("SUPER_ADMIN"));
+      mockGet
+        .mockResolvedValueOnce({
+          id: "p1",
+          siteId: "s1",
+          userId: "u2",
+          reviewStatus: "PENDING",
+          actionStatus: "NONE",
+        }) // post
+        .mockResolvedValueOnce(null) // no membership — SUPER_ADMIN bypasses
+        .mockResolvedValueOnce({ id: "r1", action: "APPROVE", postId: "p1" }) // insert
+        .mockResolvedValueOnce({ id: "p1", status: "APPROVED" }); // update
+      const res = await app.request(
+        "/reviews",
+        postBody({ postId: "p1", action: "APPROVE" }),
+        env,
+      );
+      expect(res.status).toBe(201);
+    });
+  });
+
+  describe("GET /reviews/post/:postId", () => {
+    it("returns reviews list", async () => {
+      const { app, env } = createApp(makeAuth());
+      mockGet
+        .mockResolvedValueOnce({ id: "p1", siteId: "s1" }) // post lookup
+        .mockResolvedValueOnce({ userId: "user-1" }); // membership
+      mockAll.mockResolvedValueOnce([
+        { reviews: { id: "r1", action: "APPROVE" }, users: { name: "A" } },
+      ]);
+      const res = await app.request("/reviews/post/p1", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: unknown[] };
+      expect(body.data).toHaveLength(1);
+    });
+
+    it("returns empty array when no reviews", async () => {
+      const { app, env } = createApp(makeAuth());
+      mockGet
+        .mockResolvedValueOnce({ id: "p1", siteId: "s1" }) // post
+        .mockResolvedValueOnce({ userId: "user-1" }); // membership
+      mockAll.mockResolvedValueOnce([]);
+      const res = await app.request("/reviews/post/p1", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: unknown[] };
+      expect(body.data).toHaveLength(0);
+    });
+
+    it("returns 404 when post not found", async () => {
+      const { app, env } = createApp(makeAuth());
+      const res = await app.request("/reviews/post/p1", {}, env);
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 403 when not a member", async () => {
+      const { app, env } = createApp(makeAuth("WORKER"));
+      mockGet
+        .mockResolvedValueOnce({ id: "p1", siteId: "s1" }) // post found
+        .mockResolvedValueOnce(null); // no membership
+      const res = await app.request("/reviews/post/p1", {}, env);
+      expect(res.status).toBe(403);
+    });
+  });
+});

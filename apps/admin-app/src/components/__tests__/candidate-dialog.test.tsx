@@ -83,4 +83,47 @@ describe("CandidateDialog", () => {
       expect.objectContaining({ description: "후보자가 추가되었습니다." }),
     );
   });
+
+  it("validates empty userId before submission", async () => {
+    render(<CandidateDialog />);
+    fireEvent.click(screen.getByRole("button", { name: "후보자 추가" }));
+    fireEvent.change(screen.getByLabelText("투표 월"), {
+      target: { value: "2026-02" },
+    });
+    // Don't select a member (userId is empty default)
+    // Use fireEvent.submit to bypass HTML5 required validation
+    const form = document.querySelector("form")!;
+    fireEvent.submit(form);
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining("선택"),
+      }),
+    );
+    expect(mockAddCandidate).not.toHaveBeenCalled();
+  });
+
+  it("shows error toast on mutation failure", async () => {
+    mockAddCandidate.mockImplementation(
+      (_payload: unknown, options: { onError?: (e: Error) => void }) => {
+        options.onError?.(new Error("서버 오류"));
+      },
+    );
+
+    render(<CandidateDialog />);
+    fireEvent.click(screen.getByRole("button", { name: "후보자 추가" }));
+    fireEvent.change(screen.getByLabelText("투표 월"), {
+      target: { value: "2026-02" },
+    });
+    fireEvent.change(screen.getByLabelText("사용자 선택"), {
+      target: { value: "u-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "추가" }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      );
+    });
+  });
 });

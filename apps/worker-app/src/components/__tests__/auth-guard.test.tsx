@@ -16,6 +16,27 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 describe("AuthGuard", () => {
+  it("treats trailing slash login path as public", () => {
+    setMockPathname("/login/");
+    vi.mocked(useAuth).mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      currentSiteId: null,
+      _hasHydrated: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setCurrentSite: vi.fn(),
+    });
+
+    renderWithClient(
+      <AuthGuard>
+        <div>login slash page</div>
+      </AuthGuard>,
+    );
+
+    expect(screen.getByText("login slash page")).toBeInTheDocument();
+  });
+
   it("renders public path immediately even when unauthenticated", async () => {
     setMockPathname("/login");
     vi.mocked(useAuth).mockReturnValue({

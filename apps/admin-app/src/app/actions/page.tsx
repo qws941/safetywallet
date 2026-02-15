@@ -189,7 +189,7 @@ export default function ActionsPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">조치 현황</h1>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={`stat-${i}`} className="h-24 rounded-lg" />
           ))}
@@ -203,7 +203,7 @@ export default function ActionsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">조치 현황</h1>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="p-4 flex items-center gap-3">
           <div className="rounded-full bg-red-100 p-2">
             <AlertTriangle className="h-5 w-5 text-red-600" />

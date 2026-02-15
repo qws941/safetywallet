@@ -84,6 +84,24 @@ describe("createLogger", () => {
     expect(Number.isNaN(Date.parse(body["@timestamp"]))).toBe(false);
   });
 
+  it("handles Elasticsearch fetch rejection gracefully", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("network failure"));
+    const logger = createLogger("unit-test", {
+      elasticsearchUrl: "https://elastic.example",
+    });
+
+    // Should not throw even though fetch rejects
+    logger.warn("ship-fail");
+
+    // Wait for the async rejection handler to fire
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
   it("does not ship info logs to Elasticsearch", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     const fetchSpy = vi.spyOn(globalThis, "fetch");

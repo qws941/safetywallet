@@ -408,7 +408,7 @@ export default function EducationPage() {
   };
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-6 p-4 md:p-8">
       <div>
         <h1 className="text-2xl font-bold">교육 관리</h1>
         <p className="text-sm text-muted-foreground">

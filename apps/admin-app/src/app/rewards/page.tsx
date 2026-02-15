@@ -630,10 +630,10 @@ export default function RewardsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("rankings");
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <h1 className="text-2xl font-bold">포상 관리</h1>
 
-      <div className="flex gap-1 rounded-lg bg-muted p-1">
+      <div className="flex gap-1 rounded-lg bg-muted p-1 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.key}

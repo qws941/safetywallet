@@ -65,4 +65,142 @@ describe("auth store", () => {
     expect(state.isAuthenticated).toBe(false);
     expect(state.currentSiteId).toBeNull();
   });
+
+  it("setTokens updates access and refresh tokens", () => {
+    useAuthStore.setState({
+      accessToken: null,
+      refreshToken: null,
+    });
+
+    useAuthStore.getState().setTokens("new-access", "new-refresh");
+    const state = useAuthStore.getState();
+
+    expect(state.accessToken).toBe("new-access");
+    expect(state.refreshToken).toBe("new-refresh");
+  });
+
+  it("logout without refreshToken does not call fetch", () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}"));
+
+    useAuthStore.setState({
+      user: baseUser,
+      accessToken: "access-3",
+      refreshToken: null,
+      isAuthenticated: true,
+      currentSiteId: "site-10",
+      _hasHydrated: true,
+    });
+
+    useAuthStore.getState().logout();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  });
+
+  it("logout swallows fetch errors when API call fails", () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));
+
+    useAuthStore.setState({
+      user: baseUser,
+      accessToken: "access-err",
+      refreshToken: "refresh-err",
+      isAuthenticated: true,
+      currentSiteId: "site-err",
+      _hasHydrated: true,
+    });
+
+    useAuthStore.getState().logout();
+    const state = useAuthStore.getState();
+
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+  });
+
+  it("_hasHydrated is set via onFinishHydration", () => {
+    useAuthStore.setState({ _hasHydrated: false });
+    useAuthStore.persist.rehydrate();
+    expect(useAuthStore.getState()._hasHydrated).toBe(true);
+  });
+
+  it("does not set _hasHydrated immediately when persist.hasHydrated is false", async () => {
+    vi.resetModules();
+
+    const setStateSpy = vi.fn();
+    let capturedCallback: (() => void) | null = null;
+    const onFinishHydrationSpy = vi.fn((cb: () => void) => {
+      capturedCallback = cb;
+    });
+    const hasHydratedSpy = vi.fn(() => false);
+
+    const mockStore = {
+      persist: {
+        onFinishHydration: onFinishHydrationSpy,
+        hasHydrated: hasHydratedSpy,
+      },
+      setState: setStateSpy,
+    };
+
+    vi.doMock("zustand", () => ({
+      create: () => () => mockStore,
+    }));
+
+    vi.doMock("zustand/middleware", () => ({
+      persist: (initializer: unknown) => initializer,
+      createJSONStorage: () => vi.fn(),
+    }));
+
+    await import("@/stores/auth");
+
+    expect(onFinishHydrationSpy).toHaveBeenCalledTimes(1);
+    expect(hasHydratedSpy).toHaveBeenCalledTimes(1);
+    expect(setStateSpy).not.toHaveBeenCalled();
+
+    expect(capturedCallback).not.toBeNull();
+    capturedCallback!();
+    expect(setStateSpy).toHaveBeenCalledWith({ _hasHydrated: true });
+
+    vi.doUnmock("zustand");
+    vi.doUnmock("zustand/middleware");
+  });
+
+  it("skips hydration setup when window is undefined (SSR)", async () => {
+    vi.resetModules();
+
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+
+    const onFinishHydrationSpy = vi.fn();
+    const hasHydratedSpy = vi.fn(() => true);
+
+    const mockStore = {
+      persist: {
+        onFinishHydration: onFinishHydrationSpy,
+        hasHydrated: hasHydratedSpy,
+      },
+      setState: vi.fn(),
+    };
+
+    vi.doMock("zustand", () => ({
+      create: () => () => mockStore,
+    }));
+
+    vi.doMock("zustand/middleware", () => ({
+      persist: (initializer: unknown) => initializer,
+      createJSONStorage: () => vi.fn(),
+    }));
+
+    await import("@/stores/auth");
+
+    expect(onFinishHydrationSpy).not.toHaveBeenCalled();
+    expect(hasHydratedSpy).not.toHaveBeenCalled();
+
+    globalThis.window = originalWindow;
+    vi.doUnmock("zustand");
+    vi.doUnmock("zustand/middleware");
+  });
 });

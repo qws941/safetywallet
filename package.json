@@ -34,6 +34,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/better-sqlite3": "^7.6.13",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "better-sqlite3": "^12.6.2",
     "chokidar": "^5.0.0",
     "happy-dom": "^20.6.1",

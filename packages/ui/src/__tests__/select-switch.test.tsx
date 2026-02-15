@@ -3,7 +3,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "../components/select";
@@ -55,5 +58,38 @@ describe("Select", () => {
     fireEvent.click(hazardOption);
 
     expect(onValueChange).toHaveBeenCalledWith("hazard");
+  });
+
+  it("renders disabled trigger, placeholder, label, and separator", () => {
+    render(
+      <Select
+        open
+        onOpenChange={() => undefined}
+        value=""
+        onValueChange={() => undefined}
+      >
+        <SelectTrigger aria-label="상태 선택" disabled>
+          <SelectValue placeholder="선택된 값 없음" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>현장 상태</SelectLabel>
+            <SelectItem value="open">개방</SelectItem>
+            <SelectSeparator data-testid="status-separator" />
+            <SelectItem value="closed">폐쇄</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>,
+    );
+
+    const trigger = screen.getByRole("combobox", {
+      name: "상태 선택",
+      hidden: true,
+    });
+
+    expect(trigger).toBeDisabled();
+    expect(trigger).toHaveTextContent("선택된 값 없음");
+    expect(screen.getByText("현장 상태")).toBeInTheDocument();
+    expect(screen.getByTestId("status-separator")).toBeInTheDocument();
   });
 });

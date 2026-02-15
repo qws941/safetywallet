@@ -11,7 +11,8 @@ const logger = createLogger("analytics");
  * Compute 5-minute bucket key for metrics aggregation.
  * Uses UTC to avoid timezone issues in aggregation.
  */
-function computeBucket(): string {
+/** @internal Exported for testing */
+export function computeBucket(): string {
   const now = new Date();
   const y = now.getUTCFullYear();
   const m = String(now.getUTCMonth() + 1).padStart(2, "0");

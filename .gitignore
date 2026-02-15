@@ -66,3 +66,19 @@ AceTime/
 
 # In-Memoria (local dev tool)
 in-memoria.db
+in-memoria-vectors.db/
+data/
+
+# Secrets
+bypass.txt
+
+# Unused configs
+nginx.conf
+pnpm-workspace.yaml
+
+# AI session artifacts
+SESSION_SUMMARY.md
+COMPLETE_AUDIT_REPORT.md
+CRITICAL_FIXES_APPLIED.md
+MAJOR_MINOR_FIXES_APPLIED.md
+REMAINING_ISSUES_IMPLEMENTATION_GUIDE.md

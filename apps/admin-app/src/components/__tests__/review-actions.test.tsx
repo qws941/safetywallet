@@ -105,4 +105,70 @@ describe("ReviewActions", () => {
       );
     });
   });
+
+  it("sets note from template when reject reason has template", () => {
+    render(<ReviewActions postId="post-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "거절" }));
+
+    // Click a reason with a template string ("사진 불명확" has template)
+    fireEvent.click(screen.getByRole("button", { name: /사진 불명확/ }));
+
+    // The note input should be populated with the template
+    const noteInput = screen.getByPlaceholderText(
+      "추가 설명 (선택)",
+    ) as HTMLInputElement;
+    expect(noteInput.value).toBeTruthy();
+  });
+
+  it("cancels reject flow", () => {
+    render(<ReviewActions postId="post-1" />);
+    fireEvent.click(screen.getByRole("button", { name: "거절" }));
+
+    const cancelButton = screen.getByRole("button", { name: "취소" });
+    fireEvent.click(cancelButton);
+
+    // After cancel, should go back to main view with approve/reject buttons
+    expect(screen.getByRole("button", { name: "승인" })).toBeInTheDocument();
+  });
+
+  it("cancels info request flow", () => {
+    render(
+      <ReviewActions postId="post-1" currentStatus={ReviewStatus.IN_REVIEW} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "추가 정보 요청" }));
+
+    const cancelButton = screen.getByRole("button", { name: "취소" });
+    fireEvent.click(cancelButton);
+
+    expect(screen.getByRole("button", { name: "승인" })).toBeInTheDocument();
+  });
+
+  it("cancels urgent confirm flow", async () => {
+    mockMutate.mockImplementation(
+      (_payload: unknown, options: { onSuccess?: () => void }) => {
+        options.onSuccess?.();
+      },
+    );
+
+    render(
+      <ReviewActions postId="post-1" currentStatus={ReviewStatus.IN_REVIEW} />,
+    );
+    // Go through info request to get to urgent flow
+    fireEvent.click(screen.getByRole("button", { name: "추가 정보 요청" }));
+    fireEvent.change(screen.getByPlaceholderText("필요한 정보를 입력하세요"), {
+      target: { value: "테스트 요청 내용입니다" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "요청 보내기" }));
+
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalled();
+    });
+
+    // Now in urgent confirm view
+    fireEvent.click(screen.getByRole("button", { name: "긴급 지정" }));
+    const cancelButton = screen.getByRole("button", { name: "취소" });
+    fireEvent.click(cancelButton);
+
+    expect(screen.getByRole("button", { name: "승인" })).toBeInTheDocument();
+  });
 });

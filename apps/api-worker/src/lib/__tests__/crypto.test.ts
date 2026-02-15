@@ -87,6 +87,53 @@ describe("crypto utilities", () => {
     );
   });
 
+  it("throws when importAesKey receives non-32-byte key", async () => {
+    const shortKey = btoa("short");
+    await expect(encrypt(shortKey, "test")).rejects.toThrow(
+      "ENCRYPTION_KEY must be 32 bytes",
+    );
+  });
+
+  it("hmac works with CryptoKey input", async () => {
+    const raw = new TextEncoder().encode("my-hmac-secret-key-for-testing!!");
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      raw,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const result = await hmac(cryptoKey, "payload");
+    expect(result).toMatch(/^[a-f0-9]{64}$/);
+
+    const second = await hmac(cryptoKey, "payload");
+    expect(result).toBe(second);
+  });
+
+  it("throws on unsupported key version", async () => {
+    const key = await importAesKey(makeBase64Key(5));
+    await expect(decrypt(key, "v999:aaa:bbb:ccc")).rejects.toThrow(
+      "Unsupported key version: v999",
+    );
+  });
+
+  it("throws on versioned ciphertext with string key", async () => {
+    const key = makeBase64Key(7);
+    await expect(decrypt(key, `v${KEY_VERSION}:aaa:bbb:ccc`)).rejects.toThrow(
+      "Versioned ciphertext requires a derived CryptoKey",
+    );
+  });
+
+  it("throws on legacy ciphertext with CryptoKey but no fallback", async () => {
+    const key = await importAesKey(makeBase64Key(11));
+    const legacyKey = makeBase64Key(7);
+    const encrypted = await encrypt(legacyKey, "test");
+
+    await expect(decrypt(key, encrypted)).rejects.toThrow(
+      "Legacy ciphertext requires a base64 key string or legacyBase64Key fallback",
+    );
+  });
+
   it("hashes and verifies passwords", async () => {
     const subtle = crypto.subtle as SubtleCrypto & {
       timingSafeEqual?: (left: BufferSource, right: BufferSource) => boolean;

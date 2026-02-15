@@ -43,4 +43,31 @@ describe("ApprovalHistory", () => {
     render(<ApprovalHistory />);
     expect(screen.getByText("로딩 중...")).toBeInTheDocument();
   });
+
+  it("renders dash for missing user name and company", () => {
+    mockUseManualApprovals.mockReturnValue({
+      isLoading: false,
+      data: [
+        {
+          id: "a2",
+          reason: "테스트",
+          validDate: "2026-02-14T00:00:00.000Z",
+          createdAt: "2026-02-14T01:00:00.000Z",
+          user: {
+            id: "u2",
+            name: null,
+            companyName: null,
+            tradeType: null,
+          },
+          status: "APPROVED",
+          siteId: "s1",
+          userId: "u2",
+        },
+      ],
+    });
+
+    render(<ApprovalHistory siteId="s1" />);
+    const dashes = screen.getAllByText("-");
+    expect(dashes.length).toBeGreaterThanOrEqual(1);
+  });
 });
