@@ -13,7 +13,7 @@ test.describe("Worker App - Posts", () => {
     await page.goto("/login");
 
     await page.getByRole("textbox", { name: "이름" }).fill(USER.name);
-    await page.getByRole("textbox", { name: "전화번호" }).fill(USER.phone);
+    await page.getByRole("textbox", { name: "휴대폰 번호" }).fill(USER.phone);
     await page.getByRole("textbox", { name: /생년월일/ }).fill(USER.dob);
 
     await page.getByRole("button", { name: "로그인" }).click();

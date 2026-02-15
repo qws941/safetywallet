@@ -5,13 +5,13 @@ test.describe("Worker App - Register Page @smoke", () => {
     await page.goto("/register");
 
     await expect(page.getByRole("heading", { name: "회원가입" })).toBeVisible();
-    await expect(page.getByText("신규 사용자 등록")).toBeVisible();
+    await expect(page.getByText("회원가입").last()).toBeVisible();
 
     await expect(page.getByLabel("이름")).toBeVisible();
-    await expect(page.getByLabel("전화번호")).toBeVisible();
+    await expect(page.getByLabel("휴대폰 번호")).toBeVisible();
     await expect(page.getByLabel("생년월일")).toBeVisible();
 
-    await expect(page.getByRole("button", { name: "가입하기" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "회원가입" })).toBeVisible();
 
     await expect(page.getByRole("link", { name: "로그인" })).toHaveAttribute(
       "href",
@@ -24,13 +24,13 @@ test.describe("Worker App - Register Page @smoke", () => {
   }) => {
     await page.goto("/register");
 
-    const submitButton = page.getByRole("button", { name: "가입하기" });
+    const submitButton = page.getByRole("button", { name: "회원가입" });
     await expect(submitButton).toBeDisabled();
 
     await page.getByLabel("이름").fill("테스트");
     await expect(submitButton).toBeDisabled();
 
-    await page.getByLabel("전화번호").fill("01012345678");
+    await page.getByLabel("휴대폰 번호").fill("01012345678");
     await expect(submitButton).toBeDisabled();
 
     await page.getByLabel("생년월일").fill("19900101");
@@ -41,10 +41,10 @@ test.describe("Worker App - Register Page @smoke", () => {
     await page.goto("/register");
 
     await page.getByLabel("이름").fill("김선민");
-    await page.getByLabel("전화번호").fill("01076015830");
+    await page.getByLabel("휴대폰 번호").fill("01076015830");
     await page.getByLabel("생년월일").fill("19990308");
 
-    await page.getByRole("button", { name: "가입하기" }).click();
+    await page.getByRole("button", { name: "회원가입" }).click();
 
     await expect(
       page.locator(".text-destructive, [class*='text-destructive']").first(),

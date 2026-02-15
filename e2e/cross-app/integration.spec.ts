@@ -106,8 +106,8 @@ test.describe("Cross-App Integration @smoke", () => {
 
     const elapsed = Date.now() - start;
 
-    // All should respond within 10 seconds
-    expect(elapsed).toBeLessThan(10_000);
+    // All should respond within 30 seconds (cold start tolerance for CF Workers)
+    expect(elapsed).toBeLessThan(30_000);
 
     // API returns 200
     expect(apiRes.status()).toBe(200);

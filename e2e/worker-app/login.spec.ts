@@ -8,13 +8,15 @@ test.describe("Login - Page Rendering @smoke", () => {
   test("displays card title and description", async ({ page }) => {
     await expect(page.getByText("안전지갑")).toBeVisible();
     await expect(
-      page.getByText("본인 확인을 위해 정보를 입력하세요"),
+      page.getByText("휴대폰, 이름, 생년월일로 로그인"),
     ).toBeVisible();
   });
 
   test("renders all three input fields", async ({ page }) => {
     await expect(page.getByRole("textbox", { name: "이름" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "전화번호" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "휴대폰 번호" }),
+    ).toBeVisible();
     await expect(page.getByRole("textbox", { name: /생년월일/ })).toBeVisible();
   });
 
@@ -37,7 +39,7 @@ test.describe("Login - Input Attributes @smoke", () => {
   test("phone number input has tel type and inputMode for numeric keyboard", async ({
     page,
   }) => {
-    const phoneInput = page.getByRole("textbox", { name: "전화번호" });
+    const phoneInput = page.getByRole("textbox", { name: "휴대폰 번호" });
     await expect(phoneInput).toHaveAttribute("type", "tel");
     await expect(phoneInput).toHaveAttribute("inputmode", "tel");
     await phoneInput.fill("01012345678");
@@ -62,7 +64,9 @@ test.describe("Login - Form Validation", () => {
   });
 
   test("login button disabled when name is empty", async ({ page }) => {
-    await page.getByRole("textbox", { name: "전화번호" }).fill("01012345678");
+    await page
+      .getByRole("textbox", { name: "휴대폰 번호" })
+      .fill("01012345678");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
 
     await expect(page.getByRole("button", { name: "로그인" })).toBeDisabled();
@@ -77,14 +81,18 @@ test.describe("Login - Form Validation", () => {
 
   test("login button disabled when DOB is empty", async ({ page }) => {
     await page.getByRole("textbox", { name: "이름" }).fill("홍길동");
-    await page.getByRole("textbox", { name: "전화번호" }).fill("01012345678");
+    await page
+      .getByRole("textbox", { name: "휴대폰 번호" })
+      .fill("01012345678");
 
     await expect(page.getByRole("button", { name: "로그인" })).toBeDisabled();
   });
 
   test("login button enabled when all fields filled", async ({ page }) => {
     await page.getByRole("textbox", { name: "이름" }).fill("테스트");
-    await page.getByRole("textbox", { name: "전화번호" }).fill("01012345678");
+    await page
+      .getByRole("textbox", { name: "휴대폰 번호" })
+      .fill("01012345678");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
 
     await expect(page.getByRole("button", { name: "로그인" })).toBeEnabled();
@@ -98,7 +106,9 @@ test.describe("Login - Form Submission", () => {
 
   test("Enter key submits the form", async ({ page }) => {
     await page.getByRole("textbox", { name: "이름" }).fill("테스트");
-    await page.getByRole("textbox", { name: "전화번호" }).fill("01000000000");
+    await page
+      .getByRole("textbox", { name: "휴대폰 번호" })
+      .fill("01000000000");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
 
     await page.getByRole("textbox", { name: /생년월일/ }).press("Enter");
@@ -112,7 +122,9 @@ test.describe("Login - Form Submission", () => {
 
   test("button click submits the form", async ({ page }) => {
     await page.getByRole("textbox", { name: "이름" }).fill("테스트");
-    await page.getByRole("textbox", { name: "전화번호" }).fill("01000000000");
+    await page
+      .getByRole("textbox", { name: "휴대폰 번호" })
+      .fill("01000000000");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
 
     await page.getByRole("button", { name: "로그인" }).click();
@@ -130,7 +142,9 @@ test.describe("Login - Error Handling", () => {
     await page.goto("/login");
 
     await page.getByRole("textbox", { name: "이름" }).fill("테스트");
-    await page.getByRole("textbox", { name: "전화번호" }).fill("010-0000-0000");
+    await page
+      .getByRole("textbox", { name: "휴대폰 번호" })
+      .fill("010-0000-0000");
     await page.getByRole("textbox", { name: /생년월일/ }).fill("900101");
     await page.getByRole("button", { name: "로그인" }).click();
 
@@ -185,7 +199,9 @@ test.describe("Login - Responsive Design", () => {
     await page.goto("/login");
 
     await expect(page.getByRole("textbox", { name: "이름" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "전화번호" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "휴대폰 번호" }),
+    ).toBeVisible();
     await expect(page.getByRole("textbox", { name: /생년월일/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
     await expect(page.getByText("안전지갑")).toBeVisible();
@@ -203,7 +219,9 @@ test.describe("Login - Responsive Design", () => {
     await page.goto("/login");
 
     await expect(page.getByRole("textbox", { name: "이름" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "전화번호" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "휴대폰 번호" }),
+    ).toBeVisible();
     await expect(page.getByRole("textbox", { name: /생년월일/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
 
@@ -220,7 +238,7 @@ test.describe("Login - Responsive Design", () => {
     await page.goto("/login");
 
     const nameInput = page.getByRole("textbox", { name: "이름" });
-    const phoneInput = page.getByRole("textbox", { name: "전화번호" });
+    const phoneInput = page.getByRole("textbox", { name: "휴대폰 번호" });
     const dobInput = page.getByRole("textbox", { name: /생년월일/ });
     const loginBtn = page.getByRole("button", { name: "로그인" });
 
