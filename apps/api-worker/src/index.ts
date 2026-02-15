@@ -31,6 +31,7 @@ import recommendationsRoute from "./routes/recommendations";
 import imagesRoute from "./routes/images";
 import { securityHeaders } from "./middleware/security-headers";
 import { analyticsMiddleware } from "./middleware/analytics";
+import { requestLoggerMiddleware } from "./middleware/request-logger";
 
 import { createLogger } from "./lib/logger";
 
@@ -38,6 +39,7 @@ const logger = createLogger("index");
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", securityHeaders);
+app.use("*", requestLoggerMiddleware);
 app.use("*", analyticsMiddleware);
 app.use("*", honoLogger());
 app.use(
