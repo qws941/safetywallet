@@ -56,14 +56,14 @@ jobs:
         run: npm run pages:build
 
       - name: Upload Worker App artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: worker-app-pages
           path: apps/worker-app/.vercel/output/static
           retention-days: 1
 
       - name: Upload Admin App artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: admin-app-pages
           path: apps/admin-app/.vercel/output/static
@@ -102,7 +102,7 @@ jobs:
     environment: production
     steps:
       - name: Download Worker App artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: worker-app-pages
           path: out
@@ -163,7 +163,7 @@ jobs:
     environment: production
     steps:
       - name: Download Admin App artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: admin-app-pages
           path: out
@@ -220,7 +220,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report-production
           path: playwright-report/
@@ -235,7 +235,7 @@ jobs:
       actions: write
     steps:
       - name: Delete artifacts
-        uses: geekyeggo/delete-artifact@v4
+        uses: geekyeggo/delete-artifact@v5
         with:
           name: |
             worker-app-pages
