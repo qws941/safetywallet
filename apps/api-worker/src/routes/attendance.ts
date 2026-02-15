@@ -82,14 +82,24 @@ attendanceRoute.post(
     }
 
     // BATCH FIX: Check all existing attendance at once
-    const attendanceKeys = events.map((e) => ({
-      workerId: e.fasUserId,
-      siteId: e.siteId,
-      checkinTime: new Date(e.checkinAt),
-    }));
+    const attendanceKeys = events
+      .filter((e) => e.siteId) // Filter out events without siteId
+      .map((e) => ({
+        workerId: e.fasUserId,
+        siteId: e.siteId as string, // Guaranteed non-null by filter
+        checkinAt: new Date(e.checkinAt),
+      }));
 
     const existingSet = new Set<string>();
     if (attendanceKeys.length > 0) {
+      const conditions = attendanceKeys.map((key) =>
+        and(
+          eq(attendance.externalWorkerId, key.workerId),
+          eq(attendance.siteId, key.siteId),
+          eq(attendance.checkinAt, key.checkinAt),
+        ),
+      );
+
       const existing = await db
         .select({
           workerId: attendance.externalWorkerId,
@@ -97,17 +107,7 @@ attendanceRoute.post(
           checkinAt: attendance.checkinAt,
         })
         .from(attendance)
-        .where(
-          or(
-            ...attendanceKeys.map((key) =>
-              and(
-                eq(attendance.externalWorkerId, key.workerId),
-                eq(attendance.siteId, key.siteId),
-                eq(attendance.checkinAt, key.checkinTime),
-              ),
-            ),
-          ),
-        );
+        .where(or(...conditions));
 
       for (const record of existing) {
         if (record.workerId && record.siteId && record.checkinAt) {
@@ -119,7 +119,7 @@ attendanceRoute.post(
     }
 
     // BATCH FIX: Prepare batch insert instead of individual inserts
-    const insertBatch: Parameters<typeof db.insert>[0][] = [];
+    const insertBatch: typeof attendance.$inferInsert[] = [];
     for (const event of events) {
       const user = userMap.get(event.fasUserId);
       if (!user) {
