@@ -8,6 +8,7 @@
     "build": "wrangler deploy --dry-run --outdir=dist",
     "typecheck": "tsc --noEmit",
     "deploy": "wrangler deploy",
+    "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply safework2-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply safework2-db --remote",

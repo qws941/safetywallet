@@ -10,6 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "echo 'Skipping lint - using typecheck instead'"
   },
   "dependencies": {
