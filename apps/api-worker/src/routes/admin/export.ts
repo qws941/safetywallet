@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { desc, gte, lt, and, eq } from "drizzle-orm";
+import { desc, gte, lt, and, eq, sql } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
 import {
   posts,
@@ -33,10 +33,20 @@ type UserExportRow = {
   };
 };
 
+const EXPORT_PAGE_SIZE = 10000; // Max 10k rows per page to prevent timeout
+
 const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
+
+/**
+ * Helper: Parse and validate page number from query params
+ */
+function parsePage(pageParam?: string): number {
+  const page = parseInt(pageParam || "1", 10);
+  return isNaN(page) || page < 1 ? 1 : page;
+}
 
 app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
   const db = drizzle(c.env.DB);
@@ -46,6 +56,7 @@ app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
   const status = c.req.query("status");
   const fromParam = c.req.query("from");
   const toParam = c.req.query("to");
+  const page = parsePage(c.req.query("page"));
 
   if (format !== "csv") {
     return error(c, "UNSUPPORTED_FORMAT", "Only csv format supported", 400);
@@ -87,6 +98,28 @@ app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
     conditions.push(lt(posts.createdAt, toExclusive));
   }
 
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Get total count
+  const countResult = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(posts)
+    .where(whereClause)
+    .get();
+  const totalCount = countResult?.count || 0;
+  const totalPages = Math.ceil(totalCount / EXPORT_PAGE_SIZE);
+
+  if (page > totalPages && totalPages > 0) {
+    return error(
+      c,
+      "PAGE_OUT_OF_RANGE",
+      `Page ${page} exceeds total pages (${totalPages})`,
+      400,
+    );
+  }
+
+  const offset = (page - 1) * EXPORT_PAGE_SIZE;
+
   const results = await db
     .select({
       post: posts,
@@ -96,9 +129,10 @@ app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
     .from(posts)
     .leftJoin(users, eq(posts.userId, users.id))
     .leftJoin(sites, eq(posts.siteId, sites.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(whereClause)
     .orderBy(desc(posts.createdAt))
-    .all();
+    .limit(EXPORT_PAGE_SIZE)
+    .offset(offset);
 
   const headers = [
     "게시글 ID",
@@ -142,6 +176,10 @@ app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
     {
       exportType: "posts",
       filterConditions: { siteId, status, from: fromParam, to: toParam },
+      page,
+      pageSize: EXPORT_PAGE_SIZE,
+      totalRows: totalCount,
+      totalPages,
       rowCount: rows.length,
     },
   );
@@ -151,8 +189,17 @@ app.get("/export/posts", requireExportAccess, exportRateLimit, async (c) => {
     : toExclusive
       ? formatYearMonth(new Date(toExclusive.getTime() - 1))
       : formatYearMonth(new Date());
+  
   const csv = buildCsv(headers, rows);
-  return csvResponse(c, csv, `posts-${filenameDate}.csv`);
+  const filename = `posts-${filenameDate}-page${page}.csv`;
+  
+  const response = csvResponse(c, csv, filename);
+  response.headers.set("X-Total-Count", totalCount.toString());
+  response.headers.set("X-Total-Pages", totalPages.toString());
+  response.headers.set("X-Current-Page", page.toString());
+  response.headers.set("X-Page-Size", EXPORT_PAGE_SIZE.toString());
+  
+  return response;
 });
 
 app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
@@ -163,6 +210,7 @@ app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
   const status = c.req.query("status");
   const fromParam = c.req.query("from");
   const toParam = c.req.query("to");
+  const page = parsePage(c.req.query("page"));
 
   if (format !== "csv") {
     return error(c, "UNSUPPORTED_FORMAT", "Only csv format supported", 400);
@@ -216,6 +264,35 @@ app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
     conditions.push(eq(siteMemberships.status, membershipStatus));
   }
 
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Get total count
+  const countQuery = siteId || status
+    ? db
+        .select({ count: sql<number>`COUNT(DISTINCT ${users.id})` })
+        .from(users)
+        .innerJoin(siteMemberships, eq(siteMemberships.userId, users.id))
+        .where(whereClause)
+    : db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(users)
+        .where(whereClause);
+
+  const countResult = await countQuery.get();
+  const totalCount = countResult?.count || 0;
+  const totalPages = Math.ceil(totalCount / EXPORT_PAGE_SIZE);
+
+  if (page > totalPages && totalPages > 0) {
+    return error(
+      c,
+      "PAGE_OUT_OF_RANGE",
+      `Page ${page} exceeds total pages (${totalPages})`,
+      400,
+    );
+  }
+
+  const offset = (page - 1) * EXPORT_PAGE_SIZE;
+
   const results: UserExportRow[] =
     siteId || status
       ? await db
@@ -229,15 +306,17 @@ app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
           })
           .from(users)
           .innerJoin(siteMemberships, eq(siteMemberships.userId, users.id))
-          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .where(whereClause)
           .orderBy(desc(users.createdAt))
-          .all()
+          .limit(EXPORT_PAGE_SIZE)
+          .offset(offset)
       : await db
           .select({ user: users })
           .from(users)
-          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .where(whereClause)
           .orderBy(desc(users.createdAt))
-          .all();
+          .limit(EXPORT_PAGE_SIZE)
+          .offset(offset);
 
   const headers = [
     "사용자 ID",
@@ -276,6 +355,10 @@ app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
     {
       exportType: "users",
       filterConditions: { siteId, status, from: fromParam, to: toParam },
+      page,
+      pageSize: EXPORT_PAGE_SIZE,
+      totalRows: totalCount,
+      totalPages,
       rowCount: rows.length,
     },
   );
@@ -285,8 +368,17 @@ app.get("/export/users", requireExportAccess, exportRateLimit, async (c) => {
     : toExclusive
       ? formatYearMonth(new Date(toExclusive.getTime() - 1))
       : formatYearMonth(new Date());
+  
   const csv = buildCsv(headers, rows);
-  return csvResponse(c, csv, `users-${filenameDate}.csv`);
+  const filename = `users-${filenameDate}-page${page}.csv`;
+  
+  const response = csvResponse(c, csv, filename);
+  response.headers.set("X-Total-Count", totalCount.toString());
+  response.headers.set("X-Total-Pages", totalPages.toString());
+  response.headers.set("X-Current-Page", page.toString());
+  response.headers.set("X-Page-Size", EXPORT_PAGE_SIZE.toString());
+  
+  return response;
 });
 
 app.get("/export/points", requireExportAccess, exportRateLimit, async (c) => {
@@ -295,6 +387,7 @@ app.get("/export/points", requireExportAccess, exportRateLimit, async (c) => {
   const format = c.req.query("format") || "csv";
   const siteId = c.req.query("siteId");
   const month = c.req.query("month");
+  const page = parsePage(c.req.query("page"));
 
   if (format !== "csv") {
     return error(c, "UNSUPPORTED_FORMAT", "Only csv format supported", 400);
@@ -307,6 +400,28 @@ app.get("/export/points", requireExportAccess, exportRateLimit, async (c) => {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return error(c, "INVALID_MONTH", "month must be YYYY-MM", 400);
   }
+
+  // Get total count
+  const countResult = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(pointsLedger)
+    .where(
+      and(eq(pointsLedger.siteId, siteId), eq(pointsLedger.settleMonth, month)),
+    )
+    .get();
+  const totalCount = countResult?.count || 0;
+  const totalPages = Math.ceil(totalCount / EXPORT_PAGE_SIZE);
+
+  if (page > totalPages && totalPages > 0) {
+    return error(
+      c,
+      "PAGE_OUT_OF_RANGE",
+      `Page ${page} exceeds total pages (${totalPages})`,
+      400,
+    );
+  }
+
+  const offset = (page - 1) * EXPORT_PAGE_SIZE;
 
   const results = await db
     .select({
@@ -321,7 +436,8 @@ app.get("/export/points", requireExportAccess, exportRateLimit, async (c) => {
       and(eq(pointsLedger.siteId, siteId), eq(pointsLedger.settleMonth, month)),
     )
     .orderBy(desc(pointsLedger.occurredAt))
-    .all();
+    .limit(EXPORT_PAGE_SIZE)
+    .offset(offset);
 
   const headers = [
     "정산 ID",
@@ -363,12 +479,24 @@ app.get("/export/points", requireExportAccess, exportRateLimit, async (c) => {
     {
       exportType: "points",
       filterConditions: { siteId, month },
+      page,
+      pageSize: EXPORT_PAGE_SIZE,
+      totalRows: totalCount,
+      totalPages,
       rowCount: rows.length,
     },
   );
 
   const csv = buildCsv(headers, rows);
-  return csvResponse(c, csv, `points-${month}.csv`);
+  const filename = `points-${month}-page${page}.csv`;
+  
+  const response = csvResponse(c, csv, filename);
+  response.headers.set("X-Total-Count", totalCount.toString());
+  response.headers.set("X-Total-Pages", totalPages.toString());
+  response.headers.set("X-Current-Page", page.toString());
+  response.headers.set("X-Page-Size", EXPORT_PAGE_SIZE.toString());
+  
+  return response;
 });
 
 export default app;

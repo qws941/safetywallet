@@ -810,28 +810,96 @@ export async function scheduled(
 
   try {
     if (trigger.startsWith("*/5 ") || trigger === "*/5 * * * *") {
-      await runFasSyncIncremental(env);
+      // FAS sync with exponential backoff retry (3 attempts: 5s, 10s, 20s)
+      try {
+        await withRetry(
+          () => runFasSyncIncremental(env),
+          3,       // maxAttempts
+          5000     // baseDelayMs (5s initial delay, exponential backoff)
+        );
+      } catch (err) {
+        log.error("FAS sync failed after 3 retries", {
+          error: err instanceof Error ? err.message : String(err),
+          trigger,
+        });
+        // Don't rethrow — continue with other cron tasks
+      }
+
       await publishScheduledAnnouncements(env);
-      await runAcetimeSyncFromR2(env);
+      
+      // AceTime sync with exponential backoff retry
+      try {
+        await withRetry(
+          () => runAcetimeSyncFromR2(env),
+          3,
+          5000
+        );
+      } catch (err) {
+        log.error("AceTime sync failed after 3 retries", {
+          error: err instanceof Error ? err.message : String(err),
+          trigger,
+        });
+      }
     }
 
     if (trigger === "0 0 1 * *") {
-      await runMonthEndSnapshot(env);
-      await runAutoNomination(env);
+      // Month-end tasks with retry
+      try {
+        await withRetry(
+          () => runMonthEndSnapshot(env),
+          2,       // Fewer retries for batch operations
+          3000
+        );
+      } catch (err) {
+        log.error("Month-end snapshot failed after 2 retries", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      try {
+        await withRetry(() => runAutoNomination(env), 2, 3000);
+      } catch (err) {
+        log.error("Auto-nomination failed after 2 retries", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     if (trigger === "0 3 * * 0" || trigger === "0 3 * * SUN") {
-      await runDataRetention(env);
+      // Weekly retention with retry
+      try {
+        await withRetry(() => runDataRetention(env), 2, 3000);
+      } catch (err) {
+        log.error("Data retention failed after 2 retries", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     // Daily 6AM KST: overdue action check + PII cleanup
     if (trigger === "0 21 * * *") {
-      await runOverdueActionCheck(env);
-      await runPiiLifecycleCleanup(env);
+      try {
+        await withRetry(() => runOverdueActionCheck(env), 2, 3000);
+      } catch (err) {
+        log.error("Overdue action check failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      try {
+        await withRetry(() => runPiiLifecycleCleanup(env), 2, 3000);
+      } catch (err) {
+        log.error("PII cleanup failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
+
+    log.info("Scheduled tasks completed", { trigger });
   } catch (error) {
-    log.error("Scheduled task error", {
+    log.error("Scheduled task fatal error", {
       error: error instanceof Error ? error.message : String(error),
+      trigger,
     });
     throw error;
   }
