@@ -39,16 +39,16 @@ describe("use-sync-errors", () => {
     mockApiFetch.mockResolvedValue({ errors: [], total: 0 });
     const { wrapper } = createWrapper();
     renderHook(
-      () => useSyncErrors({ status: "FAILED", syncType: "ATTENDANCE" }),
+      () => useSyncErrors({ status: "OPEN", syncType: "FAS_ATTENDANCE" }),
       { wrapper },
     );
 
     await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
     expect(mockApiFetch).toHaveBeenCalledWith(
-      expect.stringContaining("status=FAILED"),
+      expect.stringContaining("status=OPEN"),
     );
     expect(mockApiFetch).toHaveBeenCalledWith(
-      expect.stringContaining("syncType=ATTENDANCE"),
+      expect.stringContaining("syncType=FAS_ATTENDANCE"),
     );
   });
 

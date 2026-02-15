@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { ReviewAction, ReviewStatus } from "@safetywallet/types";
+import { Category, ReviewAction, ReviewStatus } from "@safetywallet/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   useAdminPost,
@@ -89,7 +89,7 @@ describe("use-posts-api", () => {
     renderHook(
       () =>
         useAdminPosts({
-          category: "FALL",
+          category: Category.HAZARD,
           riskLevel: "HIGH",
           siteId: "site-override",
         }),
@@ -99,7 +99,7 @@ describe("use-posts-api", () => {
     await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
     const url = mockApiFetch.mock.calls[0][0] as string;
     expect(url).toContain("siteId=site-override");
-    expect(url).toContain("category=FALL");
+    expect(url).toContain("category=HAZARD");
     expect(url).toContain("riskLevel=HIGH");
   });
 
