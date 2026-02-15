@@ -57,7 +57,7 @@ describe("BottomNav", () => {
         );
 
       if (!isBottomNavItemsArray) {
-        return originalMap.call(this, callbackfn, thisArg);
+        return originalMap.call(this, callbackfn, thisArg) as U[];
       }
 
       const patchedItems = originalMap.call(this, (item) => {
@@ -68,7 +68,7 @@ describe("BottomNav", () => {
         return item;
       });
 
-      return originalMap.call(patchedItems, callbackfn, thisArg);
+      return originalMap.call(patchedItems, callbackfn, thisArg) as U[];
     });
 
     render(<BottomNav />);

@@ -321,7 +321,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(500);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.error.code).toBe("ACETIME_BUCKET_NOT_CONFIGURED");
     });
 
@@ -336,7 +339,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(404);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.error.code).toBe("ACETIME_JSON_NOT_FOUND");
     });
 
@@ -408,7 +414,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.sync.extracted).toBe(2);
       expect(body.data.sync.created).toBe(1);
       expect(body.data.sync.updated).toBe(1);
@@ -454,7 +463,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.fasCrossMatch.available).toBe(true);
       expect(body.data.fasCrossMatch.matched).toBe(1);
       expect(mockFasGetEmployeeInfo).toHaveBeenCalledWith(
@@ -513,7 +525,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(500);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.error.code).toBe("FAS_HYPERDRIVE_NOT_CONFIGURED");
     });
 
@@ -540,7 +555,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.results.matched).toBe(1);
       expect(body.data.matchedNames).toContain("김테스트");
     });
@@ -562,7 +580,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.results.skipped).toBe(1);
       expect(body.data.results.matched).toBe(0);
     });
@@ -582,7 +603,10 @@ describe("routes/acetime", () => {
         env,
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.results.matched).toBe(0);
       expect(body.data.batch.processed).toBe(0);
     });
@@ -604,7 +628,10 @@ describe("routes/acetime", () => {
       const env = makeEnv();
       const res = await app.request("/acetime/photo/EMP-001", {}, env);
       expect(res.status).toBe(404);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.error.code).toBe("PHOTO_NOT_FOUND");
     });
 
@@ -654,12 +681,17 @@ describe("routes/acetime", () => {
       const env = makeEnv();
       const res = await app.request("/acetime/employees", {}, env);
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.employees).toHaveLength(2);
-      expect(body.data.employees[0].profileImageUrl).toBe(
-        "picture/EMP-001.jpg",
-      );
-      expect(body.data.employees[1].profileImageUrl).toBeNull();
+      const employees = body.data.employees as unknown as Record<
+        string,
+        unknown
+      >[];
+      expect(employees[0].profileImageUrl).toBe("picture/EMP-001.jpg");
+      expect(employees[1].profileImageUrl).toBeNull();
     });
 
     it("works for ADMIN role too", async () => {
@@ -673,7 +705,10 @@ describe("routes/acetime", () => {
       const env = makeEnv();
       const res = await app.request("/acetime/employees", {}, env);
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.employees).toHaveLength(0);
     });
 
@@ -686,7 +721,10 @@ describe("routes/acetime", () => {
       const env = makeEnv();
       const res = await app.request("/acetime/employees", {}, env);
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as {
+        data: Record<string, Record<string, unknown>>;
+        error: { code: string };
+      };
       expect(body.data.employees).toHaveLength(0);
     });
   });

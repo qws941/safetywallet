@@ -144,9 +144,10 @@ describe("rate-limit lib", () => {
     it("calls DO", async () => {
       const env = makeEnv();
       await resetLoginFailures(env, "reset-key");
-      const stub = (
-        env.RATE_LIMITER as { get: ReturnType<typeof vi.fn> }
-      ).get();
+      const limiter = env.RATE_LIMITER as unknown as {
+        get: (...args: unknown[]) => { fetch: ReturnType<typeof vi.fn> };
+      };
+      const stub = limiter.get();
       expect(stub.fetch).toHaveBeenCalled();
     });
 
