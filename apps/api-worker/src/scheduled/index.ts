@@ -377,6 +377,122 @@ async function runDataRetention(env: Env): Promise<void> {
   });
 }
 
+export async function runFasFullSync(env: Env): Promise<void> {
+  if (!env.FAS_HYPERDRIVE) {
+    log.info("FAS_HYPERDRIVE not configured, skipping full sync");
+    return;
+  }
+
+  const locked = await acquireSyncLock(env.KV, "fas-full", 600);
+  if (!locked) {
+    log.info("FAS full sync already in progress, skipping");
+    return;
+  }
+
+  const db = drizzle(env.DB);
+  const systemUserId = await getOrCreateSystemUser(db);
+
+  try {
+    const isConnected = await testFasConnection(env.FAS_HYPERDRIVE);
+    if (!isConnected) {
+      log.error("FAS MariaDB connection failed during full sync");
+      return;
+    }
+
+    const allEmployees = await withRetry(() =>
+      fasGetUpdatedEmployees(env.FAS_HYPERDRIVE!, null),
+    );
+
+    log.info("FAS full sync: fetched all employees", {
+      count: allEmployees.length,
+    });
+
+    if (allEmployees.length === 0) return;
+
+    const activeEmployees = allEmployees.filter((e) => e.stateFlag === "W");
+    const retiredEmplCds = allEmployees
+      .filter((e) => e.stateFlag !== "W")
+      .map((e) => e.emplCd);
+
+    const BATCH_SIZE = 50;
+    let totalCreated = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    const totalErrors: string[] = [];
+
+    for (let i = 0; i < activeEmployees.length; i += BATCH_SIZE) {
+      const batch = activeEmployees.slice(i, i + BATCH_SIZE);
+      const result = await syncFasEmployeesToD1(batch, db, {
+        HMAC_SECRET: env.HMAC_SECRET,
+        ENCRYPTION_KEY: env.ENCRYPTION_KEY,
+      });
+      totalCreated += result.created;
+      totalUpdated += result.updated;
+      totalSkipped += result.skipped;
+      totalErrors.push(...result.errors);
+    }
+
+    let totalDeactivated = 0;
+    if (retiredEmplCds.length > 0) {
+      totalDeactivated = await deactivateRetiredEmployees(retiredEmplCds, db);
+    }
+
+    await env.KV.put("fas-last-full-sync", new Date().toISOString());
+    await env.KV.delete("fas-status");
+
+    await db.insert(auditLogs).values({
+      actorId: systemUserId,
+      action: "FAS_FULL_SYNC_COMPLETED",
+      targetType: "FAS_SYNC",
+      targetId: "cron-full",
+      reason: JSON.stringify({
+        totalFas: allEmployees.length,
+        active: activeEmployees.length,
+        retired: retiredEmplCds.length,
+        created: totalCreated,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        deactivated: totalDeactivated,
+        errors: totalErrors.length,
+      }),
+    });
+
+    log.info("FAS full sync complete", {
+      totalFas: allEmployees.length,
+      created: totalCreated,
+      updated: totalUpdated,
+      skipped: totalSkipped,
+      deactivated: totalDeactivated,
+      errors: totalErrors.length,
+    });
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    log.error("FAS full sync failed", { error: errorMessage });
+
+    try {
+      await env.KV.put("fas-status", "down", { expirationTtl: 600 });
+    } catch {
+      /* KV write failure is non-critical */
+    }
+
+    try {
+      await db.insert(syncErrors).values({
+        syncType: "FAS_WORKER",
+        status: "OPEN",
+        errorCode: "FULL_SYNC_FAILED",
+        errorMessage,
+        payload: JSON.stringify({ timestamp: new Date().toISOString() }),
+      });
+    } catch {
+      /* sync_errors insert failure is non-critical */
+    }
+
+    throw err;
+  } finally {
+    await releaseSyncLock(env.KV, "fas-full");
+  }
+}
+
 async function runFasSyncIncremental(env: Env): Promise<void> {
   if (!env.FAS_HYPERDRIVE) {
     log.info("FAS_HYPERDRIVE not configured, skipping sync");
@@ -476,13 +592,17 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
       /* KV write failure is non-critical */
     }
 
-    await db.insert(syncErrors).values({
-      syncType: "FAS_WORKER",
-      status: "OPEN",
-      errorCode,
-      errorMessage,
-      payload: JSON.stringify({ timestamp: new Date().toISOString() }),
-    });
+    try {
+      await db.insert(syncErrors).values({
+        syncType: "FAS_WORKER",
+        status: "OPEN",
+        errorCode,
+        errorMessage,
+        payload: JSON.stringify({ timestamp: new Date().toISOString() }),
+      });
+    } catch {
+      /* sync_errors insert failure is non-critical */
+    }
 
     await db.insert(auditLogs).values({
       actorId: systemUserId,
@@ -902,21 +1022,37 @@ export async function scheduled(
 
   try {
     if (trigger.startsWith("*/5 ") || trigger === "*/5 * * * *") {
-      // FAS sync with exponential backoff retry (3 attempts: 5s, 10s, 20s)
-      try {
-        await withRetry(() => runFasSyncIncremental(env), 3, 5000);
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        log.error("FAS sync failed after 3 retries", {
-          error: errorMsg,
-          trigger,
-        });
-        if (env.KV) {
-          await fireAlert(
-            env.KV,
-            buildFasDownAlert(errorMsg),
-            env.ALERT_WEBHOOK_URL,
-          ).catch(() => {});
+      const lastFullSync = await env.KV?.get("fas-last-full-sync");
+      if (!lastFullSync) {
+        try {
+          await withRetry(() => runFasFullSync(env), 2, 5000);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          log.error("FAS bootstrap full sync failed", { error: errorMsg });
+          if (env.KV) {
+            await fireAlert(
+              env.KV,
+              buildFasDownAlert(errorMsg),
+              env.ALERT_WEBHOOK_URL,
+            ).catch(() => {});
+          }
+        }
+      } else {
+        try {
+          await withRetry(() => runFasSyncIncremental(env), 3, 5000);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          log.error("FAS sync failed after 3 retries", {
+            error: errorMsg,
+            trigger,
+          });
+          if (env.KV) {
+            await fireAlert(
+              env.KV,
+              buildFasDownAlert(errorMsg),
+              env.ALERT_WEBHOOK_URL,
+            ).catch(() => {});
+          }
         }
       }
 
@@ -983,8 +1119,21 @@ export async function scheduled(
       }
     }
 
-    // Daily 6AM KST: overdue action check + PII cleanup
     if (trigger === "0 21 * * *") {
+      try {
+        await withRetry(() => runFasFullSync(env), 2, 5000);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        log.error("FAS daily full sync failed", { error: errorMsg });
+        if (env.KV) {
+          await fireAlert(
+            env.KV,
+            buildFasDownAlert(errorMsg),
+            env.ALERT_WEBHOOK_URL,
+          ).catch(() => {});
+        }
+      }
+
       try {
         await withRetry(() => runOverdueActionCheck(env), 2, 3000);
       } catch (err) {

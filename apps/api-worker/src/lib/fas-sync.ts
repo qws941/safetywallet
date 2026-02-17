@@ -88,89 +88,76 @@ export async function syncSingleFasEmployee(
   db: DrizzleD1Database,
   env: SyncEnv,
 ): Promise<typeof users.$inferSelect | null> {
-  try {
-    const normalizedPhone = normalizePhone(employee.phone);
-    const dob = socialNoToDob(employee.socialNo);
+  const normalizedPhone = normalizePhone(employee.phone);
+  const dob = socialNoToDob(employee.socialNo);
 
-    if (!normalizedPhone) return null;
+  const phoneHash = normalizedPhone
+    ? await hmac(env.HMAC_SECRET, normalizedPhone)
+    : null;
+  const dobHash = dob ? await hmac(env.HMAC_SECRET, dob) : null;
+  const phoneEncrypted = normalizedPhone
+    ? await encrypt(env.ENCRYPTION_KEY, normalizedPhone)
+    : null;
+  const dobEncrypted = dob ? await encrypt(env.ENCRYPTION_KEY, dob) : null;
 
-    const phoneHash = await hmac(env.HMAC_SECRET, normalizedPhone);
-    const dobHash = dob ? await hmac(env.HMAC_SECRET, dob) : null;
-    const phoneEncrypted = await encrypt(env.ENCRYPTION_KEY, normalizedPhone);
-    const dobEncrypted = dob ? await encrypt(env.ENCRYPTION_KEY, dob) : null;
+  const existing = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.externalSystem, "FAS"),
+        eq(users.externalWorkerId, employee.emplCd),
+      ),
+    )
+    .get();
 
-    // externalWorkerId로 기존 유저 검색
-    const existing = await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.externalSystem, "FAS"),
-          eq(users.externalWorkerId, employee.emplCd),
-        ),
-      )
-      .get();
+  const now = new Date();
 
-    const now = new Date();
-
-    if (existing) {
-      // UPDATE: FAS 필드만 덮어쓰기, app 필드 보존
-      await db
-        .update(users)
-        .set({
-          name: employee.name,
-          nameMasked: maskName(employee.name),
-          phone: normalizedPhone,
-          phoneHash,
-          phoneEncrypted,
-          dob: dob,
-          dobHash,
-          dobEncrypted,
-          companyName: employee.companyName || null,
-          tradeType: employee.partCd || null,
-          updatedAt: now,
-        })
-        .where(eq(users.id, existing.id));
-
-      // 업데이트된 레코드 반환
-      return (
-        (await db
-          .select()
-          .from(users)
-          .where(eq(users.id, existing.id))
-          .get()) ?? null
-      );
-    } else {
-      // INSERT: 새 유저 생성
-      const userId = crypto.randomUUID();
-      await db.insert(users).values({
-        id: userId,
+  if (existing) {
+    await db
+      .update(users)
+      .set({
         name: employee.name,
         nameMasked: maskName(employee.name),
-        phone: normalizedPhone,
-        phoneHash,
-        phoneEncrypted,
-        dob: dob,
-        dobHash,
-        dobEncrypted,
-        externalSystem: "FAS",
-        externalWorkerId: employee.emplCd,
+        ...(normalizedPhone
+          ? { phone: normalizedPhone, phoneHash, phoneEncrypted }
+          : {}),
+        ...(dob ? { dob, dobHash, dobEncrypted } : {}),
         companyName: employee.companyName || null,
         tradeType: employee.partCd || null,
-        role: "WORKER",
-        createdAt: now,
         updatedAt: now,
-      });
+      })
+      .where(eq(users.id, existing.id));
 
-      return (
-        (await db.select().from(users).where(eq(users.id, userId)).get()) ??
-        null
-      );
-    }
-  } catch (e) {
-    // Error tracked in result errors array
-    return null;
+    return (
+      (await db.select().from(users).where(eq(users.id, existing.id)).get()) ??
+      null
+    );
   }
+
+  const userId = crypto.randomUUID();
+  await db.insert(users).values({
+    id: userId,
+    name: employee.name,
+    nameMasked: maskName(employee.name),
+    phone: normalizedPhone,
+    phoneHash,
+    phoneEncrypted,
+    dob,
+    dobHash,
+    dobEncrypted,
+    externalSystem: "FAS",
+    externalWorkerId: employee.emplCd,
+    companyName: employee.companyName || null,
+    tradeType: employee.partCd || null,
+    role: "WORKER",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return (
+    (await db.select().from(users).where(eq(users.id, userId)).get()) ?? null
+  );
 }
 
 // ─── 일괄 동기화 (CRON / bulk) ───────────────────────────────────
@@ -196,18 +183,15 @@ export async function syncFasEmployeesToD1(
       const normalizedPhone = normalizePhone(emp.phone);
       const dob = socialNoToDob(emp.socialNo);
 
-      // 전화번호 없으면 스킵
-      if (!normalizedPhone) {
-        result.skipped++;
-        continue;
-      }
-
-      const phoneHash = await hmac(env.HMAC_SECRET, normalizedPhone);
+      const phoneHash = normalizedPhone
+        ? await hmac(env.HMAC_SECRET, normalizedPhone)
+        : null;
       const dobHash = dob ? await hmac(env.HMAC_SECRET, dob) : null;
-      const phoneEncrypted = await encrypt(env.ENCRYPTION_KEY, normalizedPhone);
+      const phoneEncrypted = normalizedPhone
+        ? await encrypt(env.ENCRYPTION_KEY, normalizedPhone)
+        : null;
       const dobEncrypted = dob ? await encrypt(env.ENCRYPTION_KEY, dob) : null;
 
-      // externalWorkerId로 기존 유저 검색
       const existing = await db
         .select()
         .from(users)
@@ -227,12 +211,10 @@ export async function syncFasEmployeesToD1(
           .set({
             name: emp.name,
             nameMasked: maskName(emp.name),
-            phone: normalizedPhone,
-            phoneHash,
-            phoneEncrypted,
-            dob: dob,
-            dobHash,
-            dobEncrypted,
+            ...(normalizedPhone
+              ? { phone: normalizedPhone, phoneHash, phoneEncrypted }
+              : {}),
+            ...(dob ? { dob, dobHash, dobEncrypted } : {}),
             companyName: emp.companyName || null,
             tradeType: emp.partCd || null,
             updatedAt: now,
@@ -240,26 +222,62 @@ export async function syncFasEmployeesToD1(
           .where(eq(users.id, existing.id));
         result.updated++;
       } else {
-        const userId = crypto.randomUUID();
-        await db.insert(users).values({
-          id: userId,
-          name: emp.name,
-          nameMasked: maskName(emp.name),
-          phone: normalizedPhone,
-          phoneHash,
-          phoneEncrypted,
-          dob: dob,
-          dobHash,
-          dobEncrypted,
-          externalSystem: "FAS",
-          externalWorkerId: emp.emplCd,
-          companyName: emp.companyName || null,
-          tradeType: emp.partCd || null,
-          role: "WORKER",
-          createdAt: now,
-          updatedAt: now,
-        });
-        result.created++;
+        const existingByPhone =
+          phoneHash && dobHash
+            ? await db
+                .select()
+                .from(users)
+                .where(
+                  and(
+                    eq(users.phoneHash, phoneHash),
+                    eq(users.dobHash, dobHash),
+                  ),
+                )
+                .get()
+            : null;
+
+        if (existingByPhone) {
+          await db
+            .update(users)
+            .set({
+              name: emp.name,
+              nameMasked: maskName(emp.name),
+              phone: normalizedPhone,
+              phoneHash,
+              phoneEncrypted,
+              dob,
+              dobHash,
+              dobEncrypted,
+              externalSystem: "FAS",
+              externalWorkerId: emp.emplCd,
+              companyName: emp.companyName || null,
+              tradeType: emp.partCd || null,
+              updatedAt: now,
+            })
+            .where(eq(users.id, existingByPhone.id));
+          result.updated++;
+        } else {
+          const userId = crypto.randomUUID();
+          await db.insert(users).values({
+            id: userId,
+            name: emp.name,
+            nameMasked: maskName(emp.name),
+            phone: normalizedPhone,
+            phoneHash,
+            phoneEncrypted,
+            dob,
+            dobHash,
+            dobEncrypted,
+            externalSystem: "FAS",
+            externalWorkerId: emp.emplCd,
+            companyName: emp.companyName || null,
+            tradeType: emp.partCd || null,
+            role: "WORKER",
+            createdAt: now,
+            updatedAt: now,
+          });
+          result.created++;
+        }
       }
     } catch (e) {
       const msg = `${emp.emplCd}: ${e instanceof Error ? e.message : String(e)}`;
