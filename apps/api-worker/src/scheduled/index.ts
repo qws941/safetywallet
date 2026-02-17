@@ -525,8 +525,13 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
   }
 
   try {
+    // FAS expects "YYYY-MM-DD HH:MM:SS" (no T, no Z, no millis)
+    const sinceStr = fiveMinutesAgo
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\.\d{3}Z$/, "");
     const updatedEmployees = await withRetry(() =>
-      fasGetUpdatedEmployees(env.FAS_HYPERDRIVE!, fiveMinutesAgo.toISOString()),
+      fasGetUpdatedEmployees(env.FAS_HYPERDRIVE!, sinceStr),
     );
 
     log.info("Found updated employees", { count: updatedEmployees.length });
