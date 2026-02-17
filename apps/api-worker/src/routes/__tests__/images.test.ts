@@ -14,6 +14,7 @@ vi.mock("../../lib/image-privacy", () => ({
       "original-filename": name,
     },
   })),
+  isJpegImage: vi.fn(() => true),
 }));
 // Mock phash
 vi.mock("../../lib/phash", () => ({
@@ -39,6 +40,15 @@ vi.mock("../../lib/workers-ai", () => ({
     hazardType: "fall_hazard",
     confidence: 0.85,
     rawLabel: "ladder",
+  })),
+  detectObjects: vi.fn(async () => []),
+  filterPersonDetections: vi.fn(() => []),
+}));
+// Mock face-blur
+vi.mock("../../lib/face-blur", () => ({
+  blurPersonRegions: vi.fn(async (buf: ArrayBuffer) => ({
+    buffer: buf,
+    blurredCount: 0,
   })),
 }));
 
