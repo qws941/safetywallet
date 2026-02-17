@@ -52,6 +52,7 @@ app.use(
         "https://admin.safework2.jclee.me",
         "https://safework2-api.jclee.workers.dev",
         "https://safework2-admin.pages.dev",
+        "https://safework2-worker.pages.dev",
       ];
       if (allowed.includes(origin)) return origin;
       if (
