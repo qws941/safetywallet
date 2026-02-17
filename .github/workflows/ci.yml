@@ -151,7 +151,7 @@ jobs:
         env:
           API_URL: https://safework2-api.jclee.workers.dev/api
           WORKER_APP_URL: https://safework2.jclee.me
-          ADMIN_APP_URL: https://safework2-admin.pages.dev
+          ADMIN_APP_URL: https://admin.safework2.jclee.me
 
       - name: Upload report on failure
         uses: actions/upload-artifact@v4
