@@ -2,11 +2,16 @@ import { Hono } from "hono";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { success, error } from "../lib/response";
-import { processImageForPrivacy } from "../lib/image-privacy";
+import { processImageForPrivacy, isJpegImage } from "../lib/image-privacy";
 import { computeImageHash } from "../lib/phash";
 import { log, startTimer } from "../lib/observability";
 import { trackEvent } from "../middleware/analytics";
-import { classifyHazard } from "../lib/workers-ai";
+import {
+  classifyHazard,
+  detectObjects,
+  filterPersonDetections,
+} from "../lib/workers-ai";
+import { blurPersonRegions } from "../lib/face-blur";
 
 const app = new Hono<{
   Bindings: Env;
@@ -77,34 +82,78 @@ app.post("/upload", async (c) => {
     // Read file buffer
     const arrayBuffer = await file.arrayBuffer();
 
-    // Process image for privacy (strip EXIF if JPEG)
-    const { buffer: processedBuffer, metadata: privacyMetadata } =
+    const { buffer: exifStrippedBuffer, metadata: privacyMetadata } =
       await processImageForPrivacy(arrayBuffer, file.name);
 
-    // Generate unique filename
     const timestamp = Date.now();
     const randomId = crypto.randomUUID().split("-")[0];
     const extension = file.name.split(".").pop() || "jpg";
     const filename = `${context || "upload"}/${timestamp}-${randomId}.${extension}`;
 
-    // Upload to R2 with privacy metadata
-    await c.env.R2.put(filename, processedBuffer, {
+    let publicBuffer = exifStrippedBuffer;
+    const faceBlurMetadata: Record<string, string> = {};
+
+    if (c.env.AI && isJpegImage(exifStrippedBuffer)) {
+      try {
+        const detections = await detectObjects(c.env.AI, exifStrippedBuffer);
+        const persons = filterPersonDetections(detections);
+        faceBlurMetadata["face-detection-ran"] = "true";
+
+        if (persons.length > 0) {
+          await c.env.R2.put(`original/${filename}`, exifStrippedBuffer, {
+            httpMetadata: { contentType: file.type },
+            customMetadata: {
+              ...privacyMetadata,
+              "access-level": "admin-only",
+              "uploaded-by": user.id,
+              "uploaded-at": new Date().toISOString(),
+            },
+          });
+
+          const blurResult = await blurPersonRegions(
+            exifStrippedBuffer,
+            persons,
+          );
+          publicBuffer = blurResult.buffer;
+          faceBlurMetadata["face-blur-applied"] = "true";
+          faceBlurMetadata["person-detections-count"] = String(
+            blurResult.blurredCount,
+          );
+        } else {
+          faceBlurMetadata["face-blur-applied"] = "false";
+        }
+      } catch (faceErr) {
+        log.warn("Face detection/blur failed, proceeding without blur", {
+          action: "face_blur_skipped",
+          userId: user.id,
+          metadata: {
+            filename,
+            error: faceErr instanceof Error ? faceErr.message : "unknown",
+          },
+        });
+        faceBlurMetadata["face-detection-ran"] = "false";
+        faceBlurMetadata["face-detection-error"] = "true";
+      }
+    }
+
+    await c.env.R2.put(filename, publicBuffer, {
       httpMetadata: {
         contentType: file.type,
       },
       customMetadata: {
         ...privacyMetadata,
+        ...faceBlurMetadata,
         "uploaded-by": user.id,
         "uploaded-at": new Date().toISOString(),
         "original-size": String(file.size),
-        "processed-size": String(processedBuffer.byteLength),
+        "processed-size": String(publicBuffer.byteLength),
       },
     });
 
     // Compute perceptual hash for duplicate detection
     let imageHash: string | null = null;
     try {
-      imageHash = await computeImageHash(processedBuffer);
+      imageHash = await computeImageHash(publicBuffer);
     } catch (hashErr) {
       log.warn("Failed to compute image hash", {
         action: "phash_failed",
@@ -119,12 +168,12 @@ app.post("/upload", async (c) => {
     const fileUrl = `/r2/${filename}`;
 
     if (c.env.AI) {
-      const aiPromise = classifyHazard(c.env.AI, processedBuffer).then(
+      const aiPromise = classifyHazard(c.env.AI, publicBuffer).then(
         async (result) => {
           if (result) {
             const obj = await c.env.R2.head(filename);
             if (obj) {
-              await c.env.R2.put(filename, processedBuffer, {
+              await c.env.R2.put(filename, publicBuffer, {
                 httpMetadata: { contentType: file.type },
                 customMetadata: {
                   ...obj.customMetadata,
@@ -146,7 +195,7 @@ app.post("/upload", async (c) => {
       userId: user.id,
       category: context || "unknown",
       count: 1,
-      value: processedBuffer.byteLength,
+      value: publicBuffer.byteLength,
     });
 
     log.info("Image uploaded successfully", {
@@ -155,7 +204,7 @@ app.post("/upload", async (c) => {
       metadata: {
         filename,
         originalSize: file.size,
-        processedSize: processedBuffer.byteLength,
+        processedSize: publicBuffer.byteLength,
         privacyProcessed: privacyMetadata["privacy-processed"],
         exifStripped: privacyMetadata["exif-stripped"],
       },
@@ -168,7 +217,7 @@ app.post("/upload", async (c) => {
       filename,
       imageHash,
       originalSize: file.size,
-      processedSize: processedBuffer.byteLength,
+      processedSize: publicBuffer.byteLength,
       privacyProcessed: privacyMetadata["privacy-processed"] === "true",
       exifStripped: privacyMetadata["exif-stripped"] === "true",
       metadata: privacyMetadata,
