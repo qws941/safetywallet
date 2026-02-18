@@ -282,10 +282,8 @@ auth.post(
       .values({
         name: body.name,
         nameMasked,
-        phone: normalizedPhone,
         phoneHash,
         phoneEncrypted,
-        dob: normalizedDob,
         dobHash,
         dobEncrypted,
         role: "WORKER",
@@ -904,7 +902,6 @@ auth.post(
         .values({
           name: "관리자",
           nameMasked: "관*자",
-          phone: "admin",
           phoneHash: await hmac(c.env.HMAC_SECRET, "admin"),
           role: "SUPER_ADMIN",
           piiViewFull: true,

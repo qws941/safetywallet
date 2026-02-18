@@ -167,7 +167,6 @@ app.post("/sync-db", async (c) => {
             externalWorkerId: e.externalWorkerId,
             name: e.name,
             nameMasked: maskName(e.name),
-            phone: "",
             phoneHash: phoneHash,
             companyName: e.companyName,
             tradeType: e.trade,
