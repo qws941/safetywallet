@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import {
   Button,
@@ -8,37 +9,61 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  useToast,
 } from "@safetywallet/ui";
-import type {
-  Setter,
-  TbmDetail,
-  TbmFormState,
-  TbmRecordItem,
-} from "./education-types";
+import {
+  useCreateTbmRecord,
+  useTbmRecord,
+  useTbmRecords,
+  type CreateTbmRecordInput,
+} from "@/hooks/use-api";
+import { useAuthStore } from "@/stores/auth";
+import { getErrorMessage } from "../education-helpers";
+import type { TbmDetail, TbmFormState, TbmRecordItem } from "./education-types";
 
-type TbmTabProps = {
-  currentSiteId: string | null;
-  tbmForm: TbmFormState;
-  setTbmForm: Setter<TbmFormState>;
-  onCreateTbm: () => void;
-  isTbmLoading: boolean;
-  tbmRecords: TbmRecordItem[];
-  expandedTbmId: string | null;
-  setExpandedTbmId: Setter<string | null>;
-  tbmDetail?: TbmDetail;
+const INITIAL_FORM: TbmFormState = {
+  date: "",
+  topic: "",
+  content: "",
+  weatherCondition: "",
+  specialNotes: "",
 };
 
-export function TbmTab({
-  currentSiteId,
-  tbmForm,
-  setTbmForm,
-  onCreateTbm,
-  isTbmLoading,
-  tbmRecords,
-  expandedTbmId,
-  setExpandedTbmId,
-  tbmDetail,
-}: TbmTabProps) {
+export function TbmTab() {
+  const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  const { toast } = useToast();
+
+  const [tbmForm, setTbmForm] = useState<TbmFormState>(INITIAL_FORM);
+  const [expandedTbmId, setExpandedTbmId] = useState<string | null>(null);
+
+  const { data: tbmData, isLoading } = useTbmRecords();
+  const { data: tbmDetail } = useTbmRecord(expandedTbmId || "");
+  const createMutation = useCreateTbmRecord();
+
+  const tbmRecords: TbmRecordItem[] = tbmData?.records ?? [];
+  const typedTbmDetail: TbmDetail | undefined = tbmDetail;
+
+  const onCreateTbm = async () => {
+    if (!currentSiteId || !tbmForm.date || !tbmForm.topic) return;
+
+    const payload: CreateTbmRecordInput = {
+      siteId: currentSiteId,
+      date: tbmForm.date,
+      topic: tbmForm.topic,
+      content: tbmForm.content || undefined,
+      weatherCondition: tbmForm.weatherCondition || undefined,
+      specialNotes: tbmForm.specialNotes || undefined,
+    };
+
+    try {
+      await createMutation.mutateAsync(payload);
+      toast({ description: "TBM 기록이 등록되었습니다." });
+      setTbmForm(INITIAL_FORM);
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -108,7 +133,7 @@ export function TbmTab({
           <CardTitle>TBM 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          {isTbmLoading ? (
+          {isLoading ? (
             <p className="text-sm text-muted-foreground">로딩 중...</p>
           ) : tbmRecords.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -165,21 +190,21 @@ export function TbmTab({
                 </table>
               </div>
 
-              {expandedTbmId && tbmDetail && (
+              {expandedTbmId && typedTbmDetail && (
                 <Card className="border-dashed">
                   <CardHeader>
                     <CardTitle className="text-base">
-                      참석자 목록 ({tbmDetail.attendeeCount}명)
+                      참석자 목록 ({typedTbmDetail.attendeeCount}명)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {tbmDetail.attendees.length === 0 ? (
+                    {typedTbmDetail.attendees.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         참석자가 없습니다.
                       </p>
                     ) : (
                       <ul className="space-y-2 text-sm">
-                        {tbmDetail.attendees.map((attendee) => (
+                        {typedTbmDetail.attendees.map((attendee) => (
                           <li
                             key={attendee.attendee.id}
                             className="flex items-center justify-between rounded-md border px-3 py-2"

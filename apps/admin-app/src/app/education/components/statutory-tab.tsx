@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Badge,
   Button,
@@ -13,39 +14,112 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useToast,
 } from "@safetywallet/ui";
-import type { CreateStatutoryTrainingInput } from "@/hooks/use-api";
 import {
+  useCreateStatutoryTraining,
+  useStatutoryTrainings,
+  useUpdateStatutoryTraining,
+  type CreateStatutoryTrainingInput,
+  type UpdateStatutoryTrainingInput,
+} from "@/hooks/use-api";
+import { useAuthStore } from "@/stores/auth";
+import {
+  getErrorMessage,
   getTrainingStatusLabel,
   getTrainingTypeLabel,
 } from "../education-helpers";
-import type {
-  Setter,
-  TrainingFormState,
-  TrainingItem,
-} from "./education-types";
+import type { TrainingFormState, TrainingItem } from "./education-types";
 
-type StatutoryTabProps = {
-  editingTrainingId: string | null;
-  setEditingTrainingId: Setter<string | null>;
-  trainingForm: TrainingFormState;
-  setTrainingForm: Setter<TrainingFormState>;
-  onSubmitTraining: () => void;
-  isTrainingsLoading: boolean;
-  trainings: TrainingItem[];
-  onEditTraining: (item: TrainingItem) => void;
+const INITIAL_FORM: TrainingFormState = {
+  userId: "",
+  trainingType: "NEW_WORKER",
+  trainingName: "",
+  trainingDate: "",
+  expirationDate: "",
+  provider: "",
+  hoursCompleted: "0",
+  status: "SCHEDULED",
+  notes: "",
 };
 
-export function StatutoryTab({
-  editingTrainingId,
-  setEditingTrainingId,
-  trainingForm,
-  setTrainingForm,
-  onSubmitTraining,
-  isTrainingsLoading,
-  trainings,
-  onEditTraining,
-}: StatutoryTabProps) {
+export function StatutoryTab() {
+  const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  const { toast } = useToast();
+
+  const [trainingForm, setTrainingForm] =
+    useState<TrainingFormState>(INITIAL_FORM);
+  const [editingTrainingId, setEditingTrainingId] = useState<string | null>(
+    null,
+  );
+
+  const { data: trainingsData, isLoading } = useStatutoryTrainings();
+  const createMutation = useCreateStatutoryTraining();
+  const updateMutation = useUpdateStatutoryTraining();
+
+  const trainings: TrainingItem[] = trainingsData?.trainings ?? [];
+
+  const onSubmitTraining = async () => {
+    if (!currentSiteId || !trainingForm.userId || !trainingForm.trainingName)
+      return;
+    if (!trainingForm.trainingDate) return;
+
+    const payload: CreateStatutoryTrainingInput = {
+      siteId: currentSiteId,
+      userId: trainingForm.userId,
+      trainingType: trainingForm.trainingType,
+      trainingName: trainingForm.trainingName,
+      trainingDate: trainingForm.trainingDate,
+      expirationDate: trainingForm.expirationDate || undefined,
+      provider: trainingForm.provider || undefined,
+      hoursCompleted: Number(trainingForm.hoursCompleted || 0),
+      status: trainingForm.status,
+      notes: trainingForm.notes || undefined,
+    };
+
+    try {
+      if (editingTrainingId) {
+        const updatePayload: UpdateStatutoryTrainingInput = {
+          trainingType: payload.trainingType,
+          trainingName: payload.trainingName,
+          trainingDate: payload.trainingDate,
+          expirationDate: payload.expirationDate,
+          provider: payload.provider,
+          hoursCompleted: payload.hoursCompleted,
+          status: payload.status,
+          notes: payload.notes,
+        };
+        await updateMutation.mutateAsync({
+          id: editingTrainingId,
+          data: updatePayload,
+        });
+        toast({ description: "법정교육이 수정되었습니다." });
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast({ description: "법정교육이 등록되었습니다." });
+      }
+      setEditingTrainingId(null);
+      setTrainingForm(INITIAL_FORM);
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+  };
+
+  const onEditTraining = (item: TrainingItem) => {
+    setEditingTrainingId(item.training.id);
+    setTrainingForm({
+      userId: item.training.userId,
+      trainingType: item.training.trainingType,
+      trainingName: item.training.trainingName,
+      trainingDate: item.training.trainingDate,
+      expirationDate: item.training.expirationDate || "",
+      provider: item.training.provider || "",
+      hoursCompleted: String(item.training.hoursCompleted ?? 0),
+      status: item.training.status,
+      notes: item.training.notes || "",
+    });
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -182,17 +256,7 @@ export function StatutoryTab({
                 variant="outline"
                 onClick={() => {
                   setEditingTrainingId(null);
-                  setTrainingForm({
-                    userId: "",
-                    trainingType: "NEW_WORKER",
-                    trainingName: "",
-                    trainingDate: "",
-                    expirationDate: "",
-                    provider: "",
-                    hoursCompleted: "0",
-                    status: "SCHEDULED",
-                    notes: "",
-                  });
+                  setTrainingForm(INITIAL_FORM);
                 }}
               >
                 취소
@@ -207,7 +271,7 @@ export function StatutoryTab({
           <CardTitle>법정교육 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          {isTrainingsLoading ? (
+          {isLoading ? (
             <p className="text-sm text-muted-foreground">로딩 중...</p>
           ) : trainings.length === 0 ? (
             <p className="text-sm text-muted-foreground">

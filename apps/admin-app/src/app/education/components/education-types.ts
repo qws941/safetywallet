@@ -1,6 +1,5 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import type {
   CreateEducationContentInput,
   CreateQuizInput,
@@ -114,5 +113,3 @@ export type TbmDetail = {
     };
   }>;
 };
-
-export type Setter<T> = Dispatch<SetStateAction<T>>;

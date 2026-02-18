@@ -1,7 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -14,38 +23,73 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useToast,
 } from "@safetywallet/ui";
-import type { CreateEducationContentInput } from "@/hooks/use-api";
-import { getContentTypeLabel } from "../education-helpers";
-import type {
-  ContentFormState,
-  EducationContentItem,
-  Setter,
-} from "./education-types";
+import {
+  useCreateEducationContent,
+  useDeleteEducationContent,
+  useEducationContents,
+  type CreateEducationContentInput,
+} from "@/hooks/use-api";
+import { useAuthStore } from "@/stores/auth";
+import { getContentTypeLabel, getErrorMessage } from "../education-helpers";
+import type { ContentFormState, EducationContentItem } from "./education-types";
 
-type ContentsTabProps = {
-  currentSiteId: string | null;
-  contentForm: ContentFormState;
-  setContentForm: Setter<ContentFormState>;
-  onCreateContent: () => void;
-  createContentPending: boolean;
-  isContentsLoading: boolean;
-  contents: EducationContentItem[];
-  setDeleteContentId: Setter<string | null>;
-  deleteContentPending: boolean;
+const INITIAL_FORM: ContentFormState = {
+  title: "",
+  contentType: "VIDEO",
+  description: "",
+  contentUrl: "",
+  thumbnailUrl: "",
+  durationMinutes: "",
 };
 
-export function ContentsTab({
-  currentSiteId,
-  contentForm,
-  setContentForm,
-  onCreateContent,
-  createContentPending,
-  isContentsLoading,
-  contents,
-  setDeleteContentId,
-  deleteContentPending,
-}: ContentsTabProps) {
+export function ContentsTab() {
+  const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  const { toast } = useToast();
+
+  const [contentForm, setContentForm] =
+    useState<ContentFormState>(INITIAL_FORM);
+  const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
+
+  const { data: contentsData, isLoading } = useEducationContents();
+  const createMutation = useCreateEducationContent();
+  const deleteMutation = useDeleteEducationContent();
+
+  const contents: EducationContentItem[] = contentsData?.contents ?? [];
+
+  const onCreateContent = async () => {
+    if (!currentSiteId || !contentForm.title) return;
+    try {
+      await createMutation.mutateAsync({
+        siteId: currentSiteId,
+        title: contentForm.title,
+        contentType: contentForm.contentType,
+        description: contentForm.description || undefined,
+        contentUrl: contentForm.contentUrl || undefined,
+        thumbnailUrl: contentForm.thumbnailUrl || undefined,
+        durationMinutes: contentForm.durationMinutes
+          ? Number(contentForm.durationMinutes)
+          : undefined,
+      });
+      toast({ description: "교육자료가 등록되었습니다." });
+      setContentForm(INITIAL_FORM);
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+  };
+
+  const onDeleteContent = async () => {
+    if (!deleteContentId) return;
+    try {
+      await deleteMutation.mutateAsync(deleteContentId);
+      toast({ description: "교육자료가 삭제되었습니다." });
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+    setDeleteContentId(null);
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -133,7 +177,7 @@ export function ContentsTab({
             type="button"
             onClick={onCreateContent}
             disabled={
-              !currentSiteId || !contentForm.title || createContentPending
+              !currentSiteId || !contentForm.title || createMutation.isPending
             }
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -147,7 +191,7 @@ export function ContentsTab({
           <CardTitle>교육자료 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          {isContentsLoading ? (
+          {isLoading ? (
             <p className="text-sm text-muted-foreground">로딩 중...</p>
           ) : contents.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -185,7 +229,7 @@ export function ContentsTab({
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteContentId(item.id)}
-                          disabled={deleteContentPending}
+                          disabled={deleteMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -198,6 +242,26 @@ export function ContentsTab({
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!deleteContentId}
+        onOpenChange={(open) => !open && setDeleteContentId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>교육자료 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 교육자료를 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={onDeleteContent}>
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
