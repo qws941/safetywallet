@@ -412,12 +412,10 @@ app.delete(
     await db
       .update(users)
       .set({
-        phone: "",
         phoneEncrypted: "",
         phoneHash: "",
         name: "[긴급삭제]",
         nameMasked: "[긴급삭제]",
-        dob: null,
         dobEncrypted: "",
         dobHash: "",
         companyName: null,

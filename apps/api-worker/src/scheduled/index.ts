@@ -110,7 +110,6 @@ async function getOrCreateSystemUser(
   const systemUserId = crypto.randomUUID();
   await db.insert(users).values({
     id: systemUserId,
-    phone: "SYSTEM",
     role: "SYSTEM",
     name: "시스템",
   });
@@ -711,12 +710,10 @@ async function runPiiLifecycleCleanup(env: Env): Promise<void> {
     db
       .update(users)
       .set({
-        phone: "",
         phoneEncrypted: "",
         phoneHash: "",
         name: "[삭제됨]",
         nameMasked: "[삭제됨]",
-        dob: null,
         dobEncrypted: "",
         dobHash: "",
         companyName: null,
@@ -838,7 +835,6 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
           externalWorkerId: e.externalWorkerId,
           name: e.name,
           nameMasked: maskName(e.name),
-          phone: "",
           phoneHash: phoneHash,
           companyName: e.companyName,
           tradeType: e.trade,
