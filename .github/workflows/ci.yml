@@ -14,51 +14,17 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  quality:
-    name: Lint & Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Cache Turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
-
-      - run: npm ci
-
-      - name: Check formatting
-        run: npm run format:check
-
-  typecheck:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Cache Turbo
-        uses: actions/cache@v4
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
-
-      - run: npm ci
-      - run: npm run typecheck
+  # Replaces quality + typecheck jobs with reusable workflow
+  ci:
+    name: Lint & Typecheck
+    uses: qws941/.github/.github/workflows/_ci-node.yml@main
+    with:
+      node-version: "20"
+      turbo: true
+      run-lint: true
+      run-typecheck: true
+      lint-command: "npm run format:check"
+    secrets: inherit
 
   unit-test:
     name: Unit Tests
@@ -101,7 +67,7 @@ jobs:
   build:
     name: Build (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: [typecheck, unit-test, quality]
+    needs: [ci, unit-test]
     strategy:
       fail-fast: false
       matrix:
@@ -166,13 +132,12 @@ jobs:
   validate:
     name: Validate Changes
     runs-on: ubuntu-latest
-    needs: [quality, typecheck, unit-test, security, build, e2e]
+    needs: [ci, unit-test, security, build, e2e]
     if: always()
     steps:
       - name: Check all jobs
         run: |
-          if [[ "${{ needs.quality.result }}" != "success" ]] || \
-             [[ "${{ needs.typecheck.result }}" != "success" ]] || \
+          if [[ "${{ needs.ci.result }}" != "success" ]] || \
              [[ "${{ needs.unit-test.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]] || \
              [[ "${{ needs.e2e.result }}" != "success" ]]; then
