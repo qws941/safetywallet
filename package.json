@@ -26,7 +26,17 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo run clean && rm -rf node_modules",
-    "db:generate": "npm run db:generate --workspace=safework2-api"
+    "db:generate": "npm run db:generate --workspace=safework2-api",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "bash scripts/check-anti-patterns.sh",
+      "prettier --write"
+    ],
+    "*.{js,jsx,json,md}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -39,6 +49,8 @@
     "better-sqlite3": "^12.6.2",
     "chokidar": "^5.0.0",
     "happy-dom": "^20.6.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.2.5",
     "turbo": "^2.8.9",
     "typescript": "^5.7.3",
