@@ -57,6 +57,27 @@
       "when": 1770890000000,
       "tag": "0006_add_missing_user_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1770890340000,
+      "tag": "0007_add_api_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1771347000000,
+      "tag": "0008_add_push_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1771433000000,
+      "tag": "0009_drop_dead_pii_columns",
+      "breakpoints": true
     }
   ]
 }
