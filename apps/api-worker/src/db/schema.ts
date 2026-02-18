@@ -88,12 +88,10 @@ export const users = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    phone: text("phone"),
     phoneEncrypted: text("phone_encrypted"),
     phoneHash: text("phone_hash"),
     name: text("name"),
     nameMasked: text("name_masked"),
-    dob: text("dob"),
     dobEncrypted: text("dob_encrypted"),
     dobHash: text("dob_hash"),
     externalSystem: text("external_system"),
