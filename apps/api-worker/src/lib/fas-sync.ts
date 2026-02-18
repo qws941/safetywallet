@@ -119,10 +119,8 @@ export async function syncSingleFasEmployee(
       .set({
         name: employee.name,
         nameMasked: maskName(employee.name),
-        ...(normalizedPhone
-          ? { phone: normalizedPhone, phoneHash, phoneEncrypted }
-          : {}),
-        ...(dob ? { dob, dobHash, dobEncrypted } : {}),
+        ...(normalizedPhone ? { phoneHash, phoneEncrypted } : {}),
+        ...(dob ? { dobHash, dobEncrypted } : {}),
         companyName: employee.companyName || null,
         tradeType: employee.partCd || null,
         updatedAt: now,
@@ -140,10 +138,8 @@ export async function syncSingleFasEmployee(
     id: userId,
     name: employee.name,
     nameMasked: maskName(employee.name),
-    phone: normalizedPhone,
     phoneHash,
     phoneEncrypted,
-    dob,
     dobHash,
     dobEncrypted,
     externalSystem: "FAS",
@@ -211,10 +207,8 @@ export async function syncFasEmployeesToD1(
           .set({
             name: emp.name,
             nameMasked: maskName(emp.name),
-            ...(normalizedPhone
-              ? { phone: normalizedPhone, phoneHash, phoneEncrypted }
-              : {}),
-            ...(dob ? { dob, dobHash, dobEncrypted } : {}),
+            ...(normalizedPhone ? { phoneHash, phoneEncrypted } : {}),
+            ...(dob ? { dobHash, dobEncrypted } : {}),
             companyName: emp.companyName || null,
             tradeType: emp.partCd || null,
             updatedAt: now,
@@ -242,10 +236,8 @@ export async function syncFasEmployeesToD1(
             .set({
               name: emp.name,
               nameMasked: maskName(emp.name),
-              phone: normalizedPhone,
               phoneHash,
               phoneEncrypted,
-              dob,
               dobHash,
               dobEncrypted,
               externalSystem: "FAS",
@@ -262,10 +254,8 @@ export async function syncFasEmployeesToD1(
             id: userId,
             name: emp.name,
             nameMasked: maskName(emp.name),
-            phone: normalizedPhone,
             phoneHash,
             phoneEncrypted,
-            dob,
             dobHash,
             dobEncrypted,
             externalSystem: "FAS",

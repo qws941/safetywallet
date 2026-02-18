@@ -156,10 +156,8 @@ app.post(
           externalWorkerId: string;
           name: string;
           nameMasked: string;
-          phone: string;
           phoneHash: string;
           phoneEncrypted: string;
-          dob: null;
           dobHash: string;
           dobEncrypted: string;
           updatedAt: Date;
@@ -179,10 +177,8 @@ app.post(
             externalWorkerId: worker.externalWorkerId,
             name: worker.name,
             nameMasked: worker.nameMasked,
-            phone: worker.phoneHash,
             phoneHash: worker.phoneHash,
             phoneEncrypted: worker.phoneEncrypted,
-            dob: null,
             dobHash: worker.dobHash,
             dobEncrypted: worker.dobEncrypted,
             updatedAt: new Date(),
@@ -195,10 +191,8 @@ app.post(
         usersToInsert.push({
           externalWorkerId: worker.externalWorkerId,
           externalSystem: "FAS",
-          phone: worker.phoneHash,
           phoneHash: worker.phoneHash,
           phoneEncrypted: worker.phoneEncrypted,
-          dob: null,
           dobHash: worker.dobHash,
           dobEncrypted: worker.dobEncrypted,
           name: worker.name,
@@ -217,10 +211,8 @@ app.post(
                 externalWorkerId: userToUpdate.externalWorkerId,
                 name: userToUpdate.name,
                 nameMasked: userToUpdate.nameMasked,
-                phone: userToUpdate.phone,
                 phoneHash: userToUpdate.phoneHash,
                 phoneEncrypted: userToUpdate.phoneEncrypted,
-                dob: userToUpdate.dob,
                 dobHash: userToUpdate.dobHash,
                 dobEncrypted: userToUpdate.dobEncrypted,
                 updatedAt: userToUpdate.updatedAt,
