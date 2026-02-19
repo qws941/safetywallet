@@ -85,11 +85,12 @@ describe("use-admin-api hooks", () => {
   });
 
   it("fetches single member and disables when member id is missing", async () => {
-    mockApiFetch.mockResolvedValue({ id: "member-1" });
+    mockApiFetch.mockResolvedValue({ member: { id: "member-1" } });
     const { wrapper } = createWrapper();
     const { result } = renderHook(() => useMember("member-1"), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ id: "member-1" });
     expect(mockApiFetch).toHaveBeenCalledWith("/sites/site-1/members/member-1");
 
     const disabled = renderHook(() => useMember(""), { wrapper });

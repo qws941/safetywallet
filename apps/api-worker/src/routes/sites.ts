@@ -161,6 +161,57 @@ app.get("/:id/members", async (c) => {
   });
 });
 
+app.get("/:id/members/:memberId", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const siteId = c.req.param("id");
+  const memberId = c.req.param("memberId");
+
+  const membership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .get();
+
+  if (!membership && user.role !== "ADMIN") {
+    return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
+  }
+
+  if (membership?.role === "WORKER" && user.role !== "ADMIN") {
+    return error(c, "NOT_AUTHORIZED", "Not authorized to view members", 403);
+  }
+
+  const member = await db
+    .select({
+      id: siteMemberships.id,
+      role: siteMemberships.role,
+      status: siteMemberships.status,
+      joinedAt: siteMemberships.joinedAt,
+      user: {
+        id: users.id,
+        name: users.nameMasked,
+      },
+    })
+    .from(siteMemberships)
+    .innerJoin(users, eq(siteMemberships.userId, users.id))
+    .where(
+      and(eq(siteMemberships.id, memberId), eq(siteMemberships.siteId, siteId)),
+    )
+    .get();
+
+  if (!member) {
+    return error(c, "NOT_FOUND", "Member not found", 404);
+  }
+
+  return success(c, { member });
+});
+
 app.post("/", zValidator("json", CreateSiteSchema as never), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");

@@ -119,7 +119,12 @@ export function useMember(memberId: string) {
 
   return useQuery({
     queryKey: ["admin", "member", siteId, memberId],
-    queryFn: () => apiFetch<Member>(`/sites/${siteId}/members/${memberId}`),
+    queryFn: async () => {
+      const res = await apiFetch<{ member: Member }>(
+        `/sites/${siteId}/members/${memberId}`,
+      );
+      return res.member;
+    },
     enabled: !!siteId && !!memberId,
   });
 }
