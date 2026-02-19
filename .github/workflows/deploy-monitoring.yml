@@ -30,7 +30,10 @@ jobs:
             expected="$3"
 
             result=$(curl -sS -o /tmp/monitor_body -w "%{http_code} %{time_total}" \
-              --max-time 20 --retry 2 --retry-delay 2 "$url" || echo "000 999")
+              --max-time 20 --retry 2 --retry-delay 2 --location \
+              --user-agent "Mozilla/5.0 (compatible; SafeWork2DeployMonitor/1.0)" \
+              -H "Accept: text/html,application/json;q=0.9,*/*;q=0.8" \
+              "$url" || echo "000 999")
             status=$(echo "$result" | cut -d' ' -f1)
             latency=$(echo "$result" | cut -d' ' -f2)
 
