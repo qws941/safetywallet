@@ -60,7 +60,13 @@ export function usePointsLedger() {
 
   return useQuery({
     queryKey: ["admin", "points", siteId],
-    queryFn: () => apiFetch<PointsEntry[]>(`/points/history?siteId=${siteId}`),
+    queryFn: () =>
+      apiFetch<{
+        entries: PointsEntry[];
+        total: number;
+        limit: number;
+        offset: number;
+      }>(`/points/history?siteId=${siteId}`).then((res) => res.entries),
     enabled: !!siteId,
   });
 }

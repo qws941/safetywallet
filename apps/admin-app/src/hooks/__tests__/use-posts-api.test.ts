@@ -68,7 +68,9 @@ describe("use-posts-api", () => {
   });
 
   it("fetches single post by id", async () => {
-    mockApiFetch.mockResolvedValue({ id: "post-1", title: "위험 보고" });
+    mockApiFetch.mockResolvedValue({
+      post: { id: "post-1", title: "위험 보고" },
+    });
     const { wrapper } = createWrapper();
     const { result } = renderHook(() => useAdminPost("post-1"), { wrapper });
 

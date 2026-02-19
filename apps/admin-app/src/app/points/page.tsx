@@ -119,7 +119,7 @@ export default function PointsPage() {
 
       <DataTable
         columns={columns}
-        data={ledger as PointsEntry[]}
+        data={ledger}
         searchable
         searchPlaceholder="회원, 사유 검색..."
         emptyMessage={isLoading ? "로딩 중..." : "포인트 내역이 없습니다"}

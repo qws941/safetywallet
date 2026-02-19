@@ -79,7 +79,10 @@ export function useAdminPosts(filters: PostFilters) {
 export function useAdminPost(postId: string) {
   return useQuery({
     queryKey: ["admin", "post", postId],
-    queryFn: () => apiFetch<Post>(`/admin/posts/${postId}`),
+    queryFn: () =>
+      apiFetch<{ post: Post }>(`/admin/posts/${postId}`).then(
+        (res) => res.post,
+      ),
     enabled: !!postId,
   });
 }

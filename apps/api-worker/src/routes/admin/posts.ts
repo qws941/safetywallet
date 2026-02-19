@@ -167,6 +167,47 @@ app.get("/posts/pending-review", requireManagerOrAdmin, async (c) => {
   });
 });
 
+app.get("/posts/:id", requireManagerOrAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const postId = c.req.param("id");
+
+  const post = await db.select().from(posts).where(eq(posts.id, postId)).get();
+
+  if (!post) {
+    return error(c, "POST_NOT_FOUND", "Post not found", 404);
+  }
+
+  const [author, postSite, images, postReviews] = await Promise.all([
+    db
+      .select({ id: users.id, nameMasked: users.nameMasked })
+      .from(users)
+      .where(eq(users.id, post.userId))
+      .get(),
+    db
+      .select({ id: sites.id, name: sites.name })
+      .from(sites)
+      .where(eq(sites.id, post.siteId))
+      .get(),
+    db
+      .select()
+      .from(postImages)
+      .where(eq(postImages.postId, postId))
+      .orderBy(desc(postImages.createdAt))
+      .all(),
+    db.select().from(reviews).where(eq(reviews.postId, postId)).all(),
+  ]);
+
+  return success(c, {
+    post: {
+      ...post,
+      author: author ? { id: author.id, nameMasked: author.nameMasked } : null,
+      site: postSite,
+      images,
+      reviews: postReviews,
+    },
+  });
+});
+
 interface ReviewPostBody {
   action: "APPROVE" | "REJECT" | "REQUEST_MORE";
   comment?: string;
