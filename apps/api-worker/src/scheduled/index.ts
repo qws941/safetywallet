@@ -117,6 +117,66 @@ async function getOrCreateSystemUser(
   return systemUserId;
 }
 
+/**
+ * Ensure all given users have ACTIVE site memberships for all active sites.
+ * Skips users who already have a membership (safe to call repeatedly).
+ * Chunks queries/inserts to stay within D1 bind-parameter limits.
+ */
+async function ensureSiteMemberships(
+  db: ReturnType<typeof drizzle>,
+  userIds: string[],
+): Promise<number> {
+  if (userIds.length === 0) return 0;
+
+  const activeSites = await db
+    .select({ id: sites.id })
+    .from(sites)
+    .where(eq(sites.active, true))
+    .all();
+
+  if (activeSites.length === 0) return 0;
+
+  let totalCreated = 0;
+  const CHUNK_SIZE = 50;
+
+  for (const site of activeSites) {
+    const existingSet = new Set<string>();
+    for (let i = 0; i < userIds.length; i += CHUNK_SIZE) {
+      const chunk = userIds.slice(i, i + CHUNK_SIZE);
+      const existing = await db
+        .select({ userId: siteMemberships.userId })
+        .from(siteMemberships)
+        .where(
+          and(
+            eq(siteMemberships.siteId, site.id),
+            inArray(siteMemberships.userId, chunk),
+          ),
+        )
+        .all();
+      for (const m of existing) existingSet.add(m.userId);
+    }
+
+    const toInsert = userIds
+      .filter((id) => !existingSet.has(id))
+      .map((userId) => ({
+        userId,
+        siteId: site.id,
+        role: "WORKER" as const,
+        status: "ACTIVE" as const,
+      }));
+
+    if (toInsert.length > 0) {
+      for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+        const chunk = toInsert.slice(i, i + CHUNK_SIZE);
+        await db.insert(siteMemberships).values(chunk);
+      }
+      totalCreated += toInsert.length;
+    }
+  }
+
+  return totalCreated;
+}
+
 async function runMonthEndSnapshot(env: Env): Promise<void> {
   const db = drizzle(env.DB);
   const kstNow = getKSTDate();
@@ -436,6 +496,24 @@ export async function runFasFullSync(env: Env): Promise<void> {
       totalDeactivated = await deactivateRetiredEmployees(retiredEmplCds, db);
     }
 
+    // Ensure site memberships for all active FAS users
+    let membershipCreated = 0;
+    try {
+      const fasUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.externalSystem, "FAS"), isNull(users.deletedAt)))
+        .all();
+      membershipCreated = await ensureSiteMemberships(
+        db,
+        fasUsers.map((u) => u.id),
+      );
+    } catch (err) {
+      log.error("Failed to ensure site memberships during full sync", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     await env.KV.put("fas-last-full-sync", new Date().toISOString());
     await env.KV.delete("fas-status");
 
@@ -452,6 +530,7 @@ export async function runFasFullSync(env: Env): Promise<void> {
         updated: totalUpdated,
         skipped: totalSkipped,
         deactivated: totalDeactivated,
+        membershipCreated,
         errors: totalErrors.length,
       }),
     });
@@ -462,6 +541,7 @@ export async function runFasFullSync(env: Env): Promise<void> {
       updated: totalUpdated,
       skipped: totalSkipped,
       deactivated: totalDeactivated,
+      membershipCreated,
       errors: totalErrors.length,
     });
   } catch (err) {
@@ -561,11 +641,41 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
       deactivatedCount = await deactivateRetiredEmployees(retiredEmplCds, db);
     }
 
+    // Ensure site memberships for synced active users
+    let membershipCreated = 0;
+    try {
+      const activeEmplCds = updatedEmployees
+        .filter((e) => e.stateFlag === "W")
+        .map((e) => e.emplCd);
+      if (activeEmplCds.length > 0) {
+        const syncedUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(
+            and(
+              eq(users.externalSystem, "FAS"),
+              inArray(users.externalWorkerId, activeEmplCds),
+              isNull(users.deletedAt),
+            ),
+          )
+          .all();
+        membershipCreated = await ensureSiteMemberships(
+          db,
+          syncedUsers.map((u) => u.id),
+        );
+      }
+    } catch (err) {
+      log.error("Failed to ensure site memberships during incremental sync", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     log.info("FAS sync complete", {
       created: syncResult.created,
       updated: syncResult.updated,
       skipped: syncResult.skipped,
       deactivated: deactivatedCount,
+      membershipCreated,
     });
 
     await db.insert(auditLogs).values({
@@ -577,6 +687,7 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
         employeesFound: updatedEmployees.length,
         ...syncResult,
         deactivatedCount,
+        membershipCreated,
         since: fiveMinutesAgo.toISOString(),
       }),
     });
@@ -960,6 +1071,36 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
       }
     }
 
+    // Ensure site memberships for all synced AceTime employees
+    let membershipCreated = 0;
+    try {
+      const allExternalIds = aceViewerEmployees.map((e) => e.externalWorkerId);
+      if (allExternalIds.length > 0) {
+        const QUERY_CHUNK = 50;
+        const syncedUserIds: string[] = [];
+        for (let i = 0; i < allExternalIds.length; i += QUERY_CHUNK) {
+          const chunk = allExternalIds.slice(i, i + QUERY_CHUNK);
+          const chunkUsers = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(
+              and(
+                eq(users.externalSystem, "FAS"),
+                inArray(users.externalWorkerId, chunk),
+                isNull(users.deletedAt),
+              ),
+            )
+            .all();
+          syncedUserIds.push(...chunkUsers.map((u) => u.id));
+        }
+        membershipCreated = await ensureSiteMemberships(db, syncedUserIds);
+      }
+    } catch (err) {
+      log.error("Failed to ensure site memberships during AceTime sync", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     log.info("AceTime R2 sync complete", {
       total: aceViewerEmployees.length,
       created,
@@ -967,6 +1108,7 @@ async function runAcetimeSyncFromR2(env: Env): Promise<void> {
       skipped,
       fasCrossMatched,
       fasCrossSkipped,
+      membershipCreated,
     });
   } finally {
     await releaseSyncLock(env.KV, "acetime");

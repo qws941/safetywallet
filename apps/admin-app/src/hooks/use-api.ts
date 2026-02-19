@@ -13,3 +13,5 @@ export * from "./use-education-api";
 export * from "./use-sites-api";
 export * from "./use-monitoring-api";
 export * from "./use-rewards";
+export * from "./use-fas-sync";
+export * from "./use-sync-errors";

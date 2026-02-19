@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -9,6 +9,9 @@ import {
   CardTitle,
   Skeleton,
   Badge,
+  Button,
+  Input,
+  toast,
 } from "@safetywallet/ui";
 import {
   Database,
@@ -19,9 +22,19 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  RefreshCw,
+  Search,
+  Link2,
 } from "lucide-react";
 import { DataTable, type Column } from "@/components/data-table";
-import { useFasSyncStatus, type FasSyncLogEntry } from "@/hooks/use-fas-sync";
+import {
+  useFasSyncStatus,
+  useAcetimeSync,
+  useAcetimeCrossMatch,
+  useSearchFasMariadb,
+  type FasSyncLogEntry,
+  type FasSearchResult,
+} from "@/hooks/use-fas-sync";
 import { useSyncErrors, type SyncErrorItem } from "@/hooks/use-sync-errors";
 
 export const runtime = "edge";
@@ -77,6 +90,27 @@ export default function AttendanceSyncPage() {
     status: "OPEN",
     limit: 50,
   });
+
+  const acetimeSync = useAcetimeSync();
+  const crossMatch = useAcetimeCrossMatch();
+
+  const [searchName, setSearchName] = useState("");
+  const [searchPhone, setSearchPhone] = useState("");
+  const [activeSearch, setActiveSearch] = useState<{
+    name?: string;
+    phone?: string;
+  }>({});
+
+  const { data: searchData, isLoading: searchLoading } =
+    useSearchFasMariadb(activeSearch);
+
+  const handleSearch = () => {
+    if (!searchName && !searchPhone) return;
+    setActiveSearch({
+      name: searchName || undefined,
+      phone: searchPhone || undefined,
+    });
+  };
 
   const isHealthy = syncStatus?.fasStatus !== "down";
 
@@ -178,6 +212,63 @@ export default function AttendanceSyncPage() {
           {formatKstDateTime(item.createdAt)}
         </span>
       ),
+    },
+  ];
+
+  const searchResultsWithIndex = useMemo(
+    () => (searchData?.results ?? []).map((r, i) => ({ ...r, index: i + 1 })),
+    [searchData?.results],
+  );
+
+  const searchColumns: Column<(typeof searchResultsWithIndex)[0]>[] = [
+    {
+      key: "index",
+      header: "No",
+      render: (item) => (
+        <span className="text-muted-foreground">{item.index}</span>
+      ),
+      className: "w-[60px]",
+    },
+    {
+      key: "emplCd",
+      header: "사번",
+      render: (item) => (
+        <span className="font-mono text-xs">{item.emplCd}</span>
+      ),
+    },
+    {
+      key: "name",
+      header: "이름",
+      sortable: true,
+      render: (item) => <span className="font-medium">{item.name}</span>,
+    },
+    {
+      key: "companyName",
+      header: "업체명",
+      sortable: true,
+      render: (item) => <span className="text-sm">{item.companyName}</span>,
+    },
+    {
+      key: "phone",
+      header: "연락처",
+      render: (item) => (
+        <span className="font-mono text-xs">{item.phone || "-"}</span>
+      ),
+    },
+    {
+      key: "stateFlag",
+      header: "상태",
+      sortable: true,
+      render: (item) => (
+        <Badge variant={item.stateFlag === "W" ? "default" : "secondary"}>
+          {item.stateFlag === "W" ? "재직" : item.stateFlag}
+        </Badge>
+      ),
+    },
+    {
+      key: "entrDay",
+      header: "입사일",
+      render: (item) => <span className="text-sm">{item.entrDay || "-"}</span>,
     },
   ];
 
@@ -295,6 +386,132 @@ export default function AttendanceSyncPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            수동 동기화
+          </CardTitle>
+          <CardDescription>
+            AceTime R2 데이터 동기화 및 FAS 크로스매칭을 수동으로 실행합니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            disabled={acetimeSync.isPending}
+            onClick={() =>
+              acetimeSync.mutate(undefined, {
+                onSuccess: (data) => {
+                  toast({
+                    description: `AceTime 동기화 완료: ${data.sync.created}건 생성, ${data.sync.updated}건 갱신, FAS 매칭 ${data.fasCrossMatch.matched}건`,
+                  });
+                },
+                onError: () => {
+                  toast({
+                    variant: "destructive",
+                    description: "AceTime 동기화 실패",
+                  });
+                },
+              })
+            }
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${acetimeSync.isPending ? "animate-spin" : ""}`}
+            />
+            {acetimeSync.isPending ? "동기화 중..." : "AceTime R2 동기화"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={crossMatch.isPending}
+            onClick={() =>
+              crossMatch.mutate(100, {
+                onSuccess: (data) => {
+                  toast({
+                    description: `FAS 크로스매칭 완료: ${data.results.matched}건 매칭${data.hasMore ? " (추가 데이터 있음)" : ""}`,
+                  });
+                },
+                onError: () => {
+                  toast({
+                    variant: "destructive",
+                    description: "FAS 크로스매칭 실패",
+                  });
+                },
+              })
+            }
+          >
+            <Link2
+              className={`h-4 w-4 mr-2 ${crossMatch.isPending ? "animate-spin" : ""}`}
+            />
+            {crossMatch.isPending ? "매칭 중..." : "FAS 크로스매칭"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            FAS MariaDB 검색
+          </CardTitle>
+          <CardDescription>
+            FAS 원본 데이터베이스에서 근로자를 검색합니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1">
+              <label htmlFor="fas-search-name" className="text-sm font-medium">
+                이름
+              </label>
+              <Input
+                id="fas-search-name"
+                placeholder="근로자 이름"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="w-48"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="fas-search-phone" className="text-sm font-medium">
+                연락처
+              </label>
+              <Input
+                id="fas-search-phone"
+                placeholder="전화번호"
+                value={searchPhone}
+                onChange={(e) => setSearchPhone(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="w-48"
+              />
+            </div>
+            <Button
+              onClick={handleSearch}
+              disabled={(!searchName && !searchPhone) || searchLoading}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              {searchLoading ? "검색 중..." : "검색"}
+            </Button>
+          </div>
+          {searchData && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                검색 결과: {searchData.count}건
+              </p>
+              <DataTable
+                columns={searchColumns}
+                data={searchResultsWithIndex}
+                searchable
+                searchPlaceholder="이름 또는 업체 검색..."
+                emptyMessage="검색 결과가 없습니다."
+                pageSize={10}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
