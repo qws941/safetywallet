@@ -113,7 +113,7 @@ export function ApprovalDialog({ isOpen, onClose }: ApprovalDialogProps) {
               <option value="">작업자 선택...</option>
               {members?.map((member) => (
                 <option key={member.user.id} value={member.user.id}>
-                  {member.user.nameMasked} ({member.user.phone})
+                  {member.user.name}
                 </option>
               ))}
             </select>

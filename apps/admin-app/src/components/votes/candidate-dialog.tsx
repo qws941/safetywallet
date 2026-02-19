@@ -76,7 +76,7 @@ export function CandidateDialog() {
               <option value="">사용자를 선택하세요</option>
               {members?.map((member) => (
                 <option key={member.user.id} value={member.user.id}>
-                  {member.user.nameMasked} ({member.user.phone})
+                  {member.user.name}
                 </option>
               ))}
             </select>

@@ -4,17 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { apiFetch } from "./use-api-base";
 
-interface Member {
+export interface Member {
   id: string;
-  userId: string;
   user: {
     id: string;
-    phone: string;
-    nameMasked: string;
+    name: string;
   };
   status: string;
   role: string;
-  pointsBalance: number;
   joinedAt: string;
 }
 
@@ -107,7 +104,12 @@ export function useMembers(siteId?: string) {
 
   return useQuery({
     queryKey: ["admin", "members", targetSiteId],
-    queryFn: () => apiFetch<Member[]>(`/sites/${targetSiteId}/members`),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: Member[]; pagination: unknown }>(
+        `/sites/${targetSiteId}/members`,
+      );
+      return res.data;
+    },
     enabled: !!targetSiteId,
   });
 }
@@ -252,8 +254,13 @@ export function useManualApprovals(
 
   return useQuery({
     queryKey: ["admin", "manual-approvals", targetSiteId, date, status],
-    queryFn: () =>
-      apiFetch<ManualApproval[]>(`/approvals?${params.toString()}`),
+    queryFn: async () => {
+      const res = await apiFetch<{
+        data: ManualApproval[];
+        pagination: unknown;
+      }>(`/approvals?${params.toString()}`);
+      return res.data;
+    },
     enabled: !!targetSiteId,
   });
 }

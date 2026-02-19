@@ -90,8 +90,8 @@ export function AssignmentForm({ postId, onRefresh }: AssignmentFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {members?.map((m) => (
-                  <SelectItem key={m.userId} value={m.userId}>
-                    {m.user.nameMasked}
+                  <SelectItem key={m.user.id} value={m.user.id}>
+                    {m.user.name}
                   </SelectItem>
                 ))}
               </SelectContent>

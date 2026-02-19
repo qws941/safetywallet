@@ -7,10 +7,9 @@ import { useMembers } from "@/hooks/use-api";
 
 interface Member {
   id: string;
-  user: { nameMasked: string; phone: string };
+  user: { id: string; name: string };
   status: string;
   role: string;
-  pointsBalance: number;
   joinedAt: string;
 }
 
@@ -25,8 +24,17 @@ export default function MembersPage() {
   const { data: members = [], isLoading } = useMembers();
 
   const columns: Column<Member>[] = [
-    { key: "user.nameMasked", header: "이름", sortable: true },
-    { key: "user.phone", header: "전화번호" },
+    {
+      key: "user.name",
+      header: "이름",
+      sortable: true,
+      render: (item) => item.user.name || "-",
+    },
+    {
+      key: "role",
+      header: "역할",
+      render: (item) => item.role,
+    },
     {
       key: "status",
       header: "상태",
@@ -35,12 +43,6 @@ export default function MembersPage() {
           {statusLabels[item.status] || item.status}
         </Badge>
       ),
-    },
-    {
-      key: "pointsBalance",
-      header: "포인트",
-      sortable: true,
-      render: (item) => item.pointsBalance.toLocaleString(),
     },
     {
       key: "joinedAt",
@@ -58,7 +60,7 @@ export default function MembersPage() {
         columns={columns}
         data={members as Member[]}
         searchable
-        searchPlaceholder="이름, 전화번호 검색..."
+        searchPlaceholder="이름 검색..."
         onRowClick={(item) => router.push(`/members/${item.id}`)}
         emptyMessage={isLoading ? "로딩 중..." : "회원이 없습니다"}
       />

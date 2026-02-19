@@ -54,10 +54,8 @@ export function CandidatesCard({ month }: CandidatesCardProps) {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const filteredMembers = members.filter(
-    (member) =>
-      member.user.nameMasked.includes(searchTerm) ||
-      member.user.phone.includes(searchTerm),
+  const filteredMembers = members.filter((member) =>
+    member.user.name.includes(searchTerm),
   );
 
   const handleAddCandidate = async (userId: string) => {
@@ -118,14 +116,11 @@ export function CandidatesCard({ month }: CandidatesCardProps) {
                   <button
                     key={member.id}
                     className="flex items-center justify-between p-2 hover:bg-muted rounded-md cursor-pointer w-full text-left"
-                    onClick={() => handleAddCandidate(member.userId)}
+                    onClick={() => handleAddCandidate(member.user.id)}
                     type="button"
                   >
                     <div>
-                      <p className="font-medium">{member.user.nameMasked}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.user.phone}
-                      </p>
+                      <p className="font-medium">{member.user.name}</p>
                     </div>
                     <span
                       className={buttonVariants({

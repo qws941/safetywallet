@@ -48,11 +48,7 @@ export default function MemberDetailPage() {
           <dl className="space-y-3">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">이름</dt>
-              <dd className="font-medium">{member.user.nameMasked}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">전화번호</dt>
-              <dd className="font-medium">{member.user.phone}</dd>
+              <dd className="font-medium">{member.user.name}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">상태</dt>
@@ -78,13 +74,17 @@ export default function MemberDetailPage() {
         </Card>
 
         <Card className="p-6">
-          <h2 className="mb-4 text-lg font-semibold">포인트 정보</h2>
-          <div className="text-center">
-            <p className="text-4xl font-bold">
-              {member.pointsBalance.toLocaleString()}
-            </p>
-            <p className="mt-1 text-muted-foreground">현재 포인트</p>
-          </div>
+          <h2 className="mb-4 text-lg font-semibold">추가 정보</h2>
+          <dl className="space-y-3">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">회원 ID</dt>
+              <dd className="font-medium text-sm">{member.id}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">사용자 ID</dt>
+              <dd className="font-medium text-sm">{member.user.id}</dd>
+            </div>
+          </dl>
         </Card>
       </div>
     </div>

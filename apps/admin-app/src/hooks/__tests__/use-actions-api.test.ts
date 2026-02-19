@@ -26,11 +26,12 @@ describe("use-actions-api", () => {
   });
 
   it("fetches action items by current site", async () => {
-    mockApiFetch.mockResolvedValue([{ id: "a1" }]);
+    mockApiFetch.mockResolvedValue({ data: [{ id: "a1" }] });
     const { wrapper, queryClient } = createWrapper();
     const { result } = renderHook(() => useActionItems(), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([{ id: "a1" }]);
     expect(mockApiFetch).toHaveBeenCalledWith("/actions?siteId=site-1");
     expect(
       queryClient

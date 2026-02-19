@@ -4,7 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Input } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
-import { usePointsLedger, useAwardPoints, useMembers } from "@/hooks/use-api";
+import {
+  usePointsLedger,
+  useAwardPoints,
+  useMembers,
+  type Member,
+} from "@/hooks/use-api";
 
 interface PointsEntry {
   id: string;
@@ -84,13 +89,11 @@ export default function PointsPage() {
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">회원 선택</option>
-            {(members as { id: string; user: { nameMasked: string } }[]).map(
-              (m) => (
-                <option key={m.id} value={m.id}>
-                  {m.user.nameMasked}
-                </option>
-              ),
-            )}
+            {(members as Member[]).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.user.name}
+              </option>
+            ))}
           </select>
           <Input
             type="number"

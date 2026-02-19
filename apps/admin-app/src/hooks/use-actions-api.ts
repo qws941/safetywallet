@@ -56,7 +56,12 @@ export function useActionItems() {
 
   return useQuery({
     queryKey: ["admin", "actions", siteId],
-    queryFn: () => apiFetch<ActionItem[]>(`/actions?siteId=${siteId}`),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: ActionItem[]; pagination: unknown }>(
+        `/actions?siteId=${siteId}`,
+      );
+      return res.data;
+    },
     enabled: !!siteId,
   });
 }

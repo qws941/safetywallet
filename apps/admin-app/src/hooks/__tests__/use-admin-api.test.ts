@@ -75,11 +75,12 @@ describe("use-admin-api hooks", () => {
   });
 
   it("uses explicit site id when fetching members", async () => {
-    mockApiFetch.mockResolvedValue([{ id: "member-1" }]);
+    mockApiFetch.mockResolvedValue({ data: [{ id: "member-1" }] });
     const { wrapper } = createWrapper();
     const { result } = renderHook(() => useMembers("site-2"), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([{ id: "member-1" }]);
     expect(mockApiFetch).toHaveBeenCalledWith("/sites/site-2/members");
   });
 
@@ -178,7 +179,7 @@ describe("use-admin-api hooks", () => {
     const { wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    mockApiFetch.mockResolvedValueOnce([{ id: "m1" }]);
+    mockApiFetch.mockResolvedValueOnce({ data: [{ id: "m1" }] });
     const query = renderHook(
       () => useManualApprovals("site-2", "2026-02-15", "PENDING"),
       { wrapper },
