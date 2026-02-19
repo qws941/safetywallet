@@ -215,7 +215,25 @@ export function useAuditLogs() {
 export function useMySites() {
   return useQuery({
     queryKey: ["admin", "my-sites"],
-    queryFn: () => apiFetch<SiteMembership[]>("/users/me/memberships"),
+    queryFn: async () => {
+      const res = await apiFetch<{
+        memberships: Array<{
+          id: string;
+          role: string;
+          status: string;
+          joinedAt: string;
+          site: { id: string; name: string; active: boolean };
+        }>;
+      }>("/users/me/memberships");
+      return res.memberships.map((m) => ({
+        id: m.id,
+        siteId: m.site.id,
+        siteName: m.site.name,
+        status: m.status,
+        role: m.role,
+        joinedAt: m.joinedAt,
+      }));
+    },
   });
 }
 

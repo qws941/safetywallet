@@ -48,12 +48,7 @@ export default function AddCandidatePage() {
 
   const { data, isLoading } = useQuery<UsersResponse>({
     queryKey: ["users"],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: UsersResponse }>(
-        `/admin/users?limit=50`,
-      );
-      return res.data;
-    },
+    queryFn: () => apiFetch<UsersResponse>(`/admin/users?limit=50`),
   });
 
   const addCandidateMutation = useMutation({

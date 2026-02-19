@@ -47,12 +47,10 @@ export default function VoteDetailPage() {
 
   const { data, isLoading } = useQuery<VoteResultsResponse>({
     queryKey: ["votes", "results", siteId, month],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: VoteResultsResponse }>(
+    queryFn: () =>
+      apiFetch<VoteResultsResponse>(
         `/admin/votes/results?siteId=${siteId}&month=${month}`,
-      );
-      return res.data;
-    },
+      ),
     enabled: !!siteId && !!month,
   });
 
