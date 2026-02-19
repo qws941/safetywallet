@@ -8,6 +8,7 @@ import { syncErrors, syncErrorStatusEnum, syncTypeEnum } from "../../db/schema";
 import { AdminResolveSyncErrorSchema } from "../../validators/schemas";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
+import { requireAdmin } from "./helpers";
 import type { AppContext } from "./helpers";
 
 const app = new Hono<{
@@ -15,12 +16,7 @@ const app = new Hono<{
   Variables: { auth: AuthContext };
 }>();
 
-app.get("/sync-errors", async (c: AppContext) => {
-  const user = c.get("auth").user;
-  if (user.role !== "SUPER_ADMIN" && user.role !== "SITE_ADMIN") {
-    return error(c, "ADMIN_ACCESS_REQUIRED", "Admin access required", 403);
-  }
-
+app.get("/sync-errors", requireAdmin, async (c: AppContext) => {
   const db = drizzle(c.env.DB);
   const status = c.req.query("status");
   const syncType = c.req.query("syncType");
@@ -92,12 +88,10 @@ app.get("/sync-errors", async (c: AppContext) => {
 
 app.patch(
   "/sync-errors/:id/status",
+  requireAdmin,
   zValidator("json", AdminResolveSyncErrorSchema as never),
   async (c) => {
     const user = c.get("auth").user;
-    if (user.role !== "SUPER_ADMIN" && user.role !== "SITE_ADMIN") {
-      return error(c, "ADMIN_ACCESS_REQUIRED", "Admin access required", 403);
-    }
 
     const id = c.req.param("id");
     const body: z.infer<typeof AdminResolveSyncErrorSchema> =

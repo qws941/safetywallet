@@ -30,7 +30,7 @@ type AppContext = {
 };
 
 function isAdminRole(role: string): boolean {
-  return role === "ADMIN" || role === "SUPER_ADMIN";
+  return role === "ADMIN" || role === "SITE_ADMIN" || role === "SUPER_ADMIN";
 }
 
 async function withAuth(

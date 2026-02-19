@@ -10,6 +10,7 @@ import { UserRole } from "@safetywallet/types";
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const setSiteId = useAuthStore((s) => s.setSiteId);
   const user = useAuthStore((s) => s.user);
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const _hasHydrated = useAuthStore((s) => s._hasHydrated);
@@ -51,6 +52,22 @@ export default function LoginPage() {
       }
 
       login(result.user, result.tokens);
+
+      try {
+        const sitesResult = await apiFetch<{
+          data: Array<{ id: string; name: string }>;
+        }>("/sites", {
+          headers: {
+            Authorization: `Bearer ${result.tokens.accessToken}`,
+          },
+        });
+        if (sitesResult.data?.length > 0) {
+          setSiteId(sitesResult.data[0].id);
+        }
+      } catch {
+        // Site fetch failed — non-blocking, admin proceeds without default site
+      }
+
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {

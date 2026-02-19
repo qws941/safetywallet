@@ -117,7 +117,11 @@ export function csvResponse(
 
 export const requireAdmin = async (c: AppContext, next: Next) => {
   const { user } = c.get("auth");
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (
+    user.role !== "ADMIN" &&
+    user.role !== "SITE_ADMIN" &&
+    user.role !== "SUPER_ADMIN"
+  ) {
     return error(c, "ADMIN_ACCESS_REQUIRED", "Admin access required", 403);
   }
   await next();
