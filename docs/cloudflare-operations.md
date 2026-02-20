@@ -45,6 +45,8 @@ The authoritative runtime binding config is `apps/api-worker/wrangler.toml`.
 
 ## Deploy
 
+Policy: manual deploy is prohibited. Production deployment must be triggered only by Git reference (`master` push) through CI.
+
 ### Git Connection Preflight (Before Deploy)
 
 Run this once before any production deploy from local environment.
@@ -57,48 +59,23 @@ This checks remote connectivity, GitHub auth, upstream tracking, and a dry-run p
 
 ### One-Worker Deploy Path (API Worker Only)
 
-Use this path for API-only hotfixes where Pages deploy is unnecessary.
-
-```bash
-# Build only shared types + API Worker bundle validation
-npm run build:one-worker
-
-# Deploy only API Worker (production)
-npm run deploy:one-worker
-
-# Deploy only API Worker (dev environment)
-npm run deploy:api-worker:dev
-```
+Single-worker runtime is active (`safework2-api` serves API + `/` + `/admin` static routes).
+Deploy execution is CI-only.
 
 ### CI/CD Production
 
 - Trigger: CI workflow success on `master` (`workflow_run`)
 - Workflow: `.github/workflows/deploy-production.yml`
 - Single-worker behavior: deploys API Worker only
-
-Run manually with GitHub CLI:
-
-```bash
-gh workflow run "Deploy SafeWork2"
-gh run list --workflow "Deploy SafeWork2" --limit 5
-gh run watch
-```
+- Deploy source: checked out by git ref (`github.event.workflow_run.head_sha`)
+- Pre-deploy verification: `.github/workflows/deploy-verify.yml` via `workflow_call`
+- Post-deploy verification: `.github/workflows/deploy-verify.yml` via `workflow_call`
 
 ### CI/CD Staging
 
 - No dedicated staging deployment workflow is currently checked in under `.github/workflows/`.
 - Staging verification exists in `.github/workflows/deploy-verify.yml` (`environment=staging`).
-- Dev manual deploys use `apps/api-worker/wrangler.toml` (`[env.dev]`).
-
-### Manual Deploy
-
-```bash
-# API Worker
-npm --prefix apps/api-worker run deploy
-
-# API Worker (dev)
-npx wrangler deploy --config apps/api-worker/wrangler.toml --env dev
-```
+- Manual deploy is prohibited.
 
 ## D1 Migrations
 
@@ -147,7 +124,7 @@ Automated smoke verification runs in deploy workflows (`@smoke` Playwright tag).
 Manual checks below remain required for incident triage and rollback confidence.
 
 - Verify worker app: `https://safewallet.jclee.me`
-- Verify admin app: `https://admin.safewallet.jclee.me`
+- Verify admin app: `https://safewallet.jclee.me/admin` (custom domain `https://admin.safewallet.jclee.me` is also mapped)
 - Verify API health and smoke routes under `https://safewallet-api.jclee.workers.dev/api`
 - Check errors/latency dashboards and alert channels
 
