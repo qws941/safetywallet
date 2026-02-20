@@ -149,9 +149,9 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
         env:
-          API_URL: https://safework2-api.jclee.workers.dev/api
-          WORKER_APP_URL: https://safework2.jclee.me
-          ADMIN_APP_URL: https://admin.safework2.jclee.me
+          API_URL: https://safewallet.jclee.me/api
+          WORKER_APP_URL: https://safewallet.jclee.me
+          ADMIN_APP_URL: https://admin.safewallet.jclee.me
 
       - name: Upload report on failure
         uses: actions/upload-artifact@v4

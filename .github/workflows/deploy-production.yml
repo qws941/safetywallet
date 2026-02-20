@@ -49,8 +49,80 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build shared types
+      - name: Build shared packages
         run: npm run build --workspace=packages/types
+
+      - name: Build worker-app (static export)
+        run: npm run build --workspace=apps/worker-app
+
+      - name: Build admin-app (static export)
+        run: npm run build --workspace=apps/admin-app
+
+      - name: Sync worker-app static assets to R2
+        working-directory: apps/worker-app
+        run: |
+          get_ct() {
+            case "${1##*.}" in
+              html) echo "text/html";;
+              css)  echo "text/css";;
+              js)   echo "application/javascript";;
+              json) echo "application/json";;
+              png)  echo "image/png";;
+              jpg|jpeg) echo "image/jpeg";;
+              gif)  echo "image/gif";;
+              svg)  echo "image/svg+xml";;
+              ico)  echo "image/x-icon";;
+              woff) echo "font/woff";;
+              woff2) echo "font/woff2";;
+              ttf)  echo "font/ttf";;
+              webp) echo "image/webp";;
+              webmanifest) echo "application/manifest+json";;
+              xml)  echo "application/xml";;
+              txt)  echo "text/plain";;
+              *)    echo "application/octet-stream";;
+            esac
+          }
+          find out -type f | while IFS= read -r file; do
+            key="${file#out/}"
+            ct=$(get_ct "$file")
+            npx wrangler r2 object put "safework2-static/$key" --file="$file" --content-type="$ct"
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_API || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sync admin-app static assets to R2
+        working-directory: apps/admin-app
+        run: |
+          get_ct() {
+            case "${1##*.}" in
+              html) echo "text/html";;
+              css)  echo "text/css";;
+              js)   echo "application/javascript";;
+              json) echo "application/json";;
+              png)  echo "image/png";;
+              jpg|jpeg) echo "image/jpeg";;
+              gif)  echo "image/gif";;
+              svg)  echo "image/svg+xml";;
+              ico)  echo "image/x-icon";;
+              woff) echo "font/woff";;
+              woff2) echo "font/woff2";;
+              ttf)  echo "font/ttf";;
+              webp) echo "image/webp";;
+              webmanifest) echo "application/manifest+json";;
+              xml)  echo "application/xml";;
+              txt)  echo "text/plain";;
+              *)    echo "application/octet-stream";;
+            esac
+          }
+          find out -type f | while IFS= read -r file; do
+            key="admin/${file#out/}"
+            ct=$(get_ct "$file")
+            npx wrangler r2 object put "safework2-static/$key" --file="$file" --content-type="$ct"
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_API || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Validate API Worker bundle
         run: npm run build --workspace=apps/api-worker

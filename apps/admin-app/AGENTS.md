@@ -25,6 +25,14 @@ src/
 | API     | `src/hooks/`                 | `use-education-api.ts` etc. |
 | Auth    | `src/stores/auth.ts`         | Zustand store               |
 
+## SUBMODULE DOCS
+
+- `src/app/AGENTS.md`: Dashboard route groups and page-domain structure
+- `src/hooks/AGENTS.md`: TanStack Query hook inventory and invalidation rules
+- `src/components/AGENTS.md`: Reusable admin UI component boundaries
+- `src/lib/AGENTS.md`: API client and utility-layer constraints
+- `src/stores/AGENTS.md`: Persisted auth/session state conventions
+
 ## CONVENTIONS
 
 - **'use client' Only**: Zero RSC. All pages/components are client-side.

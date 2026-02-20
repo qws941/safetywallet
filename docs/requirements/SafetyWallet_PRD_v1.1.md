@@ -4,6 +4,9 @@
 > **Date**: 2025-02-05  
 > **Audience**: Development Team (Frontend/Backend), PM, Site Operations  
 > **Platform**: Mobile Web (PWA) + Admin Web (PC)
+>
+> **Baseline Note**: This PRD is the baseline requirements document and may contain historical options (for example OTP-first onboarding) that were superseded during implementation.
+> For live implementation truth, use `docs/requirements/REQUIREMENTS_CHECKLIST.md`, `docs/FEATURE_CHECKLIST.md`, and `AGENTS.md`.
 
 ---
 
@@ -51,7 +54,7 @@
                       [Admin Action/Feedback Sharing]
 ```
 
-- **Safety Wallet**: Accumulate points for worker safety activities
+- **SafetyWallet**: Accumulate points for worker safety activities
 - **Feedback Loop**: Share completed actions to sustain engagement
 
 ---

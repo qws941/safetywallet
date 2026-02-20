@@ -138,7 +138,7 @@ function formatSlackPayload(alert: AlertPayload): Record<string, unknown> {
         elements: [
           {
             type: "mrkdwn",
-            text: `SafeWork2 | ${alert.type} | ${alert.timestamp}`,
+            text: `SafetyWallet | ${alert.type} | ${alert.timestamp}`,
           },
         ],
       },

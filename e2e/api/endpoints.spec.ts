@@ -256,7 +256,7 @@ test.describe("CORS Headers", () => {
     const response = await request.fetch("./health", {
       method: "OPTIONS",
       headers: {
-        Origin: "https://safework2.jclee.me",
+        Origin: "https://safewallet.jclee.me",
         "Access-Control-Request-Method": "GET",
       },
     });
@@ -273,7 +273,7 @@ test.describe("CORS Headers", () => {
     const response = await request.fetch("./auth/login", {
       method: "OPTIONS",
       headers: {
-        Origin: "https://safework2.jclee.me",
+        Origin: "https://safewallet.jclee.me",
         "Access-Control-Request-Method": "POST",
       },
     });
@@ -308,7 +308,7 @@ test.describe("CORS Headers", () => {
     const response = await request.fetch("./health", {
       method: "OPTIONS",
       headers: {
-        Origin: "https://admin.safework2.jclee.me",
+        Origin: "https://admin.safewallet.jclee.me",
         "Access-Control-Request-Method": "GET",
       },
     });
