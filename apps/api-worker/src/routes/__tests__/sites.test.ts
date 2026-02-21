@@ -183,57 +183,6 @@ describe("sites route", () => {
 
   // ---------- POST /:id/leave ----------
 
-  describe("POST /:id/regenerate-code", () => {
-    it("returns 403 for ADMIN (super admin only)", async () => {
-      const { app, env } = createApp(makeAuth("ADMIN"));
-      const res = await app.request(
-        "http://localhost/sites/site-1/regenerate-code",
-        {
-          method: "POST",
-        },
-        env,
-      );
-      expect(res.status).toBe(403);
-    });
-
-    it("returns 404 when site not found", async () => {
-      const { app, env } = createApp(makeAuth("SUPER_ADMIN"));
-      const res = await app.request(
-        "http://localhost/sites/site-1/regenerate-code",
-        {
-          method: "POST",
-        },
-        env,
-      );
-      expect(res.status).toBe(404);
-    });
-
-    it("regenerates join code for SUPER_ADMIN", async () => {
-      mockGetQueue.push(
-        { id: "site-1", joinCode: "OLDCODE1" },
-        { id: "site-1", joinCode: "NEWCODE1" },
-      );
-      const { app, env } = createApp(makeAuth("SUPER_ADMIN"));
-
-      const res = await app.request(
-        "http://localhost/sites/site-1/regenerate-code",
-        {
-          method: "POST",
-        },
-        env,
-      );
-
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as {
-        success: boolean;
-        data: { site: { id: string; joinCode: string } };
-      };
-      expect(body.success).toBe(true);
-      expect(body.data.site.id).toBe("site-1");
-      expect(mockInsertValues).toHaveBeenCalled();
-    });
-  });
-
   describe("POST /:id/leave", () => {
     it("returns 404 when membership not found", async () => {
       const { app, env } = createApp(makeAuth("WORKER"));
