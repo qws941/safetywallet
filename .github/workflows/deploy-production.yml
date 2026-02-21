@@ -5,157 +5,75 @@ on:
     workflows: ["CI"]
     branches: [master]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to verify after Cloudflare Git Integration deploy"
+        required: false
+        default: "master"
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-env:
-  NODE_VERSION: "20"
-
 jobs:
   resolve-sha:
     name: Resolve Deployment SHA
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       deploy-sha: ${{ steps.sha.outputs.deploy_sha }}
+      deploy-ref: ${{ steps.sha.outputs.deploy_ref }}
     steps:
+      - uses: actions/checkout@v6
       - name: Select source commit
         id: sha
         run: |
-          DEPLOY_SHA="${{ github.event.workflow_run.head_sha }}"
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            DEPLOY_REF="${{ github.event.workflow_run.head_branch }}"
+            DEPLOY_SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            DEPLOY_REF="${{ inputs.ref || github.ref_name }}"
+            git fetch --force --tags origin
+            if git rev-parse --verify "${DEPLOY_REF}^{commit}" >/dev/null 2>&1; then
+              DEPLOY_SHA="$(git rev-parse "${DEPLOY_REF}^{commit}")"
+            elif git rev-parse --verify "origin/${DEPLOY_REF}^{commit}" >/dev/null 2>&1; then
+              DEPLOY_SHA="$(git rev-parse "origin/${DEPLOY_REF}^{commit}")"
+            else
+              echo "::error::Unable to resolve deploy ref: ${DEPLOY_REF}"
+              exit 1
+            fi
+          fi
+
+          echo "deploy_ref=$DEPLOY_REF" >> "$GITHUB_OUTPUT"
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploy source ref: $DEPLOY_REF"
           echo "Deploy source SHA: $DEPLOY_SHA"
 
-  verify-before-deploy:
-    name: Verify Production Before Deploy
+  wait-for-cloudflare-build:
+    name: Wait for Cloudflare Git Integration Deploy
     needs: [resolve-sha]
-    if: github.event.workflow_run.conclusion == 'success'
-    uses: ./.github/workflows/deploy-verify.yml
-    with:
-      environment: production
-      ref: ${{ needs.resolve-sha.outputs.deploy-sha }}
-    secrets: inherit
-
-  deploy-api-worker:
-    name: Deploy Single Worker
     runs-on: ubuntu-latest
-    needs: [resolve-sha, verify-before-deploy]
-    if: github.event.workflow_run.conclusion == 'success'
-    environment: production
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve-sha.outputs.deploy-sha }}
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify Elasticsearch secret binding
-        working-directory: apps/api-worker
+      - name: Wait until production API responds healthy
         run: |
-          secrets_json=$(npx wrangler secret list --config "wrangler.toml" --format json)
-          if ! printf '%s' "$secrets_json" | grep -q '"name":"ELASTICSEARCH_URL"'; then
-            echo "::error::Missing required production secret: ELASTICSEARCH_URL"
-            exit 1
-          fi
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_API || secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Build shared packages
-        run: npm run build --workspace=packages/types
-
-      - name: Build worker-app (static export)
-        run: npm run build --workspace=apps/worker-app
-
-      - name: Build admin-app (static export)
-        run: npm run build --workspace=apps/admin-app
-
-      - name: Sync worker-app static assets to R2
-        working-directory: apps/worker-app
-        run: |
-          get_ct() {
-            case "${1##*.}" in
-              html) echo "text/html";;
-              css)  echo "text/css";;
-              js)   echo "application/javascript";;
-              json) echo "application/json";;
-              png)  echo "image/png";;
-              jpg|jpeg) echo "image/jpeg";;
-              gif)  echo "image/gif";;
-              svg)  echo "image/svg+xml";;
-              ico)  echo "image/x-icon";;
-              woff) echo "font/woff";;
-              woff2) echo "font/woff2";;
-              ttf)  echo "font/ttf";;
-              webp) echo "image/webp";;
-              webmanifest) echo "application/manifest+json";;
-              xml)  echo "application/xml";;
-              txt)  echo "text/plain";;
-              *)    echo "application/octet-stream";;
-            esac
-          }
-          find out -type f | while IFS= read -r file; do
-            key="${file#out/}"
-            ct=$(get_ct "$file")
-            npx wrangler r2 object put "safework2-static/$key" --file="$file" --content-type="$ct" --remote
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 10 https://safewallet.jclee.me/api/health || true)
+            if [ "$code" = "200" ] && grep -q '"status":"healthy"' /tmp/health.json; then
+              echo "Cloudflare deployment appears available"
+              exit 0
+            fi
+            echo "Waiting for Cloudflare deploy... attempt $i/30"
+            sleep 20
           done
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_API || secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Sync admin-app static assets to R2
-        working-directory: apps/admin-app
-        run: |
-          get_ct() {
-            case "${1##*.}" in
-              html) echo "text/html";;
-              css)  echo "text/css";;
-              js)   echo "application/javascript";;
-              json) echo "application/json";;
-              png)  echo "image/png";;
-              jpg|jpeg) echo "image/jpeg";;
-              gif)  echo "image/gif";;
-              svg)  echo "image/svg+xml";;
-              ico)  echo "image/x-icon";;
-              woff) echo "font/woff";;
-              woff2) echo "font/woff2";;
-              ttf)  echo "font/ttf";;
-              webp) echo "image/webp";;
-              webmanifest) echo "application/manifest+json";;
-              xml)  echo "application/xml";;
-              txt)  echo "text/plain";;
-              *)    echo "application/octet-stream";;
-            esac
-          }
-          find out -type f | while IFS= read -r file; do
-            key="admin/${file#out/}"
-            ct=$(get_ct "$file")
-            npx wrangler r2 object put "safework2-static/$key" --file="$file" --content-type="$ct" --remote
-          done
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_API || secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Validate worker bundle
-        run: npm run build --workspace=apps/api-worker
-
-      - name: Deploy worker
-        working-directory: apps/api-worker
-        run: npx wrangler deploy --env=""
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_API || secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          echo "::error::Timed out waiting for production health endpoint"
+          exit 1
 
   verify-production:
-    name: Verify Production After Deploy
-    needs: [resolve-sha, deploy-api-worker]
+    name: Verify Production After Git Integration Deploy
+    needs: [resolve-sha, wait-for-cloudflare-build]
     uses: ./.github/workflows/deploy-verify.yml
     with:
       environment: production
@@ -165,16 +83,16 @@ jobs:
   notify-slack:
     name: Notify Slack
     runs-on: ubuntu-latest
-    needs: [verify-before-deploy, deploy-api-worker, verify-production]
+    needs: [verify-production]
     if: always() && !cancelled()
     steps:
       - name: Send deploy status to Slack (optional)
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || secrets.DEPLOY_MONITOR_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          VERIFY_BEFORE_RESULT: ${{ needs.verify-before-deploy.result }}
-          WORKER_RESULT: ${{ needs.deploy-api-worker.result }}
           VERIFY_RESULT: ${{ needs.verify-production.result }}
+          DEPLOY_REF: ${{ needs.resolve-sha.outputs.deploy-ref }}
+          DEPLOY_SHA: ${{ needs.resolve-sha.outputs.deploy-sha }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "Slack webhook not configured. Skipping notification."
@@ -184,19 +102,22 @@ jobs:
           status="SUCCESS"
           icon=":white_check_mark:"
           color="#2eb886"
-
-          if [ "$VERIFY_BEFORE_RESULT" = "failure" ] || [ "$WORKER_RESULT" = "failure" ] || [ "$VERIFY_RESULT" = "failure" ]; then
+          if [ "$VERIFY_RESULT" = "failure" ]; then
             status="FAILED"
             icon=":x:"
             color="#d40e0d"
-          elif [ "$VERIFY_BEFORE_RESULT" = "cancelled" ] || [ "$WORKER_RESULT" = "cancelled" ] || [ "$VERIFY_RESULT" = "cancelled" ]; then
+          elif [ "$VERIFY_RESULT" = "cancelled" ]; then
             status="CANCELLED"
+            icon=":warning:"
+            color="#daa038"
+          elif [ "$VERIFY_RESULT" = "skipped" ]; then
+            status="SKIPPED"
             icon=":warning:"
             color="#daa038"
           fi
 
-          payload=$(printf '{"attachments":[{"color":"%s","text":"%s Production deploy %s\\n- Verify before deploy: %s\\n- Worker: %s\\n- Verify after deploy: %s\\n- Run: %s"}]}' \
-            "$color" "$icon" "$status" "$VERIFY_BEFORE_RESULT" "$WORKER_RESULT" "$VERIFY_RESULT" "$RUN_URL")
+          payload=$(printf '{"attachments":[{"color":"%s","text":"%s Production deploy verification (%s)\n- Ref: %s\n- SHA: %s\n- Verify: %s\n- Run: %s"}]}' \
+            "$color" "$icon" "$status" "$DEPLOY_REF" "$DEPLOY_SHA" "$VERIFY_RESULT" "$RUN_URL")
 
           if ! curl -sS --fail-with-body --retry 3 --retry-all-errors --retry-delay 2 --max-time 30 -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
