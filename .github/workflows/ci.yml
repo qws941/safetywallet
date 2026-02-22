@@ -74,12 +74,20 @@ jobs:
 
       - name: Block legacy runtime naming
         run: |
-          forbidden='safework2-api\.jclee\.workers\.dev|safewallet-api\.jclee\.workers\.dev|workspace=safework2-api|Deploy SafeWork2'
+          forbidden='safework2-api\.jclee\.workers\.dev|safetywallet-api\.jclee\.workers\.dev|workspace=safework2-api|Deploy SafeWork2'
           targets='.github/workflows docs/cloudflare-operations.md package.json'
           if rg -nE "$forbidden" $targets; then
-            echo "::error::Legacy runtime naming detected. Use single-worker safewallet naming."
+            echo "::error::Legacy runtime naming detected. Use single-worker safetywallet naming."
             exit 1
           fi
+
+  wrangler-config-guard:
+    name: Wrangler Config Sync Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ensure root/app wrangler configs stay aligned
+        run: node scripts/check-wrangler-sync.js
 
   unit-test:
     name: Unit Tests
@@ -121,7 +129,7 @@ jobs:
   build:
     name: Build (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: [ci, runtime-naming-guard, unit-test]
+    needs: [ci, runtime-naming-guard, wrangler-config-guard, unit-test]
     strategy:
       fail-fast: false
       matrix:
@@ -167,19 +175,51 @@ jobs:
         run: npx playwright install chromium --with-deps
         working-directory: e2e
 
+      - name: Resolve production smoke URLs
+        id: smoke_urls
+        run: |
+          choose_url() {
+            primary="$1"
+            fallback="$2"
+            expected="$3"
+
+            primary_code=$(curl -sS -o /tmp/url_probe -w "%{http_code}" --max-time 15 "$primary" || true)
+            if [ "$primary_code" = "$expected" ]; then
+              echo "$primary"
+              return
+            fi
+
+            fallback_code=$(curl -sS -o /tmp/url_probe -w "%{http_code}" --max-time 15 "$fallback" || true)
+            if [ "$fallback_code" = "$expected" ]; then
+              echo "$fallback"
+              return
+            fi
+
+            echo "$primary"
+          }
+
+          api_url=$(choose_url "https://safetywallet.jclee.me/api" "https://safetywallet.jclee.workers.dev/api" "200")
+          admin_url=$(choose_url "https://admin.safetywallet.jclee.me" "https://safetywallet.jclee.me/admin" "200")
+
+          echo "api_url=$api_url" >> "$GITHUB_OUTPUT"
+          echo "worker_url=https://safetywallet.jclee.me" >> "$GITHUB_OUTPUT"
+          echo "admin_url=$admin_url" >> "$GITHUB_OUTPUT"
+
       - name: Run E2E tests
-        run: npx playwright test --grep @smoke --project=api --project=worker-app --project=cross-app
+        run: npm run test:e2e:smoke
         env:
-          API_URL: https://safewallet.jclee.workers.dev/api
-          WORKER_APP_URL: https://safewallet.jclee.me
-          ADMIN_APP_URL: https://safewallet.jclee.me/admin
+          API_URL: ${{ steps.smoke_urls.outputs.api_url }}
+          WORKER_APP_URL: ${{ steps.smoke_urls.outputs.worker_url }}
+          ADMIN_APP_URL: ${{ steps.smoke_urls.outputs.admin_url }}
 
       - name: Upload report on failure
         uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            e2e/playwright-report/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -187,13 +227,23 @@ jobs:
   validate:
     name: Validate Changes
     runs-on: ubuntu-latest
-    needs: [ci, runtime-naming-guard, unit-test, security, build, e2e]
+    needs:
+      [
+        ci,
+        runtime-naming-guard,
+        wrangler-config-guard,
+        unit-test,
+        security,
+        build,
+        e2e,
+      ]
     if: always()
     steps:
       - name: Check all jobs
         run: |
           if [[ "${{ needs.ci.result }}" != "success" ]] || \
              [[ "${{ needs.runtime-naming-guard.result }}" != "success" ]] || \
+             [[ "${{ needs.wrangler-config-guard.result }}" != "success" ]] || \
              [[ "${{ needs.unit-test.result }}" != "success" ]] || \
              [[ "${{ needs.security.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]] || \
@@ -202,3 +252,52 @@ jobs:
             exit 1
           fi
           echo "All required checks passed"
+  notify:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [validate]
+    if: always() && github.event_name == 'push'
+    steps:
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "Slack webhook not configured. Skipping."
+            exit 0
+          fi
+
+          if [ "${{ needs.validate.result }}" = "success" ]; then
+            emoji="✅"
+            status="passed"
+            color="good"
+          else
+            emoji="❌"
+            status="failed"
+            color="danger"
+          fi
+
+          short_sha=$(echo "${{ github.sha }}" | cut -c1-7)
+          commit_msg=$(echo '${{ github.event.head_commit.message }}' | head -1 | sed 's/"/\\"/g')
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          payload=$(cat <<EOF
+          {
+            "attachments": [{
+              "color": "${color}",
+              "blocks": [{
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "${emoji} *CI ${status}* — <${run_url}|safetywallet#${short_sha}>\n${commit_msg}"
+                }
+              }]
+            }]
+          }
+          EOF
+          )
+
+          curl -sS --fail-with-body --retry 2 --max-time 10 \
+            -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$payload" || echo "::warning::Slack notification failed"

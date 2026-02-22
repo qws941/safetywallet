@@ -1,4 +1,4 @@
-name: Deploy SafeWallet
+name: Deploy SafetyWallet
 
 on:
   workflow_run:
@@ -52,23 +52,67 @@ jobs:
           echo "Deploy source ref: $DEPLOY_REF"
           echo "Deploy source SHA: $DEPLOY_SHA"
 
+  path-filter:
+    name: Check Deploy-Relevant Paths
+    needs: [resolve-sha]
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.paths.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Determine changed files
+        id: paths
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SHA="${{ needs.resolve-sha.outputs.deploy-sha }}"
+          changed_files=$(git diff-tree --no-commit-id --name-only -r "$SHA" || true)
+
+          if echo "$changed_files" | grep -Eq '^(apps/(api-worker|admin-app|worker-app)/|packages/(types|ui)/|\.github/workflows/)'; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No deploy-relevant changes detected"
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   wait-for-cloudflare-build:
     name: Wait for Cloudflare Git Integration Deploy
-    needs: [resolve-sha]
+    needs: [resolve-sha, path-filter]
+    if: needs.path-filter.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Wait until production API responds healthy
         run: |
           max_attempts=45
           sleep_seconds=20
-          for i in $(seq 1 "$max_attempts"); do
-            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 10 https://safewallet.jclee.workers.dev/api/health || true)
+
+          check_health() {
+            target_url="$1"
+            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 10 "$target_url" || true)
             health_status=$(node -e 'const fs=require("fs"); try { const data=JSON.parse(fs.readFileSync("/tmp/health.json","utf8")); process.stdout.write(data && data.status ? String(data.status) : ""); } catch { process.stdout.write(""); }')
             if [ "$code" = "200" ] && [ "$health_status" = "healthy" ]; then
-              echo "Cloudflare deployment appears available"
+              return 0
+            fi
+            return 1
+          }
+
+          for i in $(seq 1 "$max_attempts"); do
+            if check_health "https://safetywallet.jclee.me/api/health"; then
+              echo "Cloudflare deployment appears available (custom domain API)"
               exit 0
             fi
-            echo "Waiting for Cloudflare deploy... attempt $i/$max_attempts (http=$code status=$health_status)"
+
+            if check_health "https://safetywallet.jclee.workers.dev/api/health"; then
+              echo "Cloudflare deployment appears available (workers.dev API fallback)"
+              exit 0
+            fi
+
+            echo "Waiting for Cloudflare deploy... attempt $i/$max_attempts"
             sleep "$sleep_seconds"
           done
           echo "::error::Timed out waiting for production health endpoint"
@@ -76,54 +120,67 @@ jobs:
 
   verify-production:
     name: Verify Production After Git Integration Deploy
-    needs: [resolve-sha, wait-for-cloudflare-build]
+    needs: [resolve-sha, wait-for-cloudflare-build, path-filter]
+    if: needs.path-filter.outputs.should-deploy == 'true'
     uses: ./.github/workflows/deploy-verify.yml
     with:
       environment: production
       ref: ${{ needs.resolve-sha.outputs.deploy-sha }}
     secrets: inherit
-
-  notify-slack:
-    name: Notify Slack
+  notify:
+    name: Slack Deploy Notification
     runs-on: ubuntu-latest
-    needs: [verify-production]
-    if: always() && !cancelled()
+    needs: [resolve-sha, path-filter, wait-for-cloudflare-build, verify-production]
+    if: always() && needs.path-filter.outputs.should-deploy == 'true'
     steps:
-      - name: Send deploy status to Slack (optional)
+      - name: Notify Slack
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL || secrets.DEPLOY_MONITOR_WEBHOOK_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          VERIFY_RESULT: ${{ needs.verify-production.result }}
-          DEPLOY_REF: ${{ needs.resolve-sha.outputs.deploy-ref }}
-          DEPLOY_SHA: ${{ needs.resolve-sha.outputs.deploy-sha }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
-            echo "Slack webhook not configured. Skipping notification."
+            echo "Slack webhook not configured. Skipping."
             exit 0
           fi
 
-          status="SUCCESS"
-          icon=":white_check_mark:"
-          color="#2eb886"
-          if [ "$VERIFY_RESULT" = "failure" ]; then
-            status="FAILED"
-            icon=":x:"
-            color="#d40e0d"
-          elif [ "$VERIFY_RESULT" = "cancelled" ]; then
-            status="CANCELLED"
-            icon=":warning:"
-            color="#daa038"
-          elif [ "$VERIFY_RESULT" = "skipped" ]; then
-            status="SKIPPED"
-            icon=":warning:"
-            color="#daa038"
+          deploy_sha="${{ needs.resolve-sha.outputs.deploy-sha }}"
+          short_sha=$(echo "$deploy_sha" | cut -c1-7)
+
+          cf_result="${{ needs.wait-for-cloudflare-build.result }}"
+          verify_result="${{ needs.verify-production.result }}"
+
+          if [ "$cf_result" = "success" ] && [ "$verify_result" = "success" ]; then
+            emoji="🚀"
+            status="deployed & verified"
+            color="good"
+          elif [ "$cf_result" = "success" ]; then
+            emoji="⚠️"
+            status="deployed, verification ${verify_result}"
+            color="warning"
+          else
+            emoji="❌"
+            status="deploy failed"
+            color="danger"
           fi
 
-          payload=$(printf '{"attachments":[{"color":"%s","text":"%s Production deploy verification (%s)\n- Ref: %s\n- SHA: %s\n- Verify: %s\n- Run: %s"}]}' \
-            "$color" "$icon" "$status" "$DEPLOY_REF" "$DEPLOY_SHA" "$VERIFY_RESULT" "$RUN_URL")
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          if ! curl -sS --fail-with-body --retry 3 --retry-all-errors --retry-delay 2 --max-time 30 -X POST "$SLACK_WEBHOOK_URL" \
+          payload=$(cat <<EOF
+          {
+            "attachments": [{
+              "color": "${color}",
+              "blocks": [{
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "${emoji} *Production ${status}* — <${run_url}|safetywallet#${short_sha}>"
+                }
+              }]
+            }]
+          }
+          EOF
+          )
+
+          curl -sS --fail-with-body --retry 2 --max-time 10 \
+            -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
-            -d "$payload"; then
-            echo "::warning::Failed to deliver deploy Slack notification"
-          fi
+            -d "$payload" || echo "::warning::Slack notification failed"
