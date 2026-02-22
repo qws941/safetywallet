@@ -4,13 +4,13 @@ import { defineConfig, devices } from "@playwright/test";
 // Override with env vars for staging/local dev:
 //   WORKER_APP_URL=http://localhost:3000 ADMIN_APP_URL=http://localhost:3001 API_URL=http://localhost:8787 npx playwright test
 const WORKER_APP_URL =
-  process.env.WORKER_APP_URL ?? "https://safewallet.jclee.me";
+  process.env.WORKER_APP_URL ?? "https://safetywallet.jclee.me";
 const ADMIN_APP_URL =
-  process.env.ADMIN_APP_URL ?? "https://admin.safewallet.jclee.me";
+  process.env.ADMIN_APP_URL ?? "https://admin.safetywallet.jclee.me";
 const rawApiUrl =
   process.env.API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
-  "https://safewallet.jclee.me/api";
+  "https://safetywallet.jclee.me/api";
 const API_URL = rawApiUrl.endsWith("/") ? rawApiUrl : `${rawApiUrl}/`;
 
 export default defineConfig({
