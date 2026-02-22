@@ -371,7 +371,7 @@ export async function fasGetDailyAttendance(
         query: `SELECT ad.empl_cd, ad.accs_day, ad.in_time, ad.out_time,
                      ad.state, ad.part_cd
               FROM access_daily ad
-              WHERE ad.accs_day = ?${normalizedSiteCd ? " AND ad.site_cd = ?" : ""}`,
+              WHERE ad.accs_day = ? AND ad.in_time IS NOT NULL AND ad.in_time != '0000' AND ad.in_time != ''${normalizedSiteCd ? " AND ad.site_cd = ?" : ""}`,
         params: normalizedSiteCd ? [accsDay, normalizedSiteCd] : [accsDay],
       },
       {

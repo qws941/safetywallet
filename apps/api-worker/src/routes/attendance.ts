@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, gte, lt, inArray, or } from "drizzle-orm";
-import { attendance, users } from "../db/schema";
+import { eq, and, gte, lt, inArray, or, desc } from "drizzle-orm";
+import { attendance, users, siteMemberships } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
 import { fasAuthMiddleware } from "../middleware/fas-auth";
 import { logAuditWithContext } from "../lib/audit";
@@ -15,6 +15,7 @@ import {
 } from "../validators/fas-sync";
 import { createLogger } from "../lib/logger";
 import { dbBatchChunked } from "../db/helpers";
+import { fasGetDailyAttendanceRealtimeStats } from "../lib/fas-mariadb";
 
 // KV-based idempotency cache (CF Workers isolates don't share memory,
 // so in-memory Map is useless — each request runs in a fresh isolate)
@@ -266,6 +267,140 @@ attendanceRoute.get("/today", authMiddleware, async (c) => {
       checkinAt: r.checkinAt?.toISOString(),
     })),
   });
+});
+
+attendanceRoute.get("/site/:siteId/report", authMiddleware, async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const siteId = c.req.param("siteId");
+
+  // Auth check: SUPER_ADMIN or SITE_ADMIN of this site
+  if (user.role !== "SUPER_ADMIN") {
+    const membership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, siteId),
+          eq(siteMemberships.role, "SITE_ADMIN"),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
+
+    if (!membership) {
+      return error(c, "FORBIDDEN", "Site admin access required", 403);
+    }
+  }
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const records = await db
+    .select({
+      id: attendance.id,
+      userId: attendance.userId,
+      userName: users.name,
+      checkinAt: attendance.checkinAt,
+    })
+    .from(attendance)
+    .leftJoin(users, eq(attendance.userId, users.id))
+    .where(
+      and(
+        eq(attendance.siteId, siteId),
+        gte(attendance.checkinAt, sevenDaysAgo),
+        eq(attendance.result, "SUCCESS"),
+      ),
+    )
+    .orderBy(desc(attendance.checkinAt))
+    .all();
+
+  // Group by date
+  const grouped: Record<string, any[]> = {};
+  records.forEach((r) => {
+    if (!r.checkinAt) return;
+    const dateStr = r.checkinAt.toISOString().split("T")[0];
+    if (!grouped[dateStr]) {
+      grouped[dateStr] = [];
+    }
+    grouped[dateStr].push({
+      userId: r.userId,
+      userName: r.userName,
+      checkIn: r.checkinAt.toISOString(),
+      checkOut: null,
+    });
+  });
+
+  const report = Object.entries(grouped).map(([date, records]) => ({
+    date,
+    records,
+  }));
+
+  return success(c, report);
+});
+
+// Real-time attendance stats from FAS MariaDB via Hyperdrive (bypasses D1 CRON lag)
+attendanceRoute.get("/realtime", authMiddleware, async (c) => {
+  const hyperdrive = c.env.FAS_HYPERDRIVE;
+  if (!hyperdrive) {
+    return error(
+      c,
+      "FAS_UNAVAILABLE",
+      "FAS Hyperdrive binding not configured",
+      503,
+    );
+  }
+
+  // KST date: today or from query param (?date=YYYYMMDD or YYYY-MM-DD)
+  const dateParam = c.req.query("date");
+  let accsDay: string;
+  if (dateParam) {
+    accsDay = dateParam.replace(/-/g, "");
+  } else {
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    accsDay = kst.toISOString().slice(0, 10).replace(/-/g, "");
+  }
+
+  if (!/^\d{8}$/.test(accsDay)) {
+    return error(
+      c,
+      "INVALID_DATE",
+      "Date must be YYYYMMDD or YYYY-MM-DD format",
+      400,
+    );
+  }
+
+  const FAS_SITE_CD = "10";
+
+  try {
+    const stats = await fasGetDailyAttendanceRealtimeStats(
+      hyperdrive,
+      accsDay,
+      FAS_SITE_CD,
+    );
+
+    return success(c, {
+      date: accsDay,
+      siteCd: FAS_SITE_CD,
+      ...stats,
+      queriedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    const logger = createLogger("attendance");
+    logger.error("Real-time attendance query failed", {
+      accsDay,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return error(
+      c,
+      "FAS_QUERY_FAILED",
+      "Failed to query FAS attendance data",
+      500,
+    );
+  }
 });
 
 export default attendanceRoute;

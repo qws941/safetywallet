@@ -54,7 +54,8 @@ import {
 import { apiMetrics } from "../db/schema";
 
 const log = createLogger("scheduled");
-const DEFAULT_ELASTICSEARCH_INDEX_PREFIX = "safewallet-logs";
+const FAS_ATTENDANCE_SITE_CD = "10";
+const DEFAULT_ELASTICSEARCH_INDEX_PREFIX = "safetywallet-logs";
 
 interface SyncFailureTelemetry {
   timestamp: string;
@@ -100,7 +101,7 @@ export async function emitSyncFailureToElk(
         body: JSON.stringify({
           level: "error",
           module: "scheduled",
-          service: "safewallet",
+          service: "safetywallet",
           message: `Scheduled sync failed (${telemetry.syncType})`,
           msg: `Scheduled sync failed (${telemetry.syncType})`,
           timestamp: telemetry.timestamp,
@@ -257,6 +258,19 @@ function parseFasKstCheckin(accsDay: string, inTime: string): Date | null {
   }
 
   return new Date(Date.UTC(year, month - 1, day, hour - 9, minute, 0));
+}
+
+function accsDayToUtcRange(accsDay: string): { start: Date; end: Date } | null {
+  if (!/^\d{8}$/.test(accsDay)) {
+    return null;
+  }
+
+  const year = Number(accsDay.slice(0, 4));
+  const month = Number(accsDay.slice(4, 6)) - 1;
+  const day = Number(accsDay.slice(6, 8));
+  const start = new Date(Date.UTC(year, month, day, -9, 0, 0, 0));
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
 }
 
 /** @internal Exported for testing */
@@ -894,7 +908,10 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
   }
 }
 
-async function runFasAttendanceSync(env: Env): Promise<void> {
+export async function runFasAttendanceSync(
+  env: Env,
+  accsDayOverride?: string,
+): Promise<void> {
   if (!env.FAS_HYPERDRIVE) {
     log.info("FAS_HYPERDRIVE not configured, skipping attendance sync");
     return;
@@ -911,33 +928,77 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
 
   try {
     const kstNow = getKSTDate();
-    const accsDay = formatAccsDayFromKst(kstNow);
+    const accsDay =
+      accsDayOverride && /^\d{8}$/.test(accsDayOverride)
+        ? accsDayOverride
+        : formatAccsDayFromKst(kstNow);
 
     const dailyAttendance = await withRetry(() =>
-      fasGetDailyAttendance(env.FAS_HYPERDRIVE!, accsDay),
+      fasGetDailyAttendance(
+        env.FAS_HYPERDRIVE!,
+        accsDay,
+        FAS_ATTENDANCE_SITE_CD,
+      ),
     );
 
-    const checkins = dailyAttendance.filter((row) => Boolean(row.inTime));
+    const checkins = dailyAttendance.filter(
+      (row) => row.inTime && row.inTime !== "0000" && row.inTime.trim() !== "",
+    );
     if (checkins.length === 0) {
       log.info("FAS attendance sync: no checkins", { accsDay });
       return;
     }
 
     const uniqueWorkerIds = [...new Set(checkins.map((row) => row.emplCd))];
-    const linkedUsers: { id: string; externalWorkerId: string | null }[] = [];
-    for (const workerIdChunk of chunkArray(uniqueWorkerIds, 50)) {
-      const chunkUsers = await db
-        .select({ id: users.id, externalWorkerId: users.externalWorkerId })
-        .from(users)
-        .where(
-          and(
-            eq(users.externalSystem, "FAS"),
-            inArray(users.externalWorkerId, workerIdChunk),
-            isNull(users.deletedAt),
-          ),
-        )
-        .all();
-      linkedUsers.push(...chunkUsers);
+    const loadLinkedUsers = async () => {
+      const rows: { id: string; externalWorkerId: string | null }[] = [];
+      for (const workerIdChunk of chunkArray(uniqueWorkerIds, 50)) {
+        const chunkUsers = await db
+          .select({ id: users.id, externalWorkerId: users.externalWorkerId })
+          .from(users)
+          .where(
+            and(
+              eq(users.externalSystem, "FAS"),
+              inArray(users.externalWorkerId, workerIdChunk),
+              isNull(users.deletedAt),
+            ),
+          )
+          .all();
+        rows.push(...chunkUsers);
+      }
+      return rows;
+    };
+
+    let linkedUsers = await loadLinkedUsers();
+
+    const linkedWorkerIds = new Set(
+      linkedUsers
+        .map((user) => user.externalWorkerId)
+        .filter((value): value is string => Boolean(value)),
+    );
+    const missingWorkerIds = uniqueWorkerIds.filter(
+      (workerId) => !linkedWorkerIds.has(workerId),
+    );
+
+    let placeholderUsersCreated = 0;
+    if (missingWorkerIds.length > 0) {
+      const placeholderOps = missingWorkerIds.map((workerId) =>
+        db
+          .insert(users)
+          .values({
+            id: crypto.randomUUID(),
+            externalSystem: "FAS",
+            externalWorkerId: workerId,
+            name: `FAS-${workerId}`,
+            nameMasked: `FAS-${workerId}`,
+            role: "WORKER",
+          })
+          .onConflictDoNothing(),
+      );
+      await dbBatchChunked(db, placeholderOps);
+      placeholderUsersCreated = missingWorkerIds.length;
+
+      linkedUsers = await loadLinkedUsers();
     }
 
     const userByExternalWorkerId = new Map<string, string>();
@@ -959,6 +1020,7 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
     }
 
     const defaultSiteId = activeSites.length === 1 ? activeSites[0].id : null;
+    const fallbackSiteId = activeSites[0]?.id ?? null;
     const userToSite = new Map<string, string>();
 
     if (!defaultSiteId && linkedUsers.length > 0) {
@@ -987,14 +1049,28 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
       }
     }
 
+    const dedupedByWorker = new Map<string, (typeof dailyAttendance)[number]>();
+    for (const row of checkins) {
+      const existing = dedupedByWorker.get(row.emplCd);
+      if (!existing) {
+        dedupedByWorker.set(row.emplCd, row);
+        continue;
+      }
+
+      const existingTime = existing.inTime ?? "9999";
+      const nextTime = row.inTime ?? "9999";
+      if (nextTime < existingTime) {
+        dedupedByWorker.set(row.emplCd, row);
+      }
+    }
+
     const valuesToInsert: (typeof attendance.$inferInsert)[] = [];
-    const seenAttendanceKeys = new Set<string>();
     let missingUser = 0;
     let missingSite = 0;
     let invalidTime = 0;
-    let duplicateInPayload = 0;
+    let duplicateByWorkerCode = 0;
 
-    for (const row of checkins) {
+    for (const row of dedupedByWorker.values()) {
       if (!row.inTime) {
         continue;
       }
@@ -1005,7 +1081,7 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
         continue;
       }
 
-      const siteId = defaultSiteId ?? userToSite.get(userId);
+      const siteId = defaultSiteId ?? userToSite.get(userId) ?? fallbackSiteId;
       if (!siteId) {
         missingSite++;
         continue;
@@ -1016,14 +1092,6 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
         invalidTime++;
         continue;
       }
-
-      const dedupeKey = `${row.emplCd}|${siteId}|${checkinAt.getTime()}`;
-      if (seenAttendanceKeys.has(dedupeKey)) {
-        duplicateInPayload++;
-        continue;
-      }
-
-      seenAttendanceKeys.add(dedupeKey);
       valuesToInsert.push({
         siteId,
         userId,
@@ -1034,86 +1102,34 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
       });
     }
 
-    const existingAttendanceKeys = new Set<string>();
+    duplicateByWorkerCode = Math.max(checkins.length - dedupedByWorker.size, 0);
+
     if (valuesToInsert.length > 0) {
-      const uniqueExternalWorkerIds = [
+      const utcRange = accsDayToUtcRange(accsDay);
+      const externalWorkerIds = [
         ...new Set(
           valuesToInsert
             .map((value) => value.externalWorkerId)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ];
-      const uniqueSiteIds = [
-        ...new Set(
-          valuesToInsert
-            .map((value) => value.siteId)
-            .filter((value): value is string => Boolean(value)),
+            .filter((workerId): workerId is string => Boolean(workerId)),
         ),
       ];
 
-      if (uniqueExternalWorkerIds.length > 0 && uniqueSiteIds.length > 0) {
-        const dayStartUtc = new Date(
-          Date.UTC(
-            Number(accsDay.slice(0, 4)),
-            Number(accsDay.slice(4, 6)) - 1,
-            Number(accsDay.slice(6, 8)),
-            -9,
-            0,
-            0,
-            0,
-          ),
-        );
-        const dayEndUtc = new Date(dayStartUtc.getTime() + 24 * 60 * 60 * 1000);
-
-        const existingAttendances: {
-          externalWorkerId: string | null;
-          siteId: string;
-          checkinAt: Date;
-        }[] = [];
-        for (const workerIdChunk of chunkArray(uniqueExternalWorkerIds, 50)) {
-          for (const siteIdChunk of chunkArray(uniqueSiteIds, 50)) {
-            const chunkRows = await db
-              .select({
-                externalWorkerId: attendance.externalWorkerId,
-                siteId: attendance.siteId,
-                checkinAt: attendance.checkinAt,
-              })
-              .from(attendance)
-              .where(
-                and(
-                  inArray(attendance.externalWorkerId, workerIdChunk),
-                  inArray(attendance.siteId, siteIdChunk),
-                  gte(attendance.checkinAt, dayStartUtc),
-                  lt(attendance.checkinAt, dayEndUtc),
-                ),
-              );
-            existingAttendances.push(...chunkRows);
-          }
-        }
-
-        for (const existing of existingAttendances) {
-          if (
-            existing.externalWorkerId &&
-            existing.siteId &&
-            existing.checkinAt
-          ) {
-            existingAttendanceKeys.add(
-              `${existing.externalWorkerId}|${existing.siteId}|${existing.checkinAt.getTime()}`,
+      if (utcRange && externalWorkerIds.length > 0) {
+        for (const workerIdChunk of chunkArray(externalWorkerIds, 50)) {
+          await db
+            .delete(attendance)
+            .where(
+              and(
+                eq(attendance.source, "FAS"),
+                gte(attendance.checkinAt, utcRange.start),
+                lt(attendance.checkinAt, utcRange.end),
+                inArray(attendance.externalWorkerId, workerIdChunk),
+              ),
             );
-          }
         }
       }
-    }
 
-    const insertableValues = valuesToInsert.filter(
-      (value) =>
-        !existingAttendanceKeys.has(
-          `${value.externalWorkerId}|${value.siteId}|${value.checkinAt?.getTime()}`,
-        ),
-    );
-
-    if (insertableValues.length > 0) {
-      const ops = insertableValues.map((value) =>
+      const ops = valuesToInsert.map((value) =>
         db.insert(attendance).values(value).onConflictDoNothing(),
       );
       await dbBatchChunked(db, ops);
@@ -1128,12 +1144,12 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
         accsDay,
         fetched: dailyAttendance.length,
         checkins: checkins.length,
-        attemptedInsert: insertableValues.length,
-        duplicateInPayload,
-        duplicateInDb: valuesToInsert.length - insertableValues.length,
+        attemptedInsert: valuesToInsert.length,
+        duplicateByWorkerCode,
         missingUser,
         missingSite,
         invalidTime,
+        placeholderUsersCreated,
       }),
     });
 
@@ -1141,12 +1157,12 @@ async function runFasAttendanceSync(env: Env): Promise<void> {
       accsDay,
       fetched: dailyAttendance.length,
       checkins: checkins.length,
-      attemptedInsert: insertableValues.length,
-      duplicateInPayload,
-      duplicateInDb: valuesToInsert.length - insertableValues.length,
+      attemptedInsert: valuesToInsert.length,
+      duplicateByWorkerCode,
       missingUser,
       missingSite,
       invalidTime,
+      placeholderUsersCreated,
     });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);

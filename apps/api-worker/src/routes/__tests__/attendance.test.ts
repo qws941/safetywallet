@@ -41,6 +41,12 @@ vi.mock("../../lib/logger", () => ({
   })),
 }));
 
+const mockFasRealtimeStats = vi.fn();
+vi.mock("../../lib/fas-mariadb", () => ({
+  fasGetDailyAttendanceRealtimeStats: (...args: unknown[]) =>
+    mockFasRealtimeStats(...args),
+}));
+
 vi.mock("../../lib/response", async () => {
   const actual =
     await vi.importActual<typeof import("../../lib/response")>(
@@ -168,6 +174,7 @@ async function createApp(auth?: AuthContext) {
   const env = {
     DB: {},
     KV: { get: mockKvGet, put: mockKvPut },
+    FAS_HYPERDRIVE: { connectionString: "postgres://test" },
   } as Record<string, unknown>;
   return { app, env };
 }
@@ -177,6 +184,7 @@ describe("routes/attendance", () => {
     vi.clearAllMocks();
     mockGetQueue.length = 0;
     mockAllQueue.length = 0;
+    mockFasRealtimeStats.mockReset();
   });
 
   describe("GET /attendance/today", () => {
@@ -538,6 +546,104 @@ describe("routes/attendance", () => {
       expect(body.data.processed).toBe(3);
       expect(body.data.inserted).toBe(1);
       expect(body.data.failed).toBe(2);
+    });
+  });
+
+  describe("GET /attendance/realtime", () => {
+    it("returns real-time stats from FAS MariaDB", async () => {
+      mockFasRealtimeStats.mockResolvedValue({
+        source: "access_daily+access+access_history",
+        totalRows: 150,
+        checkedInWorkers: 120,
+        dedupCheckinEvents: 140,
+      });
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/attendance/realtime", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          date: string;
+          siteCd: string;
+          checkedInWorkers: number;
+          queriedAt: string;
+        };
+      };
+      expect(body.data.checkedInWorkers).toBe(120);
+      expect(body.data.siteCd).toBe("10");
+      expect(body.data.queriedAt).toBeDefined();
+    });
+
+    it("accepts date query parameter in YYYYMMDD format", async () => {
+      mockFasRealtimeStats.mockResolvedValue({
+        source: "access_daily+access+access_history",
+        totalRows: 50,
+        checkedInWorkers: 40,
+        dedupCheckinEvents: 45,
+      });
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/attendance/realtime?date=20250221",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      expect(mockFasRealtimeStats).toHaveBeenCalledWith(
+        expect.anything(),
+        "20250221",
+        "10",
+      );
+    });
+
+    it("accepts date query parameter in YYYY-MM-DD format", async () => {
+      mockFasRealtimeStats.mockResolvedValue({
+        source: "test",
+        totalRows: 0,
+        checkedInWorkers: 0,
+        dedupCheckinEvents: 0,
+      });
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/attendance/realtime?date=2025-02-21",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      expect(mockFasRealtimeStats).toHaveBeenCalledWith(
+        expect.anything(),
+        "20250221",
+        "10",
+      );
+    });
+
+    it("returns 400 for invalid date format", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/attendance/realtime?date=abc", {}, env);
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 503 when FAS_HYPERDRIVE is not configured", async () => {
+      const { default: attendanceRoute } = await import("../attendance");
+      const app = new Hono<AppEnv>();
+      app.use("*", async (c, next) => {
+        c.set("auth", makeAuth());
+        await next();
+      });
+      app.route("/attendance", attendanceRoute);
+      const env = {
+        DB: {},
+        KV: { get: mockKvGet, put: mockKvPut },
+      } as Record<string, unknown>;
+      const res = await app.request("/attendance/realtime", {}, env);
+      expect(res.status).toBe(503);
+    });
+
+    it("returns 500 when FAS query fails", async () => {
+      mockFasRealtimeStats.mockRejectedValue(new Error("Connection refused"));
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/attendance/realtime", {}, env);
+      expect(res.status).toBe(500);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("FAS_QUERY_FAILED");
     });
   });
 });
