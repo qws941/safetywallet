@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { gte, lt } from "drizzle-orm";
 
+const mockFasRealtimeStats = vi.fn();
+vi.mock("../../../lib/fas-mariadb", () => ({
+  fasGetDailyAttendanceRealtimeStats: (...args: unknown[]) =>
+    mockFasRealtimeStats(...args),
+}));
+
 type AppEnv = {
   Bindings: Record<string, unknown>;
   Variables: { auth: AuthContext };
@@ -113,7 +119,10 @@ async function createApp(auth?: AuthContext) {
     await next();
   });
   app.route("/", statsRoute);
-  const env = { DB: {} } as Record<string, unknown>;
+  const env = {
+    DB: {},
+    FAS_HYPERDRIVE: { connectionString: "postgres://test" },
+  } as Record<string, unknown>;
   return { app, env };
 }
 
@@ -121,6 +130,13 @@ describe("admin/stats", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb.select.mockImplementation(() => makeChain());
+    mockFasRealtimeStats.mockReset();
+    mockFasRealtimeStats.mockResolvedValue({
+      source: "FAS_REALTIME",
+      totalRows: 10,
+      checkedInWorkers: 5,
+      dedupCheckinEvents: 8,
+    });
   });
 
   describe("GET /stats", () => {
@@ -140,10 +156,12 @@ describe("admin/stats", () => {
       expect(body.data.stats.totalUsers).toBeDefined();
       expect(body.data.stats.categoryDistribution).toBeDefined();
       expect(mockGetTodayRange).toHaveBeenCalledTimes(1);
-      expect(gte).toHaveBeenCalledWith("checkinAt", fixedStart);
-      expect(lt).toHaveBeenCalledWith("checkinAt", fixedEnd);
       expect(gte).toHaveBeenCalledWith("createdAt", fixedStart);
       expect(lt).toHaveBeenCalledWith("createdAt", fixedEnd);
+      expect(mockFasRealtimeStats).toHaveBeenCalledWith(
+        expect.anything(),
+        "20260219",
+      );
     });
 
     it("handles empty data gracefully", async () => {

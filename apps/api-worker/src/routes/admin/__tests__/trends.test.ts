@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
+const mockFasGetAttendanceTrend = vi.fn();
+vi.mock("../../../lib/fas-mariadb", () => ({
+  fasGetAttendanceTrend: (...args: unknown[]) =>
+    mockFasGetAttendanceTrend(...args),
+}));
+
 type AppEnv = {
   Bindings: Record<string, unknown>;
   Variables: { auth: AuthContext };
@@ -94,7 +100,10 @@ async function createApp(auth?: AuthContext) {
     await next();
   });
   app.route("/", trendsRoute);
-  const env = { DB: {} } as Record<string, unknown>;
+  const env = {
+    DB: {},
+    FAS_HYPERDRIVE: { connectionString: "postgres://test" },
+  } as Record<string, unknown>;
   return { app, env };
 }
 
@@ -102,6 +111,11 @@ describe("admin/trends", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb.select.mockImplementation(() => makeChain());
+    mockFasGetAttendanceTrend.mockReset();
+    mockFasGetAttendanceTrend.mockResolvedValue([
+      { date: "20260220", count: 5 },
+      { date: "20260221", count: 3 },
+    ]);
   });
 
   describe("GET /trends/posts", () => {
@@ -152,10 +166,6 @@ describe("admin/trends", () => {
 
   describe("GET /trends/attendance", () => {
     it("returns attendance trends by day", async () => {
-      mockAll.mockResolvedValueOnce([
-        { checkinAt: new Date("2025-01-15T08:00:00+09:00") },
-        { checkinAt: new Date("2025-01-15T08:30:00+09:00") },
-      ]);
       const { app, env } = await createApp(makeAuth());
       const res = await app.request(
         "/trends/attendance?startDate=2025-01-15&endDate=2025-01-17",
@@ -166,7 +176,15 @@ describe("admin/trends", () => {
       const body = (await res.json()) as {
         data: { trend: { date: string; count: number }[] };
       };
-      expect(body.data.trend.length).toBeGreaterThan(0);
+      expect(body.data.trend).toEqual([
+        { date: "2026-02-20", count: 5 },
+        { date: "2026-02-21", count: 3 },
+      ]);
+      expect(mockFasGetAttendanceTrend).toHaveBeenCalledWith(
+        expect.anything(),
+        "20250115",
+        "20250118",
+      );
     });
 
     it("returns 400 when date range is missing", async () => {

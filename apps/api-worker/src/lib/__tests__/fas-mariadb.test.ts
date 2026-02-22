@@ -208,7 +208,7 @@ describe("fas-mariadb", () => {
 
       const result = await fasGetDailyAttendance(mockHyperdrive, "20260206");
 
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         emplCd: "24000001",
         accsDay: "20260206",
@@ -217,8 +217,6 @@ describe("fas-mariadb", () => {
         state: 0,
         partCd: "P001",
       });
-      expect(result[1].inTime).toBeNull();
-      expect(result[1].outTime).toBeNull();
 
       const queryStr = mockQuery.mock.calls[0][0] as string;
       const params = mockQuery.mock.calls[0][1] as string[];

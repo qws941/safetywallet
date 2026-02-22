@@ -3,9 +3,10 @@ import { drizzle } from "drizzle-orm/d1";
 import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
-import { attendance, pointsLedger, posts } from "../../db/schema";
+import { pointsLedger, posts } from "../../db/schema";
 import { error, success } from "../../lib/response";
 import { DAY_CUTOFF_HOUR, parseDateParam, requireAdmin } from "./helpers";
+import { fasGetAttendanceTrend } from "../../lib/fas-mariadb";
 
 const app = new Hono<{
   Bindings: Env;
@@ -65,6 +66,23 @@ function toKstDayKey(source: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function toAccsDay(source: Date): string {
+  const koreaTime = new Date(
+    source.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+  );
+  const year = koreaTime.getFullYear();
+  const month = String(koreaTime.getMonth() + 1).padStart(2, "0");
+  const day = String(koreaTime.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+function formatAccsDay(accsDay: string): string {
+  if (!/^\d{8}$/.test(accsDay)) {
+    return accsDay;
+  }
+  return `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+}
+
 app.get("/trends/posts", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const siteId = c.req.query("siteId");
@@ -122,8 +140,16 @@ app.get("/trends/posts", requireAdmin, async (c) => {
 });
 
 app.get("/trends/attendance", requireAdmin, async (c) => {
-  const db = drizzle(c.env.DB);
-  const siteId = c.req.query("siteId");
+  const hd = c.env.FAS_HYPERDRIVE;
+  if (!hd) {
+    return error(
+      c,
+      "SERVICE_UNAVAILABLE",
+      "FAS_HYPERDRIVE not configured",
+      503,
+    );
+  }
+
   const range = getTrendRange(c.req.query("startDate"), c.req.query("endDate"));
 
   if (!range) {
@@ -135,33 +161,15 @@ app.get("/trends/attendance", requireAdmin, async (c) => {
     );
   }
 
-  const conditions: SQL[] = [
-    gte(attendance.checkinAt, range.start),
-    lt(attendance.checkinAt, range.end),
-  ];
+  const startAccsDay = toAccsDay(range.start);
+  const endAccsDay = toAccsDay(new Date(range.end.getTime() - 1));
 
-  if (siteId) {
-    conditions.push(eq(attendance.siteId, siteId));
-  }
+  const trendData = await fasGetAttendanceTrend(hd, startAccsDay, endAccsDay);
 
-  const rows = await db
-    .select({ checkinAt: attendance.checkinAt })
-    .from(attendance)
-    .where(and(...conditions))
-    .all();
-
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    if (!row.checkinAt) {
-      continue;
-    }
-    const dayKey = toKstDayKey(row.checkinAt);
-    counts.set(dayKey, (counts.get(dayKey) ?? 0) + 1);
-  }
-
-  const trend = Array.from(counts.entries())
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const trend = trendData.map((row) => ({
+    date: formatAccsDay(row.date),
+    count: row.count,
+  }));
 
   return success(c, { trend });
 });

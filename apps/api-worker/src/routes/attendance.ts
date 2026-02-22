@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, gte, lt, inArray, or, desc } from "drizzle-orm";
+import { eq, and, inArray, or, isNull } from "drizzle-orm";
 import { attendance, users, siteMemberships } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
 import { fasAuthMiddleware } from "../middleware/fas-auth";
@@ -15,12 +15,25 @@ import {
 } from "../validators/fas-sync";
 import { createLogger } from "../lib/logger";
 import { dbBatchChunked } from "../db/helpers";
-import { fasGetDailyAttendanceRealtimeStats } from "../lib/fas-mariadb";
+import {
+  fasCheckWorkerAttendance,
+  fasGetDailyAttendance,
+  fasGetDailyAttendanceRealtimeStats,
+} from "../lib/fas-mariadb";
 
 // KV-based idempotency cache (CF Workers isolates don't share memory,
 // so in-memory Map is useless — each request runs in a fresh isolate)
 const IDEMPOTENCY_TTL = 3600; // 1 hour in seconds
 const IN_QUERY_CHUNK_SIZE = 50;
+const FAS_SITE_CD = "10";
+
+interface SiteAttendanceRecord {
+  userId: string | null;
+  userName: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  externalWorkerId: string;
+}
 
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -28,6 +41,28 @@ function chunkArray<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(i, i + size));
   }
   return chunks;
+}
+
+function toAccsDay(source: Date): string {
+  const koreaTime = new Date(
+    source.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+  );
+  const year = koreaTime.getFullYear();
+  const month = String(koreaTime.getMonth() + 1).padStart(2, "0");
+  const day = String(koreaTime.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+function formatAccsDayTime(
+  accsDay: string,
+  time: string | null,
+): string | null {
+  if (!time || !/^\d{8}$/.test(accsDay)) {
+    return null;
+  }
+  const hh = time.slice(0, 2).padStart(2, "0");
+  const mm = time.slice(2, 4).padStart(2, "0");
+  return `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}T${hh}:${mm}:00+09:00`;
 }
 
 const attendanceRoute = new Hono<{
@@ -242,29 +277,47 @@ attendanceRoute.post(
 attendanceRoute.get("/today", authMiddleware, async (c) => {
   const auth = c.get("auth");
   const db = drizzle(c.env.DB);
-  const { start, end } = getTodayRange();
+  const hyperdrive = c.env.FAS_HYPERDRIVE;
+  if (!hyperdrive) {
+    return error(
+      c,
+      "FAS_UNAVAILABLE",
+      "FAS Hyperdrive binding not configured",
+      503,
+    );
+  }
 
-  const records = await db
-    .select()
-    .from(attendance)
-    .where(
-      and(
-        eq(attendance.userId, auth.user.id),
-        gte(attendance.checkinAt, start),
-        lt(attendance.checkinAt, end),
-      ),
-    )
-    .orderBy(attendance.checkinAt);
+  const user = await db
+    .select({ externalWorkerId: users.externalWorkerId })
+    .from(users)
+    .where(and(eq(users.id, auth.user.id), isNull(users.deletedAt)))
+    .get();
 
-  const hasAttendance = records.some((r) => r.result === "SUCCESS");
+  if (!user?.externalWorkerId) {
+    return success(c, {
+      hasAttendance: false,
+      records: [],
+    });
+  }
+
+  const { start } = getTodayRange();
+  const todayAccsDay = toAccsDay(start);
+  const attendanceResult = await fasCheckWorkerAttendance(
+    hyperdrive,
+    user.externalWorkerId,
+    todayAccsDay,
+  );
 
   return success(c, {
-    hasAttendance,
-    records: records.map((r) => ({
-      id: r.id,
-      result: r.result,
-      source: r.source,
-      checkinAt: r.checkinAt?.toISOString(),
+    hasAttendance: attendanceResult.hasAttendance,
+    records: attendanceResult.records.map((record) => ({
+      externalWorkerId: record.emplCd,
+      accsDay: record.accsDay,
+      source: "FAS_REALTIME",
+      checkinAt: formatAccsDayTime(record.accsDay, record.inTime),
+      checkoutAt: formatAccsDayTime(record.accsDay, record.outTime),
+      inTime: record.inTime,
+      outTime: record.outTime,
     })),
   });
 });
@@ -294,49 +347,88 @@ attendanceRoute.get("/site/:siteId/report", authMiddleware, async (c) => {
     }
   }
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
+  const hyperdrive = c.env.FAS_HYPERDRIVE;
+  if (!hyperdrive) {
+    return error(
+      c,
+      "FAS_UNAVAILABLE",
+      "FAS Hyperdrive binding not configured",
+      503,
+    );
+  }
 
-  const records = await db
-    .select({
-      id: attendance.id,
-      userId: attendance.userId,
-      userName: users.name,
-      checkinAt: attendance.checkinAt,
-    })
-    .from(attendance)
-    .leftJoin(users, eq(attendance.userId, users.id))
-    .where(
-      and(
-        eq(attendance.siteId, siteId),
-        gte(attendance.checkinAt, sevenDaysAgo),
-        eq(attendance.result, "SUCCESS"),
-      ),
-    )
-    .orderBy(desc(attendance.checkinAt))
-    .all();
-
-  // Group by date
-  const grouped: Record<string, any[]> = {};
-  records.forEach((r) => {
-    if (!r.checkinAt) return;
-    const dateStr = r.checkinAt.toISOString().split("T")[0];
-    if (!grouped[dateStr]) {
-      grouped[dateStr] = [];
-    }
-    grouped[dateStr].push({
-      userId: r.userId,
-      userName: r.userName,
-      checkIn: r.checkinAt.toISOString(),
-      checkOut: null,
-    });
+  const { start } = getTodayRange();
+  const dayStarts = Array.from({ length: 7 }, (_, index) => {
+    const dayStart = new Date(start);
+    dayStart.setUTCDate(dayStart.getUTCDate() - (6 - index));
+    return dayStart;
   });
 
-  const report = Object.entries(grouped).map(([date, records]) => ({
-    date,
-    records,
-  }));
+  const dailyRows = await Promise.all(
+    dayStarts.map(async (dayStart) => {
+      const accsDay = toAccsDay(dayStart);
+      const rows = await fasGetDailyAttendance(
+        hyperdrive,
+        accsDay,
+        FAS_SITE_CD,
+      );
+      return { accsDay, rows };
+    }),
+  );
+
+  const workerIds = new Set<string>();
+  for (const daily of dailyRows) {
+    for (const row of daily.rows) {
+      workerIds.add(row.emplCd);
+    }
+  }
+
+  const linkedUsers =
+    workerIds.size === 0
+      ? []
+      : await db
+          .select({
+            id: users.id,
+            externalWorkerId: users.externalWorkerId,
+            name: users.name,
+            nameMasked: users.nameMasked,
+          })
+          .from(users)
+          .where(inArray(users.externalWorkerId, [...workerIds]))
+          .all();
+
+  const userMap = new Map<
+    string,
+    { id: string; name: string | null; nameMasked: string | null }
+  >();
+  for (const linkedUser of linkedUsers) {
+    if (!linkedUser.externalWorkerId) {
+      continue;
+    }
+    userMap.set(linkedUser.externalWorkerId, {
+      id: linkedUser.id,
+      name: linkedUser.name,
+      nameMasked: linkedUser.nameMasked,
+    });
+  }
+
+  const report = dailyRows.map((daily) => {
+    const records: SiteAttendanceRecord[] = daily.rows.map((row) => {
+      const linked = userMap.get(row.emplCd);
+      return {
+        userId: linked?.id ?? null,
+        userName: linked?.name ?? linked?.nameMasked ?? row.emplCd,
+        checkIn: formatAccsDayTime(row.accsDay, row.inTime),
+        checkOut: formatAccsDayTime(row.accsDay, row.outTime),
+        externalWorkerId: row.emplCd,
+      };
+    });
+
+    return {
+      date: `${daily.accsDay.slice(0, 4)}-${daily.accsDay.slice(4, 6)}-${daily.accsDay.slice(6, 8)}`,
+      records,
+    };
+  });
 
   return success(c, report);
 });
@@ -372,8 +464,6 @@ attendanceRoute.get("/realtime", authMiddleware, async (c) => {
       400,
     );
   }
-
-  const FAS_SITE_CD = "10";
 
   try {
     const stats = await fasGetDailyAttendanceRealtimeStats(

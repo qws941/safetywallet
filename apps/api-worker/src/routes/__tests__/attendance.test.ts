@@ -42,9 +42,12 @@ vi.mock("../../lib/logger", () => ({
 }));
 
 const mockFasRealtimeStats = vi.fn();
+const mockFasCheckWorkerAttendance = vi.fn();
 vi.mock("../../lib/fas-mariadb", () => ({
   fasGetDailyAttendanceRealtimeStats: (...args: unknown[]) =>
     mockFasRealtimeStats(...args),
+  fasCheckWorkerAttendance: (...args: unknown[]) =>
+    mockFasCheckWorkerAttendance(...args),
 }));
 
 vi.mock("../../lib/response", async () => {
@@ -185,19 +188,25 @@ describe("routes/attendance", () => {
     mockGetQueue.length = 0;
     mockAllQueue.length = 0;
     mockFasRealtimeStats.mockReset();
+    mockFasCheckWorkerAttendance.mockReset();
   });
 
   describe("GET /attendance/today", () => {
     it("returns attendance records for today", async () => {
-      const records = [
-        {
-          id: "a1",
-          result: "SUCCESS",
-          source: "FAS",
-          checkinAt: new Date("2025-01-01T08:00:00Z"),
-        },
-      ];
-      mockAllQueue.push(records);
+      mockGetQueue.push({ externalWorkerId: "FAS-001" });
+      mockFasCheckWorkerAttendance.mockResolvedValue({
+        hasAttendance: true,
+        records: [
+          {
+            emplCd: "FAS-001",
+            accsDay: "20250101",
+            inTime: "0830",
+            outTime: "1730",
+            state: 0,
+            partCd: "P001",
+          },
+        ],
+      });
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/attendance/today", {}, env);
       expect(res.status).toBe(200);
@@ -209,9 +218,11 @@ describe("routes/attendance", () => {
     });
 
     it("returns hasAttendance=false when no SUCCESS records", async () => {
-      mockAllQueue.push([
-        { id: "a1", result: "NOT_FOUND", source: "FAS", checkinAt: new Date() },
-      ]);
+      mockGetQueue.push({ externalWorkerId: "FAS-001" });
+      mockFasCheckWorkerAttendance.mockResolvedValue({
+        hasAttendance: false,
+        records: [],
+      });
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/attendance/today", {}, env);
       expect(res.status).toBe(200);
@@ -222,7 +233,7 @@ describe("routes/attendance", () => {
     });
 
     it("returns empty when no records", async () => {
-      mockAllQueue.push([]);
+      mockGetQueue.push({ externalWorkerId: null });
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/attendance/today", {}, env);
       expect(res.status).toBe(200);

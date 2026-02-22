@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { gte, lt } from "drizzle-orm";
 
 type AppEnv = {
   Bindings: Record<string, unknown>;
@@ -11,6 +10,12 @@ vi.mock("../../../middleware/auth", () => ({
   authMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) =>
     next(),
   ),
+}));
+
+const mockFasGetAttendanceList = vi.fn();
+vi.mock("../../../lib/fas-mariadb", () => ({
+  fasGetAttendanceList: (...args: unknown[]) =>
+    mockFasGetAttendanceList(...args),
 }));
 
 const mockGet = vi.fn();
@@ -56,6 +61,7 @@ vi.mock("drizzle-orm/d1", () => ({
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
   and: vi.fn(),
+  inArray: vi.fn(),
   desc: vi.fn(),
   gte: vi.fn(),
   lt: vi.fn(),
@@ -123,7 +129,10 @@ async function createApp(auth?: AuthContext) {
     await next();
   });
   app.route("/", attendanceRoute);
-  const env = { DB: {} } as Record<string, unknown>;
+  const env = {
+    DB: {},
+    FAS_HYPERDRIVE: { connectionString: "postgres://test" },
+  } as Record<string, unknown>;
   return { app, env };
 }
 
@@ -134,14 +143,28 @@ describe("admin/attendance", () => {
     thenableResults = [];
     selectCallCount = 0;
     mockDb.select.mockImplementation(() => makeThenableChain());
+    mockFasGetAttendanceList.mockReset();
   });
 
   describe("GET /attendance-logs", () => {
     it("returns attendance logs with pagination", async () => {
       thenableResults = [
-        [{ count: 1 }],
-        [{ id: "a-1", siteId: "site-1", userName: "Kim**" }],
+        [{ id: "user-1", externalWorkerId: "EXT-001", nameMasked: "Kim**" }],
       ];
+      mockFasGetAttendanceList.mockResolvedValue({
+        total: 1,
+        records: [
+          {
+            emplCd: "EXT-001",
+            name: "김철수",
+            partCd: "P001",
+            companyName: "제일건설",
+            inTime: "0830",
+            outTime: "1730",
+            accsDay: "20260220",
+          },
+        ],
+      });
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/attendance-logs?siteId=site-1", {}, env);
       expect(res.status).toBe(200);
@@ -150,6 +173,13 @@ describe("admin/attendance", () => {
       };
       expect(body.data.logs).toHaveLength(1);
       expect(body.data.pagination.total).toBe(1);
+      expect(mockFasGetAttendanceList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(String),
+        "10",
+        50,
+        0,
+      );
     });
 
     it("returns 400 when siteId is missing", async () => {
@@ -175,10 +205,8 @@ describe("admin/attendance", () => {
     });
 
     it("applies KST date range filter when date is provided", async () => {
-      thenableResults = [
-        [{ count: 1 }],
-        [{ id: "a-1", siteId: "site-1", userName: "Kim**" }],
-      ];
+      thenableResults = [[]];
+      mockFasGetAttendanceList.mockResolvedValue({ total: 0, records: [] });
       const { app, env } = await createApp(makeAuth());
 
       const res = await app.request(
@@ -188,26 +216,42 @@ describe("admin/attendance", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(gte).toHaveBeenCalledWith(
-        "checkinAt",
-        new Date("2026-02-19T15:00:00.000Z"),
-      );
-      expect(lt).toHaveBeenCalledWith(
-        "checkinAt",
-        new Date("2026-02-20T15:00:00.000Z"),
+      expect(mockFasGetAttendanceList).toHaveBeenCalledWith(
+        expect.anything(),
+        "20260220",
+        "10",
+        50,
+        0,
       );
     });
   });
 
   describe("GET /attendance/unmatched", () => {
     it("returns unmatched attendance records", async () => {
-      thenableResults = [
-        [{ count: 2 }],
-        [
-          { id: "u-1", externalWorkerId: "EXT-001" },
-          { id: "u-2", externalWorkerId: "EXT-002" },
+      thenableResults = [[{ externalWorkerId: "EXT-001" }]];
+      mockFasGetAttendanceList.mockResolvedValue({
+        total: 2,
+        records: [
+          {
+            emplCd: "EXT-001",
+            name: "김철수",
+            partCd: "P001",
+            companyName: "제일건설",
+            inTime: "0830",
+            outTime: "1730",
+            accsDay: "20260220",
+          },
+          {
+            emplCd: "EXT-002",
+            name: "이영희",
+            partCd: "P001",
+            companyName: "제일건설",
+            inTime: "0900",
+            outTime: "1800",
+            accsDay: "20260220",
+          },
         ],
-      ];
+      });
       const { app, env } = await createApp(makeAuth());
       const res = await app.request(
         "/attendance/unmatched?siteId=site-1",
@@ -218,8 +262,8 @@ describe("admin/attendance", () => {
       const body = (await res.json()) as {
         data: { records: unknown[]; pagination: { total: number } };
       };
-      expect(body.data.records).toHaveLength(2);
-      expect(body.data.pagination.total).toBe(2);
+      expect(body.data.records).toHaveLength(1);
+      expect(body.data.pagination.total).toBe(1);
     });
 
     it("returns 400 when siteId is missing", async () => {

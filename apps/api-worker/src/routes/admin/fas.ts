@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, or, inArray, sql, desc, gte, lt, isNull } from "drizzle-orm";
+import { eq, and, or, inArray, sql, desc, isNull } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
 import {
   users,
@@ -9,7 +9,6 @@ import {
   siteMemberships,
   auditLogs,
   syncErrors,
-  attendance,
 } from "../../db/schema";
 import { hmac, encrypt } from "../../lib/crypto";
 import { success, error } from "../../lib/response";
@@ -17,7 +16,6 @@ import { createLogger } from "../../lib/logger";
 import { AdminSyncWorkersSchema } from "../../validators/schemas";
 import { dbBatch } from "../../db/helpers";
 import { requireAdmin } from "./helpers";
-import { runFasAttendanceSync } from "../../scheduled";
 import {
   fasGetAllEmployeesPaginated,
   fasGetDailyAttendanceRawRows,
@@ -52,15 +50,6 @@ function normalizeAccsDay(value: string | undefined): string | null {
     return value.replace(/-/g, "");
   }
   return null;
-}
-
-function accsDayToUtcRange(accsDay: string): { start: Date; end: Date } {
-  const year = Number(accsDay.slice(0, 4));
-  const month = Number(accsDay.slice(4, 6)) - 1;
-  const day = Number(accsDay.slice(6, 8));
-  const start = new Date(Date.UTC(year, month, day, -9, 0, 0, 0));
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  return { start, end };
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -486,13 +475,9 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
     };
     d1: {
       linkedWorkers: number;
-      attendanceRows: number;
-      checkedInWorkers: number;
-      attendanceRowsGlobal: number;
     };
     gaps: {
       unlinkedWorkers: number;
-      checkinsNotInD1Estimate: number;
     };
   } | null = null;
 
@@ -530,47 +515,6 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
       linkedWorkers += linkedChunk.length;
     }
 
-    const { start, end } = accsDayToUtcRange(requestedAccsDay);
-    const d1AttendanceGlobalRow = await db
-      .select({
-        count: sql<number>`count(*)`,
-      })
-      .from(attendance)
-      .where(
-        and(
-          eq(attendance.source, "FAS"),
-          gte(attendance.checkinAt, start),
-          lt(attendance.checkinAt, end),
-        ),
-      )
-      .get();
-
-    let scopedAttendanceRows = 0;
-    let scopedCheckedInWorkers = 0;
-    for (const chunk of chunkArray(workerIds, IN_QUERY_CHUNK_SIZE)) {
-      if (chunk.length === 0) continue;
-
-      const scopedRow = await db
-        .select({
-          count: sql<number>`count(*)`,
-          checkedInWorkers: sql<number>`count(distinct ${attendance.externalWorkerId})`,
-        })
-        .from(attendance)
-        .where(
-          and(
-            eq(attendance.source, "FAS"),
-            gte(attendance.checkinAt, start),
-            lt(attendance.checkinAt, end),
-            inArray(attendance.externalWorkerId, chunk),
-          ),
-        )
-        .get();
-
-      scopedAttendanceRows += scopedRow?.count ?? 0;
-      scopedCheckedInWorkers += scopedRow?.checkedInWorkers ?? 0;
-    }
-
-    const attendanceRowsGlobal = d1AttendanceGlobalRow?.count ?? 0;
     integrity = {
       accsDay: requestedAccsDay,
       fas: {
@@ -581,16 +525,9 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
       },
       d1: {
         linkedWorkers,
-        attendanceRows: scopedAttendanceRows,
-        checkedInWorkers: scopedCheckedInWorkers,
-        attendanceRowsGlobal,
       },
       gaps: {
         unlinkedWorkers: Math.max(rawSummary.uniqueWorkers - linkedWorkers, 0),
-        checkinsNotInD1Estimate: Math.max(
-          rawSummary.checkins - scopedAttendanceRows,
-          0,
-        ),
       },
     };
   }
@@ -673,13 +610,11 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
       .json<{
         offset?: number;
         limit?: number;
-        runAttendance?: boolean;
         accsDay?: string;
       }>()
       .catch(() => ({}))) as {
       offset?: number;
       limit?: number;
-      runAttendance?: boolean;
       accsDay?: string;
     };
 
@@ -689,7 +624,6 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
     const limit = Number.isFinite(body.limit)
       ? Math.min(500, Math.max(1, Math.trunc(body.limit as number)))
       : 100;
-    const runAttendance = body.runAttendance !== false;
     const normalizedAccsDay = normalizeAccsDay(body.accsDay);
     if (body.accsDay && !normalizedAccsDay) {
       return error(
@@ -711,7 +645,6 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
       reason: JSON.stringify({
         offset,
         limit,
-        runAttendance,
         accsDay: normalizedAccsDay ?? null,
       }),
     });
@@ -737,10 +670,6 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
       deactivated = await deactivateRetiredEmployees(retiredEmplCds, db);
     }
 
-    if (runAttendance) {
-      await runFasAttendanceSync(c.env, normalizedAccsDay ?? undefined);
-    }
-
     const hasMore = offset + employees.length < total;
     const nextOffset = hasMore ? offset + employees.length : null;
 
@@ -763,7 +692,6 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
         deactivated,
         hasMore,
         nextOffset,
-        runAttendance,
         accsDay: normalizedAccsDay ?? null,
       }),
     });

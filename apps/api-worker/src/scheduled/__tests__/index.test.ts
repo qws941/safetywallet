@@ -240,7 +240,7 @@ describe("scheduled helpers", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       const [url, init] = fetchSpy.mock.calls[0];
       expect(String(url)).toBe(
-        "https://elastic.example/safewallet-logs-2026.02.20/_doc/FAS_ATTENDANCE-corr-123",
+        "https://elastic.example/safetywallet-logs-2026.02.20/_doc/FAS_ATTENDANCE-corr-123",
       );
       expect(init?.method).toBe("PUT");
 

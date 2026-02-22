@@ -2,9 +2,10 @@ import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, gte, lt, and, sql } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
-import { users, sites, posts, attendance } from "../../db/schema";
-import { success } from "../../lib/response";
+import { users, sites, posts, siteMemberships } from "../../db/schema";
+import { success, error } from "../../lib/response";
 import { requireAdmin, getTodayRange } from "./helpers";
+import { fasGetDailyAttendanceRealtimeStats } from "../../lib/fas-mariadb";
 
 const app = new Hono<{
   Bindings: Env;
@@ -13,8 +14,84 @@ const app = new Hono<{
 
 app.get("/stats", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const requestedSiteId = c.req.query("siteId")?.trim() || null;
+
+  if (requestedSiteId && user.role === "SITE_ADMIN") {
+    const membership = await db
+      .select({ role: siteMemberships.role })
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, requestedSiteId),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
+
+    if (!membership || membership.role === "WORKER") {
+      return error(
+        c,
+        "MANAGER_ACCESS_REQUIRED",
+        "Manager access required",
+        403,
+      );
+    }
+  }
 
   const { start: todayStart, end: todayEnd } = getTodayRange();
+  const todayKst = new Date(
+    todayStart.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+  );
+  const todayAccsDay = `${todayKst.getFullYear()}${String(todayKst.getMonth() + 1).padStart(2, "0")}${String(todayKst.getDate()).padStart(2, "0")}`;
+
+  const postWhere = requestedSiteId
+    ? eq(posts.siteId, requestedSiteId)
+    : undefined;
+  const todayPostsWhere = requestedSiteId
+    ? and(
+        eq(posts.siteId, requestedSiteId),
+        gte(posts.createdAt, todayStart),
+        lt(posts.createdAt, todayEnd),
+      )
+    : and(gte(posts.createdAt, todayStart), lt(posts.createdAt, todayEnd));
+  const pendingWhere = requestedSiteId
+    ? and(
+        eq(posts.siteId, requestedSiteId),
+        sql`${posts.reviewStatus} IN ('PENDING', 'IN_REVIEW')`,
+      )
+    : sql`${posts.reviewStatus} IN ('PENDING', 'IN_REVIEW')`;
+  const urgentWhere = requestedSiteId
+    ? and(
+        eq(posts.siteId, requestedSiteId),
+        eq(posts.isUrgent, true),
+        sql`${posts.reviewStatus} NOT IN ('APPROVED', 'REJECTED')`,
+      )
+    : and(
+        eq(posts.isUrgent, true),
+        sql`${posts.reviewStatus} NOT IN ('APPROVED', 'REJECTED')`,
+      );
+  const avgWhere = requestedSiteId
+    ? and(
+        eq(posts.siteId, requestedSiteId),
+        sql`${posts.reviewStatus} IN ('APPROVED', 'REJECTED')`,
+      )
+    : sql`${posts.reviewStatus} IN ('APPROVED', 'REJECTED')`;
+
+  const userCountQuery = requestedSiteId
+    ? db
+        .select({
+          count: sql<number>`COUNT(DISTINCT ${siteMemberships.userId})`,
+        })
+        .from(siteMemberships)
+        .where(
+          and(
+            eq(siteMemberships.siteId, requestedSiteId),
+            eq(siteMemberships.status, "ACTIVE"),
+          ),
+        )
+    : db.select({ count: sql<number>`COUNT(*)` }).from(users);
 
   const [
     userCount,
@@ -27,10 +104,7 @@ app.get("/stats", requireAdmin, async (c) => {
     categoryDistributionResult,
     todayPostsCount,
   ] = await Promise.all([
-    db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(users)
-      .get(),
+    userCountQuery.get(),
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(sites)
@@ -38,38 +112,39 @@ app.get("/stats", requireAdmin, async (c) => {
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(posts)
+      .where(postWhere)
       .get(),
+    (async () => {
+      const hd = c.env.FAS_HYPERDRIVE;
+      if (!hd) {
+        return { count: 0 };
+      }
+      try {
+        const stats = await fasGetDailyAttendanceRealtimeStats(
+          hd,
+          todayAccsDay,
+        );
+        return { count: stats.checkedInWorkers };
+      } catch {
+        return { count: 0 };
+      }
+    })(),
     db
-      .select({ count: sql<number>`COUNT(DISTINCT user_id)` })
-      .from(attendance)
-      .where(
-        and(
-          gte(attendance.checkinAt, todayStart),
-          lt(attendance.checkinAt, todayEnd),
-        ),
-      )
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(posts)
+      .where(pendingWhere)
       .get(),
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(posts)
-      .where(sql`${posts.reviewStatus} IN ('PENDING', 'IN_REVIEW')`)
-      .get(),
-    db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(posts)
-      .where(
-        and(
-          eq(posts.isUrgent, true),
-          sql`${posts.reviewStatus} NOT IN ('APPROVED', 'REJECTED')`,
-        ),
-      )
+      .where(urgentWhere)
       .get(),
     db
       .select({
         avgHours: sql<number>`COALESCE(AVG((${posts.updatedAt} - ${posts.createdAt}) / 3600.0), 0)`,
       })
       .from(posts)
-      .where(sql`${posts.reviewStatus} IN ('APPROVED', 'REJECTED')`)
+      .where(avgWhere)
       .get(),
     db
       .select({
@@ -77,14 +152,13 @@ app.get("/stats", requireAdmin, async (c) => {
         count: sql<number>`COUNT(*)`,
       })
       .from(posts)
+      .where(postWhere)
       .groupBy(posts.category)
       .all(),
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(posts)
-      .where(
-        and(gte(posts.createdAt, todayStart), lt(posts.createdAt, todayEnd)),
-      )
+      .where(todayPostsWhere)
       .get(),
   ]);
 

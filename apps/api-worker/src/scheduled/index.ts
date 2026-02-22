@@ -1687,35 +1687,6 @@ async function runScheduled(
 
       // announcements, AceTime sync, and metrics check are independent — run in parallel
       await Promise.all([
-        withRetry(() => runFasAttendanceSync(env), 3, 5000).catch(
-          async (err: unknown) => {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            log.error("FAS attendance sync failed after 3 retries", {
-              error: errorMsg,
-              trigger,
-            });
-            await persistSyncFailure(env, {
-              syncType: "FAS_ATTENDANCE",
-              errorCode: "FAS_ATTENDANCE_SYNC_FAILED",
-              errorMessage: errorMsg,
-              lockName: "fas-attendance",
-            });
-            if (env.KV) {
-              fireAlert(
-                env.KV,
-                buildCronFailureAlert("FAS Attendance Sync", errorMsg),
-                env.ALERT_WEBHOOK_URL,
-              ).catch((alertErr: unknown) => {
-                log.error("Alert webhook delivery failed", {
-                  error:
-                    alertErr instanceof Error
-                      ? alertErr.message
-                      : String(alertErr),
-                });
-              });
-            }
-          },
-        ),
         publishScheduledAnnouncements(env).catch((err: unknown) => {
           log.error("Announcements publish failed", {
             error: err instanceof Error ? err.message : String(err),

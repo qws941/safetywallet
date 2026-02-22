@@ -100,6 +100,21 @@ export interface FasAttendanceSiteCount {
   rowCount: number;
 }
 
+export interface FasAttendanceTrendPoint {
+  date: string;
+  count: number;
+}
+
+export interface FasAttendanceListRecord {
+  emplCd: string;
+  name: string;
+  partCd: string;
+  companyName: string;
+  inTime: string | null;
+  outTime: string | null;
+  accsDay: string;
+}
+
 interface PooledConnection {
   connection: MysqlConnection;
   lastUsed: number;
@@ -770,6 +785,260 @@ export async function fasGetDailyAttendanceSiteCounts(
       source:
         successfulSources.length > 0 ? successfulSources.join("+") : "none",
       siteCounts,
+    };
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasGetAttendanceTrend(
+  hyperdrive: HyperdriveBinding,
+  startAccsDay: string,
+  endAccsDay: string,
+  siteCd?: string | null,
+): Promise<FasAttendanceTrendPoint[]> {
+  const conn = await getConnection(hyperdrive);
+  const normalizedSiteCd =
+    siteCd === undefined || siteCd === null ? null : siteCd;
+  const siteClause = (column: string) =>
+    normalizedSiteCd ? ` AND ${column} = ?` : "";
+
+  const params: unknown[] = [startAccsDay, endAccsDay];
+  if (normalizedSiteCd) {
+    params.push(normalizedSiteCd);
+  }
+  params.push(startAccsDay, endAccsDay);
+  if (normalizedSiteCd) {
+    params.push(normalizedSiteCd);
+  }
+  params.push(startAccsDay, endAccsDay);
+  if (normalizedSiteCd) {
+    params.push(normalizedSiteCd);
+  }
+
+  try {
+    const [rows] = await conn.query(
+      `SELECT merged.accs_day AS accs_day,
+              COUNT(DISTINCT merged.empl_cd) AS cnt
+         FROM (
+               SELECT ad.accs_day AS accs_day, ad.empl_cd AS empl_cd
+                 FROM access_daily ad
+                WHERE ad.accs_day BETWEEN ? AND ?
+                  AND ad.in_time IS NOT NULL
+                  AND ad.in_time != '0000'
+                  AND ad.in_time != ''${siteClause("ad.site_cd")}
+               UNION ALL
+               SELECT DATE_FORMAT(a.accs_dt, '%Y%m%d') AS accs_day,
+                      a.empl_cd AS empl_cd
+                 FROM access a
+                WHERE DATE_FORMAT(a.accs_dt, '%Y%m%d') BETWEEN ? AND ?${siteClause(
+                  "a.site_cd",
+                )}
+               UNION ALL
+               SELECT DATE_FORMAT(ah.accs_dt, '%Y%m%d') AS accs_day,
+                      ah.empl_cd AS empl_cd
+                 FROM access_history ah
+                WHERE DATE_FORMAT(ah.accs_dt, '%Y%m%d') BETWEEN ? AND ?${siteClause(
+                  "ah.site_cd",
+                )}
+         ) merged
+     GROUP BY merged.accs_day
+     ORDER BY merged.accs_day ASC`,
+      params,
+    );
+
+    return (rows as Array<Record<string, unknown>>).map((row) => ({
+      date: String(row["accs_day"] || ""),
+      count: Number(row["cnt"] || 0),
+    }));
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasGetAttendanceList(
+  hyperdrive: HyperdriveBinding,
+  accsDay: string,
+  siteCd?: string | null,
+  limit = 50,
+  offset = 0,
+): Promise<{ records: FasAttendanceListRecord[]; total: number }> {
+  const conn = await getConnection(hyperdrive);
+  const normalizedSiteCd =
+    siteCd === undefined || siteCd === null ? null : siteCd;
+  const safeLimit = Math.min(500, Math.max(1, Math.trunc(limit)));
+  const safeOffset = Math.max(0, Math.trunc(offset));
+
+  const siteClause = normalizedSiteCd ? " AND ad.site_cd = ?" : "";
+  const baseParams: unknown[] = [accsDay];
+  if (normalizedSiteCd) {
+    baseParams.push(normalizedSiteCd);
+  }
+
+  try {
+    const [countRows] = await conn.query(
+      `SELECT COUNT(*) AS cnt
+         FROM access_daily ad
+        WHERE ad.accs_day = ?
+          AND ad.in_time IS NOT NULL
+          AND ad.in_time != '0000'
+          AND ad.in_time != ''${siteClause}`,
+      baseParams,
+    );
+
+    const [rows] = await conn.query(
+      `SELECT ad.empl_cd AS empl_cd,
+              COALESCE(e.empl_nm, '') AS empl_nm,
+              COALESCE(e.part_cd, ad.part_cd, '') AS part_cd,
+              COALESCE(p.part_nm, '') AS part_nm,
+              ad.in_time AS in_time,
+              ad.out_time AS out_time,
+              ad.accs_day AS accs_day
+         FROM access_daily ad
+         LEFT JOIN employee e
+           ON ad.site_cd = e.site_cd
+          AND ad.empl_cd = e.empl_cd
+         LEFT JOIN partner p
+           ON e.site_cd = p.site_cd
+          AND e.part_cd = p.part_cd
+        WHERE ad.accs_day = ?
+          AND ad.in_time IS NOT NULL
+          AND ad.in_time != '0000'
+          AND ad.in_time != ''${siteClause}
+        ORDER BY ad.in_time DESC, ad.empl_cd ASC
+        LIMIT ? OFFSET ?`,
+      [...baseParams, safeLimit, safeOffset],
+    );
+
+    const total = Number(
+      (countRows as Array<Record<string, unknown>>)[0]?.cnt || 0,
+    );
+    const records = (rows as Array<Record<string, unknown>>).map((row) => ({
+      emplCd: String(row["empl_cd"] || ""),
+      name: String(row["empl_nm"] || ""),
+      partCd: String(row["part_cd"] || ""),
+      companyName: String(row["part_nm"] || ""),
+      inTime: row["in_time"] ? String(row["in_time"]) : null,
+      outTime: row["out_time"] ? String(row["out_time"]) : null,
+      accsDay: String(row["accs_day"] || ""),
+    }));
+
+    return { records, total };
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasCheckWorkerAttendance(
+  hyperdrive: HyperdriveBinding,
+  emplCd: string,
+  accsDay: string,
+): Promise<{ hasAttendance: boolean; records: FasAttendance[] }> {
+  const conn = await getConnection(hyperdrive);
+  const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+  const byWorker = new Map<string, FasAttendance>();
+
+  const mergeAttendance = (row: FasAttendance) => {
+    const key = `${row.emplCd}|${row.accsDay}`;
+    const existing = byWorker.get(key);
+    if (!existing) {
+      byWorker.set(key, row);
+      return;
+    }
+
+    const mergedInTime =
+      existing.inTime && row.inTime
+        ? existing.inTime <= row.inTime
+          ? existing.inTime
+          : row.inTime
+        : (existing.inTime ?? row.inTime);
+    const mergedOutTime =
+      existing.outTime && row.outTime
+        ? existing.outTime >= row.outTime
+          ? existing.outTime
+          : row.outTime
+        : (existing.outTime ?? row.outTime);
+
+    byWorker.set(key, {
+      ...existing,
+      inTime: mergedInTime,
+      outTime: mergedOutTime,
+      partCd: existing.partCd || row.partCd,
+      state: existing.state || row.state,
+    });
+  };
+
+  const candidates: Array<{ query: string; params: unknown[] }> = [
+    {
+      query: `SELECT ad.empl_cd, ad.accs_day, ad.in_time, ad.out_time,
+                     ad.state, ad.part_cd
+                FROM access_daily ad
+               WHERE ad.accs_day = ?
+                 AND ad.empl_cd = ?
+                 AND ad.in_time IS NOT NULL
+                 AND ad.in_time != '0000'
+                 AND ad.in_time != ''
+                 AND ad.site_cd = ?`,
+      params: [accsDay, emplCd, SITE_CD],
+    },
+    {
+      query: `SELECT a.empl_cd,
+                     DATE_FORMAT(a.accs_dt, '%Y%m%d') AS accs_day,
+                     MIN(DATE_FORMAT(a.accs_dt, '%H%i')) AS in_time,
+                     MAX(DATE_FORMAT(a.accs_dt, '%H%i')) AS out_time,
+                     0 AS state,
+                     COALESCE(MAX(a.part_cd), '') AS part_cd
+                FROM access a
+               WHERE DATE(a.accs_dt) = ?
+                 AND a.empl_cd = ?
+                 AND a.site_cd = ?
+            GROUP BY a.empl_cd, DATE_FORMAT(a.accs_dt, '%Y%m%d')`,
+      params: [dateWithDash, emplCd, SITE_CD],
+    },
+    {
+      query: `SELECT ah.empl_cd,
+                     DATE_FORMAT(ah.accs_dt, '%Y%m%d') AS accs_day,
+                     MIN(DATE_FORMAT(ah.accs_dt, '%H%i')) AS in_time,
+                     MAX(DATE_FORMAT(ah.accs_dt, '%H%i')) AS out_time,
+                     0 AS state,
+                     COALESCE(MAX(ah.part_cd), '') AS part_cd
+                FROM access_history ah
+               WHERE DATE(ah.accs_dt) = ?
+                 AND ah.empl_cd = ?
+                 AND ah.site_cd = ?
+            GROUP BY ah.empl_cd, DATE_FORMAT(ah.accs_dt, '%Y%m%d')`,
+      params: [dateWithDash, emplCd, SITE_CD],
+    },
+  ];
+
+  try {
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = (rows as Array<Record<string, unknown>>).map(
+          mapToFasAttendance,
+        );
+        for (const row of mapped) {
+          mergeAttendance(row);
+        }
+      } catch (err) {
+        logger.debug("FAS worker attendance source query failed", {
+          action: "fas_worker_attendance_fallback",
+          source: candidate.query.slice(0, 32),
+          error: { name: "QueryError", message: String(err) },
+        });
+      }
+    }
+
+    const records = [...byWorker.values()].sort((a, b) => {
+      const aTime = a.inTime ?? "9999";
+      const bTime = b.inTime ?? "9999";
+      return aTime.localeCompare(bTime);
+    });
+
+    return {
+      hasAttendance: records.length > 0,
+      records,
     };
   } finally {
     await conn.end();
