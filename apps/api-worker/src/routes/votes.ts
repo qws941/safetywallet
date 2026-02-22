@@ -288,4 +288,34 @@ votesRoute.post(
   },
 );
 
+votesRoute.get("/results/:siteId", authMiddleware, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.param("siteId");
+  const month = c.req.query("month") || getCurrentMonth();
+
+  const results = await db
+    .select({
+      candidateId: voteCandidates.userId,
+      name: users.nameMasked,
+      count: sql<number>`COUNT(${votes.id})`.as("count"),
+    })
+    .from(voteCandidates)
+    .innerJoin(users, eq(voteCandidates.userId, users.id))
+    .leftJoin(
+      votes,
+      and(
+        eq(votes.candidateId, voteCandidates.userId),
+        eq(votes.siteId, voteCandidates.siteId),
+        eq(votes.month, voteCandidates.month),
+      ),
+    )
+    .where(
+      and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
+    )
+    .groupBy(voteCandidates.userId, users.nameMasked)
+    .orderBy(sql`count DESC`);
+
+  return success(c, { month, results });
+});
+
 export default votesRoute;

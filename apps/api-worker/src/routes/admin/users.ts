@@ -463,3 +463,68 @@ app.delete(
 );
 
 export default app;
+
+app.post("/users/:id/lock", requireAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user: currentUser } = c.get("auth");
+  const userId = c.req.param("id");
+
+  // In this schema, "locking" is represented by setting a far-future restrictedUntil date
+  // or we can use a convention.
+  const lockedUntil = new Date("2099-12-31T23:59:59Z");
+
+  const updated = await db
+    .update(users)
+    .set({
+      restrictedUntil: lockedUntil,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning()
+    .get();
+
+  if (!updated) {
+    return error(c, "USER_NOT_FOUND", "User not found", 404);
+  }
+
+  await db.insert(auditLogs).values({
+    action: "USER_LOCKED",
+    actorId: currentUser.id,
+    targetType: "USER",
+    targetId: userId,
+    reason: "Admin manual lock",
+  });
+
+  return success(c, { userId, locked: true });
+});
+
+app.post("/users/:id/unlock", requireAdmin, async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user: currentUser } = c.get("auth");
+  const userId = c.req.param("id");
+
+  const updated = await db
+    .update(users)
+    .set({
+      restrictedUntil: null,
+      falseReportCount: 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning()
+    .get();
+
+  if (!updated) {
+    return error(c, "USER_NOT_FOUND", "User not found", 404);
+  }
+
+  await db.insert(auditLogs).values({
+    action: "USER_UNLOCKED",
+    actorId: currentUser.id,
+    targetType: "USER",
+    targetId: userId,
+    reason: "Admin manual unlock",
+  });
+
+  return success(c, { userId, locked: false });
+});
