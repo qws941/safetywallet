@@ -21,20 +21,19 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}) {
   } = options;
 
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
-    const rateLimiter = c.env.RATE_LIMITER;
+    const key = keyGenerator(c);
+    const rateLimiterBinding = c.env.RATE_LIMITER;
 
-    if (!rateLimiter) {
-      logger.warn("Rate limiter DO not configured, skipping rate limit");
+    if (!rateLimiterBinding) {
       return next();
     }
 
-    const key = keyGenerator(c);
-    const id = rateLimiter.idFromName(key);
-    const stub = rateLimiter.get(id);
-
     try {
+      const id = rateLimiterBinding.idFromName(key);
+      const stub = rateLimiterBinding.get(id);
       const response = await stub.fetch("https://rate-limiter/check", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "checkLimit",
           key,
@@ -44,31 +43,34 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}) {
       });
 
       if (!response.ok) {
-        logger.warn("Rate limiter DO unavailable", {
-          key,
-          status: response.status,
-        });
         return c.json(
           {
             success: false,
             error: {
               code: "SERVICE_UNAVAILABLE",
-              message: "Rate limiting service temporarily unavailable",
+              message: "Rate limiter service unavailable",
             },
           },
           503,
         );
       }
 
-      const result = await response.json<{
+      const result = (await response.json()) as {
         allowed: boolean;
         remaining: number;
         resetAt: number;
-      }>();
+      };
+
+      const remaining = Number.isFinite(result.remaining)
+        ? result.remaining
+        : 0;
+      const resetAt = Number.isFinite(result.resetAt)
+        ? result.resetAt
+        : Date.now() + windowMs;
 
       c.header("X-RateLimit-Limit", String(maxRequests));
-      c.header("X-RateLimit-Remaining", String(result.remaining));
-      c.header("X-RateLimit-Reset", String(Math.ceil(result.resetAt / 1000)));
+      c.header("X-RateLimit-Remaining", String(Math.max(remaining, 0)));
+      c.header("X-RateLimit-Reset", String(Math.ceil(resetAt / 1000)));
 
       if (!result.allowed) {
         return c.json(

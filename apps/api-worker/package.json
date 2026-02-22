@@ -1,17 +1,17 @@
 {
-  "name": "api-worker",
+  "name": "@safetywallet/api-worker",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "build": "wrangler deploy --env=\"\" --dry-run --outdir=dist",
+    "build": "wrangler deploy --env=\"\" --dry-run --outdir=dist --config wrangler.toml",
     "typecheck": "tsc --noEmit",
     "deploy": "node -e \"console.error('Manual deploy is disabled. Deployment is controlled by GitHub Actions (git-ref based).'); process.exit(1)\"",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply safework2-db --local",
-    "db:migrate:prod": "wrangler d1 migrations apply safework2-db --remote",
+    "db:migrate": "wrangler d1 migrations apply safetywallet-db --local --config wrangler.toml",
+    "db:migrate:prod": "wrangler d1 migrations apply safetywallet-db --remote --env=\"\" --config wrangler.toml",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

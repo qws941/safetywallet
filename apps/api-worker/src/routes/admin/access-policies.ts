@@ -5,6 +5,7 @@ import type { Env, AuthContext } from "../../types";
 import { accessPolicies } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
+import { requireAdmin } from "./helpers";
 import type { AppContext } from "./helpers";
 
 const app = new Hono<{
@@ -12,7 +13,7 @@ const app = new Hono<{
   Variables: { auth: AuthContext };
 }>();
 
-app.get("/access-policies/:siteId", async (c: AppContext) => {
+app.get("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
   const db = drizzle(c.env.DB);
   const siteId = c.req.param("siteId");
 
@@ -31,7 +32,7 @@ app.get("/access-policies/:siteId", async (c: AppContext) => {
   });
 });
 
-app.put("/access-policies/:siteId", async (c: AppContext) => {
+app.put("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const siteId = c.req.param("siteId");

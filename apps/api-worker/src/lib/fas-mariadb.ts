@@ -1,14 +1,20 @@
 import mysql from "mysql2/promise";
+import { createLogger } from "./logger";
 import type { HyperdriveBinding } from "../types";
 import { FasGetUpdatedEmployeesParamsSchema } from "../validators/fas-sync";
 
 // AceTime MariaDB uses EUC-KR charset (jeil_cmi database)
 const SITE_CD = "10";
 
-// mysql2/promise의 createConnection은 Connection 타입을 반환하지만
-// 실제로는 query 메서드를 포함함. 타입 정의가 불완전하므로 any 사용.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MySqlConnection = any;
+type MysqlQueryParams = ReadonlyArray<unknown> | Record<string, unknown>;
+
+interface MysqlConnection {
+  ping(): Promise<void>;
+  end(): Promise<void>;
+  query(sql: string, values?: MysqlQueryParams): Promise<[unknown, unknown]>;
+}
+
+const logger = createLogger("fas-mariadb");
 
 /**
  * AceTime employee record from MariaDB `employee` table
@@ -69,8 +75,33 @@ export interface FasAttendance {
   partCd: string;
 }
 
+export interface FasRawAttendanceSummary {
+  source: string;
+  totalRows: number;
+  checkins: number;
+  uniqueWorkers: number;
+  workerIds: string[];
+}
+
+export interface FasRawAttendanceRowsResult {
+  source: string;
+  rows: Array<Record<string, unknown>>;
+}
+
+export interface FasAttendanceRealtimeStats {
+  source: string;
+  totalRows: number;
+  checkedInWorkers: number;
+  dedupCheckinEvents: number;
+}
+
+export interface FasAttendanceSiteCount {
+  siteCd: string;
+  rowCount: number;
+}
+
 interface PooledConnection {
-  connection: MySqlConnection;
+  connection: MysqlConnection;
   lastUsed: number;
 }
 
@@ -85,7 +116,7 @@ const CACHE_TIMEOUT_MS = 30 * 1000; // 30 seconds TTL for cached connections
  */
 async function getConnection(
   hyperdrive: HyperdriveBinding,
-): Promise<MySqlConnection> {
+): Promise<MysqlConnection> {
   const cacheKey = `${hyperdrive.host}:${hyperdrive.port}`;
   const now = Date.now();
 
@@ -97,14 +128,18 @@ async function getConnection(
       await cached.connection.ping();
       cached.lastUsed = now;
       return cached.connection;
-    } catch {
+    } catch (err) {
+      logger.debug("Cached FAS connection ping failed, rotating connection", {
+        action: "fas_connection_cache_ping_failed",
+        error: { name: "PingError", message: String(err) },
+      });
       // Connection is dead, remove from cache
       connectionCache.delete(cacheKey);
     }
   }
 
   // Create new connection
-  const conn = await mysql.createConnection({
+  const conn = (await mysql.createConnection({
     host: hyperdrive.host,
     port: hyperdrive.port,
     user: hyperdrive.user,
@@ -117,7 +152,7 @@ async function getConnection(
     connectionLimit: 1, // Single connection per isolate
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
-  });
+  })) as unknown as MysqlConnection;
 
   connectionCache.set(cacheKey, { connection: conn, lastUsed: now });
   return conn;
@@ -291,19 +326,451 @@ export async function fasGetAllEmployeesPaginated(
 export async function fasGetDailyAttendance(
   hyperdrive: HyperdriveBinding,
   accsDay: string,
+  siteCd?: string | null,
 ): Promise<FasAttendance[]> {
   const conn = await getConnection(hyperdrive);
   try {
-    const [rows] = await conn.query(
-      `SELECT ad.empl_cd, ad.accs_day, ad.in_time, ad.out_time,
-               ad.state, ad.part_cd
-        FROM access_daily ad
-        WHERE ad.accs_day = ?
-        ORDER BY ad.in_time ASC`,
-      [accsDay],
-    );
-    const results = rows as Array<Record<string, unknown>>;
-    return results.map(mapToFasAttendance);
+    const normalizedSiteCd =
+      siteCd === undefined || siteCd === null ? null : siteCd;
+    const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+
+    const byWorker = new Map<string, FasAttendance>();
+
+    const mergeAttendance = (row: FasAttendance) => {
+      const key = `${row.emplCd}|${row.accsDay}`;
+      const existing = byWorker.get(key);
+      if (!existing) {
+        byWorker.set(key, row);
+        return;
+      }
+
+      const mergedInTime =
+        existing.inTime && row.inTime
+          ? existing.inTime <= row.inTime
+            ? existing.inTime
+            : row.inTime
+          : (existing.inTime ?? row.inTime);
+      const mergedOutTime =
+        existing.outTime && row.outTime
+          ? existing.outTime >= row.outTime
+            ? existing.outTime
+            : row.outTime
+          : (existing.outTime ?? row.outTime);
+
+      byWorker.set(key, {
+        ...existing,
+        inTime: mergedInTime,
+        outTime: mergedOutTime,
+        partCd: existing.partCd || row.partCd,
+        state: existing.state || row.state,
+      });
+    };
+
+    const candidates: Array<{ query: string; params: unknown[] }> = [
+      {
+        query: `SELECT ad.empl_cd, ad.accs_day, ad.in_time, ad.out_time,
+                     ad.state, ad.part_cd
+              FROM access_daily ad
+              WHERE ad.accs_day = ?${normalizedSiteCd ? " AND ad.site_cd = ?" : ""}`,
+        params: normalizedSiteCd ? [accsDay, normalizedSiteCd] : [accsDay],
+      },
+      {
+        query: `SELECT a.empl_cd,
+                       DATE_FORMAT(a.accs_dt, '%Y%m%d') AS accs_day,
+                       MIN(DATE_FORMAT(a.accs_dt, '%H%i')) AS in_time,
+                       MAX(DATE_FORMAT(a.accs_dt, '%H%i')) AS out_time,
+                       0 AS state,
+                       COALESCE(MAX(a.part_cd), '') AS part_cd
+                FROM access a
+                WHERE DATE(a.accs_dt) = ?${normalizedSiteCd ? " AND a.site_cd = ?" : ""}
+                GROUP BY a.empl_cd, DATE_FORMAT(a.accs_dt, '%Y%m%d')`,
+        params: normalizedSiteCd
+          ? [dateWithDash, normalizedSiteCd]
+          : [dateWithDash],
+      },
+      {
+        query: `SELECT ah.empl_cd,
+                       DATE_FORMAT(ah.accs_dt, '%Y%m%d') AS accs_day,
+                       MIN(DATE_FORMAT(ah.accs_dt, '%H%i')) AS in_time,
+                       MAX(DATE_FORMAT(ah.accs_dt, '%H%i')) AS out_time,
+                       0 AS state,
+                       COALESCE(MAX(ah.part_cd), '') AS part_cd
+                FROM access_history ah
+                WHERE DATE(ah.accs_dt) = ?${normalizedSiteCd ? " AND ah.site_cd = ?" : ""}
+                GROUP BY ah.empl_cd, DATE_FORMAT(ah.accs_dt, '%Y%m%d')`,
+        params: normalizedSiteCd
+          ? [dateWithDash, normalizedSiteCd]
+          : [dateWithDash],
+      },
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = (rows as Array<Record<string, unknown>>).map(
+          mapToFasAttendance,
+        );
+        for (const row of mapped) {
+          mergeAttendance(row);
+        }
+      } catch (err) {
+        logger.debug("FAS attendance source query failed", {
+          action: "fas_daily_attendance_fallback",
+          source: candidate.query.slice(0, 32),
+          error: { name: "QueryError", message: String(err) },
+        });
+        continue;
+      }
+    }
+
+    return [...byWorker.values()].sort((a, b) => {
+      const aTime = a.inTime ?? "9999";
+      const bTime = b.inTime ?? "9999";
+      return aTime.localeCompare(bTime);
+    });
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasGetDailyAttendanceRawSummary(
+  hyperdrive: HyperdriveBinding,
+  accsDay: string,
+  siteCd?: string | null,
+): Promise<FasRawAttendanceSummary> {
+  const conn = await getConnection(hyperdrive);
+  const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+  const normalizedSiteCd =
+    siteCd === undefined || siteCd === null ? null : siteCd;
+
+  const buildSiteClause = (siteColumn: string) =>
+    normalizedSiteCd ? ` AND ${siteColumn} = ?` : "";
+  const withSiteParam = (params: unknown[]) =>
+    normalizedSiteCd ? [...params, normalizedSiteCd] : params;
+
+  const candidates: Array<{
+    source: string;
+    query: string;
+    params: unknown[];
+  }> = [
+    {
+      source: "access_daily.raw",
+      query: `SELECT ad.empl_cd AS empl_cd
+           FROM access_daily ad
+          WHERE ad.accs_day = ?${buildSiteClause("ad.site_cd")}`,
+      params: withSiteParam([accsDay]),
+    },
+    {
+      source: "access.raw",
+      query: `SELECT a.empl_cd AS empl_cd
+           FROM access a
+          WHERE DATE(a.accs_dt) = ?${buildSiteClause("a.site_cd")}`,
+      params: withSiteParam([dateWithDash]),
+    },
+    {
+      source: "access_history.raw",
+      query: `SELECT ah.empl_cd AS empl_cd
+           FROM access_history ah
+          WHERE DATE(ah.accs_dt) = ?${buildSiteClause("ah.site_cd")}`,
+      params: withSiteParam([dateWithDash]),
+    },
+  ];
+
+  try {
+    const mergedWorkerIds = new Set<string>();
+    const successfulSources: string[] = [];
+    let totalRows = 0;
+
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = rows as Array<Record<string, unknown>>;
+        totalRows += mapped.length;
+        for (const row of mapped) {
+          const workerId = String(row["empl_cd"] || "");
+          if (workerId.length > 0) {
+            mergedWorkerIds.add(workerId);
+          }
+        }
+        successfulSources.push(candidate.source);
+      } catch (err) {
+        logger.debug("FAS raw summary source query failed", {
+          action: "fas_raw_summary_fallback",
+          source: candidate.source,
+          error: { name: "QueryError", message: String(err) },
+        });
+        continue;
+      }
+    }
+
+    return {
+      source:
+        successfulSources.length > 0 ? successfulSources.join("+") : "none",
+      totalRows,
+      checkins: totalRows,
+      uniqueWorkers: mergedWorkerIds.size,
+      workerIds: [...mergedWorkerIds],
+    };
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasGetDailyAttendanceRawRows(
+  hyperdrive: HyperdriveBinding,
+  accsDay: string,
+  siteCd?: string | null,
+  limit = 200,
+): Promise<FasRawAttendanceRowsResult> {
+  const conn = await getConnection(hyperdrive);
+  const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+  const normalizedSiteCd =
+    siteCd === undefined || siteCd === null ? null : siteCd;
+  const safeLimit = Math.min(1000, Math.max(1, Math.trunc(limit)));
+
+  const withSiteClause = (siteColumn: string) =>
+    normalizedSiteCd ? ` AND ${siteColumn} = ?` : "";
+
+  const withParams = (params: unknown[]) =>
+    normalizedSiteCd
+      ? [...params, normalizedSiteCd, safeLimit]
+      : [...params, safeLimit];
+
+  const candidates: Array<{
+    source: string;
+    query: string;
+    params: unknown[];
+  }> = [
+    {
+      source: "access_daily.raw",
+      query: `SELECT *
+           FROM access_daily ad
+          WHERE ad.accs_day = ?${withSiteClause("ad.site_cd")}
+          ORDER BY ad.in_time ASC
+          LIMIT ?`,
+      params: withParams([accsDay]),
+    },
+    {
+      source: "access.raw",
+      query: `SELECT *
+           FROM access a
+          WHERE DATE(a.accs_dt) = ?${withSiteClause("a.site_cd")}
+          ORDER BY a.accs_dt ASC
+          LIMIT ?`,
+      params: withParams([dateWithDash]),
+    },
+    {
+      source: "access_history.raw",
+      query: `SELECT *
+           FROM access_history ah
+          WHERE DATE(ah.accs_dt) = ?${withSiteClause("ah.site_cd")}
+          ORDER BY ah.accs_dt ASC
+          LIMIT ?`,
+      params: withParams([dateWithDash]),
+    },
+  ];
+
+  try {
+    const successfulSources: string[] = [];
+    const mergedRows: Array<Record<string, unknown>> = [];
+
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = rows as Array<Record<string, unknown>>;
+        mergedRows.push(...mapped);
+        successfulSources.push(candidate.source);
+      } catch (err) {
+        logger.debug("FAS raw rows source query failed", {
+          action: "fas_raw_rows_fallback",
+          source: candidate.source,
+          error: { name: "QueryError", message: String(err) },
+        });
+        continue;
+      }
+    }
+
+    const trimmedRows =
+      mergedRows.length > safeLimit
+        ? mergedRows.slice(0, safeLimit)
+        : mergedRows;
+
+    return {
+      source:
+        successfulSources.length > 0 ? successfulSources.join("+") : "none",
+      rows: trimmedRows,
+    };
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasGetDailyAttendanceRealtimeStats(
+  hyperdrive: HyperdriveBinding,
+  accsDay: string,
+  siteCd?: string | null,
+): Promise<FasAttendanceRealtimeStats> {
+  const conn = await getConnection(hyperdrive);
+  const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+  const normalizedSiteCd =
+    siteCd === undefined || siteCd === null ? null : siteCd;
+
+  const withSiteClause = (siteColumn: string) =>
+    normalizedSiteCd ? ` AND ${siteColumn} = ?` : "";
+  const withParams = (params: unknown[]) =>
+    normalizedSiteCd ? [...params, normalizedSiteCd] : params;
+
+  const candidates: Array<{
+    source: string;
+    query: string;
+    params: unknown[];
+  }> = [
+    {
+      source: "access_daily.raw",
+      query: `SELECT ad.empl_cd AS empl_cd, CONCAT(ad.accs_day, LPAD(COALESCE(ad.in_time, ''), 4, '0')) AS checkin_key
+           FROM access_daily ad
+          WHERE ad.accs_day = ?${withSiteClause("ad.site_cd")}
+            AND ad.in_time IS NOT NULL`,
+      params: withParams([accsDay]),
+    },
+    {
+      source: "access.raw",
+      query: `SELECT a.empl_cd AS empl_cd, DATE_FORMAT(a.accs_dt, '%Y%m%d%H%i') AS checkin_key
+           FROM access a
+          WHERE DATE(a.accs_dt) = ?${withSiteClause("a.site_cd")}`,
+      params: withParams([dateWithDash]),
+    },
+    {
+      source: "access_history.raw",
+      query: `SELECT ah.empl_cd AS empl_cd, DATE_FORMAT(ah.accs_dt, '%Y%m%d%H%i') AS checkin_key
+           FROM access_history ah
+          WHERE DATE(ah.accs_dt) = ?${withSiteClause("ah.site_cd")}`,
+      params: withParams([dateWithDash]),
+    },
+  ];
+
+  try {
+    const checkedInWorkers = new Set<string>();
+    const dedupCheckinEvents = new Set<string>();
+    const successfulSources: string[] = [];
+    let totalRows = 0;
+
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = rows as Array<Record<string, unknown>>;
+        totalRows += mapped.length;
+
+        for (const row of mapped) {
+          const workerId = String(row["empl_cd"] || "").trim();
+          const checkinKey = String(row["checkin_key"] || "").trim();
+          if (!workerId || !checkinKey) {
+            continue;
+          }
+          checkedInWorkers.add(workerId);
+          dedupCheckinEvents.add(`${workerId}|${checkinKey}`);
+        }
+
+        successfulSources.push(candidate.source);
+      } catch (err) {
+        logger.debug("FAS realtime stats source query failed", {
+          action: "fas_realtime_stats_fallback",
+          source: candidate.source,
+          error: { name: "QueryError", message: String(err) },
+        });
+        continue;
+      }
+    }
+
+    return {
+      source:
+        successfulSources.length > 0 ? successfulSources.join("+") : "none",
+      totalRows,
+      checkedInWorkers: checkedInWorkers.size,
+      dedupCheckinEvents: dedupCheckinEvents.size,
+    };
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function fasGetDailyAttendanceSiteCounts(
+  hyperdrive: HyperdriveBinding,
+  accsDay: string,
+  limit = 10,
+): Promise<{ source: string; siteCounts: FasAttendanceSiteCount[] }> {
+  const conn = await getConnection(hyperdrive);
+  const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
+  const safeLimit = Math.min(50, Math.max(1, Math.trunc(limit)));
+
+  const candidates: Array<{
+    source: string;
+    query: string;
+    params: unknown[];
+  }> = [
+    {
+      source: "access_daily.raw",
+      query: `SELECT ad.site_cd AS site_cd, COUNT(*) AS cnt
+           FROM access_daily ad
+          WHERE ad.accs_day = ?
+          GROUP BY ad.site_cd`,
+      params: [accsDay],
+    },
+    {
+      source: "access.raw",
+      query: `SELECT a.site_cd AS site_cd, COUNT(*) AS cnt
+           FROM access a
+          WHERE DATE(a.accs_dt) = ?
+          GROUP BY a.site_cd`,
+      params: [dateWithDash],
+    },
+    {
+      source: "access_history.raw",
+      query: `SELECT ah.site_cd AS site_cd, COUNT(*) AS cnt
+           FROM access_history ah
+          WHERE DATE(ah.accs_dt) = ?
+          GROUP BY ah.site_cd`,
+      params: [dateWithDash],
+    },
+  ];
+
+  try {
+    const mergedCounts = new Map<string, number>();
+    const successfulSources: string[] = [];
+
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = rows as Array<Record<string, unknown>>;
+        for (const row of mapped) {
+          const siteCd = String(row["site_cd"] || "").trim();
+          if (!siteCd) {
+            continue;
+          }
+          const cnt = Number(row["cnt"] || 0);
+          mergedCounts.set(siteCd, (mergedCounts.get(siteCd) ?? 0) + cnt);
+        }
+        successfulSources.push(candidate.source);
+      } catch (err) {
+        logger.debug("FAS site count source query failed", {
+          action: "fas_site_counts_fallback",
+          source: candidate.source,
+          error: { name: "QueryError", message: String(err) },
+        });
+        continue;
+      }
+    }
+
+    const siteCounts = [...mergedCounts.entries()]
+      .map(([siteCd, rowCount]) => ({ siteCd, rowCount }))
+      .sort((a, b) => b.rowCount - a.rowCount)
+      .slice(0, safeLimit);
+
+    return {
+      source:
+        successfulSources.length > 0 ? successfulSources.join("+") : "none",
+      siteCounts,
+    };
   } finally {
     await conn.end();
   }
@@ -400,7 +867,11 @@ export async function testConnection(
     await conn.ping();
     await conn.end();
     return true;
-  } catch {
+  } catch (err) {
+    logger.warn("FAS connection test failed", {
+      action: "fas_connection_test_failed",
+      error: { name: "ConnectionError", message: String(err) },
+    });
     return false;
   }
 }
