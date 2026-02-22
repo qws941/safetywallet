@@ -1,8 +1,10 @@
-# API ROUTES
+# AGENTS: ROUTES
+
+## OVERVIEW
 
 19 root route modules (8.5k LOC). Each exports a Hono app mounted in `index.ts`.
 
-## INVENTORY
+## STRUCTURE
 
 | Module             | Lines | Domain                                      | Middleware                   |
 | ------------------ | ----- | ------------------------------------------- | ---------------------------- |
@@ -46,3 +48,7 @@ posts, actions, education, votes.
 - All mutations validated with `zValidator("json", schema)`
 - All state changes audited via `logAuditWithContext()`
 - PII masked in responses (e.g., `nameMasked` in votes)
+
+## SUBMODULE DOCS
+
+- `__tests__/AGENTS.md` defines route-test conventions (app factory usage, deterministic mocks, envelope assertions).

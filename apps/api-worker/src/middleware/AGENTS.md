@@ -1,10 +1,10 @@
-# API MIDDLEWARE
+# AGENTS: MIDDLEWARE
 
 ## OVERVIEW
 
 8 middleware functions for auth, authorization, attendance verification, rate limiting, security headers, analytics, and request logging. All middleware uses **manual invocation pattern** (NOT Hono `.use()`) except `security-headers.ts`, `analytics.ts`, and `request-logger.ts` which use global `.use()`.
 
-## FILES
+## STRUCTURE
 
 | File                  | Lines | Purpose                                               |
 | --------------------- | ----- | ----------------------------------------------------- |

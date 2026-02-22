@@ -1,8 +1,10 @@
-# LIB UTILITIES
+# AGENTS: LIB
+
+## OVERVIEW
 
 27 utility modules (4.5k LOC). Backbone of the API — crypto, integrations, logging, state machines.
 
-## INVENTORY
+## STRUCTURE
 
 ### Integration & External Services
 
@@ -60,6 +62,10 @@
 | ------------- | ----- | ------------------ |
 | sql-js.d.ts   | 25    | sql.js type shim   |
 | piexifjs.d.ts | 14    | piexifjs type shim |
+
+## SUBMODULE DOCS
+
+- `__tests__/AGENTS.md` captures lib-test conventions (external adapter mocking, fallback-order assertions, fixture builders).
 
 ## CONVENTIONS
 

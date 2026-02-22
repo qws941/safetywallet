@@ -1,4 +1,4 @@
-# WORKER-APP: Next.js 14 PWA
+# AGENTS: WORKER-APP
 
 ## OVERVIEW
 
@@ -12,16 +12,16 @@ Mobile-first safety reporting PWA for construction workers.
 
 ```
 src/
-├── app/                # App Router (ALL 'use client')
+├── app/                # 17 pages (ALL 'use client')
 │   ├── layout.tsx      # PWA Metadata & Providers
 │   ├── login/          # AceTime/Phone dual-auth
 │   ├── education/      # Quizzes, TBM, education hub
 │   ├── posts/          # Safety reports (R2 image uploads)
 │   └── points/         # Leaderboard & rewards
 ├── components/         # Mobile UI (BottomNav, QRScanner)
-├── hooks/              # use-api (20+ TanStack Query hooks)
-├── stores/             # auth.ts (Zustand + localStorage)
-└── lib/                # apiFetch (auto-refresh), image-compress
+├── hooks/              # 6 TanStack Query hooks
+├── stores/             # auth.ts (Zustand + persist + _hasHydrated)
+└── lib/                # apiFetch (token refresh + offline queue), image-compress
 ```
 
 ## WHERE TO LOOK
@@ -50,6 +50,8 @@ src/
 - **Localization**: Pure Korean (ko-KR) strings only.
 - **State Management**: Zustand for auth; TanStack Query for server state.
 - **Image Upload**: Compress to JPEG 80%, skip if <100KB, max width 1920px.
+- **Offline Queue**: Failed submissions queued in Zustand for retry on reconnect.
+- **Push Notifications**: Web Push via service worker (sw-push.js).
 
 ## ANTI-PATTERNS
 

@@ -1,7 +1,4 @@
-# PROJECT KNOWLEDGE BASE: PACKAGES/UI
-
-**Updated:** 2026-02-19  
-**Package:** @safetywallet/ui
+# AGENTS: PACKAGES/UI
 
 ## OVERVIEW
 
@@ -44,7 +41,7 @@ src/
 3. **Export**: Register the component in `src/index.ts` to make it available to the monorepo.
 4. **Validation**: Ensure components are accessible (ARIA labels, keyboard navigation) before committing.
 
-### Anti-Patterns
+## ANTI-PATTERNS
 
 - **No Data Fetching**: Never perform API calls or use hooks that depend on specific backend data.
 - **No Hardcoded Values**: Use Tailwind variables and theme colors instead of magic hex/rgb values.

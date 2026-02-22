@@ -1,18 +1,21 @@
-# ADMIN-APP KNOWLEDGE BASE
+# AGENTS: ADMIN-APP
 
-**Next.js 14 Dashboard** (Static Export via R2)
+## OVERVIEW
+
+Next.js 14 Admin Dashboard (static export). 29 pages across 17 feature dirs, 16 domain hooks.
 
 ## STRUCTURE
 
 ```
 src/
-├── app/                  # App Router pages
+├── app/                  # 29 pages, 17 feature dirs
 │   ├── approvals/        # Approval workflow
 │   └── [domain]/         # Domain pages (posts, members)
 ├── components/           # UI Components
 │   ├── sidebar.tsx       # Core nav (12 items)
 │   └── [domain]/         # Domain-local UI
-├── hooks/                # Domain hooks (TanStack Query)
+├── hooks/                # 16 domain hooks (TanStack Query)
+├── stores/               # auth.ts (Zustand, isAdmin computed)
 └── lib/                  # API client
 ```
 
@@ -29,6 +32,7 @@ src/
 
 - `src/app/AGENTS.md`: Dashboard route groups and page-domain structure
 - `src/hooks/AGENTS.md`: TanStack Query hook inventory and invalidation rules
+- `src/hooks/__tests__/AGENTS.md`: Hook test conventions (renderHook, apiFetch mocking)
 - `src/components/AGENTS.md`: Reusable admin UI component boundaries
 - `src/lib/AGENTS.md`: API client and utility-layer constraints
 - `src/stores/AGENTS.md`: Persisted auth/session state conventions

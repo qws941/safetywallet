@@ -1,4 +1,4 @@
-# ADMIN APP PAGES
+# AGENTS: APP
 
 ## OVERVIEW
 
@@ -37,6 +37,13 @@ Next.js 14 App Router pages for the admin dashboard. 17 feature directories + `(
 | `not-found.tsx`    | 8     | 404 page                            |
 | `globals.css`      | 55    | Global styles (Tailwind imports)    |
 
+## SUBMODULE DOCS
+
+- `attendance/AGENTS.md`: Attendance tabs, sync workflows, unmatched-record handling
+- `posts/AGENTS.md`: Review queue and report lifecycle handling
+- `votes/AGENTS.md`: Voting period setup, candidate/results workflows
+- `education/AGENTS.md`: Course/material/quiz management flows
+
 ## CONVENTIONS
 
 - **All pages `'use client'`** — no RSC
@@ -45,13 +52,6 @@ Next.js 14 App Router pages for the admin dashboard. 17 feature directories + `(
 - **Korean UI text** — admin-facing labels
 - **Port 3001** in development
 - **Deployed via `@cloudflare/next-on-pages`** to CF Pages
-
-## SUBMODULE DOCS
-
-- `attendance/AGENTS.md`: Attendance tabs, sync workflows, unmatched-record handling
-- `posts/AGENTS.md`: Review queue and report lifecycle handling
-- `votes/AGENTS.md`: Voting period setup, candidate/results workflows
-- `education/AGENTS.md`: Course/material/quiz management flows
 
 ## ADDING A PAGE
 

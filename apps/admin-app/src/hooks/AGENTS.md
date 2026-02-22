@@ -1,8 +1,10 @@
-# ADMIN HOOKS
+# AGENTS: HOOKS
+
+## OVERVIEW
 
 17 domain-specific TanStack Query hooks (2.2k LOC). Each wraps API endpoints for a single domain.
 
-## INVENTORY
+## STRUCTURE
 
 | Hook                   | Lines | Domain                                      |
 | ---------------------- | ----- | ------------------------------------------- |
@@ -47,6 +49,10 @@ export function useDomainMutation() {
   });
 }
 ```
+
+## SUBMODULE DOCS
+
+- `__tests__/AGENTS.md` documents hook-test conventions (renderHook wrappers, store selector mocks, query-key and invalidation assertions).
 
 ## CONVENTIONS
 

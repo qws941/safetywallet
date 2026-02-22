@@ -1,17 +1,20 @@
-# API-WORKER KNOWLEDGE BASE
+# AGENTS: API-WORKER
 
-**Primary Backend**: Hono REST API on Cloudflare Workers (D1, R2, KV).
+## OVERVIEW
+
+Cloudflare Workers REST API. Hono 4 framework, Drizzle ORM with D1 (SQLite), 36 route modules, 8 middleware, 9 CRON jobs.
 
 ## STRUCTURE
 
 ```
 src/
 ├── index.ts           # Entry: Hono app + CRON handlers
-├── routes/            # 19 root + 17 admin modules (12k LOC)
-├── middleware/         # 8 modules (manual invocation)
-├── db/schema.ts       # Drizzle schema (32 tables, 29 relations)
-├── lib/               # 27 utility modules (4.5k LOC)
-├── scheduled/         # 9 CRON jobs (1.3k LOC)
+├── routes/            # 19 core + 17 admin route modules
+├── middleware/        # Manual invocation guards
+├── db/schema.ts       # Drizzle schema definitions
+├── lib/               # Shared utilities (response, crypto, audit, logger)
+├── scheduled/         # CRON handlers and schedulers
+├── durable-objects/   # RateLimiter DO
 └── validators/        # Zod request schemas
 ```
 
@@ -21,6 +24,7 @@ src/
 | ---------- | ------------------ | --------------------------------------- |
 | Add Route  | `src/routes/`      | Export `Hono` app, mount in `index.ts`  |
 | DB Schema  | `src/db/schema.ts` | Drizzle ORM. Run `drizzle-kit generate` |
+| Migrations | `migrations/`      | Ordered SQL + `meta/_journal.json`      |
 | Bindings   | `wrangler.toml`    | D1, R2, KV, DO, CRON, Hyperdrive, AI    |
 | Helpers    | `src/lib/`         | response, crypto, audit, logger, sms    |
 | Validation | `src/validators/`  | Zod schemas for request bodies          |
@@ -33,6 +37,7 @@ src/
 - `src/middleware/AGENTS.md`: Middleware invocation and guard patterns
 - `src/lib/AGENTS.md`: Utility module inventory by domain
 - `src/db/AGENTS.md`: Schema and migration constraints
+- `migrations/AGENTS.md`: Migration ordering, journal metadata, and apply workflow
 - `src/scheduled/AGENTS.md`: CRON schedule matrix and lock/retry rules
 - `src/validators/AGENTS.md`: Zod schema conventions and enum parity checks
 - `src/durable-objects/AGENTS.md`: Durable Object rate limiter rules and state model
@@ -48,16 +53,17 @@ src/
 
 ## CF BINDINGS
 
-| Binding            | Type       | Purpose                          |
-| ------------------ | ---------- | -------------------------------- |
-| DB                 | D1         | Primary SQLite database          |
-| R2 (×3)            | R2 Bucket  | Images, static, AceTime photos   |
-| FAS_HYPERDRIVE     | Hyperdrive | MariaDB (FAS employee data)      |
-| KV                 | KV         | Cache, sessions, sync locks      |
-| NOTIFICATION_QUEUE | Queue      | Push notification delivery       |
-| RATE_LIMITER       | DO         | Rate limiting                    |
-| AI                 | Workers AI | Hazard classification, face blur |
-| ANALYTICS          | Analytics  | API metrics                      |
+| Binding            | Type       | Purpose                                    |
+| ------------------ | ---------- | ------------------------------------------ |
+| DB                 | D1         | Primary SQLite database                    |
+| R2 (×3)            | R2 Bucket  | Images, static, AceTime photos             |
+| FAS_HYPERDRIVE     | Hyperdrive | MariaDB (FAS employee data)                |
+| KV                 | KV         | Cache, sessions, sync locks                |
+| NOTIFICATION_QUEUE | Queue      | Push notification delivery                 |
+| QUEUE_DLQ          | Queue      | Dead-letter queue for failed notifications |
+| RATE_LIMITER       | DO         | Rate limiting                              |
+| AI                 | Workers AI | Hazard classification, face blur           |
+| ANALYTICS          | Analytics  | API metrics                                |
 
 ## CONVENTIONS
 
@@ -66,7 +72,7 @@ src/
 - **Context**: `c` (Hono Context) is always the first arg to helpers.
 - **PII**: Hash sensitive data (phone, DOB) using `src/lib/crypto.ts` (HMAC-SHA256).
 - **Auth**: JWT `loginDate` claim (daily reset 5 AM KST).
-- **Audit**: All state-changing ops call `logAuditWithContext()`. Silent fail.
+- **Audit**: State-changing ops call `logAuditWithContext()`. On failure, log via structured logger; do not silently swallow errors.
 - **Validation**: All POST/PATCH use `zValidator("json", Schema)`.
 
 ## ANTI-PATTERNS

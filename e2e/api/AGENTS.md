@@ -1,4 +1,4 @@
-# E2E: API PROJECT
+# AGENTS: API
 
 ## OVERVIEW
 

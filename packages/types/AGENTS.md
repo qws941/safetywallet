@@ -1,30 +1,37 @@
 # AGENTS: PACKAGES/TYPES
 
-**Context:** Shared Type Definitions
-**Scope:** Internal types, Enums, and DTOs
-
 ## OVERVIEW
 
-This package is the Source of Truth (SoT) for all TypeScript definitions used across the Safework2 monorepo. It is a logic-less library strictly restricted to types, interfaces, and enums consumed by both the API and frontend applications.
+Context: Shared type definitions. Scope: internal types, enums, and DTOs.
+
+This package is the Source of Truth (SoT) for all TypeScript definitions used across the SafetyWallet monorepo. It is a logic-less library strictly restricted to types, interfaces, and enums consumed by both the API and frontend applications.
 
 ## STRUCTURE
 
 ```
 src/
-├── index.ts              # Global barrel export (Source of Truth)
-├── enums.ts              # System-wide enum definitions (24 total)
+├── index.ts              # Global barrel export (single public entrypoint)
+├── enums.ts              # System-wide enum definitions
 ├── api.ts                # Generic API response envelopes
-└── dto/                  # Domain-specific Data Transfer Objects
-    ├── action.dto.ts     # Corrective actions
-    ├── auth.dto.ts       # Authentication & Login
-    ├── education.dto.ts  # Courses, Materials, Quizzes
-    ├── user.dto.ts       # Profiles & Identity
-    └── ...               # (See directory for full list)
+├── dto/                  # Domain-specific Data Transfer Objects
+│   ├── action.dto.ts     # Corrective actions
+│   ├── auth.dto.ts       # Authentication & Login
+│   ├── education.dto.ts  # Courses, Materials, Quizzes
+│   ├── user.dto.ts       # Profiles & Identity
+│   └── ...               # (See directory for full list)
+└── i18n/
+    ├── index.ts          # Localization barrel export
+    └── ko.ts             # Korean shared string catalog
 ```
+
+## SUBMODULE DOCS
+
+- `src/dto/AGENTS.md`: DTO naming, export, and schema parity rules
+- `src/i18n/AGENTS.md`: Localization key conventions and Korean copy constraints
 
 ## CONVENTIONS
 
-- **Barrel Exports**: Every public type, interface, or enum MUST be re-exported in `src/index.ts`.
+- **Barrel Exports**: Every public type, interface, enum, and shared i18n export MUST be re-exported in `src/index.ts`.
 - **Interface vs Type**: Prefer `interface` for DTOs and object structures to allow for extension.
 - **Naming**: DTOs must be suffixed with `Dto` (e.g., `CreatePostDto`, `UserResponseDto`).
 - **Enum Parity**: Enums defined here must match the Drizzle schema enums in `apps/api-worker/src/db/schema.ts`.
