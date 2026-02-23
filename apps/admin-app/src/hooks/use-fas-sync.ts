@@ -136,3 +136,26 @@ export function useSearchFasMariadb(params: { name?: string; phone?: string }) {
     enabled: !!(params.name || params.phone),
   });
 }
+
+export function useRealtimeAttendanceView(params: {
+  accsDay: string;
+  siteCd?: string;
+}) {
+  const trimmedSiteCd = params.siteCd?.trim() || "";
+  const searchParams = new URLSearchParams();
+  searchParams.set("accsDay", params.accsDay);
+  if (trimmedSiteCd) searchParams.set("siteCd", trimmedSiteCd);
+  const qs = searchParams.toString();
+
+  return useQuery({
+    queryKey: [
+      "admin",
+      "fas-realtime-attendance",
+      params.accsDay,
+      trimmedSiteCd || "all",
+    ],
+    queryFn: () => apiFetch(`/debug/fas-counts?${qs}`),
+    enabled: /^\d{8}$/.test(params.accsDay),
+    refetchInterval: 15_000,
+  });
+}

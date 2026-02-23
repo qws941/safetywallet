@@ -86,7 +86,7 @@ function setOnlineStatus(online: boolean): void {
   });
 }
 
-const queueKey = "safetywallet_offline_queue";
+const queueKey = "safework2_offline_queue";
 
 describe("api.ts", () => {
   beforeEach(() => {
