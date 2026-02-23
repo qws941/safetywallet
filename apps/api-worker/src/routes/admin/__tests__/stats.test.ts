@@ -4,9 +4,9 @@ import { gte, lt } from "drizzle-orm";
 
 const mockFasRealtimeStats = vi.fn();
 const DEFAULT_FAS_SOURCE = {
-  dbName: "jeil_cmi",
+  dbName: "mdidev",
   siteCd: "10",
-  d1SiteName: "파주운정A45BL",
+  d1SiteName: "송도세브란스",
   workerIdPrefix: "",
 };
 vi.mock("../../../lib/fas-mariadb", () => ({

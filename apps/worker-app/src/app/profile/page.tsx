@@ -180,7 +180,7 @@ export default function ProfilePage() {
         {/* App Info */}
         <Card>
           <CardContent className="py-4 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 SafetyWallet</p>
+            <p>&copy; 2026 송도세브란스 SafetyWallet</p>
           </CardContent>
         </Card>
       </main>

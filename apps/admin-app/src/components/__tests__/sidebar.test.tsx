@@ -67,7 +67,7 @@ describe("Sidebar", () => {
   it("renders nav items and current site", () => {
     render(<Sidebar />);
 
-    expect(screen.getByText("안전지갑 관리자")).toBeInTheDocument();
+    expect(screen.getByText("송도세브란스 관리자")).toBeInTheDocument();
     expect(screen.getByText("서울 현장")).toBeInTheDocument();
     expect(screen.getByText("대시보드")).toBeInTheDocument();
   });

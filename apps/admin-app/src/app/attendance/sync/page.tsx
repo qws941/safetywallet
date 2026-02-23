@@ -1,17 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Skeleton,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@safetywallet/ui";
+import { Skeleton } from "@safetywallet/ui";
 import { Database } from "lucide-react";
 import { useFasSyncStatus } from "@/hooks/use-fas-sync";
-import { FAS_SOURCES } from "../attendance-helpers";
 import { StatusCards } from "./components/status-cards";
 import { ManualSyncCard } from "./components/manual-sync-card";
 import { FasSearchCard } from "./components/fas-search-card";
@@ -19,11 +10,7 @@ import { SyncErrorsCard } from "./components/sync-errors-card";
 import { SyncLogsCard } from "./components/sync-logs-card";
 
 export default function AttendanceSyncPage() {
-  const [source, setSource] = useState<string>("");
-  const { data: syncStatus, isLoading } = useFasSyncStatus(source || undefined);
-
-  const currentSourceLabel =
-    FAS_SOURCES.find((s) => s.value === source)?.label ?? "전체 현장";
+  const { data: syncStatus, isLoading } = useFasSyncStatus();
 
   if (isLoading) {
     return (
@@ -61,31 +48,13 @@ export default function AttendanceSyncPage() {
             FAS 출근데이터 동기화 상태 및 에러 모니터링
           </p>
         </div>
-        <Select
-          value={source || "__all__"}
-          onValueChange={(v) => setSource(v === "__all__" ? "" : v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue>{currentSourceLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {FAS_SOURCES.map((s) => (
-              <SelectItem
-                key={s.value || "__all__"}
-                value={s.value || "__all__"}
-              >
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {syncStatus && (
         <StatusCards syncStatus={syncStatus} isHealthy={isHealthy} />
       )}
       <ManualSyncCard />
-      <FasSearchCard source={source || undefined} />
+      <FasSearchCard />
       <SyncErrorsCard />
       <SyncLogsCard syncLogs={syncStatus?.recentSyncLogs ?? []} />
     </div>

@@ -52,7 +52,7 @@
       "sessionExpired": "세션이 만료되었습니다",
       "checkAttendance": "먼저 출근 확인을 해주세요"
     },
-    "loginPageTitle": "안전지갑",
+    "loginPageTitle": "송도세브란스 안전지갑",
     "loginPageSubtitle": "휴대폰, 이름, 생년월일로 로그인",
     "loginPageHint": "등록된 전화번호, 이름, 생년월일로 로그인합니다.",
     "loginPageNote": "최초 이용 시 출근 기록이 필요할 수 있습니다.",
@@ -672,7 +672,7 @@
     "language": "언어"
   },
   "components": {
-    "appTitle": "안전지갑",
+    "appTitle": "송도세브란스 안전지갑",
     "siteIdLabel": "현장 ID:",
     "unsafeWarningTitle": "⚠️ 불안전행동 제보 안내",
     "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",

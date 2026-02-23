@@ -106,13 +106,13 @@ describe("use-fas-sync", () => {
         expect(
           queryClient
             .getQueryCache()
-            .find({ queryKey: ["admin", "fas-sync-status", undefined] }),
+            .find({ queryKey: ["admin", "fas-sync-status"] }),
         ).toBeDefined(),
       );
 
       const query = queryClient
         .getQueryCache()
-        .find({ queryKey: ["admin", "fas-sync-status", undefined] });
+        .find({ queryKey: ["admin", "fas-sync-status"] });
       const options = query?.options as { refetchInterval?: number };
       expect(options.refetchInterval).toBe(30000);
     });
@@ -273,25 +273,13 @@ describe("use-fas-sync", () => {
       await waitFor(() =>
         expect(
           queryClient.getQueryCache().find({
-            queryKey: [
-              "admin",
-              "fas-realtime-attendance",
-              "20260222",
-              "all",
-              undefined,
-            ],
+            queryKey: ["admin", "fas-realtime-attendance", "20260222", "all"],
           }),
         ).toBeDefined(),
       );
 
       const query = queryClient.getQueryCache().find({
-        queryKey: [
-          "admin",
-          "fas-realtime-attendance",
-          "20260222",
-          "all",
-          undefined,
-        ],
+        queryKey: ["admin", "fas-realtime-attendance", "20260222", "all"],
       });
       const options = query?.options as { refetchInterval?: number };
       expect(options.refetchInterval).toBe(15000);

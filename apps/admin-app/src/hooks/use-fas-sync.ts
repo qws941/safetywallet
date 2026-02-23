@@ -31,18 +31,15 @@ export interface FasSyncStatusResponse {
   recentSyncLogs: FasSyncLogEntry[];
 }
 
-export function useFasSyncStatus(source?: string) {
+export function useFasSyncStatus() {
   return useQuery({
-    queryKey: ["admin", "fas-sync-status", source],
+    queryKey: ["admin", "fas-sync-status"],
     queryFn: async () => {
-      const qs = source ? `?source=${source}` : "";
       try {
-        return await apiFetch<FasSyncStatusResponse>(
-          `/admin/fas/sync-status${qs}`,
-        );
+        return await apiFetch<FasSyncStatusResponse>(`/admin/fas/sync-status`);
       } catch (err) {
         if (err instanceof ApiError && err.status === 404) {
-          return apiFetch<FasSyncStatusResponse>(`/admin/sync-status${qs}`);
+          return apiFetch<FasSyncStatusResponse>(`/admin/sync-status`);
         }
         throw err;
       }
@@ -126,19 +123,14 @@ export interface FasSearchResponse {
   results: FasSearchResult[];
 }
 
-export function useSearchFasMariadb(params: {
-  name?: string;
-  phone?: string;
-  source?: string;
-}) {
+export function useSearchFasMariadb(params: { name?: string; phone?: string }) {
   const searchParams = new URLSearchParams();
   if (params.name) searchParams.set("name", params.name);
   if (params.phone) searchParams.set("phone", params.phone);
-  if (params.source) searchParams.set("source", params.source);
   const qs = searchParams.toString();
 
   return useQuery({
-    queryKey: ["admin", "fas-search", params.name, params.phone, params.source],
+    queryKey: ["admin", "fas-search", params.name, params.phone],
     queryFn: () =>
       apiFetch<FasSearchResponse>(`/admin/fas/search-mariadb?${qs}`),
     enabled: !!(params.name || params.phone),
@@ -148,13 +140,11 @@ export function useSearchFasMariadb(params: {
 export function useRealtimeAttendanceView(params: {
   accsDay: string;
   siteCd?: string;
-  source?: string;
 }) {
   const trimmedSiteCd = params.siteCd?.trim() || "";
   const searchParams = new URLSearchParams();
   searchParams.set("accsDay", params.accsDay);
   if (trimmedSiteCd) searchParams.set("siteCd", trimmedSiteCd);
-  if (params.source) searchParams.set("source", params.source);
   const qs = searchParams.toString();
 
   return useQuery({
@@ -163,7 +153,6 @@ export function useRealtimeAttendanceView(params: {
       "fas-realtime-attendance",
       params.accsDay,
       trimmedSiteCd || "all",
-      params.source,
     ],
     queryFn: () => apiFetch(`/debug/fas-counts?${qs}`),
     enabled: /^\d{8}$/.test(params.accsDay),

@@ -187,7 +187,7 @@ export function MobileHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
         <Menu size={20} />
       </Button>
       <span className="text-sm font-semibold truncate">
-        {currentSite?.siteName ?? "안전지갑 관리자"}
+        {currentSite?.siteName ?? "송도세브란스 관리자"}
       </span>
     </header>
   );
@@ -206,7 +206,7 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center justify-between border-b border-slate-700 px-4">
         {!collapsed && (
-          <span className="text-lg font-bold">안전지갑 관리자</span>
+          <span className="text-lg font-bold">송도세브란스 관리자</span>
         )}
         <Button
           variant="ghost"
@@ -239,7 +239,7 @@ export function MobileSidebar({
       >
         <SheetTitle className="sr-only">메뉴</SheetTitle>
         <div className="flex h-14 items-center border-b border-slate-700 px-4">
-          <span className="text-lg font-bold">안전지갑 관리자</span>
+          <span className="text-lg font-bold">송도세브란스 관리자</span>
         </div>
         <SidebarNav collapsed={false} onNavigate={() => onOpenChange(false)} />
       </SheetContent>

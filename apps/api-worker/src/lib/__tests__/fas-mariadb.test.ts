@@ -25,12 +25,12 @@ vi.mock("../../validators/fas-sync", () => ({
 }));
 
 const mockHyperdrive: HyperdriveBinding = {
-  connectionString: "mysql://user:pass@localhost:3306/jeil_cmi",
+  connectionString: "mysql://user:pass@localhost:3306/mdidev",
   host: "localhost",
   port: 3306,
   user: "testuser",
   password: "testpass",
-  database: "jeil_cmi",
+  database: "mdidev",
 };
 
 function sampleEmployeeRow(

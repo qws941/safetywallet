@@ -94,20 +94,11 @@ export function useAttendanceLogs(
   page = 1,
   limit = 20,
   filters?: { date?: string; result?: string; search?: string },
-  source?: string,
 ) {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: [
-      "admin",
-      "attendance-logs",
-      siteId,
-      page,
-      limit,
-      filters,
-      source,
-    ],
+    queryKey: ["admin", "attendance-logs", siteId, page, limit, filters],
     queryFn: () => {
       const params = new URLSearchParams();
       if (siteId) params.set("siteId", siteId);
@@ -116,7 +107,6 @@ export function useAttendanceLogs(
       if (filters?.date) params.set("date", filters.date);
       if (filters?.result) params.set("result", filters.result);
       if (filters?.search) params.set("search", filters.search);
-      if (source) params.set("source", source);
       return apiFetch<AttendanceLogsApiResponse>(
         `/admin/attendance-logs?${params}`,
       );
@@ -125,15 +115,14 @@ export function useAttendanceLogs(
   });
 }
 
-export function useUnmatchedRecords(source?: string) {
+export function useUnmatchedRecords() {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
   return useQuery({
-    queryKey: ["admin", "unmatched", siteId, source],
+    queryKey: ["admin", "unmatched", siteId],
     queryFn: () => {
       const params = new URLSearchParams();
       if (siteId) params.set("siteId", siteId);
-      if (source) params.set("source", source);
       return apiFetch<UnmatchedWorkersResponse>(
         `/admin/attendance/unmatched?${params}`,
       );
@@ -145,13 +134,12 @@ export function useUnmatchedRecords(source?: string) {
 export function useUnmatchedWorkers(
   siteId?: string,
   params?: UnmatchedWorkersParams,
-  source?: string,
 ) {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
   const targetSiteId = siteId || currentSiteId;
 
   return useQuery({
-    queryKey: ["admin", "attendance-unmatched", targetSiteId, params, source],
+    queryKey: ["admin", "attendance-unmatched", targetSiteId, params],
     queryFn: async () => {
       const query = new URLSearchParams();
       if (targetSiteId) query.set("siteId", targetSiteId);
@@ -160,7 +148,6 @@ export function useUnmatchedWorkers(
       if (params?.limit !== undefined) {
         query.set("limit", String(params.limit));
       }
-      if (source) query.set("source", source);
 
       return apiFetch<UnmatchedWorkersResponse>(
         `/admin/attendance/unmatched?${query.toString()}`,

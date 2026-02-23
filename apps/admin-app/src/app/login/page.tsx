@@ -127,7 +127,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
       <Card className="w-full max-w-md p-8">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">안전지갑 관리자</h1>
+          <h1 className="text-2xl font-bold">송도세브란스 관리자</h1>
           <p className="mt-2 text-muted-foreground">
             관리자 계정으로 로그인하세요
           </p>

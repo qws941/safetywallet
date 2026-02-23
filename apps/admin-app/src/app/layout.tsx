@@ -4,8 +4,8 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "안전지갑 관리자",
-  description: "건설현장 안전 제보 관리 시스템",
+  title: "송도세브란스 관리자",
+  description: "송도세브란스 안전 제보 관리 시스템",
   icons: {
     icon: "/favicon.svg",
   },

@@ -3,8 +3,8 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "안전지갑 - SafetyWallet",
-  description: "건설현장 안전 제보 앱",
+  title: "송도세브란스 안전지갑",
+  description: "송도세브란스 건설현장 안전 제보 앱",
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon-192.png",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     statusBarStyle: "default",
-    title: "안전지갑",
+    title: "송도세브란스 안전지갑",
   },
 };
 

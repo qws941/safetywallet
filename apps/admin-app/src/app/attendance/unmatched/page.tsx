@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useUnmatchedRecords } from "@/hooks/use-attendance";
 import {
   Card,
@@ -9,11 +8,6 @@ import {
   CardHeader,
   CardTitle,
   Skeleton,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@safetywallet/ui";
 import {
   Table,
@@ -24,14 +18,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle } from "lucide-react";
-import { FAS_SOURCES } from "../attendance-helpers";
 
 export default function UnmatchedRecordsPage() {
-  const [source, setSource] = useState<string>("");
-  const { data, isLoading } = useUnmatchedRecords(source || undefined);
-
-  const currentSourceLabel =
-    FAS_SOURCES.find((s) => s.value === source)?.label ?? "전체 현장";
+  const { data, isLoading } = useUnmatchedRecords();
 
   return (
     <div className="space-y-6">
@@ -45,24 +34,6 @@ export default function UnmatchedRecordsPage() {
             FAS 출근 데이터와 시스템 사용자가 매칭되지 않은 기록입니다
           </p>
         </div>
-        <Select
-          value={source || "__all__"}
-          onValueChange={(v) => setSource(v === "__all__" ? "" : v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue>{currentSourceLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {FAS_SOURCES.map((s) => (
-              <SelectItem
-                key={s.value || "__all__"}
-                value={s.value || "__all__"}
-              >
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <Card>

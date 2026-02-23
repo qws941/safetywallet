@@ -17,21 +17,15 @@ export interface FasSource {
 }
 
 /** Hyperdrive connects to this database - queries to it don't need qualification */
-const HYPERDRIVE_DB = "jeil_cmi";
+const HYPERDRIVE_DB = "mdidev";
 
 /** All configured FAS data sources. First entry is the default. */
 export const FAS_SOURCES: readonly FasSource[] = [
   {
-    dbName: "jeil_cmi",
-    siteCd: "10",
-    d1SiteName: "파주운정A45BL",
-    workerIdPrefix: "",
-  },
-  {
     dbName: "mdidev",
     siteCd: "10",
     d1SiteName: "송도세브란스",
-    workerIdPrefix: "mdidev:",
+    workerIdPrefix: "",
   },
 ] as const;
 

@@ -52,7 +52,7 @@
       "sessionExpired": "Session expired",
       "checkAttendance": "Please check in first"
     },
-    "loginPageTitle": "SafetyWallet",
+    "loginPageTitle": "Songdo Severance SafetyWallet",
     "loginPageSubtitle": "Login with phone, name, and date of birth",
     "loginPageHint": "Login with your registered phone number, name, and date of birth.",
     "loginPageNote": "Attendance check-in may be required for first-time use.",
@@ -694,7 +694,7 @@
     "collectPoints": "Start earning points!"
   },
   "components": {
-    "appTitle": "안전지갑",
+    "appTitle": "송도세브란스 안전지갑",
     "siteIdLabel": "현장 ID:",
     "unsafeWarningTitle": "⚠️ 불안전행동 제보 안내",
     "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",

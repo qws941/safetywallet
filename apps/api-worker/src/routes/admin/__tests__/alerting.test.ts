@@ -235,7 +235,7 @@ describe("Admin Alerting and Maintenance Endpoints", () => {
         expect.objectContaining({
           type: "HIGH_ERROR_RATE",
           severity: "info",
-          title: "Test Alert from SafetyWallet",
+          title: "Test Alert from 송도세브란스",
           metadata: expect.objectContaining({
             test: true,
             triggeredBy: "Test User",

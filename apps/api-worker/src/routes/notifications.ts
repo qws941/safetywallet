@@ -391,7 +391,7 @@ async function sendSmsFallback(
     return 0;
   }
 
-  const smsBody = `[SafetyWallet] ${message.title}\n${message.body}`;
+  const smsBody = `[송도세브란스] ${message.title}\n${message.body}`;
   const smsMessages = validTargets.map((u) => ({
     to: u.phone,
     body: smsBody,

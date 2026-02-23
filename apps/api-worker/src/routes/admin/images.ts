@@ -48,7 +48,7 @@ app.get("/download/:key", requireAdmin, async (c) => {
   headers.set("X-Downloaded-At", downloadTimestamp);
   headers.set(
     "X-Watermark-Info",
-    `SafetyWallet | ${user.name} | ${downloadTimestamp}`,
+    encodeURIComponent(`송도세브란스 | ${user.name} | ${downloadTimestamp}`),
   );
 
   // Get image bytes
@@ -58,7 +58,7 @@ app.get("/download/:key", requireAdmin, async (c) => {
   // For JPEG/PNG, we append a non-visible comment/metadata section
   // containing the audit trail. This survives basic image viewers
   // but gets stripped by re-encoding.
-  const watermarkText = `SafetyWallet Download | Admin: ${user.name} (${user.id}) | Time: ${downloadTimestamp} | ID: ${watermarkId}`;
+  const watermarkText = `송도세브란스 Download | Admin: ${user.name} (${user.id}) | Time: ${downloadTimestamp} | ID: ${watermarkId}`;
   const watermarkBytes = new TextEncoder().encode(watermarkText);
 
   // Create watermarked image by appending audit metadata
