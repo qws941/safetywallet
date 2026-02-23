@@ -20,6 +20,7 @@ import {
   fasGetAllEmployeesPaginated,
   fasGetDailyAttendanceRawRows,
   fasGetDailyAttendanceRawSummary,
+  resolveFasSource,
 } from "../../lib/fas-mariadb";
 import {
   syncFasEmployeesToD1,
@@ -41,7 +42,6 @@ interface SyncFasWorkersBody {
 const logger = createLogger("admin/fas");
 
 const IN_QUERY_CHUNK_SIZE = 50;
-const FAS_SITE_CD = "10";
 
 function normalizeAccsDay(value: string | undefined): string | null {
   if (!value) return null;
@@ -353,6 +353,8 @@ app.post(
 app.get("/fas/search-mariadb", requireAdmin, async (c) => {
   const name = c.req.query("name");
   const phone = c.req.query("phone");
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
 
   if (!name && !phone) {
     return error(c, "VALIDATION_ERROR", "name or phone query param required");
@@ -369,14 +371,14 @@ app.get("/fas/search-mariadb", requireAdmin, async (c) => {
 
     let results: unknown[] = [];
     if (phone) {
-      const emp = await fasSearchEmployeeByPhone(hd, phone);
+      const emp = await fasSearchEmployeeByPhone(hd, phone, source);
       results = emp ? [emp] : [];
     } else if (name) {
-      results = await fasSearchEmployeeByName(hd, name);
+      results = await fasSearchEmployeeByName(hd, name, source);
     }
 
     return success(c, {
-      query: { name, phone },
+      query: { name, phone, source: source.dbName },
       count: results.length,
       results,
     });
@@ -389,15 +391,8 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const requestedAccsDayRaw = c.req.query("accsDay") ?? c.req.query("date");
   const requestedAccsDay = normalizeAccsDay(requestedAccsDayRaw);
-  const siteCdRaw = c.req.query("siteCd");
-  if (
-    siteCdRaw &&
-    siteCdRaw.toLowerCase() !== "all" &&
-    siteCdRaw !== FAS_SITE_CD
-  ) {
-    return error(c, "VALIDATION_ERROR", `siteCd must be ${FAS_SITE_CD}`, 400);
-  }
-  const normalizedSiteCd = FAS_SITE_CD;
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
 
   if (requestedAccsDayRaw && !requestedAccsDay) {
     return error(
@@ -494,9 +489,12 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
     const rawSummary = await fasGetDailyAttendanceRawSummary(
       c.env.FAS_HYPERDRIVE,
       requestedAccsDay,
-      normalizedSiteCd,
+      source.siteCd,
+      source,
     );
-    const workerIds = rawSummary.workerIds;
+    const workerIds = rawSummary.workerIds.map(
+      (workerId) => `${source.workerIdPrefix}${workerId}`,
+    );
 
     let linkedWorkers = 0;
     for (const chunk of chunkArray(workerIds, IN_QUERY_CHUNK_SIZE)) {
@@ -538,7 +536,8 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
     userStats,
     syncErrorCounts,
     requestedAccsDay: requestedAccsDay ?? null,
-    requestedSiteCd: normalizedSiteCd ?? "all",
+    requestedSiteCd: source.siteCd,
+    requestedSource: source.dbName,
     integrity,
     recentSyncLogs: recentSyncLogs.map((log) => ({
       ...log,
@@ -550,15 +549,8 @@ app.get("/fas/sync-status", requireAdmin, async (c) => {
 app.get("/fas/raw-attendance", requireAdmin, async (c) => {
   const requestedAccsDayRaw = c.req.query("accsDay") ?? c.req.query("date");
   const requestedAccsDay = normalizeAccsDay(requestedAccsDayRaw);
-  const siteCdRaw = c.req.query("siteCd");
-  if (
-    siteCdRaw &&
-    siteCdRaw.toLowerCase() !== "all" &&
-    siteCdRaw !== FAS_SITE_CD
-  ) {
-    return error(c, "VALIDATION_ERROR", `siteCd must be ${FAS_SITE_CD}`, 400);
-  }
-  const normalizedSiteCd = FAS_SITE_CD;
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
   const limitRaw = c.req.query("limit");
   const parsedLimit = limitRaw ? Number.parseInt(limitRaw, 10) : 200;
   const limit = Number.isFinite(parsedLimit)
@@ -586,13 +578,15 @@ app.get("/fas/raw-attendance", requireAdmin, async (c) => {
   const raw = await fasGetDailyAttendanceRawRows(
     c.env.FAS_HYPERDRIVE,
     requestedAccsDay,
-    normalizedSiteCd,
+    source.siteCd,
     limit,
+    source,
   );
 
   return success(c, {
     requestedAccsDay,
-    requestedSiteCd: normalizedSiteCd ?? "all",
+    requestedSiteCd: source.siteCd,
+    requestedSource: source.dbName,
     source: raw.source,
     count: raw.rows.length,
     rows: raw.rows,
@@ -611,11 +605,13 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
         offset?: number;
         limit?: number;
         accsDay?: string;
+        source?: string;
       }>()
       .catch(() => ({}))) as {
       offset?: number;
       limit?: number;
       accsDay?: string;
+      source?: string;
     };
 
     const offset = Number.isFinite(body.offset)
@@ -625,6 +621,7 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
       ? Math.min(500, Math.max(1, Math.trunc(body.limit as number)))
       : 100;
     const normalizedAccsDay = normalizeAccsDay(body.accsDay);
+    const source = resolveFasSource(body.source);
     if (body.accsDay && !normalizedAccsDay) {
       return error(
         c,
@@ -646,6 +643,7 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
         offset,
         limit,
         accsDay: normalizedAccsDay ?? null,
+        source: source.dbName,
       }),
     });
 
@@ -653,6 +651,7 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
       c.env.FAS_HYPERDRIVE,
       offset,
       limit,
+      source,
     );
 
     const activeEmployees = employees.filter((e) => e.stateFlag === "W");
@@ -693,12 +692,14 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
         hasMore,
         nextOffset,
         accsDay: normalizedAccsDay ?? null,
+        source: source.dbName,
       }),
     });
 
     return success(c, {
       message: "Hyperdrive sync completed",
       runId,
+      source: source.dbName,
       batch: {
         offset,
         limit,

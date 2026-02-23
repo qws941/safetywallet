@@ -6,6 +6,7 @@ import { users } from "../../db/schema";
 import {
   fasGetAttendanceList,
   type FasAttendanceListRecord,
+  resolveFasSource,
 } from "../../lib/fas-mariadb";
 import { success, error } from "../../lib/response";
 import { requireManagerOrAdmin, getTodayRange } from "./helpers";
@@ -14,8 +15,6 @@ const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
-
-const FAS_SITE_CD = "10";
 
 interface LinkedUserSummary {
   id: string;
@@ -64,13 +63,15 @@ function formatCheckinIso(
 function mapLogRecord(
   row: FasAttendanceListRecord,
   userMap: Map<string, LinkedUserSummary>,
+  sourcePrefix: string,
 ) {
-  const linkedUser = userMap.get(row.emplCd);
+  const externalWorkerId = `${sourcePrefix}${row.emplCd}`;
+  const linkedUser = userMap.get(externalWorkerId);
   return {
     id: `${row.emplCd}-${row.accsDay}-${row.inTime ?? ""}`,
     siteId: null,
     userId: linkedUser?.id ?? null,
-    externalWorkerId: row.emplCd,
+    externalWorkerId,
     checkinAt: formatCheckinIso(row.accsDay, row.inTime),
     result: "SUCCESS",
     source: "FAS_REALTIME",
@@ -108,6 +109,8 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
     );
   }
   const hd = hyperdrive;
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
 
   const accsDay = resolveAccsDay(dateStr);
   if (!accsDay) {
@@ -129,12 +132,15 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
   const { records, total } = await fasGetAttendanceList(
     hd,
     accsDay,
-    FAS_SITE_CD,
+    source.siteCd,
     limit,
     offset,
+    source,
   );
 
-  const workerIds = [...new Set(records.map((row) => row.emplCd))];
+  const workerIds = [
+    ...new Set(records.map((row) => `${source.workerIdPrefix}${row.emplCd}`)),
+  ];
   const linkedUsers =
     workerIds.length === 0
       ? []
@@ -164,7 +170,9 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
     });
   }
 
-  const logs = records.map((row) => mapLogRecord(row, userMap));
+  const logs = records.map((row) =>
+    mapLogRecord(row, userMap, source.workerIdPrefix),
+  );
 
   return success(c, {
     logs,
@@ -200,6 +208,8 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
     );
   }
   const hd = hyperdrive;
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
 
   const accsDay = resolveAccsDay(dateStr);
   if (!accsDay) {
@@ -215,9 +225,10 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
     const pageResult = await fasGetAttendanceList(
       hd,
       accsDay,
-      FAS_SITE_CD,
+      source.siteCd,
       fetchLimit,
       fetchOffset,
+      source,
     );
 
     if (fetchOffset === 0) {
@@ -233,15 +244,18 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
   } while (fetchOffset < total);
 
   const workerIds = [...new Set(allRecords.map((row) => row.emplCd))];
+  const workerExternalIds = workerIds.map(
+    (workerId) => `${source.workerIdPrefix}${workerId}`,
+  );
   const linkedUsers =
-    workerIds.length === 0
+    workerExternalIds.length === 0
       ? []
       : await db
           .select({ externalWorkerId: users.externalWorkerId })
           .from(users)
           .where(
             and(
-              inArray(users.externalWorkerId, workerIds),
+              inArray(users.externalWorkerId, workerExternalIds),
               isNull(users.deletedAt),
             ),
           )
@@ -253,12 +267,12 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
   );
 
   const unmatchedAll = allRecords.filter(
-    (row) => !linkedWorkerIds.has(row.emplCd),
+    (row) => !linkedWorkerIds.has(`${source.workerIdPrefix}${row.emplCd}`),
   );
   const pageRecords = unmatchedAll.slice(offset, offset + limit);
   const unmatchedRecords = pageRecords.map((row) => ({
     id: `${row.emplCd}-${row.accsDay}-${row.inTime ?? ""}`,
-    externalWorkerId: row.emplCd,
+    externalWorkerId: `${source.workerIdPrefix}${row.emplCd}`,
     siteId: siteId,
     siteName: null,
     checkinAt: formatCheckinIso(row.accsDay, row.inTime),

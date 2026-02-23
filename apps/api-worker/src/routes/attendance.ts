@@ -19,13 +19,14 @@ import {
   fasCheckWorkerAttendance,
   fasGetDailyAttendance,
   fasGetDailyAttendanceRealtimeStats,
+  resolveFasSource,
+  resolveFasSourceByWorkerId,
 } from "../lib/fas-mariadb";
 
 // KV-based idempotency cache (CF Workers isolates don't share memory,
 // so in-memory Map is useless — each request runs in a fresh isolate)
 const IDEMPOTENCY_TTL = 3600; // 1 hour in seconds
 const IN_QUERY_CHUNK_SIZE = 50;
-const FAS_SITE_CD = "10";
 
 interface SiteAttendanceRecord {
   userId: string | null;
@@ -302,16 +303,20 @@ attendanceRoute.get("/today", authMiddleware, async (c) => {
 
   const { start } = getTodayRange();
   const todayAccsDay = toAccsDay(start);
+  const { source, rawEmplCd } = resolveFasSourceByWorkerId(
+    user.externalWorkerId,
+  );
   const attendanceResult = await fasCheckWorkerAttendance(
     hyperdrive,
-    user.externalWorkerId,
+    rawEmplCd,
     todayAccsDay,
+    source,
   );
 
   return success(c, {
     hasAttendance: attendanceResult.hasAttendance,
     records: attendanceResult.records.map((record) => ({
-      externalWorkerId: record.emplCd,
+      externalWorkerId: `${source.workerIdPrefix}${record.emplCd}`,
       accsDay: record.accsDay,
       source: "FAS_REALTIME",
       checkinAt: formatAccsDayTime(record.accsDay, record.inTime),
@@ -357,6 +362,9 @@ attendanceRoute.get("/site/:siteId/report", authMiddleware, async (c) => {
     );
   }
 
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
+
   const { start } = getTodayRange();
   const dayStarts = Array.from({ length: 7 }, (_, index) => {
     const dayStart = new Date(start);
@@ -370,7 +378,8 @@ attendanceRoute.get("/site/:siteId/report", authMiddleware, async (c) => {
       const rows = await fasGetDailyAttendance(
         hyperdrive,
         accsDay,
-        FAS_SITE_CD,
+        source.siteCd,
+        source,
       );
       return { accsDay, rows };
     }),
@@ -379,7 +388,7 @@ attendanceRoute.get("/site/:siteId/report", authMiddleware, async (c) => {
   const workerIds = new Set<string>();
   for (const daily of dailyRows) {
     for (const row of daily.rows) {
-      workerIds.add(row.emplCd);
+      workerIds.add(`${source.workerIdPrefix}${row.emplCd}`);
     }
   }
 
@@ -414,13 +423,14 @@ attendanceRoute.get("/site/:siteId/report", authMiddleware, async (c) => {
 
   const report = dailyRows.map((daily) => {
     const records: SiteAttendanceRecord[] = daily.rows.map((row) => {
-      const linked = userMap.get(row.emplCd);
+      const externalWorkerId = `${source.workerIdPrefix}${row.emplCd}`;
+      const linked = userMap.get(externalWorkerId);
       return {
         userId: linked?.id ?? null,
         userName: linked?.name ?? linked?.nameMasked ?? row.emplCd,
         checkIn: formatAccsDayTime(row.accsDay, row.inTime),
         checkOut: formatAccsDayTime(row.accsDay, row.outTime),
-        externalWorkerId: row.emplCd,
+        externalWorkerId,
       };
     });
 
@@ -465,17 +475,22 @@ attendanceRoute.get("/realtime", authMiddleware, async (c) => {
     );
   }
 
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
+
   try {
     const stats = await fasGetDailyAttendanceRealtimeStats(
       hyperdrive,
       accsDay,
-      FAS_SITE_CD,
+      source.siteCd,
+      source,
     );
 
     return success(c, {
       date: accsDay,
-      siteCd: FAS_SITE_CD,
+      siteCd: source.siteCd,
       ...stats,
+      source: source.dbName,
       queriedAt: new Date().toISOString(),
     });
   } catch (err) {

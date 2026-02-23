@@ -5,7 +5,10 @@ import type { Env, AuthContext } from "../../types";
 import { users, sites, posts, siteMemberships } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { requireAdmin, getTodayRange } from "./helpers";
-import { fasGetDailyAttendanceRealtimeStats } from "../../lib/fas-mariadb";
+import {
+  FAS_SOURCES,
+  fasGetDailyAttendanceRealtimeStats,
+} from "../../lib/fas-mariadb";
 
 const app = new Hono<{
   Bindings: Env;
@@ -120,11 +123,17 @@ app.get("/stats", requireAdmin, async (c) => {
         return { count: 0 };
       }
       try {
-        const stats = await fasGetDailyAttendanceRealtimeStats(
-          hd,
-          todayAccsDay,
-        );
-        return { count: stats.checkedInWorkers };
+        let totalCheckedIn = 0;
+        for (const source of FAS_SOURCES) {
+          const stats = await fasGetDailyAttendanceRealtimeStats(
+            hd,
+            todayAccsDay,
+            source.siteCd,
+            source,
+          );
+          totalCheckedIn += stats.checkedInWorkers;
+        }
+        return { count: totalCheckedIn };
       } catch {
         return { count: 0 };
       }

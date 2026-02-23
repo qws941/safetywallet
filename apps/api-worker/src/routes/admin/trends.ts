@@ -6,7 +6,7 @@ import type { Env, AuthContext } from "../../types";
 import { pointsLedger, posts } from "../../db/schema";
 import { error, success } from "../../lib/response";
 import { DAY_CUTOFF_HOUR, parseDateParam, requireAdmin } from "./helpers";
-import { fasGetAttendanceTrend } from "../../lib/fas-mariadb";
+import { fasGetAttendanceTrend, resolveFasSource } from "../../lib/fas-mariadb";
 
 const app = new Hono<{
   Bindings: Env;
@@ -141,6 +141,8 @@ app.get("/trends/posts", requireAdmin, async (c) => {
 
 app.get("/trends/attendance", requireAdmin, async (c) => {
   const hd = c.env.FAS_HYPERDRIVE;
+  const sourceParam = c.req.query("source");
+  const source = resolveFasSource(sourceParam);
   if (!hd) {
     return error(
       c,
@@ -164,7 +166,13 @@ app.get("/trends/attendance", requireAdmin, async (c) => {
   const startAccsDay = toAccsDay(range.start);
   const endAccsDay = toAccsDay(new Date(range.end.getTime() - 1));
 
-  const trendData = await fasGetAttendanceTrend(hd, startAccsDay, endAccsDay);
+  const trendData = await fasGetAttendanceTrend(
+    hd,
+    startAccsDay,
+    endAccsDay,
+    source.siteCd,
+    source,
+  );
 
   const trend = trendData.map((row) => ({
     date: formatAccsDay(row.date),
