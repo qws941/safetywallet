@@ -251,7 +251,7 @@ jobs:
             npm run test:e2e:smoke
           else
             echo "::notice::Admin unreachable — running API-only E2E"
-            npx playwright test --project=api
+            npx playwright test --project=api smoke
           fi
         env:
           API_URL: ${{ steps.smoke_urls.outputs.api_url }}

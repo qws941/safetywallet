@@ -384,7 +384,7 @@ test.describe("Response Format", () => {
     expect(response.ok()).toBeTruthy();
 
     const body = await response.json();
-    expect(body).toHaveProperty("status", "healthy");
+    expect(body.data).toHaveProperty("status", "healthy");
     expect(body).toHaveProperty("timestamp");
   });
 
