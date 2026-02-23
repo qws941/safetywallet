@@ -169,6 +169,36 @@ export async function awardApprovalPoints(
   result: PointCalculationResult;
   ledgerId?: string;
 }> {
+  const existingLedger = await db
+    .select({
+      id: schema.pointsLedger.id,
+      amount: schema.pointsLedger.amount,
+      reasonText: schema.pointsLedger.reasonText,
+    })
+    .from(schema.pointsLedger)
+    .where(
+      and(
+        eq(schema.pointsLedger.postId, input.postId),
+        eq(schema.pointsLedger.reasonCode, "POST_APPROVED"),
+      ),
+    )
+    .limit(1);
+
+  if (existingLedger[0]) {
+    return {
+      awarded: true,
+      result: {
+        totalPoints: existingLedger[0].amount,
+        basePoints: existingLedger[0].amount,
+        riskBonus: 0,
+        breakdown: existingLedger[0].reasonText ?? "기존 승인 포인트",
+        blocked: false,
+        blockReason: null,
+      },
+      ledgerId: existingLedger[0].id,
+    };
+  }
+
   const result = await calculateApprovalPoints(db, input);
 
   if (result.blocked || result.totalPoints <= 0) {
@@ -205,6 +235,27 @@ export async function applyFalseReportPenalty(
   postId: string,
   adminId: string,
 ): Promise<{ penaltyAmount: number; ledgerId: string }> {
+  const existingPenaltyLedger = await db
+    .select({
+      id: schema.pointsLedger.id,
+      amount: schema.pointsLedger.amount,
+    })
+    .from(schema.pointsLedger)
+    .where(
+      and(
+        eq(schema.pointsLedger.postId, postId),
+        eq(schema.pointsLedger.reasonCode, "FALSE_REPORT_PENALTY"),
+      ),
+    )
+    .limit(1);
+
+  if (existingPenaltyLedger[0]) {
+    return {
+      penaltyAmount: existingPenaltyLedger[0].amount,
+      ledgerId: existingPenaltyLedger[0].id,
+    };
+  }
+
   const { penaltyAmount, breakdown } = await calculateFalseReportPenalty(
     db,
     userId,

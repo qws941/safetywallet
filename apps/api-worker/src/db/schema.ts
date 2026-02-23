@@ -265,6 +265,7 @@ export const posts = sqliteTable(
       .notNull(),
     duplicateOfPostId: text("duplicate_of_post_id").references(
       (): AnySQLiteColumn => posts.id,
+      { onDelete: "set null" },
     ),
     reviewStatus: text("review_status", { enum: reviewStatusEnum })
       .default("PENDING")
@@ -367,6 +368,7 @@ export const pointsLedger = sqliteTable(
     }),
     refLedgerId: text("ref_ledger_id").references(
       (): AnySQLiteColumn => pointsLedger.id,
+      { onDelete: "set null" },
     ),
     amount: integer("amount").notNull(),
     reasonCode: text("reason_code").notNull(),
@@ -1054,7 +1056,7 @@ export const pointPolicies = sqliteTable(
       .notNull()
       .references(() => sites.id, { onDelete: "cascade" }),
     reasonCode: text("reason_code").notNull(),
-    name: text("name").unique().notNull(),
+    name: text("name").notNull(),
     description: text("description"),
     defaultAmount: integer("default_amount").notNull(),
     minAmount: integer("min_amount"),
@@ -1071,6 +1073,7 @@ export const pointPolicies = sqliteTable(
   },
   (table) => ({
     siteReasonUnique: unique().on(table.siteId, table.reasonCode),
+    siteNameUnique: unique().on(table.siteId, table.name),
     siteIdx: index("point_policies_site_idx").on(table.siteId),
   }),
 );

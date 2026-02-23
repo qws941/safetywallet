@@ -15,6 +15,7 @@ import { DrizzleD1Database } from "drizzle-orm/d1";
 import { users } from "../db/schema";
 import { dbBatchChunked } from "../db/helpers";
 import { hmac, encrypt } from "./crypto";
+import { createLogger } from "./logger";
 import type { FasEmployee } from "./fas-mariadb";
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -30,6 +31,8 @@ export interface SyncEnv {
   HMAC_SECRET: string;
   ENCRYPTION_KEY: string;
 }
+
+const logger = createLogger("fas-sync");
 
 // ─── socialNo → dob 변환 ─────────────────────────────────────────
 
@@ -199,16 +202,49 @@ export async function syncFasEmployeesToD1(
         )
         .get();
 
+      const piiFallbackCandidate =
+        phoneHash && dobHash
+          ? await db
+              .select()
+              .from(users)
+              .where(
+                and(eq(users.phoneHash, phoneHash), eq(users.dobHash, dobHash)),
+              )
+              .get()
+          : null;
+
       const now = new Date();
 
       if (existing) {
+        const piiCollisionOnUpdate =
+          piiFallbackCandidate && piiFallbackCandidate.id !== existing.id;
+
+        if (piiCollisionOnUpdate) {
+          logger.warn(
+            "Detected PII-hash collision for existing FAS user during bulk sync; skipped PII update",
+            {
+              action: "fas.bulk_sync.pii_collision_existing",
+              metadata: {
+                emplCd: emp.emplCd,
+                existingUserId: existing.id,
+                candidateUserId: piiFallbackCandidate.id,
+                candidateExternalSystem: piiFallbackCandidate.externalSystem,
+                candidateExternalWorkerId:
+                  piiFallbackCandidate.externalWorkerId,
+              },
+            },
+          );
+        }
+
         await db
           .update(users)
           .set({
             name: emp.name,
             nameMasked: maskName(emp.name),
-            ...(normalizedPhone ? { phoneHash, phoneEncrypted } : {}),
-            ...(dob ? { dobHash, dobEncrypted } : {}),
+            ...(normalizedPhone && !piiCollisionOnUpdate
+              ? { phoneHash, phoneEncrypted }
+              : {}),
+            ...(dob && !piiCollisionOnUpdate ? { dobHash, dobEncrypted } : {}),
             companyName: emp.companyName || null,
             tradeType: emp.partCd || null,
             updatedAt: now,
@@ -216,58 +252,40 @@ export async function syncFasEmployeesToD1(
           .where(eq(users.id, existing.id));
         result.updated++;
       } else {
-        const existingByPhone =
-          phoneHash && dobHash
-            ? await db
-                .select()
-                .from(users)
-                .where(
-                  and(
-                    eq(users.phoneHash, phoneHash),
-                    eq(users.dobHash, dobHash),
-                  ),
-                )
-                .get()
-            : null;
-
-        if (existingByPhone) {
-          await db
-            .update(users)
-            .set({
-              name: emp.name,
-              nameMasked: maskName(emp.name),
-              phoneHash,
-              phoneEncrypted,
-              dobHash,
-              dobEncrypted,
-              externalSystem: "FAS",
-              externalWorkerId: emp.emplCd,
-              companyName: emp.companyName || null,
-              tradeType: emp.partCd || null,
-              updatedAt: now,
-            })
-            .where(eq(users.id, existingByPhone.id));
-          result.updated++;
-        } else {
-          const userId = crypto.randomUUID();
-          await db.insert(users).values({
-            id: userId,
-            name: emp.name,
-            nameMasked: maskName(emp.name),
-            phoneHash,
-            phoneEncrypted,
-            dobHash,
-            dobEncrypted,
-            externalSystem: "FAS",
-            externalWorkerId: emp.emplCd,
-            companyName: emp.companyName || null,
-            tradeType: emp.partCd || null,
-            role: "WORKER",
-            createdAt: now,
-            updatedAt: now,
-          });
-          result.created++;
+        if (piiFallbackCandidate) {
+          logger.warn(
+            "Detected PII-hash fallback candidate during FAS bulk sync; created new user instead",
+            {
+              action: "fas.bulk_sync.pii_fallback_candidate",
+              metadata: {
+                emplCd: emp.emplCd,
+                candidateUserId: piiFallbackCandidate.id,
+                candidateExternalSystem: piiFallbackCandidate.externalSystem,
+                candidateExternalWorkerId:
+                  piiFallbackCandidate.externalWorkerId,
+              },
+            },
+          );
         }
+
+        const userId = crypto.randomUUID();
+        await db.insert(users).values({
+          id: userId,
+          name: emp.name,
+          nameMasked: maskName(emp.name),
+          phoneHash: piiFallbackCandidate ? null : phoneHash,
+          phoneEncrypted: piiFallbackCandidate ? null : phoneEncrypted,
+          dobHash: piiFallbackCandidate ? null : dobHash,
+          dobEncrypted: piiFallbackCandidate ? null : dobEncrypted,
+          externalSystem: "FAS",
+          externalWorkerId: emp.emplCd,
+          companyName: emp.companyName || null,
+          tradeType: emp.partCd || null,
+          role: "WORKER",
+          createdAt: now,
+          updatedAt: now,
+        });
+        result.created++;
       }
     } catch (e) {
       const msg = `${emp.emplCd}: ${e instanceof Error ? e.message : String(e)}`;
