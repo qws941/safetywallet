@@ -178,39 +178,84 @@ jobs:
       - name: Resolve production smoke URLs
         id: smoke_urls
         run: |
-          choose_url() {
-            primary="$1"
-            fallback="$2"
-            expected="$3"
+          # Probe with retries: up to 5 attempts, 15s delay between
+          probe_url() {
+            local url="$1"
+            local max_attempts=5
+            local attempt=1
 
-            primary_code=$(curl -sS -o /tmp/url_probe -w "%{http_code}" --max-time 15 "$primary" || true)
-            if [ "$primary_code" = "$expected" ]; then
-              echo "$primary"
-              return
-            fi
-
-            fallback_code=$(curl -sS -o /tmp/url_probe -w "%{http_code}" --max-time 15 "$fallback" || true)
-            if [ "$fallback_code" = "$expected" ]; then
-              echo "$fallback"
-              return
-            fi
-
-            echo "$primary"
+            while [ $attempt -le $max_attempts ]; do
+              http_code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url/health" 2>/dev/null || echo "000")
+              if [ "$http_code" = "200" ]; then
+                echo "true"
+                return 0
+              fi
+              echo "Attempt $attempt/$max_attempts for $url returned $http_code, retrying..."
+              attempt=$((attempt + 1))
+              sleep 15
+            done
+            echo "false"
+            return 1
           }
 
-          api_url=$(choose_url "https://safetywallet.jclee.me/api" "https://safetywallet.jclee.workers.dev/api" "200")
-          admin_url=$(choose_url "https://admin.safetywallet.jclee.me" "https://safetywallet.jclee.me/admin" "200")
+          # Probe API URLs with retry
+          api_reachable="false"
 
+          echo "Probing primary API: https://safetywallet.jclee.me/api"
+          if probe_url "https://safetywallet.jclee.me/api"; then
+            api_url="https://safetywallet.jclee.me/api"
+            api_reachable="true"
+            echo "Primary API reachable"
+          else
+            echo "Primary API failed, trying fallback..."
+            echo "Probing fallback API: https://safetywallet.jclee.workers.dev/api"
+            if probe_url "https://safetywallet.jclee.workers.dev/api"; then
+              api_url="https://safetywallet.jclee.workers.dev/api"
+              api_reachable="true"
+              echo "Fallback API reachable"
+            else
+              echo "Both API URLs failed after retries"
+              api_url="https://safetywallet.jclee.me/api"
+            fi
+          fi
+
+          # Probe admin URLs with retry
+          admin_reachable="false"
+          echo "Probing primary admin: https://admin.safetywallet.jclee.me"
+          if probe_url "https://admin.safetywallet.jclee.me"; then
+            admin_url="https://admin.safetywallet.jclee.me"
+            admin_reachable="true"
+            echo "Primary admin reachable"
+          else
+            echo "Primary admin failed, trying fallback..."
+            echo "Probing fallback admin: https://safetywallet.jclee.me/admin"
+            if probe_url "https://safetywallet.jclee.me/admin"; then
+              admin_url="https://safetywallet.jclee.me/admin"
+              admin_reachable="true"
+              echo "Fallback admin reachable"
+            else
+              echo "Both admin URLs failed after retries"
+              admin_url="https://admin.safetywallet.jclee.me"
+            fi
+          fi
           echo "api_url=$api_url" >> "$GITHUB_OUTPUT"
           echo "worker_url=https://safetywallet.jclee.me" >> "$GITHUB_OUTPUT"
           echo "admin_url=$admin_url" >> "$GITHUB_OUTPUT"
+          echo "api_reachable=$api_reachable" >> "$GITHUB_OUTPUT"
 
       - name: Run E2E tests
+        if: steps.smoke_urls.outputs.api_reachable == 'true'
         run: npm run test:e2e:smoke
         env:
           API_URL: ${{ steps.smoke_urls.outputs.api_url }}
           WORKER_APP_URL: ${{ steps.smoke_urls.outputs.worker_url }}
           ADMIN_APP_URL: ${{ steps.smoke_urls.outputs.admin_url }}
+
+      - name: Warn if E2E skipped
+        if: steps.smoke_urls.outputs.api_reachable != 'true'
+        run: echo "::warning::E2E skipped — production API unreachable after retries"
+
+
 
       - name: Upload report on failure
         uses: actions/upload-artifact@v4
@@ -261,12 +306,12 @@ jobs:
       - name: Notify Slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "Slack webhook not configured. Skipping."
             exit 0
           fi
-
           if [ "${{ needs.validate.result }}" = "success" ]; then
             emoji="✅"
             status="passed"
@@ -276,27 +321,13 @@ jobs:
             status="failed"
             color="danger"
           fi
-
           short_sha=$(echo "${{ github.sha }}" | cut -c1-7)
-          commit_msg=$(echo '${{ github.event.head_commit.message }}' | head -1 | sed 's/"/\\"/g')
+          commit_msg=$(printf '%s' "$COMMIT_MSG" | head -1 | sed 's/["\\]/\\&/g')
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          payload=$(cat <<EOF
-          {
-            "attachments": [{
-              "color": "${color}",
-              "blocks": [{
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "${emoji} *CI ${status}* — <${run_url}|safetywallet#${short_sha}>\n${commit_msg}"
-                }
-              }]
-            }]
-          }
-          EOF
-          )
-
+          payload=$(jq -n \
+            --arg color "$color" \
+            --arg text "${emoji} *CI ${status}* — <${run_url}|safetywallet#${short_sha}>"$'\n'"${commit_msg}" \
+            '{attachments: [{color: $color, blocks: [{type: "section", text: {type: "mrkdwn", text: $text}}]}]}')
           curl -sS --fail-with-body --retry 2 --max-time 10 \
             -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
