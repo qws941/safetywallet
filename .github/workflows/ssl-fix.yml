@@ -22,7 +22,7 @@ jobs:
     env:
       CF_API: https://api.cloudflare.com/client/v4
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Get Zone ID
         id: zone
@@ -158,9 +158,11 @@ jobs:
             exit 1
           fi
 
-      - name: Redeploy Worker
+      # EMERGENCY ONLY: Manual worker redeploy via workflow_dispatch.
+      # Per deployment-automation policy, follow up with proper CI deployment.
+      - name: Redeploy Worker (Emergency)
         if: inputs.action == 'redeploy-worker'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: apps/api-worker

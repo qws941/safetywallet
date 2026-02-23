@@ -16,6 +16,10 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   resolve-sha:
     name: Resolve Deployment SHA
@@ -23,11 +27,12 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       deploy-sha: ${{ steps.sha.outputs.deploy_sha }}
       deploy-ref: ${{ steps.sha.outputs.deploy_ref }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Select source commit
         id: sha
         run: |
@@ -56,10 +61,11 @@ jobs:
     name: Check Deploy-Relevant Paths
     needs: [resolve-sha]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       should-deploy: ${{ steps.paths.outputs.should_deploy }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 2
       - name: Determine changed files
@@ -85,6 +91,7 @@ jobs:
     needs: [resolve-sha, path-filter]
     if: needs.path-filter.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       health-reachable: ${{ steps.health.outputs.reachable }}
     steps:
@@ -129,9 +136,10 @@ jobs:
     if: needs.path-filter.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: production
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -170,6 +178,7 @@ jobs:
   notify:
     name: Slack Deploy Notification
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       [
         resolve-sha,

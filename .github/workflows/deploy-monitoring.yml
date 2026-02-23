@@ -18,6 +18,7 @@ jobs:
   monitor:
     name: Endpoint Health Monitor
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       failure_count: ${{ steps.health.outputs.failure_count }}
       report_path: ${{ steps.health.outputs.report_path }}
@@ -71,7 +72,7 @@ jobs:
           echo "report_path=$REPORT_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Upload monitor report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: deploy-monitor-report
           path: ${{ steps.health.outputs.report_path }}
@@ -97,11 +98,12 @@ jobs:
   incident:
     name: Upsert Incident Issue on Failure
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: monitor
     if: needs.monitor.outputs.failure_count != '0'
     steps:
       - name: Upsert incident issue
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const failures = `${{ needs.monitor.outputs.failure_count }}`;
@@ -156,11 +158,12 @@ jobs:
   recovery:
     name: Close Incident on Recovery
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: monitor
     if: needs.monitor.outputs.failure_count == '0'
     steps:
       - name: Close open deploy-monitor incidents
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const { data: issues } = await github.rest.issues.listForRepo({
