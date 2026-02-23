@@ -123,9 +123,44 @@ jobs:
           echo "::warning::Production health endpoint unreachable after $max_attempts attempts — CF may be blocking runner IPs"
           echo "reachable=false" >> "$GITHUB_OUTPUT"
 
+  sync-r2-assets:
+    name: Sync Static Assets to R2
+    needs: [path-filter]
+    if: needs.path-filter.outputs.should-deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validate R2 credentials
+        env:
+          CF_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CF_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+        run: |
+          if [ -z "$CF_KEY" ] || [ -z "$CF_EMAIL" ]; then
+            echo "::error::CLOUDFLARE_API_KEY and CLOUDFLARE_EMAIL secrets required for R2 sync"
+            exit 1
+          fi
+      - run: npm ci
+      - name: Build frontend apps
+        run: npx turbo run build --filter=worker-app --filter=admin-app
+      - name: Upload worker-app to R2
+        env:
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+        run: bash scripts/sync-r2.sh apps/worker-app/out safetywallet-static
+      - name: Upload admin-app to R2
+        env:
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+        run: bash scripts/sync-r2.sh apps/admin-app/out safetywallet-static admin
+
   verify-production:
     name: Verify Production After Git Integration Deploy
-    needs: [resolve-sha, wait-for-cloudflare-build, path-filter]
+    needs: [resolve-sha, wait-for-cloudflare-build, sync-r2-assets, path-filter]
     if: needs.path-filter.outputs.should-deploy == 'true' && needs.wait-for-cloudflare-build.outputs.health-reachable == 'true'
     uses: ./.github/workflows/deploy-verify.yml
     with:
@@ -136,7 +171,13 @@ jobs:
     name: Slack Deploy Notification
     runs-on: ubuntu-latest
     needs:
-      [resolve-sha, path-filter, wait-for-cloudflare-build, verify-production]
+      [
+        resolve-sha,
+        path-filter,
+        wait-for-cloudflare-build,
+        sync-r2-assets,
+        verify-production,
+      ]
     if: always() && needs.path-filter.outputs.should-deploy == 'true'
     steps:
       - name: Notify Slack
@@ -153,15 +194,20 @@ jobs:
 
           cf_result="${{ needs.wait-for-cloudflare-build.result }}"
           verify_result="${{ needs.verify-production.result }}"
+          r2_result="${{ needs.sync-r2-assets.result }}"
           health_reachable="${{ needs.wait-for-cloudflare-build.outputs.health-reachable }}"
 
-          if [ "$cf_result" = "success" ] && [ "$verify_result" = "success" ]; then
+          if [ "$cf_result" = "success" ] && [ "$r2_result" = "success" ] && [ "$verify_result" = "success" ]; then
             emoji="🚀"
             status="deployed & verified"
             color="good"
           elif [ "$cf_result" = "success" ] && [ "$health_reachable" = "false" ]; then
             emoji="⚠️"
             status="deployed, verification skipped (API unreachable from runner)"
+            color="warning"
+          elif [ "$r2_result" != "success" ]; then
+            emoji="⚠️"
+            status="deployed, R2 sync ${r2_result}"
             color="warning"
           elif [ "$cf_result" = "success" ]; then
             emoji="⚠️"
