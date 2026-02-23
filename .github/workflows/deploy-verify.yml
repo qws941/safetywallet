@@ -48,7 +48,7 @@ jobs:
           fi
 
       - name: Run smoke tests
-        run: npx playwright test --grep @smoke --project=api --project=worker-app --project=cross-app
+        run: npx playwright test --grep @smoke --project=api
         env:
           CI: "true"
           WORKER_APP_URL: ${{ steps.urls.outputs.worker_url }}

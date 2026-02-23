@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
 
-const API_BASE = process.env.API_URL ?? "https://safewallet.jclee.me/api";
-const WORKER_APP = process.env.WORKER_APP_URL ?? "https://safewallet.jclee.me";
+const API_BASE = process.env.API_URL ?? "https://safetywallet.jclee.me/api";
+const WORKER_APP =
+  process.env.WORKER_APP_URL ?? "https://safetywallet.jclee.me";
 const ADMIN_APP =
-  process.env.ADMIN_APP_URL ?? "https://safewallet.jclee.me/admin";
+  process.env.ADMIN_APP_URL ?? "https://safetywallet.jclee.me/admin";
 const ADMIN_ORIGIN = new URL(ADMIN_APP).origin;
 
 test.describe("Cross-App Integration @smoke", () => {
@@ -15,7 +16,7 @@ test.describe("Cross-App Integration @smoke", () => {
     const apiResponse = await request.get(`${API_BASE}/health`);
     expect(apiResponse.status()).toBe(200);
     const body = await apiResponse.json();
-    expect(body.status).toBe("healthy");
+    expect(body.data.status).toBe("healthy");
 
     // Worker-app should load
     const appResponse = await page.goto(WORKER_APP);
@@ -47,7 +48,7 @@ test.describe("Cross-App Integration @smoke", () => {
     const apiResponse = await request.get(`${API_BASE}/health`);
     expect(apiResponse.status()).toBe(200);
     const body = await apiResponse.json();
-    expect(body.status).toBe("healthy");
+    expect(body.data.status).toBe("healthy");
 
     // Admin-app should load
     const appResponse = await page.goto(ADMIN_APP);
@@ -59,7 +60,7 @@ test.describe("Cross-App Integration @smoke", () => {
     const response = await request.fetch(`${API_BASE}/health`, {
       method: "OPTIONS",
       headers: {
-        Origin: "https://safewallet.jclee.me",
+        Origin: "https://safetywallet.jclee.me",
         "Access-Control-Request-Method": "GET",
       },
     });
@@ -67,7 +68,7 @@ test.describe("Cross-App Integration @smoke", () => {
     const headers = response.headers();
     const allowOrigin = headers["access-control-allow-origin"] ?? "";
     expect(
-      allowOrigin === "https://safewallet.jclee.me" || allowOrigin === "*",
+      allowOrigin === "https://safetywallet.jclee.me" || allowOrigin === "*",
     ).toBeTruthy();
   });
 
