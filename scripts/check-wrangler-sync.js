@@ -102,10 +102,14 @@ for (const check of checks) {
   }
 }
 
-// Check crons
+// Check crons (root may omit crons — CF Git Integration deploys without scheduled triggers)
 const rootCrons = extractCrons(rootContent);
 const appCrons = extractCrons(appContent);
-if (JSON.stringify(rootCrons) !== JSON.stringify(appCrons)) {
+if (rootCrons.length === 0 && appCrons.length > 0) {
+  console.log(
+    `✓ Crons: root omitted (app defines ${appCrons.length} schedules — OK)`,
+  );
+} else if (JSON.stringify(rootCrons) !== JSON.stringify(appCrons)) {
   console.error(
     `✗ Crons mismatch:\n  root: ${JSON.stringify(rootCrons)}\n  app:  ${JSON.stringify(appCrons)}`,
   );
