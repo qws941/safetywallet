@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-Next.js 14 Admin Dashboard (static export). 29 pages across 17 feature dirs, 16 domain hooks.
+Next.js 14 Admin Dashboard (static export). 29 pages across 17 feature dirs, 17 domain hooks.
 
 ## STRUCTURE
 
@@ -14,7 +14,7 @@ src/
 ├── components/           # UI Components
 │   ├── sidebar.tsx       # Core nav (12 items)
 │   └── [domain]/         # Domain-local UI
-├── hooks/                # 16 domain hooks (TanStack Query)
+├── hooks/                # 17 domain hooks (TanStack Query)
 ├── stores/               # auth.ts (Zustand, isAdmin computed)
 └── lib/                  # API client
 ```

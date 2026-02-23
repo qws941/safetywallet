@@ -12,7 +12,7 @@ Mobile-first safety reporting PWA for construction workers.
 
 ```
 src/
-├── app/                # 17 pages (ALL 'use client')
+├── app/                # 16 pages (ALL 'use client')
 │   ├── layout.tsx      # PWA Metadata & Providers
 │   ├── login/          # AceTime/Phone dual-auth
 │   ├── education/      # Quizzes, TBM, education hub

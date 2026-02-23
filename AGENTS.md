@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE: SAFETYWALLET
 
-**Generated:** 2026-02-23 00:00:00 KST
-**Commit:** 2dc259f
+**Generated:** 2026-02-23 17:19:00 KST
+**Commit:** 5bd639a
 **Branch:** master
 
 ## OVERVIEW
@@ -21,7 +21,7 @@ safetywallet/
 │   └── ui/                # Shared shadcn/ui + Tailwind v4 component library
 ├── e2e/                   # Playwright E2E tests (5 projects, production-first)
 ├── scripts/               # Build, deployment, hash, and sync helpers (tsx)
-├── docs/                  # PRDs, requirement modules, runbooks
+├── docs/                  # PRDs, requirement docs, runbooks
 └── .sisyphus/             # AI agent planning artifacts
 ```
 
@@ -31,20 +31,20 @@ safetywallet/
 | :----------------- | :---------------------------------- | :------------------------------------------ |
 | Add API endpoint   | `apps/api-worker/src/routes/`       | 19 core + 17 admin Hono route modules       |
 | Add admin endpoint | `apps/api-worker/src/routes/admin/` | Global `.use('*', authMiddleware)`          |
-| Modify DB schema   | `apps/api-worker/src/db/schema.ts`  | Drizzle ORM, 32 tables                      |
+| Modify DB schema   | `apps/api-worker/src/db/schema.ts`  | Drizzle ORM, 33 tables                      |
 | Manage migrations  | `apps/api-worker/migrations/`       | Ordered SQL + `meta/_journal.json`          |
 | Add middleware     | `apps/api-worker/src/middleware/`   | 8 middleware modules                        |
 | Add shared DTO     | `packages/types/src/dto/`           | `*Dto` suffix, type-only, barrel export     |
 | Edit i18n strings  | `packages/types/src/i18n/ko.ts`     | Shared Korean localization keys             |
 | UI Components      | `packages/ui/src/components/`       | 14 shadcn components, CVA variants          |
-| Worker App pages   | `apps/worker-app/src/app/`          | 17 pages, client-only, Korean UI            |
+| Worker App pages   | `apps/worker-app/src/app/`          | 16 pages, client-only, Korean UI            |
 | Admin App pages    | `apps/admin-app/src/app/`           | 29 pages, 17 feature dirs                   |
-| CI/Deploy workflow | `.github/workflows/`                | 12 workflows, verify-only (CF deploys)      |
+| CI/Deploy workflow | `.github/workflows/`                | 9 workflows, verify-only (CF deploys)       |
 | CF Bindings        | `apps/api-worker/wrangler.toml`     | D1, R2×3, KV, DO, Queue+DLQ, AI, Hyperdrive |
 | E2E Tests          | `e2e/`                              | 5 Playwright projects, production URLs      |
 | Unit Tests         | `*/__tests__/`                      | Vitest, co-located with source              |
 | Scheduled Tasks    | `apps/api-worker/src/scheduled/`    | 9 CRONs across 4 schedules                  |
-| Product docs       | `docs/`                             | PRD v1.1 + 6 requirement modules            |
+| Product docs       | `docs/`                             | PRD v1.1 + 4 requirement docs               |
 
 ## AGENTS HIERARCHY
 
@@ -55,7 +55,7 @@ safetywallet/
 - API deep modules: `apps/api-worker/src/routes/AGENTS.md`, `apps/api-worker/src/routes/__tests__/AGENTS.md`, `apps/api-worker/src/routes/admin/AGENTS.md`, `apps/api-worker/src/middleware/AGENTS.md`, `apps/api-worker/src/lib/AGENTS.md`, `apps/api-worker/src/lib/__tests__/AGENTS.md`, `apps/api-worker/src/db/AGENTS.md`, `apps/api-worker/src/scheduled/AGENTS.md`, `apps/api-worker/src/validators/AGENTS.md`, `apps/api-worker/src/durable-objects/AGENTS.md`
 - Frontend deep modules: `apps/admin-app/src/app/AGENTS.md`, `apps/admin-app/src/app/attendance/AGENTS.md`, `apps/admin-app/src/app/posts/AGENTS.md`, `apps/admin-app/src/app/votes/AGENTS.md`, `apps/admin-app/src/app/education/AGENTS.md`, `apps/admin-app/src/hooks/AGENTS.md`, `apps/admin-app/src/hooks/__tests__/AGENTS.md`, `apps/admin-app/src/components/AGENTS.md`, `apps/admin-app/src/stores/AGENTS.md`, `apps/worker-app/src/lib/AGENTS.md`, `apps/worker-app/src/app/AGENTS.md`, `apps/worker-app/src/hooks/AGENTS.md`, `apps/worker-app/src/components/AGENTS.md`, `apps/worker-app/src/stores/AGENTS.md`, `apps/worker-app/src/i18n/AGENTS.md`
 - E2E deep modules: `e2e/admin-app/AGENTS.md`, `e2e/api/AGENTS.md`, `e2e/worker-app/AGENTS.md`, `e2e/cross-app/AGENTS.md`
-- Docs deep modules: `docs/requirements/AGENTS.md`, `docs/requirements/modules/AGENTS.md`
+- Docs deep modules: `docs/requirements/AGENTS.md`
 
 ## CODE MAP
 
@@ -77,7 +77,7 @@ safetywallet/
 
 ### Worker App (PWA)
 
-- **17 pages**: /, /home, /actions, /announcements, /education, /join, /login, /points, /posts, /profile, /register, /votes + detail/form variants.
+- **16 pages**: /, /home, /actions, /announcements, /education, /login, /points, /posts, /profile, /register, /votes + detail/form variants.
 - **6 hooks**: use-api, use-auth, use-leaderboard, use-locale, use-push-subscription, use-translation.
 - **State**: Single Zustand store (`safetywallet-auth`), `_hasHydrated` for static-export safety.
 - **PWA**: Push notifications, offline submission queue, service worker.
@@ -85,7 +85,7 @@ safetywallet/
 ### Admin App (Dashboard)
 
 - **29 pages**: Dashboard, analytics, attendance/sync/unmatched, actions, announcements, approvals, audit, education, login, members, monitoring, points/policies, posts, recommendations, rewards, settings, sync-errors, votes/candidates.
-- **16 hooks**: Domain-organized TanStack Query hooks with `["admin", "domain", ...params]` key pattern.
+- **17 hooks**: Domain-organized TanStack Query hooks with `["admin", "domain", ...params]` key pattern.
 - **State**: Single Zustand store (`safetywallet-admin-auth`) with `isAdmin` computed.
 
 ### Shared Packages
@@ -152,6 +152,6 @@ npm run typecheck        # tsc --noEmit all packages
 - **Integration**: FAS (Foreign Attendance System) syncs via Hyperdrive (MariaDB) every 5 minutes.
 - **Scheduled Tasks**: 9 CRON jobs across 4 schedules (5-min sync, daily overdue/PII, weekly retention, monthly settlement).
 - **E2E Tests**: 1000+ lines Playwright; primary verification method. 5 projects: api, admin-setup, worker-app, admin-app, cross-app.
-- **Scale**: ~85k LOC TypeScript, 36 route modules, 32 DB tables, 10 CF bindings.
+- **Scale**: ~80k LOC TypeScript, 36 route modules, 33 DB tables, 10 CF bindings.
 - **Deployment**: Cloudflare Git Integration is the deployer. GitHub Actions workflows are verify-only (health poll → Playwright smoke).
 - **Incident Automation**: 10-min CRON health monitor auto-creates/closes GitHub Issues.

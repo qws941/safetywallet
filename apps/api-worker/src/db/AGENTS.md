@@ -8,7 +8,7 @@ Drizzle ORM schema and batch helpers for D1. This directory defines database con
 
 ```
 db/
-├── schema.ts      # 32 tables, enum definitions, relations
+├── schema.ts      # 33 tables, enum definitions, relations
 ├── helpers.ts     # D1-safe batching helpers (100-op chunks)
 └── __tests__/     # schema/helper tests
 ```
