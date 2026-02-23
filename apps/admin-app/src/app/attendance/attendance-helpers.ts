@@ -27,7 +27,9 @@ export const getKSTHour = (dateStr: string): number => {
 };
 
 export const formatDateForInput = (date: Date) => {
-  return date.toISOString().split("T")[0];
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Seoul",
+  }).format(date);
 };
 
 export const formatTime = (dateStr: string | null) => {

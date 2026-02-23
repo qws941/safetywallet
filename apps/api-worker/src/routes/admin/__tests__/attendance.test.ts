@@ -176,10 +176,21 @@ describe("admin/attendance", () => {
       const res = await app.request("/attendance-logs?siteId=site-1", {}, env);
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        data: { logs: unknown[]; pagination: { total: number } };
+        data: {
+          logs: unknown[];
+          requestedSource: string;
+          requestedSiteCd: string;
+          requestedSiteName: string;
+          metric: { key: string; definition: string };
+          pagination: { total: number };
+        };
       };
       expect(body.data.logs).toHaveLength(1);
       expect(body.data.pagination.total).toBe(1);
+      expect(body.data.requestedSource).toBe("mdidev");
+      expect(body.data.requestedSiteCd).toBe("10");
+      expect(body.data.requestedSiteName).toBe("송도세브란스");
+      expect(body.data.metric.key).toBe("totalLogs");
       expect(mockFasGetAttendanceList).toHaveBeenCalledWith(
         expect.anything(),
         expect.any(String),
@@ -269,10 +280,21 @@ describe("admin/attendance", () => {
       );
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        data: { records: unknown[]; pagination: { total: number } };
+        data: {
+          records: unknown[];
+          requestedSource: string;
+          requestedSiteCd: string;
+          requestedSiteName: string;
+          metric: { key: string; definition: string };
+          pagination: { total: number };
+        };
       };
       expect(body.data.records).toHaveLength(1);
       expect(body.data.pagination.total).toBe(1);
+      expect(body.data.requestedSource).toBe("mdidev");
+      expect(body.data.requestedSiteCd).toBe("10");
+      expect(body.data.requestedSiteName).toBe("송도세브란스");
+      expect(body.data.metric.key).toBe("unmatchedLogs");
     });
 
     it("returns 400 when siteId is missing", async () => {

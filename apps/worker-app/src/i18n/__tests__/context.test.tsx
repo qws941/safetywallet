@@ -94,6 +94,28 @@ describe("I18nProvider and useI18n", () => {
     });
   });
 
+  it("does not log load failure in production mode", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getLocale).mockRejectedValue(new Error("load failed"));
+
+    try {
+      render(
+        <I18nProvider initialLocale="en">
+          <ContextConsumer />
+        </I18nProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("locale")).toHaveTextContent("ko");
+      });
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("setLocale loads new locale and persists it", async () => {
     vi.mocked(getLocale).mockResolvedValue({ greeting: "hello" });
 

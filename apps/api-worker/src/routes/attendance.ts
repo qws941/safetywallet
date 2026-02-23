@@ -489,8 +489,15 @@ attendanceRoute.get("/realtime", authMiddleware, async (c) => {
     return success(c, {
       date: accsDay,
       siteCd: source.siteCd,
+      siteName: source.d1SiteName,
       ...stats,
       source: source.dbName,
+      realtimeDataSource: stats.source,
+      metric: {
+        key: "checkedInWorkers",
+        definition:
+          "distinct emplCd with non-empty inTime from access_daily for the selected site/day",
+      },
       queriedAt: new Date().toISOString(),
     });
   } catch (err) {

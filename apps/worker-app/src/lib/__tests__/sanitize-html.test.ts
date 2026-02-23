@@ -88,6 +88,92 @@ describe("sanitizeAnnouncementHtml", () => {
     expect(sanitizeAnnouncementHtml("")).toBe("");
     expect(invokeSanitizer(null)).toBe("");
   });
+
+  it("drops comment and whitespace-only URL attributes", () => {
+    const raw =
+      '<!--hidden--><p><a href="   ">빈 링크</a><img src="   " alt="empty-src" /></p>';
+
+    const sanitized = sanitizeAnnouncementHtml(raw);
+
+    expect(sanitized).not.toContain("hidden");
+    expect(sanitized).toContain(
+      '<a target="_blank" rel="noopener noreferrer">빈 링크</a>',
+    );
+    expect(sanitized).toContain('<img alt="empty-src">');
+    expect(sanitized).not.toContain('href="');
+    expect(sanitized).not.toContain('src="   "');
+  });
+
+  it("ignores non-text non-element nodes during sanitization", () => {
+    const parse = DOMParser.prototype.parseFromString;
+    const commentDoc = parse.call(new DOMParser(), "<p>ok</p>", "text/html");
+    commentDoc.body.insertBefore(
+      commentDoc.createComment("hidden"),
+      commentDoc.body.firstChild,
+    );
+
+    const parserSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockReturnValue(commentDoc);
+
+    try {
+      const sanitized = sanitizeAnnouncementHtml("ignored");
+      expect(sanitized).toBe("<p>ok</p>");
+      expect(sanitized).not.toContain("hidden");
+    } finally {
+      parserSpy.mockRestore();
+    }
+  });
+
+  it("uses empty fallback when text node content is null", () => {
+    const parserSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockReturnValue({
+        body: {
+          childNodes: [{ nodeType: Node.TEXT_NODE, textContent: null }],
+        },
+      } as unknown as Document);
+
+    try {
+      expect(sanitizeAnnouncementHtml("ignored")).toBe("");
+    } finally {
+      parserSpy.mockRestore();
+    }
+  });
+
+  it("applies empty alt fallback when image alt attribute returns null", () => {
+    const fakeImageNode = {
+      nodeType: Node.ELEMENT_NODE,
+      tagName: "IMG",
+      childNodes: [],
+      getAttribute: (name: string) => {
+        if (name === "src") {
+          return "https://example.com/a.png";
+        }
+
+        if (name === "alt") {
+          return null;
+        }
+
+        return null;
+      },
+      hasAttribute: (name: string) => name === "alt",
+    };
+
+    const parserSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockReturnValue({
+        body: {
+          childNodes: [fakeImageNode],
+        },
+      } as unknown as Document);
+
+    try {
+      expect(sanitizeAnnouncementHtml("ignored")).toContain('alt=""');
+    } finally {
+      parserSpy.mockRestore();
+    }
+  });
 });
 
 describe("hasHtmlContent", () => {
@@ -97,6 +183,12 @@ describe("hasHtmlContent", () => {
 
   it("returns false for plain text", () => {
     expect(hasHtmlContent("그냥 텍스트입니다.")).toBe(false);
+  });
+
+  it("returns false for non-string values", () => {
+    const invokeHasHtmlContent = hasHtmlContent as (value: unknown) => boolean;
+    expect(invokeHasHtmlContent(null)).toBe(false);
+    expect(invokeHasHtmlContent(123)).toBe(false);
   });
 });
 
@@ -118,5 +210,128 @@ describe("renderSanitizedAnnouncementHtml", () => {
     const image = screen.getByRole("img", { name: "photo" });
     expect(image).toHaveAttribute("src", "/r2/images/photo.jpg");
     expect(image).toHaveClass("my-2", "max-h-64", "w-full");
+  });
+
+  it("returns empty array when sanitized html is empty", () => {
+    expect(renderSanitizedAnnouncementHtml("")).toEqual([]);
+  });
+
+  it("ignores non-element root nodes while rendering", () => {
+    const nodes = renderSanitizedAnnouncementHtml("<!--hidden--><p>보임</p>");
+    expect(nodes).toHaveLength(1);
+
+    render(createElement(Fragment, null, nodes));
+
+    expect(screen.getByText("보임")).toBeInTheDocument();
+    expect(screen.queryByText("hidden")).not.toBeInTheDocument();
+  });
+
+  it("maps non-text non-element nodes to null when rendering", () => {
+    const parse = DOMParser.prototype.parseFromString;
+    const sourceDoc = parse.call(new DOMParser(), "<p>표시</p>", "text/html");
+    const renderDoc = parse.call(new DOMParser(), "<p>표시</p>", "text/html");
+    renderDoc.body.insertBefore(
+      renderDoc.createComment("hidden"),
+      renderDoc.body.firstChild,
+    );
+
+    let callCount = 0;
+    const parserSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockImplementation(() => {
+        callCount += 1;
+        return callCount === 1 ? sourceDoc : renderDoc;
+      });
+
+    try {
+      const nodes = renderSanitizedAnnouncementHtml("<p>표시</p>");
+      expect(nodes[0]).toBeNull();
+      expect(nodes[1]).toBeTruthy();
+    } finally {
+      parserSpy.mockRestore();
+    }
+  });
+
+  it("uses empty fallback for null text node content while rendering", () => {
+    const parse = DOMParser.prototype.parseFromString;
+    const sourceDoc = parse.call(new DOMParser(), "<p>seed</p>", "text/html");
+
+    let callCount = 0;
+    const parserSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockImplementation(() => {
+        callCount += 1;
+        if (callCount === 1) {
+          return sourceDoc;
+        }
+
+        return {
+          body: {
+            childNodes: [{ nodeType: Node.TEXT_NODE, textContent: null }],
+          },
+        } as unknown as Document;
+      });
+
+    try {
+      expect(renderSanitizedAnnouncementHtml("<p>seed</p>")).toEqual([""]);
+    } finally {
+      parserSpy.mockRestore();
+    }
+  });
+
+  it("renders anchor without target and rel when parsed node lacks those attributes", () => {
+    const parse = DOMParser.prototype.parseFromString;
+    const sourceDoc = parse.call(
+      new DOMParser(),
+      "<a href='https://safe.example'>x</a>",
+      "text/html",
+    );
+    const renderDoc = parse.call(
+      new DOMParser(),
+      "<a href='https://safe.example'>x</a>",
+      "text/html",
+    );
+    const anchor = renderDoc.body.querySelector("a");
+
+    anchor?.removeAttribute("target");
+    anchor?.removeAttribute("rel");
+
+    let callCount = 0;
+    const parserSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockImplementation(() => {
+        callCount += 1;
+        return callCount === 1 ? sourceDoc : renderDoc;
+      });
+
+    try {
+      const nodes = renderSanitizedAnnouncementHtml(
+        "<a href='https://safe.example'>x</a>",
+      );
+      render(createElement(Fragment, null, nodes));
+
+      const link = screen.getByRole("link", { name: "x" });
+      expect(link).toHaveAttribute("href", "https://safe.example");
+      expect(link).not.toHaveAttribute("target");
+      expect(link).not.toHaveAttribute("rel");
+    } finally {
+      parserSpy.mockRestore();
+    }
+  });
+
+  it("renders anchor and image without optional attributes", () => {
+    const nodes = renderSanitizedAnnouncementHtml("<a>링크만</a><img>");
+
+    render(createElement(Fragment, null, nodes));
+
+    const link = screen.getByText("링크만").closest("a");
+    expect(link).not.toBeNull();
+    expect(link).not.toHaveAttribute("href");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+    const image = screen.getByRole("img");
+    expect(image).not.toHaveAttribute("src");
+    expect(image).not.toHaveAttribute("alt");
   });
 });

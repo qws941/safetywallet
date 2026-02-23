@@ -67,6 +67,13 @@ export interface AttendanceLogItem {
 export interface AttendanceLogsApiResponse {
   logs: AttendanceLogItem[];
   pagination: PaginationMeta;
+  requestedSource?: string;
+  requestedSiteCd?: string;
+  requestedSiteName?: string;
+  metric?: {
+    key: string;
+    definition: string;
+  };
 }
 
 export interface UnmatchedWorkersParams {
@@ -88,6 +95,13 @@ export interface UnmatchedWorkerItem {
 export interface UnmatchedWorkersResponse {
   records: UnmatchedWorkerItem[];
   pagination: PaginationMeta;
+  requestedSource?: string;
+  requestedSiteCd?: string;
+  requestedSiteName?: string;
+  metric?: {
+    key: string;
+    definition: string;
+  };
 }
 
 export function useAttendanceLogs(

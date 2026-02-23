@@ -177,12 +177,14 @@ export function MobileHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
   );
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b bg-slate-900 px-4 text-white md:hidden">
+    <header className="relative z-40 flex h-14 items-center gap-3 border-b bg-slate-900 px-4 text-white md:hidden">
       <Button
         variant="ghost"
         size="icon"
         onClick={onMenuToggle}
-        className="text-white hover:bg-slate-800"
+        aria-label="메뉴 열기"
+        data-testid="mobile-menu-toggle"
+        className="shrink-0 touch-manipulation text-white hover:bg-slate-800"
       >
         <Menu size={20} />
       </Button>

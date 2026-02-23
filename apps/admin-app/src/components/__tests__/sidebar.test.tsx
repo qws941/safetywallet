@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Sidebar } from "@/components/sidebar";
+import { MobileHeader, MobileSidebar, Sidebar } from "@/components/sidebar";
 
 const mockUsePathname = vi.fn();
 const mockLogout = vi.fn();
@@ -15,8 +15,18 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: ReactNode }) => (
-    <a href={href}>{children}</a>
+  default: ({
+    href,
+    children,
+    onClick,
+  }: {
+    href: string;
+    children: ReactNode;
+    onClick?: () => void;
+  }) => (
+    <a href={href} onClick={onClick}>
+      {children}
+    </a>
   ),
 }));
 
@@ -133,5 +143,46 @@ describe("Sidebar", () => {
     // After collapse, nav text should be hidden or layout changed
     // The collapsed state changes the rendering
     expect(collapseButton).toBeInTheDocument();
+  });
+
+  it("renders mobile header with current site and handles menu toggle", () => {
+    const onMenuToggle = vi.fn();
+
+    render(<MobileHeader onMenuToggle={onMenuToggle} />);
+
+    expect(screen.getByText("서울 현장")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+    expect(onMenuToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows mobile header fallback text when site does not match", () => {
+    mockUseMySites.mockReturnValue({
+      data: [{ siteId: "other-site", siteName: "다른 현장" }],
+    });
+
+    render(<MobileHeader onMenuToggle={() => undefined} />);
+
+    expect(screen.getByText("송도세브란스 관리자")).toBeInTheDocument();
+  });
+
+  it("shows mobile header fallback text when sites data is undefined", () => {
+    mockUseMySites.mockReturnValue({ data: undefined });
+
+    render(<MobileHeader onMenuToggle={() => undefined} />);
+
+    expect(screen.getByText("송도세브란스 관리자")).toBeInTheDocument();
+  });
+
+  it("renders mobile sidebar and closes on navigation", async () => {
+    const onOpenChange = vi.fn();
+
+    render(<MobileSidebar open onOpenChange={onOpenChange} />);
+
+    expect(screen.getByText("메뉴")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "대시보드" }));
+
+    await waitFor(() => {
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
   });
 });

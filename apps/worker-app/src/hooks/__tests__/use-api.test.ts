@@ -25,6 +25,7 @@ import {
   useSiteInfo,
   useSubmitQuizAttempt,
   useSubmitRecommendation,
+  useSystemStatus,
   useTbmRecords,
   useTodayRecommendation,
   useUploadActionImage,
@@ -138,6 +139,22 @@ describe("use-api hooks", () => {
     await waitFor(() => {
       expect(apiFetch).toHaveBeenCalledWith("/points?siteId=site-3");
       expect(apiFetch).toHaveBeenCalledWith("/announcements?siteId=site-3");
+    });
+  });
+
+  it("useSystemStatus calls public endpoint with skipAuth option", async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      success: true,
+      data: { notices: [], hasIssues: false },
+    });
+    const { wrapper } = createWrapper();
+
+    renderHook(() => useSystemStatus(), { wrapper });
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/system/status", {
+        skipAuth: true,
+      });
     });
   });
 

@@ -176,6 +176,14 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
 
   return success(c, {
     logs,
+    requestedSource: source.dbName,
+    requestedSiteCd: source.siteCd,
+    requestedSiteName: source.d1SiteName,
+    metric: {
+      key: "totalLogs",
+      definition:
+        "row-level attendance logs from access_daily for the selected site/day before UI-side filtering",
+    },
     pagination: {
       page,
       limit,
@@ -288,6 +296,14 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
 
   return success(c, {
     records: unmatchedRecords,
+    requestedSource: source.dbName,
+    requestedSiteCd: source.siteCd,
+    requestedSiteName: source.d1SiteName,
+    metric: {
+      key: "unmatchedLogs",
+      definition:
+        "attendance logs whose externalWorkerId has no active linked user in D1 for the selected site/day",
+    },
     pagination: {
       page,
       limit,

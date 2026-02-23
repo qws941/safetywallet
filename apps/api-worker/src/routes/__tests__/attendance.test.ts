@@ -587,12 +587,22 @@ describe("routes/attendance", () => {
         data: {
           date: string;
           siteCd: string;
+          siteName: string;
+          source: string;
+          realtimeDataSource: string;
           checkedInWorkers: number;
+          metric: { key: string; definition: string };
           queriedAt: string;
         };
       };
       expect(body.data.checkedInWorkers).toBe(120);
       expect(body.data.siteCd).toBe("10");
+      expect(body.data.siteName).toBe("송도세브란스");
+      expect(body.data.source).toBe("mdidev");
+      expect(body.data.realtimeDataSource).toBe(
+        "access_daily+access+access_history",
+      );
+      expect(body.data.metric.key).toBe("checkedInWorkers");
       expect(body.data.queriedAt).toBeDefined();
     });
 

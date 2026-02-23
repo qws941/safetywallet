@@ -3,33 +3,66 @@ import { type Page, expect } from "@playwright/test";
 const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME ?? "admin";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "admin123";
 
+export class AdminRateLimitError extends Error {
+  constructor(message = "admin login rate limited") {
+    super(message);
+    this.name = "AdminRateLimitError";
+  }
+}
+
 /**
  * Admin login helper — reusable across all admin E2E tests.
  * Minimizes login calls to respect rate limiting (5 req/60s).
  */
 export async function adminLogin(page: Page): Promise<void> {
+  const deadline = Date.now() + 55_000;
+  let sawRateLimit = false;
+
   for (let attempt = 0; attempt < 3; attempt++) {
+    if (page.isClosed() || Date.now() >= deadline) {
+      break;
+    }
+
     await page.goto("/login");
     await page.getByPlaceholder("admin").fill(ADMIN_USERNAME);
     await page.getByPlaceholder("••••••••").fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: "로그인" }).click();
 
     try {
-      await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+      const remaining = Math.max(5_000, deadline - Date.now());
+      await expect(page).toHaveURL(/\/dashboard/, {
+        timeout: Math.min(15_000, remaining),
+      });
       return;
     } catch {
+      if (page.isClosed() || Date.now() >= deadline) {
+        break;
+      }
+
       const errorText = await page
         .locator(".text-destructive")
         .textContent()
         .catch(() => "");
       if (errorText && /제한|limit|429|too many/i.test(errorText)) {
-        await page.waitForTimeout(15000);
+        sawRateLimit = true;
+        if (!page.isClosed()) {
+          const remaining = Math.max(0, deadline - Date.now());
+          await page.waitForTimeout(Math.min(8_000, remaining));
+        }
         continue;
       }
-      await page.waitForTimeout(5000);
+      if (!page.isClosed()) {
+        const remaining = Math.max(0, deadline - Date.now());
+        await page.waitForTimeout(Math.min(2_000, remaining));
+      }
     }
   }
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
+
+  if (sawRateLimit) {
+    throw new AdminRateLimitError();
+  }
+
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 }
 
 /**

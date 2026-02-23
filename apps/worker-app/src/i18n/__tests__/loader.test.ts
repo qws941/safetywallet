@@ -50,6 +50,40 @@ describe("i18n loader", () => {
     expect(errorSpy).toHaveBeenCalled();
   });
 
+  it("does not warn for unsupported locale in production mode", async () => {
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "production");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { getLocale } = await import("@/i18n/loader");
+    const ko = (await import("@/locales/ko.json")).default;
+
+    try {
+      await expect(getLocale("vi" as Locale)).resolves.toEqual(ko);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("does not log loader error in production mode", async () => {
+    vi.resetModules();
+    vi.doMock("@/locales/en.json", () => {
+      throw new Error("mocked locale import failure");
+    });
+
+    vi.stubEnv("NODE_ENV", "production");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { getLocale } = await import("@/i18n/loader");
+    const ko = (await import("@/locales/ko.json")).default;
+
+    try {
+      await expect(getLocale("en")).resolves.toEqual(ko);
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("throws when configured default locale loader is missing", async () => {
     vi.resetModules();
     vi.doMock("../config", async () => {
