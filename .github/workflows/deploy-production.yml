@@ -146,7 +146,7 @@ jobs:
           fi
       - run: npm ci
       - name: Build frontend apps
-        run: npx turbo run build --filter=worker-app --filter=admin-app
+        run: npx turbo run build --filter=@safetywallet/worker-app --filter=@safetywallet/admin-app
       - name: Upload worker-app to R2
         env:
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
