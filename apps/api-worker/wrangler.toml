@@ -30,7 +30,7 @@ VAPID_SUBJECT = "mailto:admin@safetywallet.jclee.me"
 [[d1_databases]]
 binding = "DB"
 database_name = "safetywallet-db"
-database_id = "9d62c0d4-b264-4378-8219-da540f35d9d9"
+database_id = "45065dd5-1f89-4a1b-9e13-228594f309ce"
 
 # R2 Bucket for images
 [[r2_buckets]]
