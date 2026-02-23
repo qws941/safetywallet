@@ -198,7 +198,8 @@ describe("fas-mariadb", () => {
 
   describe("fasGetDailyAttendance", () => {
     it("maps attendance rows correctly", async () => {
-      const { fasGetDailyAttendance } = await import("../fas-mariadb");
+      const { fasGetDailyAttendance, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
       mockQuery.mockResolvedValueOnce([
         [
           sampleAttendanceRow(),
@@ -206,9 +207,13 @@ describe("fas-mariadb", () => {
         ],
       ]);
 
-      const result = await fasGetDailyAttendance(mockHyperdrive, "20260206");
+      const result = await fasGetDailyAttendance(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
 
-      expect(result).toHaveLength(1);
+      expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         emplCd: "24000001",
         accsDay: "20260206",
@@ -217,12 +222,20 @@ describe("fas-mariadb", () => {
         state: 0,
         partCd: "P001",
       });
+      expect(result[1]).toEqual({
+        emplCd: "24000001",
+        accsDay: "20260206",
+        inTime: null,
+        outTime: null,
+        state: 0,
+        partCd: "P001",
+      });
 
       const queryStr = mockQuery.mock.calls[0][0] as string;
       const params = mockQuery.mock.calls[0][1] as string[];
       expect(queryStr).toContain("WHERE ad.accs_day = ?");
-      expect(queryStr).not.toContain("ad.site_cd = ?");
-      expect(params).toEqual(["20260206"]);
+      expect(queryStr).toContain("ad.site_cd = ?");
+      expect(params).toEqual(["20260206", DEFAULT_FAS_SOURCE.siteCd]);
     });
   });
 

@@ -3,7 +3,14 @@ import { Hono } from "hono";
 import { gte, lt } from "drizzle-orm";
 
 const mockFasRealtimeStats = vi.fn();
+const DEFAULT_FAS_SOURCE = {
+  dbName: "jeil_cmi",
+  siteCd: "10",
+  d1SiteName: "파주운정A45BL",
+  workerIdPrefix: "",
+};
 vi.mock("../../../lib/fas-mariadb", () => ({
+  FAS_SOURCES: [DEFAULT_FAS_SOURCE],
   fasGetDailyAttendanceRealtimeStats: (...args: unknown[]) =>
     mockFasRealtimeStats(...args),
 }));
@@ -161,6 +168,8 @@ describe("admin/stats", () => {
       expect(mockFasRealtimeStats).toHaveBeenCalledWith(
         expect.anything(),
         "20260219",
+        "10",
+        DEFAULT_FAS_SOURCE,
       );
     });
 

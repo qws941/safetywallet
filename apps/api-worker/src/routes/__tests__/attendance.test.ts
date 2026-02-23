@@ -43,7 +43,19 @@ vi.mock("../../lib/logger", () => ({
 
 const mockFasRealtimeStats = vi.fn();
 const mockFasCheckWorkerAttendance = vi.fn();
+const DEFAULT_FAS_SOURCE = {
+  dbName: "jeil_cmi",
+  siteCd: "10",
+  d1SiteName: "파주운정A45BL",
+  workerIdPrefix: "",
+};
 vi.mock("../../lib/fas-mariadb", () => ({
+  DEFAULT_FAS_SOURCE,
+  resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
+  resolveFasSourceByWorkerId: vi.fn((externalWorkerId: string) => ({
+    source: DEFAULT_FAS_SOURCE,
+    rawEmplCd: externalWorkerId,
+  })),
   fasGetDailyAttendanceRealtimeStats: (...args: unknown[]) =>
     mockFasRealtimeStats(...args),
   fasCheckWorkerAttendance: (...args: unknown[]) =>
@@ -602,6 +614,7 @@ describe("routes/attendance", () => {
         expect.anything(),
         "20250221",
         "10",
+        DEFAULT_FAS_SOURCE,
       );
     });
 
@@ -623,6 +636,7 @@ describe("routes/attendance", () => {
         expect.anything(),
         "20250221",
         "10",
+        DEFAULT_FAS_SOURCE,
       );
     });
 

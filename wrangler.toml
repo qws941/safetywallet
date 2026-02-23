@@ -19,7 +19,7 @@ VAPID_SUBJECT = "mailto:admin@safewallet.jclee.me"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "safewallet-db"
+database_name = "safetywallet-db"
 database_id = "9d62c0d4-b264-4378-8219-da540f35d9d9"
 
 [[r2_buckets]]

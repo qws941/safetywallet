@@ -131,7 +131,16 @@ vi.mock("../../../db/helpers", () => ({
   dbBatch: vi.fn(async () => []),
 }));
 
+const DEFAULT_FAS_SOURCE = {
+  dbName: "jeil_cmi",
+  siteCd: "10",
+  d1SiteName: "파주운정A45BL",
+  workerIdPrefix: "",
+};
+
 vi.mock("../../../lib/fas-mariadb", () => ({
+  FAS_SOURCES: [DEFAULT_FAS_SOURCE],
+  resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
   fasSearchEmployeeByPhone: vi.fn(async () => null),
   fasSearchEmployeeByName: vi.fn(async () => []),
 }));

@@ -13,7 +13,14 @@ vi.mock("../../../middleware/auth", () => ({
 }));
 
 const mockFasGetAttendanceList = vi.fn();
+const DEFAULT_FAS_SOURCE = {
+  dbName: "jeil_cmi",
+  siteCd: "10",
+  d1SiteName: "파주운정A45BL",
+  workerIdPrefix: "",
+};
 vi.mock("../../../lib/fas-mariadb", () => ({
+  resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
   fasGetAttendanceList: (...args: unknown[]) =>
     mockFasGetAttendanceList(...args),
 }));
@@ -179,6 +186,7 @@ describe("admin/attendance", () => {
         "10",
         50,
         0,
+        DEFAULT_FAS_SOURCE,
       );
     });
 
@@ -222,6 +230,7 @@ describe("admin/attendance", () => {
         "10",
         50,
         0,
+        DEFAULT_FAS_SOURCE,
       );
     });
   });

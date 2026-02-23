@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 
 const mockFasGetAttendanceTrend = vi.fn();
+const DEFAULT_FAS_SOURCE = {
+  dbName: "jeil_cmi",
+  siteCd: "10",
+  d1SiteName: "파주운정A45BL",
+  workerIdPrefix: "",
+};
 vi.mock("../../../lib/fas-mariadb", () => ({
+  resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
   fasGetAttendanceTrend: (...args: unknown[]) =>
     mockFasGetAttendanceTrend(...args),
 }));
@@ -184,6 +191,8 @@ describe("admin/trends", () => {
         expect.anything(),
         "20250115",
         "20250118",
+        "10",
+        DEFAULT_FAS_SOURCE,
       );
     });
 
