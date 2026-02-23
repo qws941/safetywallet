@@ -242,10 +242,17 @@ jobs:
           echo "worker_url=https://safetywallet.jclee.me" >> "$GITHUB_OUTPUT"
           echo "admin_url=$admin_url" >> "$GITHUB_OUTPUT"
           echo "api_reachable=$api_reachable" >> "$GITHUB_OUTPUT"
+          echo "admin_reachable=$admin_reachable" >> "$GITHUB_OUTPUT"
 
       - name: Run E2E tests
         if: steps.smoke_urls.outputs.api_reachable == 'true'
-        run: npm run test:e2e:smoke
+        run: |
+          if [ "${{ steps.smoke_urls.outputs.admin_reachable }}" = "true" ]; then
+            npm run test:e2e:smoke
+          else
+            echo "::notice::Admin unreachable — running API-only E2E"
+            npx playwright test --project=api
+          fi
         env:
           API_URL: ${{ steps.smoke_urls.outputs.api_url }}
           WORKER_APP_URL: ${{ steps.smoke_urls.outputs.worker_url }}

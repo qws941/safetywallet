@@ -6,7 +6,7 @@ test.describe("API - Smoke Tests", () => {
     expect(response.ok()).toBeTruthy();
 
     const body = await response.json();
-    expect(body.status).toBe("healthy");
+    expect(body.data.status).toBe("healthy");
     expect(body.timestamp).toBeTruthy();
   });
 
