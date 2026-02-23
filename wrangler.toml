@@ -1,4 +1,4 @@
-name = "safewallet"
+name = "safetywallet"
 main = "apps/api-worker/src/index.ts"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat_v2"]
@@ -84,7 +84,7 @@ new_sqlite_classes = ["RateLimiter"]
 crons = ["*/5 * * * *", "0 0 1 * *", "0 3 * * SUN", "0 21 * * *"]
 
 [env.dev]
-name = "safewallet-dev"
+name = "safetywallet-dev"
 
 [env.dev.vars]
 ENVIRONMENT = "development"
