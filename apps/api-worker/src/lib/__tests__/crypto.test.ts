@@ -52,7 +52,7 @@ describe("crypto utilities", () => {
     const encrypted = await encrypt(key, plaintext);
     const decrypted = await decrypt(key, encrypted);
 
-    expect(encrypted.startsWith("v")).toBe(false);
+    expect(encrypted).not.toMatch(/^v\d+:/);
     expect(encrypted.split(":")).toHaveLength(3);
     expect(decrypted).toBe(plaintext);
   });
