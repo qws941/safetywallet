@@ -85,6 +85,13 @@
       "when": 1771850400000,
       "tag": "0010_add_attendance_unique_constraint",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1771825234618,
+      "tag": "0012_data_integrity_schema_fixes",
+      "breakpoints": true
     }
   ]
 }
