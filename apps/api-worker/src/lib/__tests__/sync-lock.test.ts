@@ -39,14 +39,14 @@ describe("sync-lock", () => {
       expect(result.holder).toBe("existing-holder");
     });
 
-    it("uses default TTL of 300 seconds", async () => {
+    it("uses default TTL of 600 seconds", async () => {
       const kv = createMockKV();
       await acquireSyncLock(kv as unknown as KVNamespace, "test-lock");
 
       expect(kv.put).toHaveBeenCalledWith(
         "sync:lock:test-lock",
         expect.any(String),
-        expect.objectContaining({ expirationTtl: 300 }),
+        expect.objectContaining({ expirationTtl: 600 }),
       );
     });
   });

@@ -41,7 +41,12 @@ describe("db/helpers", () => {
 
       const result = await dbBatchChunked(db, []);
 
-      expect(result).toBeUndefined();
+      expect(result).toEqual({
+        totalOps: 0,
+        completedOps: 0,
+        failedChunks: 0,
+        errors: [],
+      });
       expect(batchFn).not.toHaveBeenCalled();
     });
 

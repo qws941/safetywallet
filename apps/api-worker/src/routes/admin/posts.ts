@@ -569,7 +569,16 @@ app.delete(
       db.delete(posts).where(eq(posts.id, postId)),
     ];
 
-    await dbBatchChunked(db, ops as Promise<unknown>[]);
+    try {
+      await dbBatchChunked(db, ops as Promise<unknown>[]);
+    } catch (e) {
+      logger.error("Emergency post purge batch failed", {
+        postId,
+        operationCount: ops.length,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return error(c, "INTERNAL_ERROR", "Emergency purge failed", 500);
+    }
 
     await db.insert(auditLogs).values({
       action: "EMERGENCY_DELETE",

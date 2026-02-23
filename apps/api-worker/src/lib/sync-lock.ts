@@ -3,7 +3,7 @@ import { createLogger } from "./logger";
 const log = createLogger("sync-lock");
 
 const LOCK_PREFIX = "sync:lock:";
-const DEFAULT_TTL_SECONDS = 300;
+const DEFAULT_TTL_SECONDS = 600;
 
 export interface SyncLockResult {
   acquired: boolean;
@@ -53,9 +53,21 @@ export async function acquireSyncLock(
 export async function releaseSyncLock(
   kv: KVNamespace,
   lockName: string,
+  holder?: string,
 ): Promise<void> {
   const key = `${LOCK_PREFIX}${lockName}`;
   try {
+    if (holder) {
+      const current = await kv.get(key);
+      if (current && current !== holder) {
+        log.warn("Sync lock held by different holder, skipping release", {
+          lockName,
+          expectedHolder: holder,
+          actualHolder: current,
+        });
+        return;
+      }
+    }
     await kv.delete(key);
     log.info("Sync lock released", { lockName });
   } catch (err) {

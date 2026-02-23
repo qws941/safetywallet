@@ -260,19 +260,6 @@ function parseFasKstCheckin(accsDay: string, inTime: string): Date | null {
   return new Date(Date.UTC(year, month - 1, day, hour - 9, minute, 0));
 }
 
-function accsDayToUtcRange(accsDay: string): { start: Date; end: Date } | null {
-  if (!/^\d{8}$/.test(accsDay)) {
-    return null;
-  }
-
-  const year = Number(accsDay.slice(0, 4));
-  const month = Number(accsDay.slice(4, 6)) - 1;
-  const day = Number(accsDay.slice(6, 8));
-  const start = new Date(Date.UTC(year, month, day, -9, 0, 0, 0));
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  return { start, end };
-}
-
 /** @internal Exported for testing */
 export async function withRetry<T>(
   fn: () => Promise<T>,
@@ -386,6 +373,23 @@ async function runMonthEndSnapshot(env: Env): Promise<void> {
   log.info("Running month-end snapshot", { kstNow: kstNow.toISOString() });
 
   const systemUserId = await getOrCreateSystemUser(db);
+
+  const existingSnapshots = await db
+    .select({ id: pointsLedger.id })
+    .from(pointsLedger)
+    .where(
+      and(
+        eq(pointsLedger.reasonCode, "MONTHLY_SNAPSHOT"),
+        eq(pointsLedger.settleMonth, settleMonth),
+      ),
+    )
+    .limit(1)
+    .all();
+
+  if (existingSnapshots.length > 0) {
+    log.warn("Month-end snapshot already exists, skipping", { settleMonth });
+    return;
+  }
 
   const memberships = await db
     .select({
@@ -1105,32 +1109,22 @@ export async function runFasAttendanceSync(
     duplicateByWorkerCode = Math.max(checkins.length - dedupedByWorker.size, 0);
 
     if (valuesToInsert.length > 0) {
-      const utcRange = accsDayToUtcRange(accsDay);
-      const externalWorkerIds = [
-        ...new Set(
-          valuesToInsert
-            .map((value) => value.externalWorkerId)
-            .filter((workerId): workerId is string => Boolean(workerId)),
-        ),
-      ];
-
-      if (utcRange && externalWorkerIds.length > 0) {
-        for (const workerIdChunk of chunkArray(externalWorkerIds, 50)) {
-          await db
-            .delete(attendance)
-            .where(
-              and(
-                eq(attendance.source, "FAS"),
-                gte(attendance.checkinAt, utcRange.start),
-                lt(attendance.checkinAt, utcRange.end),
-                inArray(attendance.externalWorkerId, workerIdChunk),
-              ),
-            );
-        }
-      }
-
       const ops = valuesToInsert.map((value) =>
-        db.insert(attendance).values(value).onConflictDoNothing(),
+        db
+          .insert(attendance)
+          .values(value)
+          .onConflictDoUpdate({
+            target: [
+              attendance.externalWorkerId,
+              attendance.siteId,
+              attendance.checkinAt,
+            ],
+            set: {
+              userId: value.userId,
+              result: value.result,
+              source: value.source,
+            },
+          }),
       );
       await dbBatchChunked(db, ops);
     }
@@ -1276,6 +1270,41 @@ async function runPiiLifecycleCleanup(env: Env): Promise<void> {
   );
 
   await dbBatchChunked(db, ops);
+
+  const deletedUserIds = usersToHardDelete.map((user) => user.id);
+
+  const postOps = deletedUserIds.map((userId) =>
+    db
+      .update(posts)
+      .set({
+        isAnonymous: true,
+        updatedAt: now,
+      })
+      .where(eq(posts.userId, userId)),
+  );
+
+  const membershipOps = deletedUserIds.map((userId) =>
+    db
+      .update(siteMemberships)
+      .set({
+        status: "REMOVED",
+        leftAt: now,
+        leftReason: "USER_DELETED",
+      })
+      .where(eq(siteMemberships.userId, userId)),
+  );
+
+  const attendanceOps = deletedUserIds.map((userId) =>
+    db
+      .update(attendance)
+      .set({ userId: null })
+      .where(eq(attendance.userId, userId)),
+  );
+
+  const cascadeOps = [...postOps, ...membershipOps, ...attendanceOps];
+  if (cascadeOps.length > 0) {
+    await dbBatchChunked(db, cascadeOps);
+  }
 
   log.info("PII lifecycle cleanup", {
     usersHardDeleted: usersToHardDelete.length,
