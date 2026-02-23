@@ -70,7 +70,11 @@ const searchColumns: Column<SearchResultRow>[] = [
   },
 ];
 
-export function FasSearchCard() {
+interface FasSearchCardProps {
+  source?: string;
+}
+
+export function FasSearchCard({ source }: FasSearchCardProps) {
   const [searchName, setSearchName] = useState("");
   const [searchPhone, setSearchPhone] = useState("");
   const [activeSearch, setActiveSearch] = useState<{
@@ -78,8 +82,10 @@ export function FasSearchCard() {
     phone?: string;
   }>({});
 
-  const { data: searchData, isLoading: searchLoading } =
-    useSearchFasMariadb(activeSearch);
+  const { data: searchData, isLoading: searchLoading } = useSearchFasMariadb({
+    ...activeSearch,
+    source,
+  });
 
   const handleSearch = () => {
     if (!searchName && !searchPhone) return;

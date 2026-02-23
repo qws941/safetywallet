@@ -1,12 +1,24 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button, Badge } from "@safetywallet/ui";
+import {
+  Button,
+  Badge,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@safetywallet/ui";
 import { useAttendanceLogs, useUnmatchedRecords } from "@/hooks/use-attendance";
 import { useAuthStore } from "@/stores/auth";
 import { Database } from "lucide-react";
 import Link from "next/link";
-import { formatDateForInput, getKSTHour } from "./attendance-helpers";
+import {
+  FAS_SOURCES,
+  formatDateForInput,
+  getKSTHour,
+} from "./attendance-helpers";
 import { AttendanceStats } from "./components/attendance-stats";
 import { AttendanceLogsTab } from "./components/attendance-logs-tab";
 import { UnmatchedTab } from "./components/unmatched-tab";
@@ -20,15 +32,17 @@ export default function AttendancePage() {
   );
   const [companyFilter, setCompanyFilter] = useState<string>("ALL");
   const [showAnomalyOnly, setShowAnomalyOnly] = useState(false);
+  const [source, setSource] = useState<string>("");
 
   const { data: logsResponse, isLoading: isLogsLoading } = useAttendanceLogs(
     1,
     2000,
     { date },
+    source || undefined,
   );
 
   const { data: unmatchedData, isLoading: isUnmatchedLoading } =
-    useUnmatchedRecords();
+    useUnmatchedRecords(source || undefined);
 
   const allLogs = useMemo(() => logsResponse?.logs ?? [], [logsResponse?.logs]);
 
@@ -58,18 +72,41 @@ export default function AttendancePage() {
     }).length;
   }, [allLogs]);
 
+  const currentSourceLabel =
+    FAS_SOURCES.find((s) => s.value === source)?.label ?? "전체 현장";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">출근 현황</h1>
-        <p className="text-sm text-muted-foreground">
-          {new Date(date).toLocaleDateString("ko-KR", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            weekday: "long",
-          })}
-        </p>
+        <div>
+          <h1 className="text-2xl font-bold">출근 현황</h1>
+          <p className="text-sm text-muted-foreground">
+            {new Date(date).toLocaleDateString("ko-KR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              weekday: "long",
+            })}
+          </p>
+        </div>
+        <Select
+          value={source || "__all__"}
+          onValueChange={(v) => setSource(v === "__all__" ? "" : v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue>{currentSourceLabel}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {FAS_SOURCES.map((s) => (
+              <SelectItem
+                key={s.value || "__all__"}
+                value={s.value || "__all__"}
+              >
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <AttendanceStats
