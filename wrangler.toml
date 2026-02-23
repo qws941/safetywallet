@@ -21,18 +21,18 @@ VAPID_SUBJECT = "mailto:admin@safetywallet.jclee.me"
 # D1 Database
 [[d1_databases]]
 binding = "DB"
-database_name = "safetywallet-db"
+database_name = "safework2-db"
 database_id = "9d62c0d4-b264-4378-8219-da540f35d9d9"
 
 # R2 Bucket for images
 [[r2_buckets]]
 binding = "R2"
-bucket_name = "safetywallet-images"
+bucket_name = "safework2-images"
 
 # R2 Bucket for static frontend files
 [[r2_buckets]]
 binding = "STATIC"
-bucket_name = "safetywallet-static"
+bucket_name = "safework2-static"
 
 # R2 Bucket for AceTime data (photos + DB from NAS)
 [[r2_buckets]]
