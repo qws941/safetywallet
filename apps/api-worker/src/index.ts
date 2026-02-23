@@ -8,6 +8,7 @@ import {
   deactivateRetiredEmployees,
 } from "./lib/fas-sync";
 import type { Env } from "./types";
+import { success } from "./lib/response";
 
 import auth from "./routes/auth";
 import attendanceRoute from "./routes/attendance";
@@ -71,7 +72,7 @@ app.use("*", async (c, next) => {
 const api = new Hono<{ Bindings: Env }>();
 
 api.get("/health", (c) => {
-  return c.json({ status: "healthy", timestamp: new Date().toISOString() });
+  return success(c, { status: "healthy" });
 });
 
 // Public system status endpoint for Worker App outage/maintenance banner
