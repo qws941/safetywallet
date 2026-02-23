@@ -459,7 +459,16 @@ async function runMonthEndSnapshot(env: Env): Promise<void> {
       }),
     );
 
-    await dbBatchChunked(db, ops);
+    try {
+      await dbBatchChunked(db, ops);
+    } catch (err) {
+      log.error("Month-end snapshot batch failed", {
+        settleMonth,
+        balanceCount: balances.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
   }
 
   log.info("Snapshot complete", { snapshotCount: balances.length });
@@ -999,7 +1008,16 @@ export async function runFasAttendanceSync(
           })
           .onConflictDoNothing(),
       );
-      await dbBatchChunked(db, placeholderOps);
+      try {
+        await dbBatchChunked(db, placeholderOps);
+      } catch (err) {
+        log.error("FAS attendance placeholder user batch failed", {
+          accsDay,
+          placeholderCount: placeholderOps.length,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
       placeholderUsersCreated = missingWorkerIds.length;
 
       linkedUsers = await loadLinkedUsers();
@@ -1126,7 +1144,16 @@ export async function runFasAttendanceSync(
             },
           }),
       );
-      await dbBatchChunked(db, ops);
+      try {
+        await dbBatchChunked(db, ops);
+      } catch (err) {
+        log.error("FAS attendance insert batch failed", {
+          accsDay,
+          attendanceCount: ops.length,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
     }
 
     await db.insert(auditLogs).values({
@@ -1269,7 +1296,15 @@ async function runPiiLifecycleCleanup(env: Env): Promise<void> {
       .where(eq(users.id, user.id)),
   );
 
-  await dbBatchChunked(db, ops);
+  try {
+    await dbBatchChunked(db, ops);
+  } catch (err) {
+    log.error("PII lifecycle cleanup batch failed", {
+      userCount: usersToHardDelete.length,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 
   const deletedUserIds = usersToHardDelete.map((user) => user.id);
 
