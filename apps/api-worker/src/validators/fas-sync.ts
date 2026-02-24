@@ -36,23 +36,6 @@ export const FasEmployeePayloadSchema = z.object({
 });
 
 /**
- * AceViewer employees payload schema
- */
-export const AceViewerEmployeesPayloadSchema = z.object({
-  employees: z
-    .array(FasEmployeePayloadSchema)
-    .min(0)
-    .max(100000)
-    .describe("Array of employee records"),
-  total: z
-    .number()
-    .int()
-    .min(0)
-    .max(100000)
-    .describe("Total count of employees"),
-});
-
-/**
  * Parameters for fasGetUpdatedEmployees function
  */
 export const FasGetUpdatedEmployeesParamsSchema = z.object({
@@ -97,9 +80,6 @@ export const AttendanceSyncResponseSchema = z.object({
 
 // Type exports
 export type FasEmployeePayload = z.infer<typeof FasEmployeePayloadSchema>;
-export type AceViewerEmployeesPayload = z.infer<
-  typeof AceViewerEmployeesPayloadSchema
->;
 export type FasGetUpdatedEmployeesParams = z.infer<
   typeof FasGetUpdatedEmployeesParamsSchema
 >;

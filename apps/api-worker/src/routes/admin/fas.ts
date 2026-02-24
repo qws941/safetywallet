@@ -264,9 +264,9 @@ app.post(
       }
 
       if (usersToUpdate.size > 0) {
-        const userUpdateOperations = Array.from(usersToUpdate.values()).map(
-          (userToUpdate) =>
-            db
+        for (const userToUpdate of usersToUpdate.values()) {
+          try {
+            await db
               .update(users)
               .set({
                 externalWorkerId: userToUpdate.externalWorkerId,
@@ -279,9 +279,20 @@ app.post(
                 updatedAt: userToUpdate.updatedAt,
               })
               .where(eq(users.id, userToUpdate.id))
-              .run(),
-        );
-        await dbBatch<unknown[]>(db, userUpdateOperations);
+              .run();
+          } catch {
+            await db
+              .update(users)
+              .set({
+                externalWorkerId: userToUpdate.externalWorkerId,
+                name: userToUpdate.name,
+                nameMasked: userToUpdate.nameMasked,
+                updatedAt: userToUpdate.updatedAt,
+              })
+              .where(eq(users.id, userToUpdate.id))
+              .run();
+          }
+        }
       }
 
       if (usersToInsert.length > 0) {

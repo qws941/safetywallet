@@ -66,7 +66,7 @@ vi.mock("../../../db/schema", () => ({
     createdAt: "createdAt",
   },
   syncErrorStatusEnum: ["OPEN", "RESOLVED", "IGNORED"],
-  syncTypeEnum: ["FAS", "ACETIME"],
+  syncTypeEnum: ["FAS"],
 }));
 
 vi.mock("@hono/zod-validator", () => ({

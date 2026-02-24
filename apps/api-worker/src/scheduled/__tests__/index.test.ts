@@ -499,16 +499,6 @@ describe("scheduled orchestrators", () => {
       mockBuildHighLatencyAlert(...args),
   }));
 
-  vi.doMock("../../lib/constants", () => ({
-    CROSS_MATCH_CRON_BATCH: 3,
-  }));
-
-  vi.doMock("../../validators/fas-sync", () => ({
-    AceViewerEmployeesPayloadSchema: {
-      parse: (payload: unknown) => payload,
-    },
-  }));
-
   vi.doMock("../../lib/logger", () => ({
     createLogger: () => ({
       info: (...args: unknown[]) => mockInfo(...args),
@@ -770,7 +760,6 @@ describe("scheduled orchestrators", () => {
         password: "pw",
         database: "db",
       },
-      ACETIME_BUCKET: undefined,
     });
     const waitUntil = vi.fn((promise: Promise<void>) => promise);
     const ctx = {

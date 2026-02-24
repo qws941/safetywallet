@@ -1,16 +1,6 @@
 import type { Env } from "../types";
 import { drizzle } from "drizzle-orm/d1";
-import {
-  eq,
-  sql,
-  and,
-  gte,
-  lt,
-  like,
-  inArray,
-  isNull,
-  desc,
-} from "drizzle-orm";
+import { eq, sql, and, gte, lt, desc, inArray, isNull } from "drizzle-orm";
 import {
   pointsLedger,
   siteMemberships,
@@ -24,25 +14,19 @@ import {
   voteCandidates,
   attendance,
 } from "../db/schema";
-import { dbBatchChunked } from "../db/helpers";
 import {
   fasGetUpdatedEmployees,
-  fasGetEmployeesBatch,
   testConnection as testFasConnection,
   initFasConfig,
-  type FasEmployee,
 } from "../lib/fas-mariadb";
 import {
   syncFasEmployeesToD1,
-  syncSingleFasEmployee,
   deactivateRetiredEmployees,
 } from "../lib/fas-sync";
-import { hmac } from "../lib/crypto";
-import { maskName } from "../utils/common";
 import { createLogger } from "../lib/logger";
 import { acquireSyncLock, releaseSyncLock } from "../lib/sync-lock";
-import { AceViewerEmployeesPayloadSchema } from "../validators/fas-sync";
-import { CROSS_MATCH_CRON_BATCH } from "../lib/constants";
+import { dbBatchChunked } from "../db/helpers";
+
 import {
   fireAlert,
   getAlertConfig,
@@ -1038,260 +1022,6 @@ async function publishScheduledAnnouncements(env: Env): Promise<void> {
   }
 }
 
-// AceTime R2 sync — reads employee JSON from R2 bucket and upserts basic user records.
-// This is the CRON counterpart to POST /acetime/sync-db (which requires admin auth).
-// Does NOT handle PII (phone/dob encryption) — that's runFasSyncIncremental's job.
-async function runAcetimeSyncFromR2(env: Env): Promise<void> {
-  if (!env.ACETIME_BUCKET) {
-    log.info("ACETIME_BUCKET not configured, skipping R2 sync");
-    return;
-  }
-
-  const lock = await acquireSyncLock(env.KV, "acetime", 240);
-  if (!lock.acquired) {
-    log.info("AceTime sync already in progress, skipping");
-    return;
-  }
-
-  try {
-    const object = await env.ACETIME_BUCKET.get("aceviewer-employees.json");
-    if (!object) {
-      log.info("aceviewer-employees.json not found in R2, skipping");
-      return;
-    }
-
-    // Validate R2 payload with strict schema
-    let validatedData: ReturnType<typeof AceViewerEmployeesPayloadSchema.parse>;
-    try {
-      const rawData = await object.json();
-      validatedData = AceViewerEmployeesPayloadSchema.parse(rawData);
-    } catch (err) {
-      if (err instanceof Error) {
-        log.error("Invalid aceviewer-employees.json payload", {
-          error: err.message,
-        });
-      } else {
-        log.error("Invalid aceviewer-employees.json payload", {
-          error: String(err),
-        });
-      }
-      return;
-    }
-    const aceViewerEmployees = validatedData.employees;
-
-    const db = drizzle(env.DB);
-
-    const existingUsers = await db
-      .select({
-        id: users.id,
-        externalWorkerId: users.externalWorkerId,
-      })
-      .from(users)
-      .where(eq(users.externalSystem, "FAS"));
-
-    const existingMap = new Map(
-      existingUsers.map((u) => [u.externalWorkerId, u.id]),
-    );
-
-    const newEmployees = aceViewerEmployees.filter(
-      (e) => !existingMap.has(e.externalWorkerId),
-    );
-    const updateEmployees = aceViewerEmployees.filter((e) =>
-      existingMap.has(e.externalWorkerId),
-    );
-
-    const hashMap = new Map<string, string>();
-    await Promise.all(
-      newEmployees.map(async (e) => {
-        const h = await hmac(env.HMAC_SECRET, `acetime-${e.externalWorkerId}`);
-        hashMap.set(e.externalWorkerId, h);
-      }),
-    );
-
-    let created = 0;
-    let updated = 0;
-    let skipped = 0;
-
-    // Batch inserts for new employees
-    const insertOps: Promise<unknown>[] = [];
-    for (const e of newEmployees) {
-      const phoneHash = hashMap.get(e.externalWorkerId) || "";
-      insertOps.push(
-        db.insert(users).values({
-          id: crypto.randomUUID(),
-          externalSystem: "FAS",
-          externalWorkerId: e.externalWorkerId,
-          name: e.name,
-          nameMasked: maskName(e.name),
-          phoneHash: phoneHash,
-          companyName: e.companyName,
-          tradeType: e.trade,
-          role: "WORKER",
-        }),
-      );
-    }
-
-    if (insertOps.length > 0) {
-      try {
-        await dbBatchChunked(db, insertOps);
-        created = insertOps.length;
-      } catch (err) {
-        log.error("Failed to batch insert new employees", {
-          count: insertOps.length,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        skipped += insertOps.length;
-      }
-    }
-
-    // Batch updates for existing employees
-    const updateOps: Promise<unknown>[] = [];
-    for (const e of updateEmployees) {
-      const userId = existingMap.get(e.externalWorkerId);
-      if (!userId) {
-        skipped++;
-        continue;
-      }
-      updateOps.push(
-        db
-          .update(users)
-          .set({
-            name: e.name,
-            nameMasked: maskName(e.name),
-            companyName: e.companyName,
-            tradeType: e.trade,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, userId)),
-      );
-    }
-
-    if (updateOps.length > 0) {
-      try {
-        await dbBatchChunked(db, updateOps);
-        updated = updateOps.length;
-      } catch (err) {
-        log.error("Failed to batch update employees", {
-          count: updateOps.length,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        skipped += updateOps.length;
-      }
-    }
-
-    // Step 3: Cross-match placeholder users with FAS MariaDB to fill in phone/dob
-    let fasCrossMatched = 0;
-    let fasCrossSkipped = 0;
-
-    if (env.FAS_HYPERDRIVE) {
-      const placeholderUsers = await db
-        .select({
-          id: users.id,
-          externalWorkerId: users.externalWorkerId,
-          phoneHash: users.phoneHash,
-        })
-        .from(users)
-        .where(
-          and(
-            eq(users.externalSystem, "FAS"),
-            like(users.phoneHash, "acetime-%"),
-          ),
-        );
-
-      // Batch limit to stay within CF Workers CPU time
-      const batch = placeholderUsers.slice(0, CROSS_MATCH_CRON_BATCH);
-
-      // BATCH FIX: Load all employees at once instead of per-user
-      const emplCds = batch
-        .filter((pu) => pu.externalWorkerId)
-        .map((pu) => pu.externalWorkerId!);
-
-      let fasEmployeeMap = new Map<string, FasEmployee>();
-      try {
-        fasEmployeeMap = await fasGetEmployeesBatch(
-          env.FAS_HYPERDRIVE,
-          emplCds,
-        );
-      } catch (err) {
-        log.error("FAS batch query failed", {
-          batchSize: emplCds.length,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        fasCrossSkipped += batch.length;
-      }
-
-      // Process batch with pre-loaded data
-      for (const pu of batch) {
-        if (!pu.externalWorkerId) {
-          fasCrossSkipped++;
-          continue;
-        }
-
-        const fasEmployee = fasEmployeeMap.get(pu.externalWorkerId);
-        if (fasEmployee && fasEmployee.phone) {
-          try {
-            await syncSingleFasEmployee(fasEmployee, db, {
-              HMAC_SECRET: env.HMAC_SECRET,
-              ENCRYPTION_KEY: env.ENCRYPTION_KEY,
-            });
-            fasCrossMatched++;
-          } catch (err) {
-            log.error("FAS cross-match sync failed", {
-              externalWorkerId: pu.externalWorkerId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-            fasCrossSkipped++;
-          }
-        } else {
-          fasCrossSkipped++;
-        }
-      }
-    }
-
-    // Ensure site memberships for all synced AceTime employees
-    let membershipCreated = 0;
-    try {
-      const allExternalIds = aceViewerEmployees.map((e) => e.externalWorkerId);
-      if (allExternalIds.length > 0) {
-        const QUERY_CHUNK = 50;
-        const syncedUserIds: string[] = [];
-        for (let i = 0; i < allExternalIds.length; i += QUERY_CHUNK) {
-          const chunk = allExternalIds.slice(i, i + QUERY_CHUNK);
-          const chunkUsers = await db
-            .select({ id: users.id })
-            .from(users)
-            .where(
-              and(
-                eq(users.externalSystem, "FAS"),
-                inArray(users.externalWorkerId, chunk),
-                isNull(users.deletedAt),
-              ),
-            )
-            .all();
-          syncedUserIds.push(...chunkUsers.map((u) => u.id));
-        }
-        membershipCreated = await ensureSiteMemberships(db, syncedUserIds);
-      }
-    } catch (err) {
-      log.error("Failed to ensure site memberships during AceTime sync", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-
-    log.info("AceTime R2 sync complete", {
-      total: aceViewerEmployees.length,
-      created,
-      updated,
-      skipped,
-      fasCrossMatched,
-      fasCrossSkipped,
-      membershipCreated,
-    });
-  } finally {
-    await releaseSyncLock(env.KV, "acetime");
-  }
-}
-
 async function runMetricsAlertCheck(env: Env): Promise<void> {
   if (!env.KV) return;
 
@@ -1422,36 +1152,13 @@ async function runScheduled(
         }
       }
 
-      // announcements, AceTime sync, and metrics check are independent — run in parallel
+      // announcements and metrics check are independent — run in parallel
       await Promise.all([
         publishScheduledAnnouncements(env).catch((err: unknown) => {
           log.error("Announcements publish failed", {
             error: err instanceof Error ? err.message : String(err),
           });
         }),
-        withRetry(() => runAcetimeSyncFromR2(env), 3, 5000).catch(
-          (err: unknown) => {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            log.error("AceTime sync failed after 3 retries", {
-              error: errorMsg,
-              trigger,
-            });
-            if (env.KV) {
-              fireAlert(
-                env.KV,
-                buildCronFailureAlert("AceTime R2 Sync", errorMsg),
-                env.ALERT_WEBHOOK_URL,
-              ).catch((alertErr: unknown) => {
-                log.error("Alert webhook delivery failed", {
-                  error:
-                    alertErr instanceof Error
-                      ? alertErr.message
-                      : String(alertErr),
-                });
-              });
-            }
-          },
-        ),
         runMetricsAlertCheck(env).catch((err: unknown) => {
           log.error("Metrics alert check failed", {
             error: err instanceof Error ? err.message : String(err),

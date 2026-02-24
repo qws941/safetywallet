@@ -308,7 +308,7 @@ export async function fasGetEmployeeInfo(
 
 /**
  * Get multiple employees by empl_cd in a single batch query.
- * Optimizes CRON cross-match sync by reducing N individual queries to 1.
+ * Optimizes CRON batch sync by reducing N individual queries to 1.
  */
 export async function fasGetEmployeesBatch(
   hyperdrive: HyperdriveBinding,

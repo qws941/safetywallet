@@ -1,17 +1,18 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
-import type { Env } from "../types";
+import { desc, eq } from "drizzle-orm";
+import type { AuthContext, Env } from "../types";
 import { users } from "../db/schema";
 import { hmac, encrypt } from "../lib/crypto";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
+import { authMiddleware } from "../middleware/auth";
 import { fasAuthMiddleware } from "../middleware/fas-auth";
 import { maskName } from "../utils/common";
 import { AdminSyncWorkersSchema } from "../validators/schemas";
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
 // Manual fasAuthMiddleware invocation per project convention (see AGENTS.md).
 // Previously used app.use("*", fasAuthMiddleware) which violates the pattern. See #46.
@@ -214,6 +215,32 @@ app.delete("/workers/:externalWorkerId", async (c) => {
   }
 
   return success(c, { deleted: true });
+});
+
+// FAS employee listing (admin-only, JWT auth)
+app.get("/employees", authMiddleware, async (c) => {
+  const auth = c.get("auth");
+  if (
+    auth.user.role !== "ADMIN" &&
+    auth.user.role !== "SITE_ADMIN" &&
+    auth.user.role !== "SUPER_ADMIN"
+  ) {
+    return error(c, "ADMIN_ACCESS_REQUIRED", "Admin access required", 403);
+  }
+
+  const db = drizzle(c.env.DB);
+  const employees = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      nameMasked: users.nameMasked,
+      externalWorkerId: users.externalWorkerId,
+    })
+    .from(users)
+    .where(eq(users.externalSystem, "FAS"))
+    .orderBy(desc(users.updatedAt));
+
+  return success(c, { employees });
 });
 
 export default app;

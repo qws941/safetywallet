@@ -45,12 +45,7 @@ bucket_name = "safetywallet-images"
 binding = "STATIC"
 bucket_name = "safetywallet-static"
 
-# R2 Bucket for AceTime data (photos + DB from NAS)
-[[r2_buckets]]
-binding = "ACETIME_BUCKET"
-bucket_name = "safewallet-acetime"
-
-# Hyperdrive — FAS MariaDB (AceTime direct connection)
+# Hyperdrive — FAS MariaDB (direct connection)
 [[hyperdrive]]
 binding = "FAS_HYPERDRIVE"
 id = "83c32c884d3b42b18c4b0601c0e2e0dc"

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   FasEmployeePayloadSchema,
-  AceViewerEmployeesPayloadSchema,
   FasGetUpdatedEmployeesParamsSchema,
   AttendanceSyncEventSchema,
   AttendanceSyncBodySchema,
@@ -87,35 +86,6 @@ describe("fas-sync validators", () => {
       });
       expect(result.externalWorkerId).toBe("W001");
       expect(result.name).toBe("김철수");
-    });
-  });
-
-  // ---------- AceViewerEmployeesPayloadSchema ----------
-
-  describe("AceViewerEmployeesPayloadSchema", () => {
-    it("accepts valid payload", () => {
-      const result = AceViewerEmployeesPayloadSchema.parse({
-        employees: [{ externalWorkerId: "W001", name: "김철수" }],
-        total: 1,
-      });
-      expect(result.employees).toHaveLength(1);
-    });
-
-    it("accepts empty employees array", () => {
-      const result = AceViewerEmployeesPayloadSchema.parse({
-        employees: [],
-        total: 0,
-      });
-      expect(result.employees).toHaveLength(0);
-    });
-
-    it("rejects negative total", () => {
-      expect(() =>
-        AceViewerEmployeesPayloadSchema.parse({
-          employees: [],
-          total: -1,
-        }),
-      ).toThrow();
     });
   });
 

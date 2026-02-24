@@ -122,18 +122,19 @@ app.get("/stats", requireAdmin, async (c) => {
       if (!hd) {
         return { count: 0 };
       }
+      const primarySource = FAS_SOURCES[0];
+      if (!primarySource) {
+        return { count: 0 };
+      }
+
       try {
-        let totalCheckedIn = 0;
-        for (const source of FAS_SOURCES) {
-          const stats = await fasGetDailyAttendanceRealtimeStats(
-            hd,
-            todayAccsDay,
-            source.siteCd,
-            source,
-          );
-          totalCheckedIn += stats.checkedInWorkers;
-        }
-        return { count: totalCheckedIn };
+        const stats = await fasGetDailyAttendanceRealtimeStats(
+          hd,
+          todayAccsDay,
+          primarySource.siteCd,
+          primarySource,
+        );
+        return { count: stats.checkedInWorkers };
       } catch {
         return { count: 0 };
       }
