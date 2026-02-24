@@ -9,7 +9,7 @@ export class WorkerRateLimitError extends Error {
 
 export const WORKER_E2E_USER = {
   name: process.env.E2E_WORKER_NAME ?? "김선민",
-  phone: process.env.E2E_WORKER_PHONE ?? "01076015803",
+  phone: process.env.E2E_WORKER_PHONE ?? "01076015830",
   dob: process.env.E2E_WORKER_DOB ?? "990308",
 };
 
