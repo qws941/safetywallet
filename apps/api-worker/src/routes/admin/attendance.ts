@@ -4,7 +4,9 @@ import { and, inArray, isNull } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
 import { users } from "../../db/schema";
 import {
+  fasGetDailyAttendance,
   fasGetAttendanceList,
+  type FasAttendance,
   type FasAttendanceListRecord,
   resolveFasSource,
 } from "../../lib/fas-mariadb";
@@ -85,6 +87,41 @@ function mapLogRecord(
   };
 }
 
+function mapFallbackLogRecord(
+  row: FasAttendance,
+  userMap: Map<string, LinkedUserSummary>,
+  sourcePrefix: string,
+) {
+  const externalWorkerId = `${sourcePrefix}${row.emplCd}`;
+  const linkedUser = userMap.get(externalWorkerId);
+  return {
+    id: `${row.emplCd}-${row.accsDay}-${row.inTime ?? ""}`,
+    siteId: null,
+    userId: linkedUser?.id ?? null,
+    externalWorkerId,
+    checkinAt: formatCheckinIso(row.accsDay, row.inTime),
+    result: "SUCCESS",
+    source: "FAS_REALTIME",
+    createdAt: null,
+    userName: linkedUser?.nameMasked ?? row.emplCd,
+    companyName: null,
+    partCd: row.partCd,
+    inTime: row.inTime,
+    outTime: row.outTime,
+    accsDay: row.accsDay,
+  };
+}
+
+interface UnmatchedSourceRecord {
+  emplCd: string;
+  accsDay: string;
+  inTime: string | null;
+  outTime: string | null;
+  partCd: string;
+  name: string;
+  companyName: string | null;
+}
+
 // GET /attendance-logs - 출근 기록 조회 (관리자)
 app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
   const db = drizzle(c.env.DB);
@@ -129,17 +166,38 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
     });
   }
 
-  const { records, total } = await fasGetAttendanceList(
-    hd,
-    accsDay,
-    source.siteCd,
-    limit,
-    offset,
-    source,
-  );
+  let records: FasAttendanceListRecord[] = [];
+  let fallbackRecords: FasAttendance[] = [];
+  let total = 0;
+
+  try {
+    const result = await fasGetAttendanceList(
+      hd,
+      accsDay,
+      source.siteCd,
+      limit,
+      offset,
+      source,
+    );
+    records = result.records;
+    total = result.total;
+  } catch {
+    const dailyRecords = await fasGetDailyAttendance(
+      hd,
+      accsDay,
+      source.siteCd,
+      source,
+    );
+    total = dailyRecords.length;
+    fallbackRecords = dailyRecords.slice(offset, offset + limit);
+  }
 
   const workerIds = [
-    ...new Set(records.map((row) => `${source.workerIdPrefix}${row.emplCd}`)),
+    ...new Set(
+      (fallbackRecords.length > 0 ? fallbackRecords : records).map(
+        (row) => `${source.workerIdPrefix}${row.emplCd}`,
+      ),
+    ),
   ];
   const linkedUsers =
     workerIds.length === 0
@@ -170,9 +228,12 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
     });
   }
 
-  const logs = records.map((row) =>
-    mapLogRecord(row, userMap, source.workerIdPrefix),
-  );
+  const logs =
+    fallbackRecords.length > 0
+      ? fallbackRecords.map((row) =>
+          mapFallbackLogRecord(row, userMap, source.workerIdPrefix),
+        )
+      : records.map((row) => mapLogRecord(row, userMap, source.workerIdPrefix));
 
   return success(c, {
     logs,
@@ -224,32 +285,64 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
     return error(c, "INVALID_DATE", "date must be YYYYMMDD or YYYY-MM-DD", 400);
   }
 
-  const allRecords: FasAttendanceListRecord[] = [];
-  let fetchOffset = 0;
-  const fetchLimit = 500;
-  let total = 0;
+  let allRecords: UnmatchedSourceRecord[] = [];
 
-  do {
-    const pageResult = await fasGetAttendanceList(
+  try {
+    const fetchedRecords: UnmatchedSourceRecord[] = [];
+    let fetchOffset = 0;
+    const fetchLimit = 500;
+    let total = 0;
+
+    do {
+      const pageResult = await fasGetAttendanceList(
+        hd,
+        accsDay,
+        source.siteCd,
+        fetchLimit,
+        fetchOffset,
+        source,
+      );
+
+      if (fetchOffset === 0) {
+        total = pageResult.total;
+      }
+
+      fetchedRecords.push(
+        ...pageResult.records.map((row) => ({
+          emplCd: row.emplCd,
+          accsDay: row.accsDay,
+          inTime: row.inTime,
+          outTime: row.outTime,
+          partCd: row.partCd,
+          name: row.name,
+          companyName: row.companyName,
+        })),
+      );
+      fetchOffset += pageResult.records.length;
+
+      if (pageResult.records.length === 0) {
+        break;
+      }
+    } while (fetchOffset < total);
+
+    allRecords = fetchedRecords;
+  } catch {
+    const fallbackRecords = await fasGetDailyAttendance(
       hd,
       accsDay,
       source.siteCd,
-      fetchLimit,
-      fetchOffset,
       source,
     );
-
-    if (fetchOffset === 0) {
-      total = pageResult.total;
-    }
-
-    allRecords.push(...pageResult.records);
-    fetchOffset += pageResult.records.length;
-
-    if (pageResult.records.length === 0) {
-      break;
-    }
-  } while (fetchOffset < total);
+    allRecords = fallbackRecords.map((row) => ({
+      emplCd: row.emplCd,
+      accsDay: row.accsDay,
+      inTime: row.inTime,
+      outTime: row.outTime,
+      partCd: row.partCd,
+      name: row.emplCd,
+      companyName: null,
+    }));
+  }
 
   const workerIds = [...new Set(allRecords.map((row) => row.emplCd))];
   const workerExternalIds = workerIds.map(

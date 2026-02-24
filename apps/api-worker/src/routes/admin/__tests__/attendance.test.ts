@@ -13,6 +13,7 @@ vi.mock("../../../middleware/auth", () => ({
 }));
 
 const mockFasGetAttendanceList = vi.fn();
+const mockFasGetDailyAttendance = vi.fn();
 const DEFAULT_FAS_SOURCE = {
   dbName: "mdidev",
   siteCd: "10",
@@ -23,6 +24,8 @@ vi.mock("../../../lib/fas-mariadb", () => ({
   resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
   fasGetAttendanceList: (...args: unknown[]) =>
     mockFasGetAttendanceList(...args),
+  fasGetDailyAttendance: (...args: unknown[]) =>
+    mockFasGetDailyAttendance(...args),
 }));
 
 const mockGet = vi.fn();
@@ -151,6 +154,7 @@ describe("admin/attendance", () => {
     selectCallCount = 0;
     mockDb.select.mockImplementation(() => makeThenableChain());
     mockFasGetAttendanceList.mockReset();
+    mockFasGetDailyAttendance.mockReset();
   });
 
   describe("GET /attendance-logs", () => {
@@ -244,6 +248,47 @@ describe("admin/attendance", () => {
         DEFAULT_FAS_SOURCE,
       );
     });
+
+    it("falls back to daily attendance query when attendance list fails", async () => {
+      thenableResults = [
+        [{ id: "user-1", externalWorkerId: "EXT-001", nameMasked: "Kim**" }],
+      ];
+      mockFasGetAttendanceList.mockRejectedValueOnce(new Error("sql fail"));
+      mockFasGetDailyAttendance.mockResolvedValueOnce([
+        {
+          emplCd: "EXT-001",
+          accsDay: "20260220",
+          inTime: "0830",
+          outTime: "1730",
+          state: 0,
+          partCd: "P001",
+        },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/attendance-logs?siteId=site-1&date=2026-02-20&limit=50&page=1",
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          logs: Array<{ userName: string | null }>;
+          pagination: { total: number };
+        };
+      };
+      expect(body.data.pagination.total).toBe(1);
+      expect(body.data.logs).toHaveLength(1);
+      expect(body.data.logs[0]?.userName).toBe("Kim**");
+      expect(mockFasGetDailyAttendance).toHaveBeenCalledWith(
+        expect.anything(),
+        "20260220",
+        "10",
+        DEFAULT_FAS_SOURCE,
+      );
+    });
   });
 
   describe("GET /attendance/unmatched", () => {
@@ -301,6 +346,53 @@ describe("admin/attendance", () => {
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/attendance/unmatched", {}, env);
       expect(res.status).toBe(400);
+    });
+
+    it("falls back to daily attendance when list query fails", async () => {
+      thenableResults = [[{ externalWorkerId: "EXT-001" }]];
+      mockFasGetAttendanceList.mockRejectedValueOnce(new Error("sql fail"));
+      mockFasGetDailyAttendance.mockResolvedValueOnce([
+        {
+          emplCd: "EXT-001",
+          accsDay: "20260220",
+          inTime: "0830",
+          outTime: "1730",
+          state: 0,
+          partCd: "P001",
+        },
+        {
+          emplCd: "EXT-002",
+          accsDay: "20260220",
+          inTime: "0900",
+          outTime: "1800",
+          state: 0,
+          partCd: "P001",
+        },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/attendance/unmatched?siteId=site-1&date=2026-02-20",
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          records: Array<{ externalWorkerId: string }>;
+          pagination: { total: number };
+        };
+      };
+      expect(body.data.pagination.total).toBe(1);
+      expect(body.data.records).toHaveLength(1);
+      expect(body.data.records[0]?.externalWorkerId).toBe("EXT-002");
+      expect(mockFasGetDailyAttendance).toHaveBeenCalledWith(
+        expect.anything(),
+        "20260220",
+        "10",
+        DEFAULT_FAS_SOURCE,
+      );
     });
   });
 });
