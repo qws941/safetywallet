@@ -102,6 +102,7 @@ describe("use-api hooks", () => {
         category: Category.HAZARD,
         content: "테스트 게시글",
       }),
+      offlineQueue: true,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["posts", "site-2"],
@@ -285,6 +286,7 @@ describe("use-api hooks", () => {
     expect(apiFetch).toHaveBeenCalledWith("/actions/a1", {
       method: "PATCH",
       body: JSON.stringify({ actionStatus: ActionStatus.IN_PROGRESS }),
+      offlineQueue: true,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["actions"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["actions", "a1"] });
@@ -337,6 +339,7 @@ describe("use-api hooks", () => {
         reason: "안전 수칙 준수 우수",
         siteId: "site-r",
       }),
+      offlineQueue: true,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["recommendations"],
@@ -422,6 +425,7 @@ describe("use-api hooks", () => {
     expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1/attempt", {
       method: "POST",
       body: JSON.stringify({ answers: { question1: 1 } }),
+      offlineQueue: true,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["quiz-attempts", "q1"],

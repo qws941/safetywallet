@@ -4,6 +4,8 @@ import { defaultLocale } from "./config";
 const locales: Partial<Record<Locale, () => Promise<Record<string, any>>>> = {
   ko: () => import("../locales/ko.json").then((module) => module.default),
   en: () => import("../locales/en.json").then((module) => module.default),
+  vi: () => import("../locales/vi.json").then((module) => module.default),
+  zh: () => import("../locales/zh.json").then((module) => module.default),
 };
 
 export async function getLocale(locale?: Locale): Promise<Record<string, any>> {

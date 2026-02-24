@@ -64,6 +64,7 @@ export function useCreatePost() {
       apiFetch<ApiResponse<{ post: PostDto }>>("/posts", {
         method: "POST",
         body: JSON.stringify(data),
+        offlineQueue: true,
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["posts", variables.siteId] });
@@ -246,6 +247,7 @@ export function useSubmitQuizAttempt() {
       }>(`/education/quizzes/${quizId}/attempt`, {
         method: "POST",
         body: JSON.stringify({ answers }),
+        offlineQueue: true,
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -373,6 +375,7 @@ export function useUpdateActionStatus() {
       apiFetch<ApiResponse<ActionDto>>(`/actions/${actionId}`, {
         method: "PATCH",
         body: JSON.stringify(data),
+        offlineQueue: true,
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["actions"] });
@@ -428,23 +431,47 @@ export function useLeaveSite() {
 
 // ─── Recommendations ───────────────────────────────────────
 
+export interface TodayRecommendationData {
+  hasRecommendedToday: boolean;
+  recommendation: {
+    id: string;
+    recommendedName: string;
+    tradeType: string;
+    reason: string;
+    recommendationDate: string;
+  } | null;
+}
+
+export interface RecommendationRecord {
+  id: string;
+  recommendedName: string;
+  tradeType: string;
+  reason: string;
+  recommendationDate: string;
+  createdAt: string;
+}
+
 export function useTodayRecommendation() {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
-  return useQuery<
-    ApiResponse<{
-      hasRecommendedToday: boolean;
-      recommendation: unknown | null;
-    }>
-  >({
+  return useQuery<ApiResponse<TodayRecommendationData>>({
     queryKey: ["recommendations", "today", currentSiteId],
     queryFn: () =>
-      apiFetch<
-        ApiResponse<{
-          hasRecommendedToday: boolean;
-          recommendation: unknown | null;
-        }>
-      >(`/recommendations/today?siteId=${currentSiteId}`),
+      apiFetch<ApiResponse<TodayRecommendationData>>(
+        `/recommendations/today?siteId=${currentSiteId}`,
+      ),
     enabled: !!currentSiteId,
+  });
+}
+
+export function useMyRecommendationHistory(enabled = true) {
+  const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  return useQuery<ApiResponse<RecommendationRecord[]>>({
+    queryKey: ["recommendations", "my", currentSiteId],
+    queryFn: () =>
+      apiFetch<ApiResponse<RecommendationRecord[]>>(
+        `/recommendations/my?siteId=${currentSiteId}`,
+      ),
+    enabled: !!currentSiteId && enabled,
   });
 }
 
@@ -472,6 +499,7 @@ export function useSubmitRecommendation() {
       apiFetch<ApiResponse<{ id: string }>>("/recommendations", {
         method: "POST",
         body: JSON.stringify(data),
+        offlineQueue: true,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recommendations"] });

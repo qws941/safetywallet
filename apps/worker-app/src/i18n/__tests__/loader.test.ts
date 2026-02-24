@@ -30,9 +30,9 @@ describe("i18n loader", () => {
     const { getLocale } = await import("@/i18n/loader");
     const ko = (await import("@/locales/ko.json")).default;
 
-    await expect(getLocale("vi" as Locale)).resolves.toEqual(ko);
+    await expect(getLocale("fr" as Locale)).resolves.toEqual(ko);
     expect(warnSpy).toHaveBeenCalledWith(
-      "Locale vi not found, falling back to ko",
+      "Locale fr not found, falling back to ko",
     );
   });
 
@@ -58,7 +58,7 @@ describe("i18n loader", () => {
     const ko = (await import("@/locales/ko.json")).default;
 
     try {
-      await expect(getLocale("vi" as Locale)).resolves.toEqual(ko);
+      await expect(getLocale("fr" as Locale)).resolves.toEqual(ko);
       expect(warnSpy).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
@@ -97,7 +97,7 @@ describe("i18n loader", () => {
 
     const { getLocale } = await import("@/i18n/loader");
 
-    await expect(getLocale("vi" as Locale)).rejects.toThrow(
+    await expect(getLocale("fr" as Locale)).rejects.toThrow(
       "Default locale fr not found",
     );
   });

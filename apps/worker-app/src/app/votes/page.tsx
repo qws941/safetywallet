@@ -12,89 +12,54 @@ import {
   Input,
 } from "@safetywallet/ui";
 import { useAuth } from "@/hooks/use-auth";
-import { apiFetch } from "@/lib/api";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useMyRecommendationHistory,
+  useSubmitRecommendation,
+  useTodayRecommendation,
+} from "@/hooks/use-api";
 import { Award, CheckCircle, Send, History } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
-
-interface TodayData {
-  hasRecommendedToday: boolean;
-  recommendation: {
-    id: string;
-    recommendedName: string;
-    tradeType: string;
-    reason: string;
-    recommendationDate: string;
-  } | null;
-}
-
-interface RecommendationRecord {
-  id: string;
-  recommendedName: string;
-  tradeType: string;
-  reason: string;
-  recommendationDate: string;
-  createdAt: string;
-}
 
 export default function RecommendationsPage() {
   const router = useRouter();
   const t = useTranslation();
   const { currentSiteId } = useAuth();
-  const queryClient = useQueryClient();
 
   const [recommendedName, setRecommendedName] = useState("");
   const [tradeType, setTradeType] = useState("");
   const [reason, setReason] = useState("");
   const [showHistory, setShowHistory] = useState(false);
 
-  const { data: todayData, isLoading } = useQuery<TodayData>({
-    queryKey: ["recommendations", "today", currentSiteId],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: TodayData }>(
-        `/recommendations/today?siteId=${currentSiteId}`,
-      );
-      return res.data;
-    },
-    enabled: !!currentSiteId,
-  });
+  const { data: todayResponse, isLoading } = useTodayRecommendation();
+  const todayData = todayResponse?.data;
 
-  const { data: history } = useQuery<RecommendationRecord[]>({
-    queryKey: ["recommendations", "my", currentSiteId],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: RecommendationRecord[] }>(
-        `/recommendations/my?siteId=${currentSiteId}`,
-      );
-      return res.data;
-    },
-    enabled: !!currentSiteId && showHistory,
-  });
+  const { data: historyResponse } = useMyRecommendationHistory(showHistory);
+  const history = historyResponse?.data ?? [];
 
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      await apiFetch("/recommendations", {
-        method: "POST",
-        body: JSON.stringify({
+  const submitMutation = useSubmitRecommendation();
+
+  const handleSubmit = () => {
+    if (
+      recommendedName.trim() &&
+      tradeType.trim() &&
+      reason.trim() &&
+      currentSiteId
+    ) {
+      submitMutation.mutate(
+        {
           siteId: currentSiteId,
           recommendedName: recommendedName.trim(),
           tradeType: tradeType.trim(),
           reason: reason.trim(),
-        }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["recommendations", "today"],
-      });
-      setRecommendedName("");
-      setTradeType("");
-      setReason("");
-    },
-  });
-
-  const handleSubmit = () => {
-    if (recommendedName.trim() && tradeType.trim() && reason.trim()) {
-      submitMutation.mutate();
+        },
+        {
+          onSuccess: () => {
+            setRecommendedName("");
+            setTradeType("");
+            setReason("");
+          },
+        },
+      );
     }
   };
 
@@ -253,7 +218,7 @@ export default function RecommendationsPage() {
           {showHistory ? t("votes.hideHistory") : t("votes.showHistory")}
         </Button>
 
-        {showHistory && history && (
+        {showHistory && (
           <div className="space-y-2">
             {history.length === 0 ? (
               <Card>

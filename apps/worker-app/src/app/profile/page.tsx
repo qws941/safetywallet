@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useSiteInfo, useLeaveSite } from "@/hooks/use-api";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { useTranslation } from "@/hooks/use-translation";
 
 import { Header } from "@/components/header";
@@ -16,6 +17,7 @@ import {
   Avatar,
   AvatarFallback,
   Skeleton,
+  Switch,
   toast,
   AlertDialog,
   AlertDialogTrigger,
@@ -35,10 +37,27 @@ export default function ProfilePage() {
   const { data, isLoading } = useProfile();
   const { data: siteData } = useSiteInfo(currentSiteId);
   const leaveSite = useLeaveSite();
+  const {
+    isSupported,
+    isSubscribed,
+    isLoading: isPushLoading,
+    error: pushError,
+    subscribe,
+    unsubscribe,
+  } = usePushSubscription();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const user = data?.data?.user;
 
   const site = siteData?.data?.site;
+
+  const handlePushToggle = async (checked: boolean) => {
+    if (isPushLoading) return;
+    if (checked) {
+      await subscribe();
+      return;
+    }
+    await unsubscribe();
+  };
 
   const handleLogout = () => {
     logout();
@@ -130,6 +149,37 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardContent className="py-4 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-medium">푸시 알림</h3>
+                <p className="text-xs text-muted-foreground">
+                  {isSupported
+                    ? isSubscribed
+                      ? "알림 수신이 활성화되었습니다."
+                      : "중요 공지와 안내를 알림으로 받을 수 있습니다."
+                    : "현재 기기에서는 푸시 알림을 지원하지 않습니다."}
+                </p>
+              </div>
+              <Switch
+                checked={isSubscribed}
+                disabled={!isSupported || isPushLoading}
+                onCheckedChange={handlePushToggle}
+                aria-label="푸시 알림 수신"
+              />
+            </div>
+            {isPushLoading ? (
+              <p className="text-xs text-muted-foreground">
+                알림 설정을 적용하는 중입니다...
+              </p>
+            ) : null}
+            {pushError ? (
+              <p className="text-xs text-destructive">{pushError}</p>
+            ) : null}
+          </CardContent>
+        </Card>
 
         {/* Actions */}
 
