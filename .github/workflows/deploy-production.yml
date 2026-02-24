@@ -153,8 +153,29 @@ jobs:
             exit 1
           fi
       - run: npm ci
-      - name: Build frontend apps
+
+      - name: Download worker-app build from CI
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: build-worker-app
+          path: apps/worker-app/out
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download admin-app build from CI
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: build-admin-app
+          path: apps/admin-app/out
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Build frontend apps (manual dispatch only)
+        if: github.event_name == 'workflow_dispatch'
         run: npx turbo run build --filter=@safetywallet/worker-app --filter=@safetywallet/admin-app
+
       - name: Upload worker-app to R2
         env:
           CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
@@ -175,6 +196,7 @@ jobs:
       environment: production
       ref: ${{ needs.resolve-sha.outputs.deploy-sha }}
     secrets: inherit
+
   notify:
     name: Slack Deploy Notification
     runs-on: ubuntu-latest

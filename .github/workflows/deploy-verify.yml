@@ -32,8 +32,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium
+      - name: Get Playwright version
+        id: pw-version
+        run: echo "version=$(npx playwright --version)" >> "$GITHUB_OUTPUT"
+        working-directory: e2e
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
+        working-directory: e2e
+
+      - name: Install Playwright system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+        working-directory: e2e
 
       - name: Set environment URLs
         id: urls
