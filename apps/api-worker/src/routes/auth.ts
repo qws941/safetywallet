@@ -423,8 +423,14 @@ auth.post(
 
         if (fasEmployee && fasEmployee.socialNo) {
           // socialNo "7104101" (7자리 주민번호) → dob "19710410" (YYYYMMDD)
+          // normalizedDob can be 6-digit (YYMMDD) or 8-digit (YYYYMMDD)
           const fasDob = socialNoToDob(fasEmployee.socialNo);
-          if (fasDob && fasDob === normalizedDob) {
+          const dobMatch =
+            fasDob !== null &&
+            (fasDob === normalizedDob ||
+              (normalizedDob.length === 6 &&
+                fasDob.slice(2) === normalizedDob));
+          if (dobMatch) {
             const syncedUser = await syncSingleFasEmployee(fasEmployee, db, {
               HMAC_SECRET: c.env.HMAC_SECRET,
               ENCRYPTION_KEY: c.env.ENCRYPTION_KEY,
