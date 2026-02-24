@@ -63,12 +63,12 @@ jobs:
             echo "api_url=https://safetywallet-dev.jclee.workers.dev/api" >> "$GITHUB_OUTPUT"
           else
             echo "worker_url=https://safetywallet.jclee.me" >> "$GITHUB_OUTPUT"
-            echo "admin_url=https://safetywallet.jclee.me/admin" >> "$GITHUB_OUTPUT"
+            echo "admin_url=https://admin.safetywallet.jclee.me" >> "$GITHUB_OUTPUT"
             echo "api_url=https://safetywallet.jclee.workers.dev/api" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Run smoke tests
-        run: npx playwright test --grep @smoke --project=api
+        run: npx playwright test --grep @smoke --project=api --project=worker-app --project=cross-app
         env:
           CI: "true"
           WORKER_APP_URL: ${{ steps.urls.outputs.worker_url }}
