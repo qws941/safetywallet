@@ -65,7 +65,10 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "safetywallet-auth",
-      storage: createJSONStorage(() => localStorage),
+      storage:
+        typeof window !== "undefined"
+          ? createJSONStorage(() => localStorage)
+          : undefined,
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
