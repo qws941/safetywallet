@@ -27,7 +27,6 @@ import disputesRoute from "./routes/disputes";
 import policiesRoute from "./routes/policies";
 import approvalsRoute from "./routes/approvals";
 import educationRoute from "./routes/education";
-import acetimeRoute from "./routes/acetime";
 import recommendationsRoute from "./routes/recommendations";
 import imagesRoute from "./routes/images";
 import notificationsRoute from "./routes/notifications";
@@ -210,7 +209,6 @@ api.route("/disputes", disputesRoute);
 api.route("/policies", policiesRoute);
 api.route("/approvals", approvalsRoute);
 api.route("/education", educationRoute);
-api.route("/acetime", acetimeRoute);
 api.route("/images", imagesRoute);
 api.route("/notifications", notificationsRoute);
 
