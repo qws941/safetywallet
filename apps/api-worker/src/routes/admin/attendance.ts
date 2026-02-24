@@ -90,7 +90,7 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const siteId = c.req.query("siteId");
   const page = parseInt(c.req.query("page") || "1", 10);
-  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
+  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 2000);
   const offset = (page - 1) * limit;
   const dateStr = c.req.query("date")?.trim();
   const resultFilter = c.req.query("result");
@@ -198,7 +198,7 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const siteId = c.req.query("siteId");
   const page = parseInt(c.req.query("page") || "1", 10);
-  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
+  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 2000);
   const offset = (page - 1) * limit;
   const dateStr = c.req.query("date")?.trim();
 

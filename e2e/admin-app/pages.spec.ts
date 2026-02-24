@@ -108,8 +108,8 @@ test.describe("C) PWA & Meta Tags", () => {
     await expect(viewport).toHaveAttribute("content", /width=device-width/);
   });
 
-  test("page title contains 안전지갑 관리자 @smoke", async ({ page }) => {
-    await expect(page).toHaveTitle(/안전지갑 관리자/);
+  test("page title contains 송도세브란스 관리자 @smoke", async ({ page }) => {
+    await expect(page).toHaveTitle(/송도세브란스 관리자/);
   });
 
   test("page loads without console errors @smoke", async ({ page }) => {
@@ -155,7 +155,7 @@ test.describe("D) UI Responsiveness", () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto("/login");
 
-    await expect(page.getByText("안전지갑 관리자")).toBeVisible();
+    await expect(page.getByText("송도세브란스 관리자")).toBeVisible();
     await expect(page.getByPlaceholder("admin")).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   });
@@ -164,7 +164,7 @@ test.describe("D) UI Responsiveness", () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/login");
 
-    await expect(page.getByText("안전지갑 관리자")).toBeVisible();
+    await expect(page.getByText("송도세브란스 관리자")).toBeVisible();
     await expect(page.getByPlaceholder("admin")).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   });

@@ -11,7 +11,7 @@ test.describe("Admin Login Page", () => {
   });
 
   test("should render login form with correct elements", async ({ page }) => {
-    await expect(page.getByText("안전지갑 관리자")).toBeVisible();
+    await expect(page.getByText("송도세브란스 관리자")).toBeVisible();
     await expect(page.getByPlaceholder("admin")).toBeVisible();
     await expect(page.getByPlaceholder("••••••••")).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();

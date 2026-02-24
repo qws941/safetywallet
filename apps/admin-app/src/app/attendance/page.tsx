@@ -34,7 +34,7 @@ export default function AttendancePage() {
 
   const stats = useMemo(
     () => ({
-      total: allLogs.length,
+      total: logsResponse?.pagination?.total ?? allLogs.length,
       success: allLogs.filter((l) => l.result === "SUCCESS").length,
       fail: allLogs.filter((l) => l.result === "FAIL").length,
     }),

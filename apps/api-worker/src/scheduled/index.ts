@@ -1784,6 +1784,11 @@ async function runScheduled(
             error: err instanceof Error ? err.message : String(err),
           });
         }),
+        runFasAttendanceSync(env).catch((err: unknown) => {
+          log.error("FAS attendance sync failed", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }),
       ]);
     }
 
