@@ -25,7 +25,7 @@ import {
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { Button, Sheet, SheetContent, SheetTitle } from "@safetywallet/ui";
+import { Button } from "@safetywallet/ui";
 import { useAuthStore } from "@/stores/auth";
 import { useMySites } from "@/hooks/use-admin-api";
 
@@ -46,14 +46,8 @@ const navItems = [
   { href: "/audit", label: "감사 로그", icon: ScrollText },
 ];
 
-/** Shared nav content used by both desktop sidebar and mobile sheet */
-function SidebarNav({
-  collapsed,
-  onNavigate,
-}: {
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+/** Shared nav content used by desktop and mobile sidebar */
+function SidebarNav({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
   const logout = useAuthStore((s) => s.logout);
@@ -80,9 +74,9 @@ function SidebarNav({
 
   return (
     <>
-      {/* Site Switcher */}
+      {/* Site Switcher — desktop expanded only */}
       {!collapsed && sites.length > 0 && (
-        <div className="border-b border-slate-700 px-3 py-2">
+        <div className="hidden border-b border-slate-700 px-3 py-2 md:block">
           <div className="relative">
             <button
               type="button"
@@ -135,16 +129,19 @@ function SidebarNav({
             <Link
               key={item.href}
               href={item.href}
-              onClick={onNavigate}
+              title={item.label}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors justify-center",
+                !collapsed && "md:justify-start",
                 isActive
                   ? "bg-slate-700 text-white"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white",
               )}
             >
               <Icon size={20} />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && (
+                <span className="hidden md:inline">{item.label}</span>
+              )}
             </Link>
           );
         })}
@@ -154,59 +151,53 @@ function SidebarNav({
         <Button
           variant="ghost"
           className={cn(
-            "w-full justify-start gap-3 text-slate-300 hover:bg-slate-800 hover:text-white",
-            collapsed && "justify-center",
+            "w-full gap-3 text-slate-300 hover:bg-slate-800 hover:text-white justify-center",
+            !collapsed && "md:justify-start",
           )}
           onClick={handleLogout}
         >
           <LogOut size={20} />
-          {!collapsed && <span>로그아웃</span>}
+          {!collapsed && <span className="hidden md:inline">로그아웃</span>}
         </Button>
       </div>
     </>
   );
 }
 
-/** Mobile top bar with hamburger menu */
-export function MobileHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
+/** Mobile top bar — shows site name, hidden on desktop */
+export function MobileHeader() {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
-  const { data: sitesData } = useMySites();
+  const { data: sitesData, isLoading: isSitesLoading } = useMySites();
   const sites = sitesData ?? [];
   const currentSite = sites.find(
     (s: { siteId: string }) => s.siteId === currentSiteId,
   );
+  const headerLabel = currentSite?.siteName
+    ? currentSite.siteName
+    : currentSiteId && isSitesLoading
+      ? "현장 불러오는 중..."
+      : "송도세브란스 관리자";
 
   return (
     <header className="relative z-40 flex h-14 items-center gap-3 border-b bg-slate-900 px-4 text-white md:hidden">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onMenuToggle}
-        aria-label="메뉴 열기"
-        data-testid="mobile-menu-toggle"
-        className="shrink-0 touch-manipulation text-white hover:bg-slate-800"
-      >
-        <Menu size={20} />
-      </Button>
-      <span className="text-sm font-semibold truncate">
-        {currentSite?.siteName ?? "송도세브란스 관리자"}
-      </span>
+      <span className="text-sm font-semibold truncate">{headerLabel}</span>
     </header>
   );
 }
 
-/** Desktop sidebar - hidden on mobile */
+/** Sidebar — always visible. Icon-only on mobile, full/collapsible on desktop */
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col bg-slate-900 text-white transition-all duration-300",
-        collapsed ? "w-16" : "w-64",
+        "flex flex-col bg-slate-900 text-white transition-all duration-300 w-16",
+        !collapsed && "md:w-64",
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-slate-700 px-4">
+      {/* Desktop header — hidden on mobile */}
+      <div className="hidden h-16 items-center justify-between border-b border-slate-700 px-4 md:flex">
         {!collapsed && (
           <span className="text-lg font-bold">송도세브란스 관리자</span>
         )}
@@ -222,29 +213,5 @@ export function Sidebar() {
 
       <SidebarNav collapsed={collapsed} />
     </aside>
-  );
-}
-
-/** Mobile sidebar sheet drawer */
-export function MobileSidebar({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="left"
-        className="flex w-72 flex-col bg-slate-900 p-0 text-white border-slate-700 [&>button]:text-white"
-      >
-        <SheetTitle className="sr-only">메뉴</SheetTitle>
-        <div className="flex h-14 items-center border-b border-slate-700 px-4">
-          <span className="text-lg font-bold">송도세브란스 관리자</span>
-        </div>
-        <SidebarNav collapsed={false} onNavigate={() => onOpenChange(false)} />
-      </SheetContent>
-    </Sheet>
   );
 }
