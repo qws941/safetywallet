@@ -4,8 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
 import {
-  useAcetimeCrossMatch,
-  useAcetimeSync,
+  useHyperdriveSync,
   useFasSyncStatus,
   useRealtimeAttendanceView,
   useSearchFasMariadb,
@@ -118,63 +117,34 @@ describe("use-fas-sync", () => {
     });
   });
 
-  describe("useAcetimeSync", () => {
-    it("posts to /acetime/sync-db and invalidates fas sync status", async () => {
+  describe("useHyperdriveSync", () => {
+    it("posts to /admin/fas/sync-hyperdrive and invalidates fas sync status", async () => {
       mockApiFetch.mockResolvedValueOnce({
-        source: {},
-        sync: {},
-        fasCrossMatch: {},
+        message: "Hyperdrive sync completed",
+        runId: "test-run",
+        source: "test-db",
+        batch: {
+          offset: 0,
+          limit: 100,
+          fetched: 50,
+          total: 50,
+          hasMore: false,
+          nextOffset: null,
+        },
+        sync: { created: 10, updated: 5, skipped: 35, errors: [] },
+        deactivated: 2,
       });
       const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-      const { result } = renderHook(() => useAcetimeSync(), { wrapper });
+      const { result } = renderHook(() => useHyperdriveSync(), { wrapper });
 
       await result.current.mutateAsync(undefined);
 
-      expect(mockApiFetch).toHaveBeenCalledWith("/acetime/sync-db", {
+      expect(mockApiFetch).toHaveBeenCalledWith("/admin/fas/sync-hyperdrive", {
         method: "POST",
       });
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: ["admin", "fas-sync-status"],
       });
-    });
-  });
-
-  describe("useAcetimeCrossMatch", () => {
-    it("posts to /acetime/fas-cross-match and invalidates status", async () => {
-      mockApiFetch.mockResolvedValueOnce({
-        batch: {},
-        results: {},
-        matchedNames: [],
-        hasMore: false,
-      });
-      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-      const { result } = renderHook(() => useAcetimeCrossMatch(), { wrapper });
-
-      await result.current.mutateAsync(undefined);
-
-      expect(mockApiFetch).toHaveBeenCalledWith("/acetime/fas-cross-match", {
-        method: "POST",
-      });
-      expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ["admin", "fas-sync-status"],
-      });
-    });
-
-    it("passes limit as query param", async () => {
-      mockApiFetch.mockResolvedValueOnce({
-        batch: {},
-        results: {},
-        matchedNames: [],
-        hasMore: false,
-      });
-      const { result } = renderHook(() => useAcetimeCrossMatch(), { wrapper });
-
-      await result.current.mutateAsync(250);
-
-      expect(mockApiFetch).toHaveBeenCalledWith(
-        "/acetime/fas-cross-match?limit=250",
-        { method: "POST" },
-      );
     });
   });
 

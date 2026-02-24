@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   users,
@@ -1009,11 +1009,17 @@ auth.get("/me", authMiddleware, async (c) => {
   const membershipResults = await db
     .select()
     .from(siteMemberships)
-    .where(eq(siteMemberships.userId, userId))
+    .where(
+      and(
+        eq(siteMemberships.userId, userId),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .orderBy(desc(siteMemberships.joinedAt))
     .limit(1);
 
   const siteId =
-    membershipResults.length > 0 ? membershipResults[0].siteId : "";
+    membershipResults.length > 0 ? membershipResults[0].siteId : null;
 
   const { start, end } = getTodayRange();
   const attendanceRecords = await db

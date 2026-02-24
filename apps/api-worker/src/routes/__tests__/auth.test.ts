@@ -98,6 +98,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn(),
   and: vi.fn(),
   isNull: vi.fn(),
+  desc: vi.fn(),
 }));
 
 vi.mock("../../db/schema", () => ({
@@ -128,6 +129,7 @@ vi.mock("../../db/schema", () => ({
     siteId: "siteId",
     role: "role",
     status: "status",
+    joinedAt: "joinedAt",
   },
   auditLogs: { id: "id", action: "action", actorId: "actorId" },
   deviceRegistrations: { id: "id", userId: "userId", deviceId: "deviceId" },

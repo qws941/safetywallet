@@ -48,49 +48,34 @@ export function useFasSyncStatus() {
   });
 }
 
-export interface AcetimeSyncResponse {
-  source: { key: string; size: number; uploaded: string; etag: string };
+export interface HyperdriveSyncResponse {
+  message: string;
+  runId: string;
+  source: string;
+  batch: {
+    offset: number;
+    limit: number;
+    fetched: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
   sync: {
-    extracted: number;
     created: number;
     updated: number;
     skipped: number;
+    errors: Array<{ emplCd: string; error: string }>;
   };
-  fasCrossMatch: {
-    attempted: number;
-    matched: number;
-    skipped: number;
-    errors: number;
-    available: number;
-  };
+  deactivated: number;
 }
 
-export function useAcetimeSync() {
+export function useHyperdriveSync() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      apiFetch<AcetimeSyncResponse>("/acetime/sync-db", { method: "POST" }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin", "fas-sync-status"] });
-    },
-  });
-}
-
-export interface AcetimeCrossMatchResponse {
-  batch: { limit: number; processed: number };
-  results: { matched: number; skipped: number; errors: number };
-  matchedNames: string[];
-  hasMore: boolean;
-}
-
-export function useAcetimeCrossMatch() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (limit?: number) =>
-      apiFetch<AcetimeCrossMatchResponse>(
-        `/acetime/fas-cross-match${limit ? `?limit=${limit}` : ""}`,
-        { method: "POST" },
-      ),
+      apiFetch<HyperdriveSyncResponse>("/admin/fas/sync-hyperdrive", {
+        method: "POST",
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "fas-sync-status"] });
     },
