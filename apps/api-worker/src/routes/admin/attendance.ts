@@ -23,6 +23,8 @@ interface LinkedUserSummary {
   nameMasked: string | null;
 }
 
+const LINKED_USER_QUERY_CHUNK_SIZE = 80;
+
 function toAccsDay(source: Date): string {
   const koreaTime = new Date(
     source.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
@@ -199,23 +201,33 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
       ),
     ),
   ];
-  const linkedUsers =
-    workerIds.length === 0
-      ? []
-      : await db
-          .select({
-            id: users.id,
-            externalWorkerId: users.externalWorkerId,
-            nameMasked: users.nameMasked,
-          })
-          .from(users)
-          .where(
-            and(
-              inArray(users.externalWorkerId, workerIds),
-              isNull(users.deletedAt),
-            ),
-          )
-          .all();
+  const linkedUsers: Array<{
+    id: string;
+    externalWorkerId: string | null;
+    nameMasked: string | null;
+  }> = [];
+  for (
+    let start = 0;
+    start < workerIds.length;
+    start += LINKED_USER_QUERY_CHUNK_SIZE
+  ) {
+    const chunk = workerIds.slice(start, start + LINKED_USER_QUERY_CHUNK_SIZE);
+    if (chunk.length === 0) {
+      continue;
+    }
+    const chunkRows = await db
+      .select({
+        id: users.id,
+        externalWorkerId: users.externalWorkerId,
+        nameMasked: users.nameMasked,
+      })
+      .from(users)
+      .where(
+        and(inArray(users.externalWorkerId, chunk), isNull(users.deletedAt)),
+      )
+      .all();
+    linkedUsers.push(...chunkRows);
+  }
 
   const userMap = new Map<string, LinkedUserSummary>();
   for (const linkedUser of linkedUsers) {
@@ -348,19 +360,28 @@ app.get("/attendance/unmatched", requireManagerOrAdmin, async (c) => {
   const workerExternalIds = workerIds.map(
     (workerId) => `${source.workerIdPrefix}${workerId}`,
   );
-  const linkedUsers =
-    workerExternalIds.length === 0
-      ? []
-      : await db
-          .select({ externalWorkerId: users.externalWorkerId })
-          .from(users)
-          .where(
-            and(
-              inArray(users.externalWorkerId, workerExternalIds),
-              isNull(users.deletedAt),
-            ),
-          )
-          .all();
+  const linkedUsers: Array<{ externalWorkerId: string | null }> = [];
+  for (
+    let start = 0;
+    start < workerExternalIds.length;
+    start += LINKED_USER_QUERY_CHUNK_SIZE
+  ) {
+    const chunk = workerExternalIds.slice(
+      start,
+      start + LINKED_USER_QUERY_CHUNK_SIZE,
+    );
+    if (chunk.length === 0) {
+      continue;
+    }
+    const chunkRows = await db
+      .select({ externalWorkerId: users.externalWorkerId })
+      .from(users)
+      .where(
+        and(inArray(users.externalWorkerId, chunk), isNull(users.deletedAt)),
+      )
+      .all();
+    linkedUsers.push(...chunkRows);
+  }
   const linkedWorkerIds = new Set(
     linkedUsers
       .map((row) => row.externalWorkerId)
