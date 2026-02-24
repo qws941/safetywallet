@@ -112,3 +112,43 @@ export function useReviewPost() {
     },
   });
 }
+
+export function useDeleteAdminPost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      postId,
+      reason,
+    }: {
+      postId: string;
+      reason: string;
+    }) => {
+      try {
+        return await apiFetch(`/admin/posts/${postId}`, {
+          method: "DELETE",
+        });
+      } catch (error) {
+        const e = error as Error & { status?: number };
+        if (e.status !== 404 && e.status !== 405) {
+          throw error;
+        }
+
+        return apiFetch(`/admin/posts/${postId}/emergency-purge`, {
+          method: "DELETE",
+          body: JSON.stringify({
+            confirmPostId: postId,
+            reason,
+          }),
+        });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "posts"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "post", variables.postId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}

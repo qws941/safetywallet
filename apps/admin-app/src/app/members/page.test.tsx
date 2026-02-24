@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MembersPage from "./page";
-import { useMembers } from "@/hooks/use-api";
+import { useMembers, useSetMemberActiveStatus } from "@/hooks/use-api";
 import { useAuthStore } from "@/stores/auth";
 
 const pushMock = vi.fn();
@@ -44,12 +44,17 @@ vi.mock("@/components/data-table", () => ({
   },
 }));
 
-vi.mock("@safetywallet/ui", () => ({
-  Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}));
+vi.mock("@safetywallet/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@safetywallet/ui")>();
+  return {
+    ...actual,
+    Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  };
+});
 
 vi.mock("@/hooks/use-api", () => ({
   useMembers: vi.fn(),
+  useSetMemberActiveStatus: vi.fn(),
 }));
 
 vi.mock("@/stores/auth", () => ({
@@ -57,6 +62,7 @@ vi.mock("@/stores/auth", () => ({
 }));
 
 const mockUseMembers = vi.mocked(useMembers);
+const mockUseSetMemberActiveStatus = vi.mocked(useSetMemberActiveStatus);
 const mockUseAuthStore = vi.mocked(useAuthStore);
 
 const toMembersResult = (value: unknown): ReturnType<typeof useMembers> =>
@@ -73,6 +79,11 @@ describe("MembersPage", () => {
         isLoading: false,
       }),
     );
+
+    mockUseSetMemberActiveStatus.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useSetMemberActiveStatus>);
 
     mockUseAuthStore.mockImplementation((selector) =>
       selector({

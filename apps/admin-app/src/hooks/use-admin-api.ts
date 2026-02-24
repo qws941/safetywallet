@@ -129,6 +129,21 @@ export function useMember(memberId: string) {
   });
 }
 
+export function useSetMemberActiveStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, active }: { userId: string; active: boolean }) =>
+      apiFetch(`/admin/users/${userId}/${active ? "unlock" : "lock"}`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "member"] });
+    },
+  });
+}
+
 // Announcements
 export function useAdminAnnouncements() {
   const siteId = useAuthStore((s) => s.currentSiteId);

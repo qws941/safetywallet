@@ -48,7 +48,9 @@ export function useAllTimeRankings(siteId?: string) {
 interface PointsHistoryEntry {
   id: string;
   amount: number;
-  reason: string;
+  reason?: string;
+  reasonCode?: string;
+  reasonText?: string;
   createdAt: string;
   member: {
     user: {

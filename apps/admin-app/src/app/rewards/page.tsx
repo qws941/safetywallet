@@ -6,6 +6,7 @@ import { TABS, type TabKey } from "./rewards-helpers";
 import { RankingsTab } from "./components/rankings-tab";
 import { CriteriaTab } from "./components/criteria-tab";
 import { HistoryTab } from "./components/history-tab";
+import { DistributionTab } from "./components/distribution-tab";
 import { ExportTab } from "./components/export-tab";
 
 export default function RewardsPage() {
@@ -36,6 +37,7 @@ export default function RewardsPage() {
       {activeTab === "rankings" && <RankingsTab />}
       {activeTab === "criteria" && <CriteriaTab />}
       {activeTab === "history" && <HistoryTab />}
+      {activeTab === "distribution" && <DistributionTab />}
       {activeTab === "export" && <ExportTab />}
     </div>
   );

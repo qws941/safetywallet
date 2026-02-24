@@ -1,11 +1,17 @@
 "use client";
 
-export type TabKey = "rankings" | "criteria" | "history" | "export";
+export type TabKey =
+  | "rankings"
+  | "criteria"
+  | "history"
+  | "distribution"
+  | "export";
 
 export const TABS: { key: TabKey; label: string }[] = [
   { key: "rankings", label: "월간 순위" },
   { key: "criteria", label: "포상 기준 설정" },
   { key: "history", label: "지급 내역" },
+  { key: "distribution", label: "배분 기록" },
   { key: "export", label: "내보내기" },
 ];
 

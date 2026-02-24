@@ -75,9 +75,14 @@ export default function PointsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">포인트 관리</h1>
-        <Link href="/points/policies">
-          <Button variant="outline">포인트 정책 관리</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/points/settlement">
+            <Button variant="outline">월말 정산</Button>
+          </Link>
+          <Link href="/points/policies">
+            <Button variant="outline">포인트 정책 관리</Button>
+          </Link>
+        </div>
       </div>
 
       <Card className="p-6">

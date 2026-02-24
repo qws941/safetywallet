@@ -1,15 +1,32 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { Button, Card, Badge, Skeleton } from "@safetywallet/ui";
-import { useMember } from "@/hooks/use-api";
+import { useState } from "react";
+import { ArrowLeft, ShieldX } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
+  Button,
+  Card,
+  Skeleton,
+  toast,
+} from "@safetywallet/ui";
+import { useMember, useSetMemberActiveStatus } from "@/hooks/use-api";
 
 export default function MemberDetailPage() {
   const params = useParams();
   const router = useRouter();
   const memberId = params?.id as string;
-  const { data: member, isLoading } = useMember(memberId);
+  const { data: member, isLoading, refetch } = useMember(memberId);
+  const setMemberActiveStatus = useSetMemberActiveStatus();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -31,13 +48,52 @@ export default function MemberDetailPage() {
     );
   }
 
+  const handleStatusChange = () => {
+    if (!member) {
+      return;
+    }
+
+    const nextActive = member.status !== "ACTIVE";
+    setMemberActiveStatus.mutate(
+      {
+        userId: member.user.id,
+        active: nextActive,
+      },
+      {
+        onSuccess: async () => {
+          toast({
+            description: `${member.user.name} 회원 상태가 ${nextActive ? "활성" : "비활성"}으로 변경되었습니다.`,
+          });
+          setConfirmOpen(false);
+          await refetch();
+        },
+        onError: (error) => {
+          toast({
+            variant: "destructive",
+            description: `상태 변경 실패: ${error.message}`,
+          });
+        },
+      },
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft size={20} />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">회원 상세</h1>
+        </div>
+        <Button
+          variant={member.status === "ACTIVE" ? "destructive" : "outline"}
+          className="gap-2"
+          onClick={() => setConfirmOpen(true)}
+        >
+          <ShieldX size={16} />
+          {member.status === "ACTIVE" ? "비활성화" : "활성화"}
         </Button>
-        <h1 className="text-2xl font-bold">회원 상세</h1>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -85,6 +141,28 @@ export default function MemberDetailPage() {
           </dl>
         </Card>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>회원 상태 변경</AlertDialogTitle>
+            <AlertDialogDescription>
+              {member.user.name}님을
+              {member.status === "ACTIVE" ? " 비활성화" : " 활성화"}
+              하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleStatusChange}
+              disabled={setMemberActiveStatus.isPending}
+            >
+              확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
