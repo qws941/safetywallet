@@ -13,13 +13,13 @@
 
 | Category                        | Status | Details                                                                   |
 | ------------------------------- | ------ | ------------------------------------------------------------------------- |
-| **Functional Requirements**     | 98%    | All P0/P1 complete; remaining: KakaoTalk, ERP, similarity detection       |
+| **Functional Requirements**     | 99%    | All P0/P1 complete; remaining: KakaoTalk, ERP                             |
 | **Security Requirements**       | 98%    | PII encryption, DO rate limiting, face blur, session caching all complete |
 | **Data Model**                  | 98%    | 20+ tables implemented, FAS sync tables added, schema aligned             |
 | **Frontend (Worker)**           | 100%   | All pages, i18n (4 locales), PWA, offline support                         |
-| **Frontend (Admin)**            | 95%    | Dashboard, approvals, votes, exports, FAS data view complete              |
-| **Backend API**                 | 98%    | 14 route modules, Workers AI, Queues, Web Push, SMS all done              |
-| **Non-Functional Requirements** | 90%    | Image compression, KV caching, i18n all done; monitoring partial          |
+| **Frontend (Admin)**            | 99%    | Dashboard, approvals, votes, exports, FAS data view complete              |
+| **Backend API**                 | 99%    | 14 route modules, Workers AI, Queues, Web Push, SMS all done              |
+| **Non-Functional Requirements** | 95%    | Image compression, KV caching, i18n, retention CRON done                  |
 
 ---
 
@@ -260,12 +260,12 @@
 
 ### 5.5 Announcements
 
-| Type                                  | Status     | Notes                                       |
-| ------------------------------------- | ---------- | ------------------------------------------- |
-| Ranking announcement (monthly top 3)  | ✅         | Template-based                              |
-| Best practice (selected post shared)  | ✅         | Template-based                              |
-| Action completed (case improved)      | ✅         | Template-based                              |
-| Reward notice (distribution schedule) | ⚠️ Partial | Template exists, distribution not automated |
+| Type                                 | Status | Notes                                 |
+| ------------------------------------ | ------ | ------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| Ranking announcement (monthly top 3) | ✅     | Template-based                        |
+| Best practice (selected post shared) | ✅     | Template-based                        |
+| Action completed (case improved)     | ✅     | Template-based                        |
+| #HN                                  |        | Reward notice (distribution schedule) | ⚠️ Partial | Template exists, vote reward CRON distributes points automatically, but notification not sent on distribution |
 
 ---
 
@@ -273,14 +273,14 @@
 
 ### 6.1 Dashboard
 
-| Card                | Status     | Notes                                    |
-| ------------------- | ---------- | ---------------------------------------- |
-| Today's submissions | ✅         | Count of posts created today             |
-| Backlog             | ✅         | Pending review count                     |
-| Urgent              | ✅         | Urgent-flagged count                     |
-| Avg processing time | ⚠️ Partial | Calculated but not displayed             |
-| Category chart      | ⚠️ Partial | Data available, chart not implemented    |
-| Hotspots            | ⚠️ Partial | Data available, visualization incomplete |
+| Card                | Status | Notes                        |
+| ------------------- | ------ | ---------------------------- | --- | --------------------------------------------------------- |
+| Today's submissions | ✅     | Count of posts created today |
+| Backlog             | ✅     | Pending review count         |
+| Urgent              | ✅     | Urgent-flagged count         |
+| #TW                 |        | Avg processing time          | ✅  | Calculated and displayed on dashboard                     |
+| #WZ                 |        | Category chart               | ✅  | CSS horizontal bars with scaling, labels, percentages     |
+| #ZQ                 |        | Hotspots                     | ✅  | Hotspot bar list with pending/urgent/avg time/today posts |
 
 ### 6.2 Review Queue
 
@@ -326,13 +326,13 @@
 
 ### 6.6 Reward Management
 
-| Function            | Status         | Notes                                         |
-| ------------------- | -------------- | --------------------------------------------- |
-| Month selection     | ✅             | Can select settlement month                   |
-| Auto ranking        | ✅             | Calculated from snapshot                      |
-| Reward criteria     | ⚠️ Partial     | 1st/2nd/3rd amounts defined, not configurable |
-| Distribution record | ⚠️ Partial     | Tracked but no UI                             |
-| Excel download      | ✅ Implemented | GET /admin/export/posts,users,points          |
+| Function        | Status         | Notes                                         |
+| --------------- | -------------- | --------------------------------------------- | -------------- | ------------------------------------ |
+| Month selection | ✅             | Can select settlement month                   |
+| Auto ranking    | ✅             | Calculated from snapshot                      |
+| Reward criteria | ⚠️ Partial     | 1st/2nd/3rd amounts defined, not configurable |
+| #PW             |                | Distribution record                           | ✅ Implemented | distribution-tab.tsx in rewards page |
+| Excel download  | ✅ Implemented | GET /admin/export/posts,users,points          |
 
 ---
 
@@ -384,15 +384,15 @@
 
 ### 7.6 Month-End / Dispute Flow
 
-| Stage               | Timing                         | Status     | Notes                                                      |
-| ------------------- | ------------------------------ | ---------- | ---------------------------------------------------------- |
-| Month end           | Last day 23:59:59 KST          | ⚠️ Partial | Timestamp recorded                                         |
-| Snapshot generation | Next month D+1~3 business days | ⚠️ Partial | Manual process, not automated                              |
-| Dispute period      | 7 days after snapshot          | ⚠️ Partial | Dispute routes exist (`disputes.ts`), ticket UI incomplete |
-| Corrections         | Within dispute period          | ⚠️ Partial | Can add correction ledger entries                          |
-| Reward finalization | After dispute period           | ⚠️ Partial | Manual process                                             |
+| Stage | Timing | Status              | Notes                          |
+| ----- | ------ | ------------------- | ------------------------------ | -------------- | --------------------------------------------------------- |
+| #NZ   |        | Month end           | Last day 23:59:59 KST          | ✅             | Timestamp recorded, CRON monthly snapshot                 |
+| #KR   |        | Snapshot generation | Next month D+1~3 business days | ✅ Implemented | Automated via CRON + admin settlement page manual trigger |
+| #NV   |        | Dispute period      | 7 days after snapshot          | ✅ Implemented | disputes.ts + settlement page disputes table              |
+| #YJ   |        | Corrections         | Within dispute period          | ✅             | Correction ledger entries via settlement finalize         |
+| #SP   |        | Reward finalization | After dispute period           | ✅ Implemented | Settlement page finalize + vote reward CRON               |
 
-**Gap**: Month-end snapshot and dispute workflow not automated. **P1**: Implement automated snapshot generation.
+#BS|**Resolved**: Month-end snapshot automated via CRON. Settlement UI and API endpoints added.
 
 ### 7.7 Adjustment/Revoke Cases
 
@@ -595,33 +595,33 @@
 
 ### 10.2 Retention Periods
 
-| Data                 | Retention Period                  | Status     | Notes                        |
-| -------------------- | --------------------------------- | ---------- | ---------------------------- |
-| User PII             | 1 year after site membership ends | ⚠️ Partial | Policy defined, not enforced |
-| Posts/Actions        | 3 years after site closure        | ⚠️ Partial | Policy defined, not enforced |
-| Images               | Same as posts                     | ⚠️ Partial | Policy defined, not enforced |
-| Access/Download logs | 2 years                           | ⚠️ Partial | Policy defined, not enforced |
-| OTP logs             | 90 days                           | ⚠️ Partial | Policy defined, not enforced |
-| Backups              | 35 days                           | ⚠️ Partial | Policy defined, not enforced |
+| Data | Retention Period | Status               | Notes                             |
+| ---- | ---------------- | -------------------- | --------------------------------- | -------------- | ------------------------------------- |
+| #YS  |                  | User PII             | 1 year after site membership ends | ✅ Implemented | Weekly CRON enforces 1-year cleanup   |
+| #MK  |                  | Posts/Actions        | 3 years after site closure        | ✅ Implemented | Weekly CRON enforces 3-year cleanup   |
+| #BH  |                  | Images               | Same as posts                     | ✅ Implemented | R2 cleanup included in retention CRON |
+| #WZ  |                  | Access/Download logs | 2 years                           | ✅ Implemented | Weekly CRON enforces 2-year cleanup   |
+| #BN  |                  | OTP logs             | 90 days                           | ✅ Implemented | Weekly CRON enforces 90-day cleanup   |
+| #NZ  |                  | Backups              | 35 days                           | ✅ Implemented | D1 30-day PITR + weekly CRON          |
 
-**Gap**: Retention policies not automatically enforced. **P1**: Implement data retention job.
+#SV|**Resolved**: Data retention CRON runs weekly (Sunday 3AM), covers all data types including R2 images.
 
 ### 10.3 Deletion Request Processing
 
-| Request Type       | Requester | Processing               | Status     | Notes                                                                                                                                                                               |
-| ------------------ | --------- | ------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Post deletion      | Worker    | Admin approval/rejection | ⚠️ Partial | Endpoint exists, UI incomplete                                                                                                                                                      |
-| Account deletion   | Worker    | Super admin processing   | ⚠️ Partial | Endpoint exists, UI incomplete                                                                                                                                                      |
-| Immediate deletion | Admin     | Sensitive info exposure  | ✅         | `DELETE /admin/users/:id/emergency-purge`, `DELETE /admin/posts/:id/emergency-purge`, `DELETE /admin/actions/:id/emergency-purge` (SUPER_ADMIN only, with confirmation + audit log) |
+| Request Type       | Requester | Processing              | Status | Notes                                                                                                                                                                               |
+| ------------------ | --------- | ----------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------- |
+| #SN                |           | Post deletion           | Worker | Admin approval/rejection                                                                                                                                                            | ✅ Implemented | Admin post-detail delete button + AlertDialog + DELETE API |
+| #ZM                |           | Account deletion        | Worker | Super admin processing                                                                                                                                                              | ✅ Implemented | Admin member lock/unlock UI + dialog                       |
+| Immediate deletion | Admin     | Sensitive info exposure | ✅     | `DELETE /admin/users/:id/emergency-purge`, `DELETE /admin/posts/:id/emergency-purge`, `DELETE /admin/actions/:id/emergency-purge` (SUPER_ADMIN only, with confirmation + audit log) |
 
 ### 10.4 Access/Download Controls
 
-| Item                                                             | Status     | Notes                                    |
-| ---------------------------------------------------------------- | ---------- | ---------------------------------------- |
-| Default masking (phone/DOB)                                      | ✅         | Masking applied                          |
-| Full view condition (PII_VIEW_FULL + reason)                     | ✅         | Checked and logged                       |
-| Access log (actor, target, field, reason, timestamp, ip, result) | ✅         | AuditLogs table                          |
-| Downloads (always logged + watermark)                            | ⚠️ Partial | Logging works, watermark not implemented |
+| Item                                                             | Status | Notes                                 |
+| ---------------------------------------------------------------- | ------ | ------------------------------------- | -------------- | --------------------------------------------------------- |
+| Default masking (phone/DOB)                                      | ✅     | Masking applied                       |
+| Full view condition (PII_VIEW_FULL + reason)                     | ✅     | Checked and logged                    |
+| Access log (actor, target, field, reason, timestamp, ip, result) | ✅     | AuditLogs table                       |
+| #XM                                                              |        | Downloads (always logged + watermark) | ✅ Implemented | JPEG COM marker + PNG metadata + HTTP headers + audit log |
 
 ---
 
@@ -669,11 +669,11 @@
 
 ### 11.5 Device Compatibility
 
-| Item     | Requirement                                    | Status     | Notes                                       |
-| -------- | ---------------------------------------------- | ---------- | ------------------------------------------- |
-| Browsers | Chrome/Safari/Samsung Internet last 2 versions | ✅         | Tested on modern browsers                   |
-| Screen   | 320px minimum support                          | ✅         | Mobile-first design                         |
-| PWA      | Offline basic screen, sync on reconnect        | ⚠️ Partial | PWA config exists, offline not fully tested |
+| Item     | Requirement                                    | Status | Notes                                   |
+| -------- | ---------------------------------------------- | ------ | --------------------------------------- | -------------- | --------------------------------------------------------------------------------------- |
+| Browsers | Chrome/Safari/Samsung Internet last 2 versions | ✅     | Tested on modern browsers               |
+| Screen   | 320px minimum support                          | ✅     | Mobile-first design                     |
+| #XS      |                                                | PWA    | Offline basic screen, sync on reconnect | ✅ Implemented | Offline queue (4 mutations), SW runtime caching (API/images/navigation), sync indicator |
 
 ---
 
@@ -693,13 +693,13 @@
 
 ### 12.2 Phase 2
 
-| Area          | Features                                                      | Status             |
-| ------------- | ------------------------------------------------------------- | ------------------ |
-| Enhancement   | Statistics dashboard, Repeated hazard analysis                | ✅ Implemented     |
-| Automation    | Image blur (faces/plates), Similarity detection               | ⚠️ Partial         |
-| Rewards       | Automated distribution module, Signature/receipt confirmation | ❌ Not Implemented |
-| Notifications | KakaoTalk Business integration                                | ❌ Not Implemented |
-| Multi-site    | Multiple site membership, Site transfers                      | ⚠️ Partial         |
+| Area          | Features                                       | Status             |
+| ------------- | ---------------------------------------------- | ------------------ | ------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------- |
+| Enhancement   | Statistics dashboard, Repeated hazard analysis | ✅ Implemented     |
+| #KQ           |                                                | Automation         | Image blur (faces/plates), Similarity detection               | ✅ Implemented | Face blur + pHash similarity blocking (hamming ≤5)                           |
+| #MB           |                                                | Rewards            | Automated distribution module, Signature/receipt confirmation | ⚠️ Partial     | Vote reward CRON distributes points daily, signature/receipt not implemented |
+| Notifications | KakaoTalk Business integration                 | ❌ Not Implemented |
+| Multi-site    | Multiple site membership, Site transfers       | ⚠️ Partial         |
 
 ### 12.3 Phase 3
 
@@ -793,12 +793,12 @@
 ### P2 (Medium - Nice to have)
 
 | Item                           | Status         | Impact                                                  |
-| ------------------------------ | -------------- | ------------------------------------------------------- |
+| ------------------------------ | -------------- | ------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
 | Image compression              | ✅ Implemented | Client-side Canvas compression (`image-compress.ts`)    |
 | KV session caching             | ✅ Implemented | `session-cache.ts` — KV before D1, 300s TTL, 13 tests   |
 | Statistics dashboard           | ✅ Implemented | trend-chart + points-chart                              |
 | Image blur (faces/plates)      | ✅ Implemented | `face-blur.ts` + Workers AI object detection            |
-| Similarity detection           | ❌             | Duplicate prevention                                    |
+| #HH                            |                | Similarity detection                                    | ✅ Implemented | pHash blocking (hamming distance ≤5, same site, 24h window) |
 | KakaoTalk Business integration | ❌             | Notification channel                                    |
 | Multi-language support         | ✅ Implemented | i18n: ko/en/vi/zh (4 locales, 293+ t() calls, 16 tests) |
 
@@ -880,12 +880,12 @@
 - [x] Complete dashboard analytics charts (trend-chart.tsx, points-chart.tsx)
 - [x] Add Queues for notification reliability
 - [x] Image blur for privacy — `face-blur.ts` + Workers AI
-- [ ] Similarity detection for duplicates
+      #NY|- [x] Similarity detection — pHash blocking (hamming ≤5)
 - [ ] KakaoTalk Business integration
 - [x] Multi-language support — i18n: ko/en/vi/zh (4 locales)
 
 ---
 
 **Document Generated**: 2025-02-05  
-**Last Updated**: 2026-02-16  
-**Status**: P0/P1 100% complete - All core requirements implemented; KV session caching done; Cloudflare Queues done; Workers AI hazard classification done; i18n done (4 locales: ko/en/vi/zh); remaining items are P2/Phase 2 external dependencies only (KakaoTalk Business, ERP)
+#ZV|**Last Updated**: 2026-02-25
+#BM|**Status**: P0/P1 100% complete - All core requirements implemented; KV session caching done; Cloudflare Queues done; Workers AI hazard classification done; i18n done (4 locales: ko/en/vi/zh); pHash similarity detection done; remaining items are P2/Phase 2 external dependencies only (KakaoTalk Business, ERP)
