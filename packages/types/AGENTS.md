@@ -1,46 +1,57 @@
 # AGENTS: PACKAGES/TYPES
 
-## OVERVIEW
+## SCOPE DELTA
 
-Context: Shared type definitions. Scope: internal types, enums, and DTOs.
+- Owns concrete type surface details for `@safetywallet/types`.
+- Child docs own DTO-level and i18n-level rules.
+- Keep this file inventory-accurate when files/exports change.
 
-This package is the Source of Truth (SoT) for all TypeScript definitions used across the SafetyWallet monorepo. It is a logic-less library strictly restricted to types, interfaces, and enums consumed by both the API and frontend applications.
+## SOURCE INVENTORY
 
-## STRUCTURE
-
-```
+```text
 src/
-├── index.ts              # Global barrel export (single public entrypoint)
-├── enums.ts              # System-wide enum definitions
-├── api.ts                # Generic API response envelopes
-├── dto/                  # Domain-specific Data Transfer Objects
-│   ├── action.dto.ts     # Corrective actions
-│   ├── auth.dto.ts       # Authentication & Login
-│   ├── education.dto.ts  # Courses, Materials, Quizzes
-│   ├── user.dto.ts       # Profiles & Identity
-│   └── ...               # (See directory for full list)
+├── index.ts
+├── enums.ts
+├── api.ts
+├── dto/
+│   ├── index.ts
+│   ├── action.dto.ts
+│   ├── analytics.dto.ts
+│   ├── announcement.dto.ts
+│   ├── auth.dto.ts
+│   ├── education.dto.ts
+│   ├── points.dto.ts
+│   ├── post.dto.ts
+│   ├── review.dto.ts
+│   ├── site.dto.ts
+│   ├── user.dto.ts
+│   └── vote.dto.ts
 └── i18n/
-    ├── index.ts          # Localization barrel export
-    └── ko.ts             # Korean shared string catalog
+    ├── index.ts
+    └── ko.ts
 ```
 
-## SUBMODULE DOCS
+## EXPORT SURFACE (CURRENT)
 
-- `src/dto/AGENTS.md`: DTO naming, export, and schema parity rules
-- `src/i18n/AGENTS.md`: Localization key conventions and Korean copy constraints
+- Root barrel: `export * from "./enums" | "./api" | "./dto" | "./i18n"`.
+- API envelopes: `ApiResponse<T>`, `PaginatedResponse<T>`, `ErrorResponse`.
+- Enum file currently declares 24 enums:
+  `UserRole`, `MembershipStatus`, `Category`, `RiskLevel`, `Visibility`, `ReviewStatus`,
+  `ActionStatus`, `ActionPriority`, `ReviewAction`, `TaskStatus`, `RejectReason`, `ApprovalStatus`,
+  `EducationContentType`, `QuizStatus`, `StatutoryTrainingType`, `TrainingCompletionStatus`,
+  `MembershipRole`, `AttendanceResult`, `AttendanceSource`, `VoteCandidateSource`,
+  `DisputeStatus`, `DisputeType`, `SyncType`, `SyncErrorStatus`.
 
-## CONVENTIONS
+## CHANGE CHECKLIST
 
-- **Barrel Exports**: Every public type, interface, enum, and shared i18n export MUST be re-exported in `src/index.ts`.
-- **Interface vs Type**: Prefer `interface` for DTOs and object structures to allow for extension.
-- **Naming**: DTOs must be suffixed with `Dto` (e.g., `CreatePostDto`, `UserResponseDto`).
-- **Enum Parity**: Enums defined here must match the Drizzle schema enums in `apps/api-worker/src/db/schema.ts`.
-- **Workspace Aliasing**: Always import via `@safetywallet/types` rather than relative paths from other packages.
+- Update `src/index.ts` on any new public symbol.
+- Update `src/dto/index.ts` on DTO file adds/removes.
+- Verify enum literal parity against API worker schema before rename.
+- Keep response-envelope shape aligned with `success()/error()` helpers.
 
-## ANTI-PATTERNS
+## PACKAGE-LEVEL ANTI-DRIFT
 
-- **No Runtime Code**: NEVER include functions, classes with methods, or logic. Enums are the only exception.
-- **No Deep Imports**: NEVER import from sub-paths (e.g., `src/dto/user`). Use the root barrel.
-- **No Validation Logic**: Keep Zod schemas and validation logic in `apps/api-worker`.
-- **No External Dependencies**: Avoid adding runtime dependencies; `devDependencies` for types only.
-- **No `any`**: Strictly prohibited. Use `unknown` if a type is truly dynamic.
+- No domain text/constants; only type contracts.
+- No app-local aliases/types that duplicate DTOs.
+- No silent enum value changes (breaks D1 + clients).
+- No deep-import guidance drift in docs; barrel remains canonical.

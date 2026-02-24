@@ -1,69 +1,49 @@
 # AGENTS: APP
 
-## OVERVIEW
+## PURPOSE
 
-Next.js 14 App Router pages for the admin dashboard. 17 feature directories + `(dashboard)` route group + root layout files. All pages use `'use client'` — zero React Server Components.
+Route-layer guide for `src/app`. Focus: page topology, wrappers, feature boundaries.
 
-## STRUCTURE
+## KEY FILES
 
-| Directory          | Files | Purpose                                    |
-| ------------------ | ----- | ------------------------------------------ |
-| `(dashboard)/`     | 14    | Sidebar layout route group (8 subdirs)     |
-| `attendance/`      | 14    | Attendance records, unmatched records      |
-| `votes/`           | 8     | Monthly worker voting management           |
-| `dashboard/`       | 7     | Main dashboard with stats/charts           |
-| `education/`       | 7     | Course and material management             |
-| `posts/`           | 7     | Safety report management and review        |
-| `rewards/`         | 6     | Reward system management                   |
-| `members/`         | 2     | Site membership management                 |
-| `actions/`         | 1     | Corrective action tracking                 |
-| `announcements/`   | 1     | Site announcement management               |
-| `audit/`           | 1     | Audit log viewer                           |
-| `login/`           | 1     | Admin login page                           |
-| `monitoring/`      | 1     | System monitoring dashboard                |
-| `points/`          | 1     | Point ledger and policies                  |
-| `recommendations/` | 1     | Safety recommendations                     |
-| `settings/`        | 1     | Site/system settings                       |
-| `approvals/`       | 0     | Approval workflow (empty — may be pending) |
+| File               | Role               | Notes                             |
+| ------------------ | ------------------ | --------------------------------- |
+| `layout.tsx`       | root layout        | mounts `AdminShell` + `Providers` |
+| `page.tsx`         | root redirect      | client redirect to `/dashboard`   |
+| `error.tsx`        | app-level error UI | fallback inside route tree        |
+| `global-error.tsx` | global error UI    | full-app crash fallback           |
+| `not-found.tsx`    | 404 UI             | static fallback                   |
+| `globals.css`      | app-wide styles    | baseline utility imports          |
 
-### Root Files
+## ROUTE SURFACE
 
-| File               | Lines | Purpose                             |
-| ------------------ | ----- | ----------------------------------- |
-| `layout.tsx`       | 28    | Root layout with sidebar navigation |
-| `page.tsx`         | 5     | Root redirect to `/dashboard`       |
-| `error.tsx`        | 22    | Error boundary component            |
-| `global-error.tsx` | 26    | Global error boundary               |
-| `not-found.tsx`    | 8     | 404 page                            |
-| `globals.css`      | 55    | Global styles (Tailwind imports)    |
+| Segment       | Main files                                                    | Delta notes                         |
+| ------------- | ------------------------------------------------------------- | ----------------------------------- |
+| `attendance/` | `page.tsx`, `sync/page.tsx`, `unmatched/page.tsx`             | tabs + sync tools + unmatched table |
+| `posts/`      | `page.tsx`, `[id]/page.tsx`, `[id]/post-detail.tsx`           | list page + dynamic wrapper         |
+| `votes/`      | `page.tsx`, `new/page.tsx`, `candidates/page.tsx`, `[id]/...` | month-based admin workflows         |
+| `education/`  | `page.tsx`, `components/*`                                    | single tabbed hub page              |
+| `members/`    | `page.tsx`, `[id]/page.tsx`                                   | includes dynamic wrapper            |
 
-## SUBMODULE DOCS
+## PATTERNS
 
-- `attendance/AGENTS.md`: Attendance tabs, sync workflows, unmatched-record handling
-- `posts/AGENTS.md`: Review queue and report lifecycle handling
-- `votes/AGENTS.md`: Voting period setup, candidate/results workflows
-- `education/AGENTS.md`: Course/material/quiz management flows
+| Pattern                  | Where                                                                                                       | Why                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Dynamic wrapper page     | `posts/[id]/page.tsx`, `votes/[id]/page.tsx`, `votes/[id]/candidates/new/page.tsx`, `members/[id]/page.tsx` | static export compatible placeholder params |
+| Feature-local components | `attendance/components`, `votes/components`, `education/components`                                         | keep page files orchestration-only          |
+| Feature-local helpers    | `attendance-helpers.ts`, `votes-helpers.ts`, `education-helpers.ts`                                         | date labels, tab metadata, derivations      |
 
-## CONVENTIONS
+## GOTCHAS
 
-- **All pages `'use client'`** — no RSC
-- **API calls via domain hooks** — `use-admin-api.ts`, `use-posts-api.ts`, etc. (barrel: `use-api.ts`)
-- **UI components from `@safetywallet/ui`** (shared package)
-- **Korean UI text** — admin-facing labels
-- **Port 3001** in development
-- **Deployed via `@cloudflare/next-on-pages`** to CF Pages
+- Historical docs mentioning `(dashboard)/` route group are stale; current tree is flat under `src/app`.
+- `approvals/` exists and has `page.tsx`; no longer empty.
+- `attendance/page.tsx` already includes unmatched tab; `attendance/unmatched/page.tsx` remains direct deep-link view.
 
-## ADDING A PAGE
+## CHILD DOCS
 
-1. Create directory under `src/app/{feature}/`
-2. Add `page.tsx` with `'use client'` directive
-3. Use `useApi()` hook for API calls
-4. Import UI primitives from `@safetywallet/ui`
-5. Add navigation link in `layout.tsx` sidebar
-
-## ANTI-PATTERNS
-
-- **No React Server Components** — always `'use client'`
-- **No direct `fetch()`** — use `useApi()` hook
-- **No `confirm()` / `alert()`** — use dialog components
-- **No inline styles** — use Tailwind classes
+| Child                  | Covers                                          |
+| ---------------------- | ----------------------------------------------- |
+| `attendance/AGENTS.md` | attendance tabs, sync cards, anomaly filters    |
+| `posts/AGENTS.md`      | review list/detail boundary and wrappers        |
+| `votes/AGENTS.md`      | period/candidate/result cards and dynamic pages |
+| `education/AGENTS.md`  | 4-tab education hub implementation              |

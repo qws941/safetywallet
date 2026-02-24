@@ -1,29 +1,46 @@
 # AGENTS: TYPES/DTO
 
-## OVERVIEW
+## SCOPE DELTA
 
-**Context:** Shared DTO contract layer **Scope:** Cross-app payload/request/response shapes under `@safetywallet/types`
+- This folder defines DTO file inventory and domain contracts only.
+- Parent already defines package-wide rules; do not restate them here.
 
-This directory defines domain DTO contracts used by API worker and both frontend apps; compatibility and naming consistency are critical.
+## FILE INVENTORY (11)
 
-## WHERE TO LOOK
+- `auth.dto.ts`
+- `user.dto.ts`
+- `site.dto.ts`
+- `post.dto.ts`
+- `review.dto.ts`
+- `points.dto.ts`
+- `action.dto.ts`
+- `announcement.dto.ts`
+- `education.dto.ts`
+- `vote.dto.ts`
+- `analytics.dto.ts`
 
-| Task              | Location                           | Notes                                  |
-| ----------------- | ---------------------------------- | -------------------------------------- |
-| Add new DTO       | `*.dto.ts`                         | Keep domain-focused file placement     |
-| Export DTO        | `index.ts`                         | Re-export every public DTO type        |
-| Align enum fields | `apps/api-worker/src/db/schema.ts` | Keep DTO unions/enums in schema parity |
+## BARREL ORDER
 
-## CONVENTIONS
+- `index.ts` re-exports all 11 files.
+- Keep barrel complete after file add/remove.
+- Keep domain grouping stable (auth/user/site/post/review/points/action/announcement/education/vote/analytics).
 
-- Use `*Dto` suffix for request/response object contracts.
-- Keep DTOs type-only (`interface`/`type`/enum references), no runtime logic.
-- Group related types in the domain file (e.g., auth, post, review) rather than scattering.
-- Prefer backward-compatible additions for fields consumed by multiple apps.
+## DTO SYMBOLS (CURRENT)
 
-## ANTI-PATTERNS
+- `auth`: `OtpRequestDto`, `OtpVerifyDto`, `TokenRefreshDto`, `AuthResponseDto`, `TokenPayloadDto`, `MeResponseDto`.
+- `user`: `UserDto`, `UserProfileDto`, `UpdateProfileDto`.
+- `site`: `SiteDto`, `CreateSiteDto`, `SiteMemberDto`, `UpdateMemberStatusDto`, `DashboardStatsDto`.
+- `post`: `CreatePostDto`, `PostDto`, `PostImageDto`, `PostListDto`, `PostFilterDto`.
+- `review`: `ReviewActionDto`, `ReviewDto`.
+- `points`: `AwardPointsDto`, `RevokePointsDto`, `PointsLedgerDto`, `PointsBalanceDto`, `PointsHistoryItemDto`, `PointsHistoryFilterDto`.
+- `action`: `CreateActionDto`, `ActionDto`, `ActionImageDto`, `UpdateActionStatusDto`.
+- `announcement`: `CreateAnnouncementDto`, `AnnouncementDto`, `UpdateAnnouncementDto`.
+- `education`: `CreateEducationContentDto`, `EducationContentDto`, `EducationContentListDto`, `CreateQuizDto`, `CreateQuizQuestionDto`, `QuizDto`, `QuizQuestionDto`, `QuizListDto`, `SubmitQuizAttemptDto`, `QuizAttemptDto`, `QuizAttemptFilterDto`, `CreateStatutoryTrainingDto`, `UpdateStatutoryTrainingDto`, `StatutoryTrainingDto`, `StatutoryTrainingFilterDto`, `CreateTbmRecordDto`, `TbmRecordDto`, `TbmAttendeeDto`, `TbmRecordListDto`, `TbmRecordFilterDto`.
+- `vote`: `VoteCandidateDto`, `CreateVoteCandidateDto`, `VoteResultDto`, `VoteDto`, `MyVoteDto`, `VotePeriodSummaryDto`, `VoteResultExportDto`.
+- `analytics`: `TrendDataPointDto`, `TrendFilterDto`, `PointsDistributionDto`.
 
-- Do not add validation/parsing code (belongs to API validators).
-- Do not import via deep private paths from consuming apps; use package barrel.
-- Do not use `any`; model uncertain fields as `unknown` + narrowed types upstream.
-- Do not silently rename or remove widely used DTO fields without coordinated rollout.
+## EDIT GUARDRAILS
+
+- Keep enum-typed fields wired to `../enums` imports; avoid string fallback.
+- Keep optional fields explicit (`?` vs `| null`) matching current API payload semantics.
+- Preserve nested object shapes used by list/detail responses.

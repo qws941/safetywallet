@@ -1,25 +1,32 @@
 # AGENTS: CROSS-APP
 
-## OVERVIEW
+## DELTA SCOPE
 
-Integration smoke tests across API, worker-app, and admin-app availability boundaries.
+Cross-surface smoke/integration only.
+Single suite file.
 
-## STRUCTURE
+## CURRENT FILE SET
 
-```
-cross-app/
-└── integration.spec.ts   # Health, CORS, and multi-service response checks
-```
+- `integration.spec.ts`
 
-## CONVENTIONS
+## MODULE RULES
 
-- Use env-driven endpoints (`API_URL`, `WORKER_APP_URL`, `ADMIN_APP_URL`) with safe defaults.
-- Keep assertions tolerant of SPA redirect timing differences.
-- Validate CORS preflight behavior for both frontend origins.
-- Keep response-time checks realistic for cold-start scenarios.
+- Keep tri-surface checks coupled:
+  - API health
+  - Worker app reachability
+  - Admin app reachability
+- Keep CORS OPTIONS checks for both worker and admin origins.
+- Keep response-time budget check (`< 30s`) for cold-start tolerance.
+- Keep login readiness assertion tolerant: URL or visible login/loading UI.
 
-## ANTI-PATTERNS
+## ENDPOINT DEFAULTS
 
-- No assumptions that non-auth routes imply app-level health for all features.
-- No hard fail on client redirect race conditions when content assertions can verify readiness.
-- No origin checks against only one frontend host.
+- `API_URL` -> `https://safetywallet.jclee.me/api`
+- `WORKER_APP_URL` -> `https://safetywallet.jclee.me`
+- `ADMIN_APP_URL` -> `https://admin.safetywallet.jclee.me`
+
+## ANTI-DRIFT
+
+- Do not add feature-level business assertions here.
+- Do not narrow CORS validation to one origin.
+- Do not convert resilient smoke checks into brittle redirect-only checks.

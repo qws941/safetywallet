@@ -1,27 +1,35 @@
 # AGENTS: EDUCATION
 
-## OVERVIEW
+## PURPOSE
 
-Education management pages for content, quizzes, and completion tracking.
+Education admin hub. Scope: tabbed management for content, quizzes, statutory training, TBM.
 
-## WHERE TO LOOK
+## KEY FILES
 
-| Task                        | File                    | Notes                                     |
-| --------------------------- | ----------------------- | ----------------------------------------- |
-| Education hub               | `page.tsx`              | Entry page for education administration   |
-| Content/material management | `materials/page.tsx`    | Course/material CRUD patterns             |
-| Quiz management             | `quizzes/page.tsx`      | Quiz lifecycle and question flows         |
-| Detail views                | `quizzes/[id]/page.tsx` | Inspect and update specific quiz entities |
+| File                            | Role                         | Notes                               |
+| ------------------------------- | ---------------------------- | ----------------------------------- |
+| `page.tsx`                      | single hub page              | tab state + tab button strip        |
+| `education-helpers.ts`          | tab metadata                 | `tabItems`, `TabId` contract        |
+| `components/contents-tab.tsx`   | content/material workflows   | creation/edit/list actions          |
+| `components/quizzes-tab.tsx`    | quiz workflows               | quiz/question CRUD surfaces         |
+| `components/statutory-tab.tsx`  | statutory training workflows | legal training records              |
+| `components/tbm-tab.tsx`        | TBM workflows                | toolbox meeting content/records     |
+| `components/education-types.ts` | local UI/domain types        | shared tab component type contracts |
 
-## CONVENTIONS
+## PATTERNS
 
-- Keep content and quiz flows separated but navigable via shared tabs/links.
-- Use hooks as the only API boundary for mutations and queries.
-- Preserve validation/UI error feedback for multi-step content forms.
-- Keep list/detail pages consistent in status labeling.
+| Pattern                       | Applied in             | Notes                                               |
+| ----------------------------- | ---------------------- | --------------------------------------------------- |
+| Single-route tab architecture | `page.tsx`             | avoids deep route branching for each education mode |
+| Strong tab typing             | helpers + page         | `TabId` union keeps tab switch exhaustive           |
+| Domain split by tab component | `components/*-tab.tsx` | each tab owns its own query/mutation flow           |
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No question/content schema duplication inside pages.
-- No direct API calls from modal/form components.
-- No silent publish/unpublish actions without explicit confirmation UI state.
+- Older docs mentioning `materials/page.tsx` or `quizzes/[id]/page.tsx` are stale; current module is tab-driven inside one page.
+- `use-education-api.ts` is large and multi-domain; keep tab components narrow to avoid broad state coupling.
+
+## PARENT DELTA
+
+- Parent app doc only points to `education/page.tsx`.
+- This file adds tab inventory and component ownership boundaries.

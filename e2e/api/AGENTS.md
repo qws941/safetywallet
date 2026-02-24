@@ -1,26 +1,32 @@
 # AGENTS: API
 
-## OVERVIEW
+## DELTA SCOPE
 
-Request-level validation for the production API surface: auth lifecycle, protected endpoint guards, and protocol behavior (CORS/status envelopes).
+API project (`request` fixture) only.
+No browser UI assertions here.
 
-## STRUCTURE
+## CURRENT FILE SET
 
-```
-api/
-├── endpoints.spec.ts   # Broad endpoint contract checks
-└── smoke.spec.ts       # Fast health and gateway checks (@smoke)
-```
+- `smoke.spec.ts` health/auth/CORS/basic 404 smoke
+- `endpoints.spec.ts` deep auth/protected/admin/CORS/error/format matrix
 
-## CONVENTIONS
+## MODULE RULES
 
-- Keep auth-dependent checks in serial blocks (`test.describe.configure({ mode: "serial" })`).
-- Validate envelope shape (`success`, `data`/`error`) and status code together.
-- Handle transient 429 responses with bounded retry logic where login/bootstrap is required.
-- Use project `request` fixture; do not mix browser-page assertions in API specs.
+- Keep auth lifecycle checks serial where token state is reused.
+- Accept documented variability (`400|401|403|404|429`) per endpoint intent.
+- Keep 429 handling explicit for login-heavy sequences.
+- Assert both transport and envelope (`status` + `success/data/error/timestamp`).
+- Keep admin-origin CORS validation (`ADMIN_APP_URL` origin).
 
-## ANTI-PATTERNS
+## DATA INPUTS
 
-- No assumption that non-2xx is always one status; preserve allowed ranges where API intentionally varies (400/401/404).
-- No hardcoded tokens; obtain through login/refresh sequence inside tests.
-- No skipped assertions on response body semantics when status passes.
+- Worker login fixture values from env fallbacks:
+  - `E2E_WORKER_NAME`
+  - `E2E_WORKER_PHONE`
+  - `E2E_WORKER_DOB`
+
+## ANTI-DRIFT
+
+- Do not store static bearer tokens in repo.
+- Do not silently pass on response-body regressions.
+- Do not collapse endpoint coverage into smoke-only checks.

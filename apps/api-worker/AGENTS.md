@@ -1,84 +1,39 @@
 # AGENTS: API-WORKER
 
-## OVERVIEW
+## PURPOSE
 
-Cloudflare Workers REST API. Hono 4 framework, Drizzle ORM with D1 (SQLite), 36 route modules, 8 middleware, 9 CRON jobs.
+Worker runtime entrypoint. Route mounting, global middleware chain, queue/scheduled wiring, SPA fallback serving.
+Child AGENTS files own module detail; this file only integration map.
 
-## STRUCTURE
+## KEY FILES
 
-```
-src/
-├── index.ts           # Entry: Hono app + CRON handlers
-├── routes/            # 19 core + 17 admin route modules
-├── middleware/        # Manual invocation guards
-├── db/schema.ts       # Drizzle schema definitions
-├── lib/               # Shared utilities (response, crypto, audit, logger)
-├── scheduled/         # CRON handlers and schedulers
-├── durable-objects/   # RateLimiter DO
-└── validators/        # Zod request schemas
-```
+| File            | Role                | Current Facts                                                                                                |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `src/index.ts`  | Runtime composition | 377 lines. Builds `app` + `/api` sub-app. Exports `{ app }`, `RateLimiter`, default `fetch/scheduled/queue`. |
+| `src/types.ts`  | Binding contract    | `Env` includes D1, R2/STATIC, KV, optional DO/Hyperdrive/Analytics/AI/Queue bindings.                        |
+| `wrangler.toml` | Deployment bindings | Source of truth for runtime binding names consumed by `Env`.                                                 |
 
-## WHERE TO LOOK
+## ROUTE REGISTRATION SNAPSHOT
 
-| Task       | Location           | Notes                                   |
-| ---------- | ------------------ | --------------------------------------- |
-| Add Route  | `src/routes/`      | Export `Hono` app, mount in `index.ts`  |
-| DB Schema  | `src/db/schema.ts` | Drizzle ORM. Run `drizzle-kit generate` |
-| Migrations | `migrations/`      | Ordered SQL + `meta/_journal.json`      |
-| Bindings   | `wrangler.toml`    | D1, R2, KV, DO, CRON, Hyperdrive, AI    |
-| Helpers    | `src/lib/`         | response, crypto, audit, logger, sms    |
-| Validation | `src/validators/`  | Zod schemas for request bodies          |
-| CRON Jobs  | `src/scheduled/`   | FAS sync, overdue checks, PII cleanup   |
+- `/api` sub-app mounts 18 core route modules: `auth`, `attendance`, `votes`, `recommendations`, `posts`, `actions`, `users`, `sites`, `announcements`, `points`, `reviews`, `fas`, `disputes`, `policies`, `approvals`, `education`, `images`, `notifications`.
+- `/api/admin` mounted via `adminRoute` subtree.
+- Direct endpoints in `index.ts`: `GET /api/health`, `GET /api/system/status`, `POST /api/fas-sync`, `api.all("*")` 404 JSON.
 
-## SUBMODULE DOCS
+## MIDDLEWARE CHAIN (`index.ts`)
 
-- `src/routes/AGENTS.md`: Root route inventory and cross-cutting route patterns
-- `src/routes/admin/AGENTS.md`: Admin-only route rules (`.use('*', authMiddleware)` exception)
-- `src/middleware/AGENTS.md`: Middleware invocation and guard patterns
-- `src/lib/AGENTS.md`: Utility module inventory by domain
-- `src/db/AGENTS.md`: Schema and migration constraints
-- `migrations/AGENTS.md`: Migration ordering, journal metadata, and apply workflow
-- `src/scheduled/AGENTS.md`: CRON schedule matrix and lock/retry rules
-- `src/validators/AGENTS.md`: Zod schema conventions and enum parity checks
-- `src/durable-objects/AGENTS.md`: Durable Object rate limiter rules and state model
+- `app.use("*", initFasConfig)` first; hydrates FAS config from env each request.
+- Then global chain: `securityHeaders` -> `requestLoggerMiddleware` -> `analyticsMiddleware` -> `honoLogger()` -> dynamic CORS.
+- CORS reads `ALLOWED_ORIGINS`, allows localhost fallback, sets `Device-Id` / `X-Device-Id` headers.
 
-## SCHEDULED TASKS (9 CRON jobs)
+## RUNTIME FLOWS
 
-| Schedule    | Jobs                                                       |
-| ----------- | ---------------------------------------------------------- |
-| Every 5 min | FAS incremental sync, AceTime R2 sync, metrics alert check |
-| Daily 21:00 | FAS full sync, overdue action check, PII lifecycle cleanup |
-| Weekly Sun  | Data retention cleanup (3-year TTL)                        |
-| Monthly 1st | Month-end points snapshot, auto-nomination of top earners  |
+- **Scheduled:** `scheduled(controller, env, ctx)` delegates to `ctx.waitUntil(runScheduled(...))`.
+- **Queue:** `processNotificationBatch(batch, env)` handles `NOTIFICATION_QUEUE` messages.
+- **Static fallback:** hostname switch (`admin.*` => `admin/` prefix). Missing asset falls back to index HTML from `STATIC` bucket.
 
-## CF BINDINGS
+## GOTCHAS/WARNINGS
 
-| Binding            | Type       | Purpose                                    |
-| ------------------ | ---------- | ------------------------------------------ |
-| DB                 | D1         | Primary SQLite database                    |
-| R2 (×3)            | R2 Bucket  | Images, static, AceTime photos             |
-| FAS_HYPERDRIVE     | Hyperdrive | MariaDB (FAS employee data)                |
-| KV                 | KV         | Cache, sessions, sync locks                |
-| NOTIFICATION_QUEUE | Queue      | Push notification delivery                 |
-| QUEUE_DLQ          | Queue      | Dead-letter queue for failed notifications |
-| RATE_LIMITER       | DO         | Rate limiting                              |
-| AI                 | Workers AI | Hazard classification, face blur           |
-| ANALYTICS          | Analytics  | API metrics                                |
-
-## CONVENTIONS
-
-- **Manual Middleware**: Invoke manually in handlers (e.g., `await verifyAuth(c)`). NO global `.use()`.
-- **Drizzle ORM**: Use query builder (`db.select()`). NO raw SQL.
-- **Context**: `c` (Hono Context) is always the first arg to helpers.
-- **PII**: Hash sensitive data (phone, DOB) using `src/lib/crypto.ts` (HMAC-SHA256).
-- **Auth**: JWT `loginDate` claim (daily reset 5 AM KST).
-- **Audit**: State-changing ops call `logAuditWithContext()`. On failure, log via structured logger; do not silently swallow errors.
-- **Validation**: All POST/PATCH use `zValidator("json", Schema)`.
-
-## ANTI-PATTERNS
-
-- **No Global Middleware**: Keep `index.ts` clean (except analytics).
-- **No `as any`**: Strict type safety. Refactor existing violations.
-- **No `console.log`**: Use `src/lib/logger.ts` for structured logs.
-- **No In-Memory State**: Use KV or D1 (Workers are ephemeral).
-- **No Raw SQL**: Always use Drizzle query builder.
+- `api.post("/fas-sync")` uses raw `c.json(...)` response shape; not `success()` helper.
+- `GET /api/system/status` also returns manual envelope (`success/data/timestamp`) for outage banner contract.
+- Route 404 handler must stay before `app.route("/api", api)` static catch-all; order is behavior-critical.
+- `types.ts` currently contains prefixed line noise in source; avoid mass edits without full regression pass.

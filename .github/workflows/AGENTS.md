@@ -1,39 +1,39 @@
 # AGENTS: .GITHUB/WORKFLOWS
 
-## OVERVIEW
+## DELTA SCOPE
 
-Workflow-level deployment and automation orchestration for SafetyWallet.
+Workflow-file specifics only.
+Parent `.github/AGENTS.md` covers top-level config ownership.
 
-## WHERE TO LOOK
+## CURRENT WORKFLOW FILES
 
-| Task               | Workflow                                      | Notes                                       |
-| :----------------- | :-------------------------------------------- | :------------------------------------------ |
-| CI quality gate    | `ci.yml`                                      | lint/type/test/build and branch protections |
-| Full automation    | `full-automation.yml`                         | orchestrates test/deploy/release dispatch   |
-| Production deploy  | `deploy-production.yml`                       | triggered by CI success on `master`         |
-| Release tagging    | `release-tag.yml`                             | auto/custom semver tag + GitHub release     |
-| Staging deploy     | `deploy-staging.yml`                          | push/develop and manual dispatch            |
-| Post-deploy verify | `deploy-verify.yml`                           | smoke checks, env health, regressions       |
-| Rollback flow      | `deploy-rollback.yml`                         | controlled rollback path                    |
-| Deploy monitoring  | `deploy-monitoring.yml`                       | health monitor + notifications              |
-| Repo automation    | `labeler.yml`, `stale.yml`, `auto-merge*.yml` | issue/pr maintenance and merge policies     |
+- `ci.yml` (`name: CI`)
+- `deploy-production.yml` (`name: Deploy SafetyWallet`)
+- `deploy-verify.yml` (`name: Deploy Verification`)
+- `deploy-monitoring.yml` (`name: Deployment Monitoring`)
+- `auto-merge.yml` (`name: Auto Merge`)
+- `auto-merge-dependabot.yml` (`name: Auto-merge Dependabot`)
+- `labeler.yml` (`name: Auto-label PRs`)
+- `stale.yml` (`name: Stale issue/PR cleanup`)
+- `ssl-fix.yml` (`name: SSL Diagnostic & Fix`)
 
-## CONVENTIONS
+## FLOW LINKS
 
-- Keep deploy workflows CI-driven (`workflow_run` from successful CI) instead of direct manual deploy scripts.
-- Use explicit branch/env routing (`master` production, `develop` staging) and avoid mixed targets in one job.
-- Preserve `concurrency` on deploy workflows; never allow overlapping production deploy jobs.
-- Pin and scope credentials to GitHub Secrets/Environments; no inline secrets or dynamic credential echoing.
-- Keep verification jobs (`deploy-verify`) as a hard gate after deploy completion.
+- `deploy-production.yml` listens to `workflow_run` of `CI` on `master`.
+- `deploy-production.yml` calls reusable `deploy-verify.yml`.
+- `deploy-monitoring.yml` watches `CI`, `Deploy SafetyWallet`, `Deploy Staging` completion.
+- `ci.yml` controls monorepo build/test/e2e gate and Slack notify.
 
-## ANTI-PATTERNS
+## MODULE RULES
 
-- Do not add local/manual deploy commands (`wrangler deploy`) into workflows.
-- Do not bypass CI checks with direct production dispatch logic.
-- Do not duplicate deploy logic across multiple workflows when reusable flow exists.
-- Do not weaken permissions (`write-all`) when job-scoped permissions are sufficient.
+- Keep action pins as commit SHA.
+- Keep deploy concurrency strict (`cancel-in-progress: false` for production deploy group).
+- Keep production verification smoke-targeted (`@smoke`, selected projects).
+- Keep incident automation path intact in monitoring workflow.
+- Keep workflow names stable when referenced by other workflows.
 
-## NOTES
+## ANTI-DRIFT
 
-- Deployment behavior depends on Cloudflare Git integration and reusable verify jobs.
-- When adding new workflow files, update `.github/AGENTS.md` routing table in the same change.
+- Do not reintroduce removed workflow files in docs/comments.
+- Do not rename workflow `name:` fields without updating dependents.
+- Do not move deploy logic into manual local command steps.

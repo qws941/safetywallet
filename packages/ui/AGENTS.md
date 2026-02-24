@@ -1,48 +1,57 @@
 # AGENTS: PACKAGES/UI
 
-## OVERVIEW
+## SCOPE DELTA
 
-Shared component library for the SafetyWallet ecosystem. Built on **shadcn/ui** primitives using Tailwind CSS v4. This package is consumed by `worker-app` and `admin-app` to ensure visual consistency across the construction site safety platform.
+- Owns package-level export surface and theme primitives.
+- `src/components/AGENTS.md` owns component-file specifics.
 
-## STRUCTURE
+## SOURCE INVENTORY
 
-```
+```text
 src/
-├── components/       # Atomic shadcn/ui components (Button, Card, Input, etc.)
-├── lib/              # Shared UI utilities
-│   └── utils.ts      # cn() helper (clsx + tailwind-merge)
-├── index.ts          # Barrel export for all public components
-└── globals.css       # Tailwind v4 directives and base styles
+├── index.ts
+├── globals.css
+├── lib/
+│   └── utils.ts
+└── components/
+    ├── alert-dialog.tsx
+    ├── avatar.tsx
+    ├── badge.tsx
+    ├── button.tsx
+    ├── card.tsx
+    ├── dialog.tsx
+    ├── input.tsx
+    ├── select.tsx
+    ├── sheet.tsx
+    ├── skeleton.tsx
+    ├── switch.tsx
+    ├── toast.tsx
+    ├── toaster.tsx
+    └── use-toast.tsx
 ```
 
-## SUBMODULE DOCS
+## BARREL EXPORTS (CURRENT)
 
-- `src/components/AGENTS.md`: Shared primitive component boundaries and anti-patterns
+- Utility: `cn`.
+- Core controls: `Button`, `buttonVariants`, `Card*`, `Input`, `Badge`, `badgeVariants`, `Skeleton`, `Avatar*`.
+- Toast stack: `ToastProvider`, `ToastViewport`, `Toast`, `ToastTitle`, `ToastDescription`, `ToastClose`, `ToastAction`, `useToast`, `toast`, `Toaster`.
+- Modal stack: `AlertDialog*`, `Dialog*`, `Sheet*`.
+- Select stack: `Select`, `SelectGroup`, `SelectValue`, `SelectTrigger`, `SelectContent`, `SelectLabel`, `SelectItem`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`.
+- Toggle: `Switch`.
 
-## CONVENTIONS
+## THEME TOKENS (`globals.css`)
 
-### Component Standards
+- Defines light/dark HSL variables for: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `success`, `warning`, `border`, `input`, `ring`, `radius`.
+- Base layer applies `border-border` globally and `bg-background text-foreground` to `body`.
 
-- **shadcn Consistency**: Follow the shadcn/ui pattern: Radix UI primitives + Tailwind CSS + CVA (Class Variance Authority).
-- **Atomic Only**: Components must remain generic and decoupled from business logic. They should receive data via props and emit events via callbacks.
-- **forwardRef**: Always use `React.forwardRef` to allow parent components to access DOM elements for focus management and animations.
-- **Composition**: Prefer the `Slot` pattern (from `@radix-ui/react-slot`) for high-flexibility components.
+## PACKAGE RULES
 
-### Styling & Theming
+- Keep `src/index.ts` as canonical public surface.
+- Add/remove component export in same change as file add/remove.
+- Keep `cn()` in `lib/utils.ts` only (`clsx` + `twMerge` composition).
 
-- **Tailwind CSS v4**: Use modern Tailwind syntax. Avoid legacy `@apply` in CSS files; prefer utility classes in TSX.
-- **Dark Mode**: Support the `class` strategy for dark mode. Use `dark:` variants for themed colors.
-- **CVA**: Use `class-variance-authority` for managing component variants (e.g., button sizes, colors).
+## ANTI-DRIFT
 
-### Workflow for New Components
-
-1. **Source**: Pull primitives from shadcn/ui.
-2. **Placement**: Store in `src/components/{name}.tsx`.
-3. **Export**: Register the component in `src/index.ts` to make it available to the monorepo.
-4. **Validation**: Ensure components are accessible (ARIA labels, keyboard navigation) before committing.
-
-## ANTI-PATTERNS
-
-- **No Data Fetching**: Never perform API calls or use hooks that depend on specific backend data.
-- **No Hardcoded Values**: Use Tailwind variables and theme colors instead of magic hex/rgb values.
-- **No Direct Imports**: Apps should import from `@safetywallet/ui`, not reach into sub-paths.
+- No token renames in CSS without consuming-app migration.
+- No duplicate helper utilities outside `lib/utils.ts`.
+- No undocumented public exports from component files.

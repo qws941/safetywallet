@@ -1,32 +1,35 @@
-# AGENTS: ROUTES/**TESTS**
+# AGENTS: ROUTES/TESTS
 
-## OVERVIEW
+## PURPOSE
 
-Route-level Vitest suites for Hono handlers, validation paths, and response contracts.
+Vitest suites for core route handler behavior.
+Focus: validation, authorization, response contracts, route-level branching.
 
-## WHERE TO LOOK
+## KEY FILES
 
-| Task                     | File Pattern                                     | Notes                                    |
-| :----------------------- | :----------------------------------------------- | :--------------------------------------- |
-| Auth/login behavior      | `auth.test.ts`                                   | session token and lock/limit behaviors   |
-| Content/post lifecycle   | `posts*.test.ts`, `reviews.test.ts`              | status transitions and permission checks |
-| Attendance/approval flow | `attendance*.test.ts`, `manual-approval.test.ts` | gatekeeping and fallback paths           |
-| Worker/admin APIs        | `admin-*.test.ts`, `votes*.test.ts`              | privileged routes and policy checks      |
+| File                    | Focus                     | Current Facts                                                             |
+| ----------------------- | ------------------------- | ------------------------------------------------------------------------- |
+| `auth.test.ts`          | login/session behavior    | Heavy mocked DB and middleware chains; local `createApp` factory pattern. |
+| `posts.test.ts`         | report lifecycle          | Covers CRUD/list pagination/error branches with mocked auth context.      |
+| `notifications.test.ts` | push endpoints            | Subscription + send endpoint contract checks.                             |
+| `attendance.test.ts`    | attendance route behavior | FAS event and attendance record cases.                                    |
+| `system-status.test.ts` | outage banner contract    | Rebuilds `/api/system/status` response shape using KV mock.               |
 
-## CONVENTIONS
+## MODULE SNAPSHOT
 
-- Build test app with shared test helper (`createApp`/factory) instead of duplicating Hono bootstrap.
-- Mock middleware, validators, and DB chains deterministically; keep external I/O disabled.
-- Assert standardized response envelope (`success/error`) and status codes together.
-- Keep Korean/domain labels as fixture values when endpoint behavior depends on localized enums.
-- Cover both happy path and authorization/validation failure path in the same suite.
+- 19 test files (`src/routes/__tests__/*.test.ts`).
+- This subtree targets core routes only; admin tests live in `routes/admin/__tests__/`.
+- Most suites build per-file Hono test app factories (`createApp` or `buildApp`).
 
-## ANTI-PATTERNS
+## PATTERNS
 
-- No live network/database access in route tests.
-- No implicit dependency on test order or global mutable state.
-- No broad `any`-typed fixtures that hide schema drift.
+- Mock middleware and external adapters at import boundary (`vi.mock`).
+- Keep request/response assertions explicit: status + body contract together.
+- Validate both happy path and rejection path (auth/permission/validation).
+- Use deterministic env fixture objects for DB/KV/queue bindings.
 
-## NOTES
+## GOTCHAS/WARNINGS
 
-- Prefer focused route suites over large integration blobs; route coverage already broad in this subtree.
+- No `manual-approval.test.ts` in this directory; stale references removed.
+- `system-status.test.ts` intentionally mirrors endpoint logic from `src/index.ts`.
+- Avoid sharing mock state between suites; each file resets with `beforeEach`.

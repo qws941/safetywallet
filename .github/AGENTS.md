@@ -1,43 +1,40 @@
 # AGENTS: .GITHUB
 
-## OVERVIEW
+## DELTA SCOPE
 
-Context: CI/CD and repository automation policy. Scope: GitHub workflows, bot automation, release/deploy guards.
+Repo automation config surface.
+Exact files present in this directory only.
 
-This directory governs quality gates and Git-ref-driven deployment automation; changes here can affect production rollout safety.
+## CURRENT FILE SET
 
-## WHERE TO LOOK
+- `.github/dependabot.yml`
+- `.github/labeler.yml`
+- `.github/workflows/*.yml` (9 workflow files)
 
-| Task                    | Location                                                | Notes                              |
-| ----------------------- | ------------------------------------------------------- | ---------------------------------- |
-| Update CI checks        | `workflows/ci.yml`                                      | Monorepo quality and test pipeline |
-| One-click orchestration | `workflows/full-automation.yml`                         | Parametric test/deploy/release run |
-| Production deploy flow  | `workflows/deploy-production.yml`                       | Git-ref deploy automation          |
-| Release/version flow    | `workflows/release-tag.yml`                             | Automated or parameterized tagging |
-| Staging deploy flow     | `workflows/deploy-staging.yml`                          | Pre-production release path        |
-| Emergency rollback      | `workflows/deploy-rollback.yml`                         | Controlled revert workflow         |
-| PR automation labels    | `labeler.yml`, `workflows/labeler.yml`                  | Path-based label routing           |
-| Dependency updates      | `dependabot.yml`, `workflows/auto-merge-dependabot.yml` | Bot update and merge policy        |
+## OWNERSHIP SPLIT
 
-## SUBMODULE DOCS
+- This file: top-level automation config (`dependabot`, label mapping).
+- `workflows/AGENTS.md`: per-workflow behavior and guardrails.
 
-- `workflows/AGENTS.md` contains workflow-level implementation guidance and per-file responsibilities.
+## TOP-LEVEL CONFIG NOTES
 
-## CONVENTIONS
+- `dependabot.yml`
+  - npm + github-actions updates
+  - weekly Monday cadence
+  - reviewer `jclee-v1`
+  - grouped minor/patch npm updates
+- `labeler.yml`
+  - path->label mapping for docs/ci/terraform/docker/python/typescript/shell/config
 
-- Deploy is CI-driven; local manual deploy scripts are intentionally blocked at repo root.
-- Keep workflow triggers explicit (`push`, `pull_request`, `workflow_dispatch`) and least-privilege.
-- Preserve branch/environment separation between staging and production workflows.
-- Prefer shared script invocations from root `package.json` over duplicated shell logic.
+## MODULE RULES
 
-## ANTI-PATTERNS
+- Keep labels/config generic and path-driven.
+- Keep bot configs free of project secrets.
+- Keep workflow references aligned with real files only.
+- Any new workflow file must be reflected in `workflows/AGENTS.md`.
 
-- Do not bypass verification by weakening required workflow jobs.
-- Do not add long-running ad-hoc shell logic when existing scripts already exist.
-- Do not embed secrets, tokens, or account identifiers directly in workflow files.
-- Do not create overlapping deploy workflows with ambiguous ownership.
+## ANTI-DRIFT
 
-## NOTES
-
-- Key workflows include `ci.yml`, deploy (`production`, `staging`, `verify`, `monitoring`, `rollback`), `auto-merge*.yml`, `labeler.yml`, and `stale.yml`.
-- Validate workflow edits with repository standards before merging because this directory is a high-blast-radius domain.
+- Do not reference removed workflow files.
+- Do not duplicate policy text already owned by root AGENTS.
+- Do not place runtime artifacts under `.github/`.

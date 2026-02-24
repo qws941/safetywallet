@@ -1,54 +1,41 @@
 # AGENTS: DOCS
 
-## OVERVIEW
+## DELTA SCOPE
 
-**Scope:** Documentation source-of-truth, runbooks, and requirement docs.
+`docs/` module-specific documentation ownership.
+Global policy remains in repo-root AGENTS.
 
-`docs/` is the canonical documentation surface for product requirements and operations. Use this directory to resolve requirement truth, deployment/rollback procedures, and implementation tracking.
+## CURRENT FILE SET
 
-## STRUCTURE
+- `README.md` docs index + redirect map
+- `cloudflare-operations.md` operational runbook
+- `FEATURE_CHECKLIST.md` feature completion tracker
+- `deployment.md` redirect stub
+- `rollback.md` redirect stub
+- `REQUIREMENTS_REVIEW.md` redirect stub
+- `requirements/` requirement specs subtree
 
-```
-docs/
-├── README.md                           # Docs index and redirects
-├── requirements/                       # PRD, checklist, requirement specs
-├── cloudflare-operations.md            # Deploy/rollback/D1 runbook
-├── FEATURE_CHECKLIST.md                # Feature execution status tracking
-├── REQUIREMENTS_REVIEW.md              # Redirect to canonical checklist
-├── deployment.md                       # Redirect to runbook
-└── rollback.md                         # Redirect to runbook rollback section
-```
+## DOC OWNERSHIP
 
-## WHERE TO LOOK
+- Operations truth: `cloudflare-operations.md`
+- Requirements truth entrypoint: `requirements/REQUIREMENTS_CHECKLIST.md`
+- Historical/deprecated marker: `requirements/SafetyWallet_Implementation_Plan_v1.0.md`
+- Redirect governance: `README.md` must list every redirect doc
 
-| Task                           | Location                                        | Notes                                    |
-| ------------------------------ | ----------------------------------------------- | ---------------------------------------- |
-| Product requirement baseline   | `requirements/SafetyWallet_PRD_v1.1.md`         | Master product requirement document      |
-| Implementation truth/gap check | `requirements/REQUIREMENTS_CHECKLIST.md`        | Canonical verification artifact          |
-| UI simplification scope        | `requirements/Phase3_UI_Simplification_PRD.md`  | Focused UI simplification requirement    |
-| ELK logging requirements       | `requirements/ELK_INDEX_PREFIX_REQUIREMENTS.md` | Index-prefix behavior and acceptance     |
-| Deploy and rollback operations | `cloudflare-operations.md`                      | Single runbook for prod ops              |
-| Documentation entry index      | `README.md`                                     | Current vs redirected vs deprecated docs |
+## MODULE RULES
 
-## SUBMODULE DOCS
+- Keep redirect docs short and explicit (`Moved` + canonical target).
+- Keep runbook instructions executable and CI-automation aligned.
+- Keep secret references as names only (`CLOUDFLARE_*`, `SLACK_*`, etc.).
+- Keep resource naming notes current (`safewallet` runtime vs legacy `safework2-*` infra IDs).
+- Keep docs index synchronized when adding/removing docs files.
 
-- `requirements/AGENTS.md`: Requirement hierarchy, module ownership, and anti-patterns.
+## SUBMODULE DOC
 
-## CONVENTIONS
+- `docs/requirements/AGENTS.md` owns requirement-subtree deltas.
 
-- Parent-first inheritance: `AGENTS.md` at repo root remains canonical for global rules; this file defines docs-only deltas.
-- Child docs are delta-only: `docs/requirements/AGENTS.md` and deeper files must avoid repeating root-level global policy.
-- Override precedence is explicit: when child guidance differs, child file wins only for its own subtree.
-- Treat `requirements/REQUIREMENTS_CHECKLIST.md` as canonical when other requirement docs disagree.
-- Keep legacy docs in place only when explicitly marked deprecated and needed for history.
-- Use redirect docs (`deployment.md`, `rollback.md`, `REQUIREMENTS_REVIEW.md`) as pointers, not alternate sources of truth.
-- Keep runbook guidance operational and executable (commands, prerequisites, rollback paths).
-- Reflect current Cloudflare deployment model (Workers Builds, single-worker runtime) and avoid stale manual deploy instructions.
+## ANTI-DRIFT
 
-## ANTI-PATTERNS
-
-- No duplicate source-of-truth claims across multiple requirement files.
-- No architecture drift in requirement docs (for example, referencing legacy NestJS/PostgreSQL as active runtime).
-- No hidden operational requirements outside runbook/checklist documents.
-- No undocumented redirects; if a file is a redirect, say so explicitly in `docs/README.md`.
-- No credential values or secret material in docs; reference env/secret names only.
+- Do not duplicate the same source-of-truth across multiple docs.
+- Do not present redirect files as primary documentation.
+- Do not keep stale workflow/deploy statements after workflow changes.

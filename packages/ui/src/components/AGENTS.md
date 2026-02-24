@@ -1,28 +1,42 @@
 # AGENTS: UI/COMPONENTS
 
-## OVERVIEW
+## SCOPE DELTA
 
-Shared shadcn/Radix component primitives consumed by both admin and worker apps.
+- This file documents concrete component file/export inventory.
+- Parent `packages/ui/AGENTS.md` covers package-level surface/theme rules.
 
-## STRUCTURE
+## FILES + PRIMARY EXPORTS
 
-```
-components/
-├── button.tsx, input.tsx, card.tsx, badge.tsx
-├── dialog.tsx, alert-dialog.tsx, sheet.tsx
-├── select.tsx, switch.tsx, avatar.tsx, skeleton.tsx
-├── toast.tsx, toaster.tsx, use-toast.tsx
-```
+- `button.tsx`: `Button`, `buttonVariants`, `ButtonProps`.
+- `card.tsx`: `Card`, `CardHeader`, `CardFooter`, `CardTitle`, `CardDescription`, `CardContent`.
+- `input.tsx`: `Input`, `InputProps`.
+- `badge.tsx`: `Badge`, `badgeVariants`, `BadgeProps`.
+- `skeleton.tsx`: `Skeleton`.
+- `avatar.tsx`: `Avatar`, `AvatarImage`, `AvatarFallback`.
+- `toast.tsx`: `ToastProvider`, `ToastViewport`, `Toast`, `ToastTitle`, `ToastDescription`, `ToastClose`, `ToastAction`, `ToastProps`, `ToastActionElement`.
+- `use-toast.tsx`: `useToast`, `toast`, `reducer` (exported for tests).
+- `toaster.tsx`: `Toaster`.
+- `alert-dialog.tsx`: `AlertDialog*` compound exports.
+- `dialog.tsx`: `Dialog*` compound exports.
+- `select.tsx`: `Select*` compound exports incl. scroll buttons.
+- `switch.tsx`: `Switch`.
+- `sheet.tsx`: `Sheet*` compound exports.
 
-## CONVENTIONS
+## PATTERN MAP
 
-- Keep components atomic and domain-agnostic; business logic belongs in app layers.
-- Export public primitives from `src/index.ts` only.
-- Preserve accessibility semantics from Radix primitives and keyboard interactions.
-- Keep style variants centralized in component files (CVA/utility classes).
+- Radix wrappers: `alert-dialog`, `dialog`, `select`, `switch`, `sheet`, `toast`.
+- CVA variants present in: `button`, `badge`, `toast`, `sheet`.
+- `"use client"` required in stateful/portal modules: `toast`, `use-toast`, `toaster`, `alert-dialog`, `dialog`, `sheet`.
+- `React.forwardRef` is standard for DOM-facing primitives.
 
-## ANTI-PATTERNS
+## MAINTENANCE RULES
 
-- No direct API/data fetching hooks in this package.
-- No app-specific text/constants baked into shared components.
-- No deep import usage from apps (`@safetywallet/ui` barrel only).
+- If a component adds/removes exports, mirror change in `src/index.ts` same commit.
+- Keep compound component naming consistent with Radix primitive names.
+- Keep `use-toast.tsx` constants stable unless queue semantics intentionally change (`TOAST_LIMIT`, `TOAST_REMOVE_DELAY`).
+
+## ANTI-DRIFT
+
+- Do not export internal helper types/actions unless used by tests or barrel.
+- Do not mix business defaults into variant maps.
+- Do not bypass `cn()` merge path for class composition.

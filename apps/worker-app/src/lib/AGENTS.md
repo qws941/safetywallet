@@ -1,28 +1,33 @@
 # AGENTS: LIB
 
-## OVERVIEW
+## PURPOSE
 
-Client runtime utilities for network access and media processing in the worker PWA.
+Client runtime primitives shared by hooks/pages.
+Network transport, offline queue replay, media sanitation/compression, small helpers.
 
-## STRUCTURE
+## KEY FILES
 
-```
-lib/
-├── api.ts              # apiFetch, token refresh mutex, offline queue
-├── image-compress.ts   # Canvas compression + EXIF stripping
-├── utils.ts            # small shared helpers
-└── __tests__/          # lib tests
-```
+| File                    | Exports                                                                         | Responsibility                                                   |
+| ----------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `lib/api.ts`            | `apiFetch`, `flushOfflineQueue`, `getOfflineQueueLength`, `ApiError`            | Auth header injection, 401 refresh mutex, optional offline queue |
+| `lib/image-compress.ts` | `compressImage`, `compressImages`                                               | Canvas-based JPEG conversion + resize + EXIF strip               |
+| `lib/sanitize-html.ts`  | `sanitizeAnnouncementHtml`, `hasHtmlContent`, `renderSanitizedAnnouncementHtml` | Announcement HTML allowlist sanitizer + React node rendering     |
+| `lib/utils.ts`          | `cn` re-export                                                                  | UI class merge bridge                                            |
 
-## CONVENTIONS
+## PATTERNS
 
-- Use `apiFetch()` for all HTTP calls from hooks/components.
-- Keep auth token lifecycle inside `api.ts` (`refreshPromise` mutex + store updates).
-- Offline write flows should enable `offlineQueue` and rely on `flushOfflineQueue()` when online.
-- Preserve image privacy behavior: canvas redraw strips EXIF metadata.
+- `apiFetch` defaults `API_BASE_URL` from `NEXT_PUBLIC_API_URL` or `/api`.
+- `apiFetch` 401 flow: `refreshToken()` mutex -> retry original request once.
+- Offline queue item shape: `{ id, endpoint, options, createdAt, retryCount }`.
+- Queue replay cap: max 5 retries per queued item.
+- Image policy: max file 10MB, max dimension 1920, JPEG quality 0.8 (0.92 for small files).
+- Sanitizer allowlist tags: `p,strong,em,ul,li,blockquote,code,pre,a,img`.
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No direct `fetch()` from feature code when `apiFetch()` already handles auth/refresh/errors.
-- No token handling in UI components.
-- No image upload path that bypasses `compressImage()` for user-provided photos.
+- Queue key string is `safework2_offline_queue` (legacy prefix).
+- `apiFetch` can return queued sentinel payload (`{ success: true, data: null, queued: true }`) when offline queue enabled.
+- `apiFetch` adds `Content-Type: application/json` unless request body is `FormData`.
+- `flushOfflineQueue()` auto-runs on browser `online` event at module load.
+- `sanitize-html.ts` uses browser DOM APIs; client-only usage required.
+- Some flows still call native `fetch` directly (`login-client`, store logout).

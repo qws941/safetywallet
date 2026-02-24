@@ -1,36 +1,32 @@
 # AGENTS: VALIDATORS
 
-## OVERVIEW
+## PURPOSE
 
-Zod schema layer for request/response validation. This directory is the contract boundary before route handlers run.
+Zod schema source for route validation inputs and selected response contracts.
+Shared by core routes and admin routes.
 
-## STRUCTURE
+## KEY FILES
 
-```
-validators/
-├── schemas.ts      # Core API schemas and shared primitives
-├── fas-sync.ts     # FAS sync payload and query validation
-├── export.ts       # Validator barrel exports
-└── __tests__/      # Schema contract tests
-```
+| File          | Scope                      | Current Facts                                                                                                  |
+| ------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `schemas.ts`  | main API schemas           | Large schema registry: auth, posts, actions, disputes, votes, admin bodies, education, pagination primitives.  |
+| `fas-sync.ts` | strict FAS payloads        | Defines FAS timestamp regex (`YYYY-MM-DD HH:MM:SS`), attendance sync event/body, sync result schema types.     |
+| `export.ts`   | admin export query schemas | Defines users/posts/attendance export query validators with strict `YYYY-MM-DD` date checks and page coercion. |
 
-## WHERE TO LOOK
+## MODULE SNAPSHOT
 
-| Task                         | File          | Notes                                                   |
-| ---------------------------- | ------------- | ------------------------------------------------------- |
-| Add route payload validation | `schemas.ts`  | Keep naming aligned with route intent (`CreateXSchema`) |
-| Update FAS sync validation   | `fas-sync.ts` | Preserve external-system compatibility                  |
-| Export new schema            | `export.ts`   | Ensure route imports use barrel path                    |
+- Runtime schema files: 3 (`schemas.ts`, `fas-sync.ts`, `export.ts`).
+- Tests: `__tests__/schemas.test.ts`, `__tests__/fas-sync.test.ts`, `__tests__/export.test.ts`.
 
-## CONVENTIONS
+## PATTERNS
 
-- Keep enum values aligned with `src/db/schema.ts` and `@safetywallet/types`.
-- Prefer reusable primitives for IDs, dates, and paginated query params.
-- Route handlers should call `zValidator("json", schema)` (or query equivalent) before business logic.
-- Validation errors should flow through existing `error(c, code, msg)` response helpers.
+- Keep shared primitives near top of `schemas.ts` (`uuid`, month pattern, non-empty strings).
+- Use named `*Schema` exports and paired inferred types where routes consume typed payloads.
+- Tight input bounds on external-system payloads (`max`, `regex`, date-range guards).
+- Export query schemas normalize page values to sane defaults.
 
-## ANTI-PATTERNS
+## GOTCHAS/WARNINGS
 
-- No permissive `z.any()` for core request bodies.
-- No silent enum drift from DB/types packages.
-- No route-local schema duplication when shared schema already exists here.
+- Enum lists in `schemas.ts` must stay aligned with DB/type package enums.
+- `fas-sync.ts` accepts both ISO datetime and FAS timestamp for attendance events; maintain compatibility.
+- `export.ts` date validators intentionally reject non-`YYYY-MM-DD` query forms.

@@ -1,70 +1,36 @@
 # AGENTS: ROUTES/ADMIN
 
-## OVERVIEW
+## PURPOSE
 
-Admin-only API sub-routes mounted at `/admin`. 17 modules including index and shared helpers (3.8k LOC). All routes require authentication and admin role.
+Admin API subtree mounted at `/api/admin`.
+Owns operational dashboards, exports, moderation, sync error handling, alert controls.
 
-## STRUCTURE
+## KEY FILES
 
-```
-admin/
-├── index.ts             # Sub-router mounts + global auth middleware
-├── helpers.ts           # Shared utilities, role guards, CSV export
-├── users.ts             # User management, search, role updates
-├── posts.ts             # Post management, review actions
-├── export.ts            # CSV exports (users, posts, attendance)
-├── stats.ts             # Dashboard statistics, counts
-├── attendance.ts        # Attendance records, overrides
-├── audit.ts             # Audit log queries
-├── votes.ts             # Vote management, candidate CRUD
-├── fas.ts               # FAS sync status, error handling
-├── sync-errors.ts       # FAS sync error management
-├── access-policies.ts   # Point policies, reward config
-├── recommendations.ts   # Safety recommendations CRUD
-├── monitoring.ts        # System monitoring endpoints
-├── alerting.ts          # Alert configuration & webhooks
-├── images.ts            # Image moderation, privacy review
-└── trends.ts            # Trend analysis, statistics
-```
+| File             | Role                         | Current Facts                                                                                          |
+| ---------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `index.ts`       | admin router entry           | Applies `app.use("*", authMiddleware)` then mounts all admin sub-routers.                              |
+| `helpers.ts`     | shared admin helpers         | Exports `AppContext`, day-cutoff constants, CSV builders, role/export guards, export limiter.          |
+| `export.ts`      | CSV endpoints                | Supports users/posts/attendance CSV; uses validator schemas, `requireExportAccess`, `exportRateLimit`. |
+| `monitoring.ts`  | API metrics views            | Reads aggregated `apiMetrics` for metrics, top-errors, summary endpoints.                              |
+| `alerting.ts`    | alert + maintenance controls | Alert config/test endpoints plus maintenance message CRUD in KV.                                       |
+| `sync-errors.ts` | sync error triage            | Filter/list sync errors, patch status to `RESOLVED` or `IGNORED`.                                      |
 
-## KEY DIFFERENCE FROM OTHER ROUTES
+## MODULE SNAPSHOT
 
-**Admin routes use `.use('*', authMiddleware)`** — global middleware attachment.
-This is the ONLY place in the codebase that uses Hono `.use()` for middleware.
-All other routes use manual middleware invocation inside handlers.
+- Runtime modules in this directory: 17 (`*.ts` including `index.ts` and `helpers.ts`).
+- Route modules mounted by `index.ts`: 15.
+- Admin tests in sibling `__tests__/`: 17 files.
 
-## HELPERS (helpers.ts)
+## PATTERNS
 
-Shared utilities: `AppContext`, `getTodayRange()` (5 AM KST cutoff), CSV helpers (`buildCsv`/`csvResponse` with UTF-8 BOM), guards (`requireAdmin`, `requireManagerOrAdmin`, `requireExportAccess`, `exportRateLimit`).
+- `index.ts` owns global auth middleware; child modules usually add `requireAdmin` guard per endpoint.
+- Shared helper imports come from `./helpers` to keep role/date/csv logic consistent.
+- CSV export path: parse query schema -> fetch rows -> `buildCsv` -> `csvResponse`.
+- Monitoring endpoints aggregate by bucket/endpoint over `apiMetrics` table.
 
-## MODULES BY SIZE
+## GOTCHAS/WARNINGS
 
-| Module             | Lines | Key Endpoints                        |
-| ------------------ | ----- | ------------------------------------ |
-| posts.ts           | 664   | List, detail, review, reject, delete |
-| users.ts           | 463   | Search, detail, role update, suspend |
-| votes.ts           | 409   | Vote CRUD, candidate management      |
-| fas.ts             | 391   | FAS sync trigger, status, errors     |
-| recommendations.ts | 211   | Safety recommendation CRUD           |
-| trends.ts          | 207   | Trend analysis, statistics           |
-| helpers.ts         | 195   | Shared pagination, CSV, guards       |
-| export.ts          | 193   | CSV: users, posts, attendance        |
-| alerting.ts        | 182   | Alert config, webhook management     |
-| monitoring.ts      | 166   | System monitoring endpoints          |
-| images.ts          | 165   | Image moderation, privacy review     |
-| attendance.ts      | 144   | Attendance logs, manual override     |
-| sync-errors.ts     | 143   | FAS sync error list, resolve, retry  |
-| stats.ts           | 113   | Dashboard counts, category stats     |
-| access-policies.ts | 111   | Point policies, reward configuration |
-| audit.ts           | 49    | Audit log query with pagination      |
-| index.ts           | 42    | Sub-router mounts, global auth       |
-
-## CONVENTIONS
-
-- **Route pattern**: Import Hono + `requireAdmin` + `AppContext` from `./helpers`, export `default app`
-- **Guards**: `requireAdmin` (most), `requireManagerOrAdmin` (site-scoped), `requireExportAccess` + `exportRateLimit` (CSV). CSV: `buildCsv()` → `csvResponse()` (UTF-8 BOM)
-
-## ANTI-PATTERNS
-
-- **No `.use()` in sub-modules** — only `index.ts` uses global `.use()`. Import guards from `./helpers`
-- **Don't bypass rate limits** — export endpoints MUST use `exportRateLimit`
+- Maintenance endpoints live in `alerting.ts`; no standalone `maintenance.ts` route module.
+- Keep `exportRateLimit` attached to export endpoints; high-cost route protection.
+- `requireExportAccess` currently reads `users.canManageUsers` as export permission flag.

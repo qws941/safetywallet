@@ -1,45 +1,54 @@
 # AGENTS: E2E
 
-## OVERVIEW
+## SCOPE
 
-This directory contains the Playwright-based end-to-end testing suite for the SafetyWallet platform. 5 Playwright projects: api, admin-setup, worker-app, admin-app, cross-app.
+Playwright E2E suite root. Project wiring only.
+Child folders own feature-level test behavior.
 
-## STRUCTURE
+## ACTIVE PROJECT MAP
 
-The suite is organized into subdirectories matching the Playwright projects defined in the root `playwright.config.ts`:
+Source of truth: `playwright.config.ts`.
 
-**Auth Setup**: admin-setup project runs first via admin.setup.ts -> persists auth state to .auth/admin.json for reuse by admin-app project.
+- `api` -> `e2e/api`
+- `admin-setup` -> `e2e/admin-app/admin.setup.ts`
+- `worker-app` -> `e2e/worker-app`
+- `admin-app` -> `e2e/admin-app` (depends on `admin-setup`)
+- `cross-app` -> `e2e/cross-app`
 
-- `admin-app/`: Tests for the Next.js 14 Admin Dashboard (navigation, stats, user management).
-- `worker-app/`: Tests for the Next.js 14 PWA Worker App (reporting, profile, attendance).
-- `api/`: Direct API request/response validation targeting the Cloudflare Worker backend.
-- `cross-app/`: Complex integration flows that span multiple applications (e.g., Worker report → Admin review).
+## CURRENT TREE (ROOT VIEW)
+
+- `e2e/admin-app/` admin dashboard browser suites
+- `e2e/worker-app/` worker PWA browser suites
+- `e2e/api/` request-context API suites
+- `e2e/cross-app/` multi-surface health/cors suite
+- `e2e/shared/elk.ts` shared ELK helper
+- `e2e/utils/rate-limit.ts` retry/reset parsing helper
+
+## BASELINES
+
+- Production-first defaults from config:
+  - Worker: `https://safetywallet.jclee.me`
+  - Admin: `https://admin.safetywallet.jclee.me`
+  - API: `https://safetywallet.jclee.me/api`
+- CI retries enabled; local retries disabled.
+- `@smoke` tag drives deploy verification selection.
+
+## ROOT RULES
+
+- Keep cross-project wiring in config, not duplicated in specs.
+- Keep setup-state contract stable: `e2e/admin-app/.auth/admin.json`.
+- Prefer env override path (`API_URL`, `WORKER_APP_URL`, `ADMIN_APP_URL`).
+- Preserve project boundaries; no feature spill across folders.
 
 ## SUBMODULE DOCS
 
-- `e2e/admin-app/AGENTS.md`: Admin login setup, sidebar helpers, rate-limit-safe patterns
-- `e2e/api/AGENTS.md`: API endpoint validation, serial auth flow, CORS and status checks
-- `e2e/worker-app/AGENTS.md`: Korean UI flows, mobile-first assertions, and auth-edge handling
-- `e2e/cross-app/AGENTS.md`: Multi-service health, CORS checks, and cross-app smoke patterns
+- `e2e/admin-app/AGENTS.md`
+- `e2e/api/AGENTS.md`
+- `e2e/worker-app/AGENTS.md`
+- `e2e/cross-app/AGENTS.md`
 
-## CONVENTIONS
+## QUICK RUN
 
-- **Production-First**: Tests target production URLs (safetywallet.jclee.me). Never mock the backend.
-- **Execution Modes**:
-  - Use `test.describe.configure({ mode: 'serial' })` for dependent sequences (Auth flow).
-  - Use `parallel` mode for independent smoke and page navigation tests.
-- **Tagging Strategy**:
-  - Use `@smoke` for critical health checks.
-  - Use descriptive feature-based naming for all `test.describe` blocks.
-- **Reliability**:
-  - Handle API rate limiting (429) with explicit retry logic in test setups.
-  - Use Playwright's auto-waiting locators; avoid `page.waitForTimeout`.
-- **API Testing**: Use the `request` fixture for endpoint validation. Verify JSON schema and status codes.
-- **Localization**: `worker-app` tests must validate Korean (ko) UI strings.
-- **Naming**: Files must follow the `{feature}.spec.ts` pattern.
-
-## COMMANDS
-
-- Run all: `npx playwright test`
-- Specific project: `npx playwright test --project=worker-app`
-- UI Mode: `npx playwright test --ui`
+- All: `npx playwright test`
+- Smoke slice: `npx playwright test --grep @smoke`
+- Project slice: `npx playwright test --project=api`

@@ -1,54 +1,37 @@
 # AGENTS: ROUTES
 
-## OVERVIEW
+## PURPOSE
 
-19 root route modules (8.5k LOC). Each exports a Hono app mounted in `index.ts`.
+Core API route modules mounted under `/api`.
+Admin subtree is separate (`/api/admin`) and documented in child AGENT.
 
-## STRUCTURE
+## KEY FILES
 
-| Module             | Lines | Domain                                      | Middleware                   |
-| ------------------ | ----- | ------------------------------------------- | ---------------------------- |
-| education.ts       | 1533  | Courses, quizzes, questions, TBM, statutory | auth, attendance             |
-| auth.ts            | 1011  | Register, login, refresh, logout, /me       | rate-limit                   |
-| actions.ts         | 595   | Action CRUD, images, status transitions     | auth, attendance             |
-| posts.ts           | 505   | Safety report CRUD, image upload            | auth, attendance, rate-limit |
-| acetime.ts         | 459   | AceTime DB sync, photo fetch, cross-match   | (internal)                   |
-| points.ts          | 432   | Award, balance, history, leaderboard        | auth                         |
-| disputes.ts        | 412   | Dispute CRUD, resolve, status updates       | auth                         |
-| users.ts           | 406   | Profile, memberships, data export, GDPR     | auth                         |
-| notifications.ts   | 386   | Push subscribe/send, VAPID key              | auth                         |
-| sites.ts           | 353   | Site CRUD, members, leave                   | auth                         |
-| reviews.ts         | 336   | Review submission, post review history      | auth                         |
-| announcements.ts   | 291   | Announcement CRUD                           | auth                         |
-| votes.ts           | 291   | Current period, vote history, cast vote     | auth, attendance             |
-| images.ts          | 296   | R2 upload, metadata query                   | auth, rate-limit             |
-| policies.ts        | 279   | Access policy CRUD per site                 | auth                         |
-| approvals.ts       | 272   | Approval list, approve/reject               | auth                         |
-| attendance.ts      | 254   | FAS sync endpoint, today's record           | auth, fasAuth                |
-| fas.ts             | 219   | FAS worker sync, worker removal             | fasAuth                      |
-| recommendations.ts | 167   | Create, today's, user's recommendations     | auth                         |
+| File               | Domain           | Current Facts                                                                |
+| ------------------ | ---------------- | ---------------------------------------------------------------------------- |
+| `auth.ts`          | account/session  | login/register/refresh/me; uses auth rate limiter.                           |
+| `posts.ts`         | safety reports   | attendance-gated create/list/detail/update flows; image hash fields handled. |
+| `education.ts`     | training content | largest module; courses/quizzes/TBM/statutory endpoints.                     |
+| `attendance.ts`    | attendance APIs  | user attendance reads + FAS sync event ingestion path.                       |
+| `fas.ts`           | FAS worker sync  | FAS-facing worker sync and worker removal endpoints.                         |
+| `votes.ts`         | monthly voting   | candidate listing/current period/cast vote/history.                          |
+| `notifications.ts` | push delivery    | subscription CRUD + send endpoints; integrates with web-push helpers.        |
 
-## ADDING A ROUTE
+## MODULE SNAPSHOT
 
-1. Create `src/routes/{name}.ts`, export `new Hono<Env>()`
-2. Add Zod schema in `src/validators/`
-3. Use `authMiddleware` manually per handler (NOT `.use()`)
-4. Use `success(c, data)` / `error(c, code, msg)` for responses
-5. Call `logAuditWithContext()` on mutations
-6. Mount in `src/index.ts` via `app.route("/name", nameRoutes)`
+- Top-level route modules: 18 (`src/routes/*.ts`).
+- Mounted from `src/index.ts` under `/api/{name}`.
+- Current set: `auth`, `attendance`, `votes`, `recommendations`, `posts`, `actions`, `users`, `sites`, `announcements`, `points`, `reviews`, `fas`, `disputes`, `policies`, `approvals`, `education`, `images`, `notifications`.
 
-## ATTENDANCE-GATED ROUTES
+## PATTERNS
 
-These require `attendanceMiddleware` (user must be checked in):
-posts, actions, education, votes.
+- Module structure: `const app = new Hono<...>()` then exported default router.
+- Handler-level middleware invocation is default pattern (`auth`, `attendance`, `rate-limit` as needed).
+- Request validation uses `zValidator` + schemas from `src/validators`.
+- Mutating operations usually emit audit log entries via shared audit helpers.
 
-## CROSS-CUTTING PATTERNS
+## GOTCHAS/WARNINGS
 
-- All 19 modules use manual `authMiddleware` (exception: acetime internal endpoints)
-- All mutations validated with `zValidator("json", schema)`
-- All state changes audited via `logAuditWithContext()`
-- PII masked in responses (e.g., `nameMasked` in votes)
-
-## SUBMODULE DOCS
-
-- `__tests__/AGENTS.md` defines route-test conventions (app factory usage, deterministic mocks, envelope assertions).
+- No `acetime.ts` module in this directory; stale references should stay removed.
+- `/api/system/status` and `/api/fas-sync` are in `src/index.ts`, not in route modules here.
+- Admin routes are mounted via `src/routes/admin/index.ts`; do not duplicate admin concerns in this layer.

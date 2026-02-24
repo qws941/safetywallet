@@ -1,26 +1,31 @@
 # AGENTS: STORES
 
-## OVERVIEW
+## PURPOSE
 
-PWA authentication/session state with persisted Zustand hydration controls.
+Single persisted client auth store.
+Owns user/session/site state and hydration readiness for static export.
 
-## STRUCTURE
+## KEY FILES
 
-```
-stores/
-├── auth.ts         # user, access/refresh tokens, currentSiteId
-└── __tests__/      # store tests
-```
+| File                            | Symbol         | Responsibility                                                          |
+| ------------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `stores/auth.ts`                | `useAuthStore` | Zustand store for user, tokens, auth flag, current site, hydration flag |
+| `stores/auth.ts`                | `AuthState`    | Contract for state + actions                                            |
+| `stores/__tests__/auth.test.ts` | tests          | Persistence and action behavior coverage                                |
 
-## CONVENTIONS
+## PATTERNS
 
-- Keep auth/session lifecycle in `auth.ts`; UI code uses store actions only.
-- Persist via `createJSONStorage(() => localStorage)` with key `safetywallet-auth`.
-- Keep `_hasHydrated` flag handling intact for static-export safety.
-- Keep logout flow best-effort: call `/auth/logout`, then clear state.
+- Persist middleware key: `safetywallet-auth`.
+- Persisted subset (`partialize`): `user`, `accessToken`, `refreshToken`, `isAuthenticated`, `currentSiteId`.
+- Non-persisted runtime field: `_hasHydrated`.
+- Action set: `setUser`, `setTokens`, `setCurrentSite`, `login`, `logout`.
+- `logout` behavior: best-effort POST `/auth/logout`, then clear local auth state.
+- Hydration sync: `persist.onFinishHydration` + `persist.hasHydrated()` both set `_hasHydrated = true`.
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No manual token reads/writes in pages or hooks.
-- No parallel auth states outside this store.
-- No direct API-side auth assumptions in UI without reading store hydration state.
+- `logout` uses direct `fetch`, not `apiFetch`; intentionally avoids refresh recursion.
+- `login` does not set `currentSiteId`; caller must set site separately.
+- Store `User` type allows nullable `nameMasked`, optional `companyName`, optional `tradeType`.
+- SSR guard in persist storage setup: `createJSONStorage` only when `window` exists.
+- UI redirect logic depends on `_hasHydrated`; removing hydration hooks causes flicker/redirect loops.

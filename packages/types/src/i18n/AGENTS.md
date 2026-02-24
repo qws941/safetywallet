@@ -1,29 +1,42 @@
 # AGENTS: TYPES/I18N
 
-## OVERVIEW
+## SCOPE DELTA
 
-**Context:** Shared localization dictionary contracts **Scope:** Korean translation keys and typed exports used across apps
+- Folder owns concrete key map + typed locale exports.
+- Parent covers package-wide type constraints; this file tracks key topology.
 
-This directory is the shared localization source for common Korean strings and must maintain stable keys and consistent domain naming.
+## FILES
 
-## WHERE TO LOOK
+- `ko.ts`: flat `as const` dictionary; key format `section.key`.
+- `index.ts`: exports `ko`, `Ko`, `i18n`, `I18n`.
 
-| Task                      | Location                    | Notes                                            |
-| ------------------------- | --------------------------- | ------------------------------------------------ |
-| Add/modify strings        | `ko.ts`                     | Keep grouped key sections and naming consistency |
-| Export locale bundle      | `index.ts`                  | Re-export canonical locale objects/types         |
-| Cross-app usage alignment | `apps/worker-app/src/i18n/` | Keep key names compatible with app consumers     |
+## KEY STRUCTURE (CURRENT)
 
-## CONVENTIONS
+- Non-nested object; all keys dot-notated string literals.
+- Current prefix groups (27):
+  `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`,
+  `points`, `votes`, `actions`, `actionsCreate`, `actionsView`,
+  `announcements`, `education`, `educationQuizTake`, `educationView`,
+  `profile`, `nav`, `common`, `unsafeWarning`, `authGuard`, `attendanceGuard`,
+  `layout`, `providers`, `header`, `pointsCard`, `postCard`, `rankingCard`.
+- `common.*` is the largest shared bucket; avoid dumping domain copy into it.
 
-- Use deterministic key naming and section grouping; avoid ad-hoc key sprawl.
-- Keep strings user-facing and production-ready (no placeholder copy).
-- Preserve backward compatibility for existing keys used in multiple apps.
-- Keep this folder logic-less: dictionaries/types only.
+## TYPING CONTRACT
 
-## ANTI-PATTERNS
+- Keep `ko` exported with `as const`.
+- Keep `export type Ko = typeof ko` in `ko.ts`.
+- Keep `i18n = { ko }` object literal in `index.ts`.
+- `I18n` must remain `typeof i18n`.
 
-- Do not rename existing keys without migration across all consumers.
-- Do not add runtime formatting/parsing utilities here.
-- Do not duplicate app-local strings that belong to app-specific i18n layers.
-- Do not mix unrelated language catalogs in this folder without explicit structure.
+## EDIT RULES (MODULE-SPECIFIC)
+
+- New keys: add in semantically matching prefix block.
+- Prefix rename: treated as breaking API for translation consumers.
+- Keep comments as section delimiters only; no runtime helpers.
+- Keep values production-ready Korean strings (no placeholders/test copy).
+
+## ANTI-DRIFT
+
+- Do not introduce nested objects; keeps `keyof` ergonomics stable.
+- Do not create locale aliases that diverge from `ko` keyset.
+- Do not split catalog unless multi-locale architecture is introduced intentionally.

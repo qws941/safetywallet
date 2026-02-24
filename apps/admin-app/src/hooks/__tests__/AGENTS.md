@@ -1,31 +1,38 @@
 # AGENTS: HOOKS/**TESTS**
 
-## OVERVIEW
+## PURPOSE
 
-Hook-level unit tests for admin query/mutation behavior and cache invalidation rules.
+Hook unit-test layer. Scope: hook behavior, endpoint/query-key correctness, invalidation side-effects.
 
-## WHERE TO LOOK
+## KEY FILES
 
-| Task                 | File Pattern                                                            | Notes                                |
-| :------------------- | :---------------------------------------------------------------------- | :----------------------------------- |
-| API query hooks      | `use-*-api.test.ts`                                                     | query keys, endpoints, enabled flags |
-| Domain hooks         | `use-attendance.test.ts`, `use-votes.test.ts`, `use-points-api.test.ts` | business filters and pagination      |
-| Auth-dependent hooks | `use-auth.test.ts`, `use-site-context.test.ts`                          | store selector behavior and gating   |
+| File                         | Coverage focus   | Notes                                         |
+| ---------------------------- | ---------------- | --------------------------------------------- |
+| `test-utils.tsx`             | shared wrapper   | QueryClient setup for `renderHook`            |
+| `use-api.test.ts`            | barrel integrity | export surface assertions                     |
+| `use-admin-api.test.ts`      | admin core hooks | site gating + approval/announcement mutations |
+| `use-attendance.test.ts`     | attendance hooks | URL param construction and unmatched flows    |
+| `use-monitoring-api.test.ts` | monitoring hooks | query string generation + cache keys          |
+| `use-fas-sync.test.ts`       | FAS hooks        | status fallback + sync mutation behaviors     |
+| `use-votes.test.ts`          | vote hooks       | period/candidate/result and invalidations     |
+| `use-education-api.test.ts`  | education hooks  | content/quiz mutations and payload handling   |
 
-## CONVENTIONS
+## PATTERNS
 
-- Use `renderHook` + shared wrapper for query client context.
-- Mock `apiFetch` at boundary; assert exact endpoint path and params.
-- Mock Zustand selectors with explicit test state objects (`currentSiteId`, hydrate flags).
-- Verify mutation side-effects by asserting `invalidateQueries` calls and target query keys.
-- Keep test names behavior-first (`returns`, `filters`, `invalidates`) instead of implementation wording.
+| Pattern                 | Applied in                  | Notes                                          |
+| ----------------------- | --------------------------- | ---------------------------------------------- |
+| Boundary mocking        | most suites                 | mock `@/lib/api` or `@/hooks/use-api-base`     |
+| Store selector stubbing | site-aware hooks            | provide `currentSiteId`, hydration, role flags |
+| Invalidation assertions | mutation suites             | spy on `queryClient.invalidateQueries`         |
+| URL string checks       | attendance/monitoring tests | verify serialized query params                 |
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No real network calls and no environment-dependent base URL assumptions.
-- No opaque snapshots for hook return objects.
-- No coupling to hook execution order across unrelated suites.
+- Old references to `use-auth.test.ts` or `use-site-context.test.ts` are stale; these files do not exist.
+- `use-api.test.ts` intentionally checks the barrel only; non-barrel hooks need direct-module tests.
+- Some test files contain encoded line prefixes in tool output; source files remain standard TS.
 
-## NOTES
+## PARENT DELTA
 
-- Parent guidance remains in `apps/admin-app/src/hooks/AGENTS.md`; this file is test-only delta.
+- Parent hooks doc maps runtime hook modules.
+- This file adds test harness and per-suite verification responsibilities.

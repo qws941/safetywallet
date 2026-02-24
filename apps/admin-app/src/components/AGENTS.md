@@ -1,32 +1,39 @@
 # AGENTS: COMPONENTS
 
-## OVERVIEW
+## PURPOSE
 
-Admin dashboard presentation layer: layout/navigation shell, reusable data widgets, and domain-specific UI blocks.
+Admin UI composition layer. Scope: shell/navigation, shared widgets, feature component packs.
 
-## STRUCTURE
+## KEY FILES
 
-```
-components/
-├── sidebar.tsx         # Desktop/mobile nav + site switcher
-├── providers.tsx       # QueryClientProvider + Toaster
-├── data-table.tsx      # Shared table UI
-├── review-actions.tsx  # Review workflow actions
-├── stats-card.tsx      # Dashboard metric tiles
-├── approvals/          # Approval domain components
-├── votes/              # Voting domain components
-└── __tests__/          # Component tests
-```
+| File                         | Role                     | Notes                                            |
+| ---------------------------- | ------------------------ | ------------------------------------------------ |
+| `admin-shell.tsx`            | app shell                | auth gate + login bypass + frame layout          |
+| `sidebar.tsx`                | navigation system        | `Sidebar`, `MobileHeader`, internal `SidebarNav` |
+| `providers.tsx`              | app providers            | QueryClient + site bootstrap gate + toaster      |
+| `data-table.tsx`             | generic table            | search/sort/pagination/selectable rows           |
+| `review-actions.tsx`         | post review action panel | approve/reject/request/urgent flows              |
+| `stats-card.tsx`             | metric tile              | reusable dashboard summary card                  |
+| `approvals/*`                | approvals widgets        | dialog/list/history/reject components            |
+| `votes/candidate-dialog.tsx` | vote component           | add-candidate dialog                             |
+| `ui/table.tsx`               | local table primitive    | route pages importing non-shared table variant   |
 
-## CONVENTIONS
+## PATTERNS
 
-- All files are client components (`"use client"`).
-- Shared primitives come from `@safetywallet/ui`; do not recreate base UI atoms locally.
-- Sidebar interactions must keep query cache coherent (`queryClient.clear()` on logout, invalidation on site switch).
-- Keep domain-specific component logic in `approvals/` or `votes/` when not reusable across domains.
+| Pattern               | Applied in             | Notes                                                      |
+| --------------------- | ---------------------- | ---------------------------------------------------------- |
+| Site bootstrap gate   | `providers.tsx`        | blocks protected shell until `currentSiteId` resolved      |
+| Sidebar cache hygiene | `sidebar.tsx`          | logout clears query cache; site switch invalidates queries |
+| Component test focus  | `__tests__/*.test.tsx` | behavior-focused tests per component                       |
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No direct API requests in components; use hooks from `src/hooks`.
-- No hardcoded English labels; admin UI is Korean-first.
-- No stateful logic that belongs in store/hooks (keep components presentation-first).
+- `MobileSidebar` removed; do not reintroduce drawer/menu state.
+- Current exports from `sidebar.tsx`: `Sidebar`, `MobileHeader`; `SidebarNav` is internal helper.
+- Sidebar is always visible now: mobile icon strip (`w-16`), desktop expandable (`md:w-64`).
+- `admin-shell.tsx` no longer tracks mobile menu open/close state.
+
+## PARENT DELTA
+
+- Parent doc links component area at high level.
+- This file defines concrete shell/sidebar/provider contracts and the updated no-drawer nav model.

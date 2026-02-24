@@ -1,52 +1,45 @@
 # AGENTS: ADMIN-APP
 
-## OVERVIEW
+## PURPOSE
 
-Next.js 14 Admin Dashboard (static export). 29 pages across 17 feature dirs, 17 domain hooks.
+Admin dashboard subtree guide. Scope: `src/app`, `src/components`, `src/hooks`, `src/stores`.
 
-## STRUCTURE
+## KEY FILES
 
-```
-src/
-├── app/                  # 29 pages, 17 feature dirs
-│   ├── approvals/        # Approval workflow
-│   └── [domain]/         # Domain pages (posts, members)
-├── components/           # UI Components
-│   ├── sidebar.tsx       # Core nav (12 items)
-│   └── [domain]/         # Domain-local UI
-├── hooks/                # 17 domain hooks (TanStack Query)
-├── stores/               # auth.ts (Zustand, isAdmin computed)
-└── lib/                  # API client
-```
+| Area            | Path                             | Why it matters                       |
+| --------------- | -------------------------------- | ------------------------------------ |
+| Route shell     | `src/app/layout.tsx`             | wraps Providers + AdminShell         |
+| Route redirect  | `src/app/page.tsx`               | root redirect to `/dashboard`        |
+| Auth gate shell | `src/components/admin-shell.tsx` | login redirect + protected rendering |
+| Sidebar/nav     | `src/components/sidebar.tsx`     | desktop collapse + mobile icon strip |
+| Query/bootstrap | `src/components/providers.tsx`   | QueryClient + current site bootstrap |
+| Auth store      | `src/stores/auth.ts`             | persisted session + role/admin state |
 
-## WHERE TO LOOK
+## PATTERNS
 
-| Task    | Location                     | Notes                       |
-| ------- | ---------------------------- | --------------------------- |
-| Sidebar | `src/components/sidebar.tsx` | 12 items, collapsible       |
-| Pages   | `src/app/`                   | `page.tsx`, `layout.tsx`    |
-| API     | `src/hooks/`                 | `use-education-api.ts` etc. |
-| Auth    | `src/stores/auth.ts`         | Zustand store               |
+| Pattern                          | Applied in                                   | Notes                                                   |
+| -------------------------------- | -------------------------------------------- | ------------------------------------------------------- |
+| Wrapper pages for dynamic routes | `posts/[id]/page.tsx`, `votes/[id]/page.tsx` | `generateStaticParams` placeholder + client page import |
+| Site-scoped admin flows          | hooks + sidebar + Providers                  | `currentSiteId` seeded from memberships                 |
+| Domain docs split                | each subtree `AGENTS.md`                     | children document deltas only                           |
 
-## SUBMODULE DOCS
+## GOTCHAS
 
-- `src/app/AGENTS.md`: Dashboard route groups and page-domain structure
-- `src/hooks/AGENTS.md`: TanStack Query hook inventory and invalidation rules
-- `src/hooks/__tests__/AGENTS.md`: Hook test conventions (renderHook, apiFetch mocking)
-- `src/components/AGENTS.md`: Reusable admin UI component boundaries
-- `src/lib/AGENTS.md`: API client and utility-layer constraints
-- `src/stores/AGENTS.md`: Persisted auth/session state conventions
+- Sidebar architecture changed: no mobile drawer component.
+- `Sidebar` always mounted; mobile width fixed `w-16`, desktop expands with `md:w-64`.
+- `MobileHeader` only label bar; menu toggle removed from shell.
+- `use-votes.ts`, `use-recommendations.ts`, `use-stats.ts`, `use-trends.ts` exist but are not re-exported by `use-api.ts`.
 
-## CONVENTIONS
+## CHILD MAP
 
-- **'use client' Only**: Zero RSC. All pages/components are client-side.
-- **Route Groups**: `(dashboard)/` for shared layout.
-- **Korean UI**: All text in Korean.
-- **API**: Use domain hooks (e.g., `usePosts()`), never `fetch()` directly.
-
-## ANTI-PATTERNS
-
-- **Native Modals**: NO `alert()`/`confirm()`. Use shadcn/ui Dialog.
-- **Client Guards**: No `useEffect` auth checks (use Middleware).
-- **Loose Types**: No `as any`.
-- **Sync Logic**: No FAS sync implementation here (Monitoring only).
+| Child doc                       | Scope delta                                              |
+| ------------------------------- | -------------------------------------------------------- |
+| `src/app/AGENTS.md`             | route directories, static-export wrappers, feature edges |
+| `src/app/attendance/AGENTS.md`  | attendance logs/unmatched/sync modules                   |
+| `src/app/posts/AGENTS.md`       | post list + post detail client wrapper                   |
+| `src/app/votes/AGENTS.md`       | vote month dashboard + candidate and detail flows        |
+| `src/app/education/AGENTS.md`   | tabbed education hub modules                             |
+| `src/components/AGENTS.md`      | shell/sidebar/provider/component boundaries              |
+| `src/hooks/AGENTS.md`           | hook inventory and barrel boundary                       |
+| `src/hooks/__tests__/AGENTS.md` | hook test harness + mock boundaries                      |
+| `src/stores/AGENTS.md`          | auth store state/method contracts                        |

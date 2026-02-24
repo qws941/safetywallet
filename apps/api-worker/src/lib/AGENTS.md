@@ -1,75 +1,39 @@
 # AGENTS: LIB
 
-## OVERVIEW
+## PURPOSE
 
-27 utility modules (4.5k LOC). Backbone of the API — crypto, integrations, logging, state machines.
+Domain utility layer for route handlers and scheduled jobs.
+Owns crypto, external adapters, queue processing, shared domain logic.
 
-## STRUCTURE
+## KEY FILES
 
-### Integration & External Services
+| File                    | Role                         | Current Facts                                                                                                          |
+| ----------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `crypto.ts`             | PII and password primitives  | `hmac`, AES-GCM `encrypt/decrypt`, PBKDF2 `hashPassword/verifyPassword`. Versioned cipher format `v{N}:...` supported. |
+| `fas-sync.ts`           | FAS->D1 sync engine          | Exports `syncSingleFasEmployee`, `syncFasEmployeesToD1`, `deactivateRetiredEmployees`, `socialNoToDob`.                |
+| `web-push.ts`           | Push protocol implementation | VAPID JWT, RFC8291 payload encryption, bulk send helpers, retry/removal classifiers.                                   |
+| `notification-queue.ts` | Queue consumer               | Exports `enqueueNotification`, `processNotificationBatch`; handles ack/retry and stale subscription deletion.          |
+| `points-engine.ts`      | Point calculation policy     | Duplicate window 24h, daily post limit 3, daily point limit 30, false-report multiplier 2x.                            |
+| `rate-limit.ts`         | DO client + fallback limiter | Uses `RATE_LIMITER` DO; in-memory fallback with 5-minute cleanup when DO unavailable.                                  |
+| `state-machine.ts`      | Review/action transitions    | Transition validators return `{ valid, newReviewStatus?, newActionStatus?, error? }`.                                  |
+| `response.ts`           | JSON envelope helpers        | Canonical `success(c,data,status)` and `error(c,code,message,status)`.                                                 |
 
-| Module                  | Lines | Purpose                                      |
-| ----------------------- | ----- | -------------------------------------------- |
-| web-push.ts             | 446   | Web Push API, subscription management        |
-| fas-mariadb.ts          | 407   | FAS MariaDB queries via Hyperdrive           |
-| fas-sync.ts             | 336   | FAS→D1 employee upsert, deactivation         |
-| alerting.ts             | 318   | Webhook dispatch (Slack/Teams) on failures   |
-| sms.ts                  | 255   | SMS sending via provider API                 |
-| workers-ai.ts           | 164   | Workers AI: hazard classification, face blur |
-| notification-queue.ts   | 132   | CF Queue message handling for push delivery  |
-| device-registrations.ts | 91    | Device tracking for push notifications       |
+## MODULE SNAPSHOT
 
-### Security & Crypto
+- Directory has 24 runtime `.ts` files + 2 local `.d.ts` shims + `__tests__/`.
+- Heavy adapters: `fas-mariadb.ts`, `web-push.ts`, `alerting.ts`.
+- Shared infra helpers: `logger.ts`, `session-cache.ts`, `sync-lock.ts`, `observability.ts`.
 
-| Module         | Lines | Purpose                                  |
-| -------------- | ----- | ---------------------------------------- |
-| crypto.ts      | 218   | HMAC-SHA256 hashing, PII encrypt/decrypt |
-| jwt.ts         | 71    | JWT create/verify, loginDate claim       |
-| key-manager.ts | 108   | Encryption key rotation                  |
-| rate-limit.ts  | 189   | Rate limiting via Durable Objects        |
+## PATTERNS
 
-### Business Logic
+- PII write path: normalize -> `hmac` hash -> `encrypt` ciphertext -> store hash + encrypted value.
+- FAS sync path: upsert by external key, protect against PII-hash collision, batch mutating ops via `dbBatchChunked`.
+- Push path: classify per-subscription result (`success`, retryable, remove) then update `pushSubscriptions` fail counters.
+- Rate-limit path: prefer DO RPC; degrade to bounded in-memory counters instead of hard failure.
 
-| Module           | Lines | Purpose                                |
-| ---------------- | ----- | -------------------------------------- |
-| points-engine.ts | 310   | Points calculation, monthly settlement |
-| state-machine.ts | 175   | Review/action status transitions       |
-| audit.ts         | 207   | Audit log creation, action tracking    |
+## GOTCHAS/WARNINGS
 
-### Image Processing
-
-| Module              | Lines | Purpose                           |
-| ------------------- | ----- | --------------------------------- |
-| image-privacy.ts    | 148   | Blur, watermark for privacy       |
-| face-blur.ts        | 131   | Face detection & blur via AI      |
-| phash.ts            | 152   | Perceptual hashing for similarity |
-| aceviewer-parser.ts | 139   | AceTime photo metadata parsing    |
-
-### Infrastructure
-
-| Module           | Lines | Purpose                         |
-| ---------------- | ----- | ------------------------------- |
-| logger.ts        | 260   | Structured JSON logging         |
-| session-cache.ts | 66    | Session caching layer           |
-| sync-lock.ts     | 67    | Distributed lock (KV-based)     |
-| response.ts      | 33    | `success()` / `error()` helpers |
-| constants.ts     | 17    | Batch sizes, timeouts           |
-| observability.ts | 6     | Observability stubs             |
-
-### Type Declarations
-
-| Module        | Lines | Purpose            |
-| ------------- | ----- | ------------------ |
-| sql-js.d.ts   | 25    | sql.js type shim   |
-| piexifjs.d.ts | 14    | piexifjs type shim |
-
-## SUBMODULE DOCS
-
-- `__tests__/AGENTS.md` captures lib-test conventions (external adapter mocking, fallback-order assertions, fixture builders).
-
-## CONVENTIONS
-
-- All helpers accept `c` (Hono Context) as first arg for binding access.
-- Use `logger.ts` for all logging — never `console.log`.
-- State transitions MUST go through `state-machine.ts`.
-- PII operations MUST use `crypto.ts` — never store plaintext.
+- `response.ts` envelope must remain stable; tests assert exact shape.
+- `rate-limit.ts` fallback state is process-local only; not cross-instance.
+- `fas-sync.ts` intentionally preserves app-side role/permission fields while syncing FAS fields.
+- `web-push.ts` handles cryptography directly; avoid casual refactors without full test rerun.

@@ -1,28 +1,41 @@
 # AGENTS: WORKER-APP
 
-## OVERVIEW
+## DELTA SCOPE
 
-Playwright specs for worker PWA login, registration, and report submission paths with Korean UI assertions.
+Worker PWA browser suites only.
+Root e2e rules inherited.
 
-## STRUCTURE
+## CURRENT FILE SET
 
-```
-worker-app/
-├── login.spec.ts      # Auth UI, form validation, responsive and PWA checks
-├── register.spec.ts   # Registration field and flow checks
-├── posts.spec.ts      # Authenticated safety report submission path
-└── smoke.spec.ts      # Fast availability checks
-```
+- `helpers.ts` worker login/site-bootstrap/rate-limit unlock utilities
+- `smoke.spec.ts`
+- `login.spec.ts`
+- `register.spec.ts`
+- `posts.spec.ts`
+- `full-scenario-after-login.spec.ts`
+- `uiux-after-login.spec.ts`
+- `mobile-visual.spec.ts`
 
-## CONVENTIONS
+## MODULE RULES
 
-- Prefer role/text locators over brittle CSS selectors.
-- Validate Korean copy for critical auth and submission UX.
-- Handle possible auth throttling in tests without flaking entire suite.
-- Keep mobile viewport checks for high-traffic entry pages.
+- Reuse `workerLogin(page)` helper for authenticated flows.
+- Keep worker unlock/sync path through admin API helpers intact.
+- Keep Korean text assertions on login and key CTA paths.
+- Keep PWA/meta/responsive checks in login/mobile suites.
+- Keep protected-route behavior assertions tolerant to SPA timing.
 
-## ANTI-PATTERNS
+## ENV CONTRACT
 
-- No hardcoded assumptions that every protected route redirects server-side.
-- No duplicated login boilerplate when helper patterns can be extracted.
-- No fixed sleeps when auto-wait or URL waits are sufficient.
+- Worker creds from env fallbacks:
+  - `E2E_WORKER_NAME`
+  - `E2E_WORKER_PHONE`
+  - `E2E_WORKER_DOB`
+- Admin assist creds for unlock/sync:
+  - `E2E_ADMIN_USERNAME`
+  - `E2E_ADMIN_PASSWORD`
+
+## ANTI-DRIFT
+
+- Do not duplicate worker login form flow in each spec.
+- Do not remove rate-limit reset handling from helper paths.
+- Do not hardcode API domain in specs; use config/env base URL.

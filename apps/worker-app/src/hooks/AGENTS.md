@@ -1,29 +1,35 @@
 # AGENTS: HOOKS
 
-## OVERVIEW
+## PURPOSE
 
-TanStack Query hooks for worker-facing APIs. Hooks encapsulate request keys, mutation invalidation, and auth-aware request behavior.
+Worker data-access and state-adapter hooks.
+Defines query keys, mutation invalidation, auth/i18n convenience adapters.
 
-## STRUCTURE
+## KEY FILES
 
-```
-hooks/
-├── use-api.ts                # Core domain hooks (posts, points, education, actions)
-├── use-auth.ts               # Auth utility hooks tied to store/api client
-├── use-leaderboard.ts        # Ranking-specific queries
-├── use-push-subscription.ts  # Web push registration lifecycle
-└── use-translation.ts        # i18n hook adapters
-```
+| File                             | Exports                         | Scope                                                                                                 |
+| -------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `hooks/use-api.ts`               | 27 hooks                        | System status, posts, profile, points, announcements, education, attendance, actions, recommendations |
+| `hooks/use-auth.ts`              | `useAuth()`                     | Store adapter for user/auth/site/hydration/actions                                                    |
+| `hooks/use-leaderboard.ts`       | `useLeaderboard(siteId, type?)` | Points ranking query (`monthly` or `cumulative`)                                                      |
+| `hooks/use-locale.ts`            | `useLocale()`                   | I18n context adapter + locale persistence                                                             |
+| `hooks/use-push-subscription.ts` | `usePushSubscription()`         | SW push subscribe/unsubscribe state machine                                                           |
+| `hooks/use-translation.ts`       | `useTranslation()`              | Typed translator factory from i18n messages                                                           |
 
-## CONVENTIONS
+## PATTERNS
 
-- Query keys must be stable and parameterized (siteId, itemId, filters).
-- Mutations should invalidate only impacted keys, not the entire cache.
-- Use `apiFetch` wrappers for auth refresh and consistent error handling.
-- Keep hook return values UI-ready to reduce page/component boilerplate.
+- Query keys use tuple style, eg `['posts', siteId]`, `['actions', actionId]`.
+- Mutation hooks invalidate narrow keys, eg `['actions', actionId]` after image upload/delete.
+- Recommendation hooks in `use-api.ts`: `useTodayRecommendation`, `useRecommendationHistory`, `useSubmitRecommendation`.
+- `useAttendanceToday(siteId)` polling: stale/refetch each 5 minutes.
+- `useMyActions(params?)` builds URLSearchParams; key includes full `params` object.
+- `usePushSubscription()` returns `{ isSupported, isSubscribed, isLoading, error, subscribe, unsubscribe }`.
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No duplicate query keys for the same resource shape.
-- No direct state mutation in components when a mutation hook exists.
-- No direct API call from components that bypasses these hooks.
+- `use-api.ts` recommendation result types use `unknown`; consumers must narrow safely.
+- `useLocale()` and i18n context both persist `i18n-locale`.
+- `usePushSubscription()` requires authenticated state before checking existing subscription.
+- `usePushSubscription()` message strings hardcoded Korean, not translation keys.
+- `useLeaderboard()` expects endpoint payload nested in `res.data`.
+- Some pages still use direct React Query with `apiFetch` (not hook wrappers), especially `app/votes/page.tsx`.

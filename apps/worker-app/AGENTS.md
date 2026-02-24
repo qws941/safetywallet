@@ -1,61 +1,37 @@
 # AGENTS: WORKER-APP
 
-## OVERVIEW
+## PURPOSE
 
-Mobile-first safety reporting PWA for construction workers.
+Worker PWA runtime surface. Route shell + API hooks + auth store + i18n + mobile UI.
+Single-source map for `src/*` boundaries only.
 
-- **Tech Stack**: Next.js 14 (Client-only), Zustand, TanStack Query.
-- **Deployment**: Single CF Worker (static assets served via R2, `output: 'export'`).
-- **Domain**: High-frequency reporting, attendance, and education (Korean UI).
+## KEY FILES
 
-## STRUCTURE
+| Area           | File                           | Why                                                           |
+| -------------- | ------------------------------ | ------------------------------------------------------------- |
+| Router root    | `src/app/layout.tsx`           | Metadata, viewport, provider mount                            |
+| Route redirect | `src/app/page.tsx`             | Hydration-aware `/login/` vs `/home/` redirect                |
+| Provider stack | `src/components/providers.tsx` | `QueryClientProvider -> I18nProvider -> AuthGuard -> Toaster` |
+| API client     | `src/lib/api.ts`               | Auth header, 401 refresh mutex, offline queue                 |
+| Auth state     | `src/stores/auth.ts`           | Persisted tokens/user/site + hydration flag                   |
+| Domain hooks   | `src/hooks/use-api.ts`         | Posts, points, education, actions, recommendations            |
+| Locale runtime | `src/i18n/context.tsx`         | Locale state, message loading, persistence                    |
 
-```
-src/
-├── app/                # 16 pages (ALL 'use client')
-│   ├── layout.tsx      # PWA Metadata & Providers
-│   ├── login/          # AceTime/Phone dual-auth
-│   ├── education/      # Quizzes, TBM, education hub
-│   ├── posts/          # Safety reports (R2 image uploads)
-│   └── points/         # Leaderboard & rewards
-├── components/         # Mobile UI (BottomNav, QRScanner)
-├── hooks/              # 6 TanStack Query hooks
-├── stores/             # auth.ts (Zustand + persist + _hasHydrated)
-└── lib/                # apiFetch (token refresh + offline queue), image-compress
-```
+## PATTERNS
 
-## WHERE TO LOOK
+- Route set: 16 page entries under `src/app/**/page.tsx`.
+- Top-level routes: `/`, `/home`, `/login`, `/register`, `/profile`, `/announcements`, `/posts`, `/posts/new`, `/posts/view`, `/actions`, `/actions/view`, `/points`, `/votes`, `/education`, `/education/view`, `/education/quiz-take`.
+- Page shell pattern: `Header` + content + `BottomNav` for authenticated screens.
+- Data pattern: hooks in `src/hooks/*`; no page-level data client singleton.
+- Auth pattern: `AuthGuard` handles public path allowlist + query cache clear on logout.
+- Post creation pattern: `useCreatePost` for record; `apiFetch` multipart for image upload.
+- Offline pattern: `apiFetch(..., { offlineQueue: true })` + auto flush on `online` event.
 
-| Task            | Location                                   |
-| :-------------- | :----------------------------------------- |
-| Add new page    | `src/app/` (Must have `'use client'`)      |
-| API Integration | `src/hooks/use-api.ts` (Shared hooks)      |
-| Auth logic      | `src/stores/auth.ts` + `src/lib/api.ts`    |
-| Image handling  | `src/lib/image-compress.ts` (Canvas-based) |
-| QR Scanning     | `src/components/qr-scanner.tsx`            |
+## GOTCHAS
 
-## SUBMODULE DOCS
-
-- `src/lib/AGENTS.md`: API client, offline queue, token refresh, image compression
-- `src/app/AGENTS.md`: Page-router structure, guarded routes, and page-level patterns
-- `src/hooks/AGENTS.md`: TanStack Query conventions and API hook invalidation rules
-- `src/components/AGENTS.md`: Reusable mobile UI, guard components, and provider boundaries
-- `src/stores/AGENTS.md`: Persisted auth/session state and hydration constraints
-- `src/i18n/AGENTS.md`: Locale loading, translation keys, and fallback rules
-
-## CONVENTIONS
-
-- **Mobile-First**: Use `pb-nav` and `safe-bottom` for notch/navbar padding.
-- **Static Export**: Zero RSC components. No `headers()` or `cookies()` from `next/headers`.
-- **Localization**: Pure Korean (ko-KR) strings only.
-- **State Management**: Zustand for auth; TanStack Query for server state.
-- **Image Upload**: Compress to JPEG 80%, skip if <100KB, max width 1920px.
-- **Offline Queue**: Failed submissions queued in Zustand for retry on reconnect.
-- **Push Notifications**: Web Push via service worker (sw-push.js).
-
-## ANTI-PATTERNS
-
-- **No RSC**: Do not use Server Components; static export will fail.
-- **No Native Dialogs**: Use `unsafe-warning-modal.tsx` or similar shadcn primitives.
-- **No Manual Token Storage**: Use `useAuth` hook/store to manage tokens.
-- **Avoid Loose Casts**: Specifically check `app/points/page.tsx:180` for history array casts.
+- `src/app/login/page.tsx` thin wrapper; real logic in `src/app/login/login-client.tsx`.
+- Redirects use `window.location.replace` with trailing slash targets (`/login/`, `/home/`).
+- Offline queue key still `safework2_offline_queue`; not `safetywallet_*`.
+- Draft key in new post page uses `safework2_post_draft_*` prefix.
+- `src/hooks/use-api.ts` includes recommendation hooks, but `/votes` page currently calls `useQuery/useMutation` directly.
+- i18n config declares `ko/en/vi/zh`; loader currently imports `ko/en` only.

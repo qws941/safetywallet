@@ -1,69 +1,49 @@
 # AGENTS: HOOKS
 
-## OVERVIEW
+## PURPOSE
 
-17 domain-specific TanStack Query hooks (2.2k LOC). Each wraps API endpoints for a single domain.
+Admin data-access hooks. Scope: query/mutation wrappers, barrel boundary, site-aware gating.
 
-## STRUCTURE
+## KEY FILES
 
-| Hook                   | Lines | Domain                                      |
-| ---------------------- | ----- | ------------------------------------------- |
-| use-education-api.ts   | 531   | Course/quiz/question CRUD, progress         |
-| use-admin-api.ts       | 326   | Dashboard stats, members, announcements     |
-| use-points-api.ts      | 181   | Points balance, history, settlement         |
-| use-attendance.ts      | 158   | Attendance records, overrides               |
-| use-votes.ts           | 139   | Vote periods, candidates, results           |
-| use-fas-sync.ts        | 129   | FAS sync trigger, status                    |
-| use-recommendations.ts | 119   | Safety recommendation CRUD                  |
-| use-rewards.ts         | 118   | Reward configuration, distribution          |
-| use-posts-api.ts       | 114   | Post review, moderation, filtering          |
-| use-monitoring-api.ts  | 93    | System metrics (60s refetch interval)       |
-| use-actions-api.ts     | 82    | Corrective action tracking                  |
-| use-sync-errors.ts     | 75    | FAS sync error review, resolution           |
-| use-trends.ts          | 70    | Trend analysis, statistics                  |
-| use-sites-api.ts       | 50    | Site management                             |
-| use-stats.ts           | 24    | Dashboard statistics                        |
-| use-api.ts             | 17    | Barrel export (re-exports all domain hooks) |
-| use-api-base.ts        | 5     | Base `apiFetch` re-export                   |
+| File                            | Domain                  | Notes                                          |
+| ------------------------------- | ----------------------- | ---------------------------------------------- |
+| `use-admin-api.ts`              | dashboard/admin common  | members, announcements, approvals, memberships |
+| `use-posts-api.ts`              | posts review            | list/detail/review mutations                   |
+| `use-actions-api.ts`            | actions                 | action item CRUD                               |
+| `use-attendance.ts`             | attendance              | logs + unmatched endpoints                     |
+| `use-points-api.ts`             | points/policies         | ledger and policy mutations                    |
+| `use-education-api.ts`          | education               | contents/quizzes/questions/statutory/TBM       |
+| `use-sites-api.ts`              | site profile            | site read/update                               |
+| `use-monitoring-api.ts`         | operations metrics      | summary/metrics/top-errors + 60s polling       |
+| `use-rewards.ts`                | reward rankings/history | revoke and ranking reads                       |
+| `use-fas-sync.ts`               | FAS integration ops     | status/search/sync/debug views                 |
+| `use-sync-errors.ts`            | sync error review       | error list/update                              |
+| `use-votes.ts`                  | vote domain             | period/candidate/results + CSV export helper   |
+| `use-recommendations.ts`        | recommendations         | recommendation workflows                       |
+| `use-trends.ts`, `use-stats.ts` | analytics helpers       | trend and stat retrieval                       |
+| `use-api.ts`                    | barrel exports          | compatibility export set                       |
+| `use-api-base.ts`               | `apiFetch` re-export    | shared import boundary                         |
 
-## PATTERN
+## PATTERNS
 
-```typescript
-// Every domain hook follows this structure:
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+| Pattern                     | Applied in     | Notes                                    |
+| --------------------------- | -------------- | ---------------------------------------- |
+| Site-aware `enabled` guards | most hooks     | wait for `currentSiteId` before querying |
+| Mutation invalidation       | mutation hooks | invalidate targeted admin query roots    |
+| Typed response unwrapping   | domain hooks   | normalize API payload shapes for pages   |
 
-export function useDomainList(siteId: string) {
-  return useQuery({
-    queryKey: ["admin", "domain", siteId],
-    queryFn: () => apiFetch("/admin/domain", { params: { siteId } }),
-  });
-}
+## GOTCHAS
 
-export function useDomainMutation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data) =>
-      apiFetch("/admin/domain", { method: "POST", body: data }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "domain"] }),
-  });
-}
-```
+- `use-api.ts` barrel exports 12 modules; it omits `use-votes.ts`, `use-recommendations.ts`, `use-trends.ts`, `use-stats.ts`.
+- `use-monitoring-api.ts` query keys are `monitoring/*` (no `admin` prefix), unlike most hooks.
+- `use-votes.ts` includes direct `fetch` in CSV export helper for blob download; keep this edge path isolated.
 
-## SUBMODULE DOCS
+## TEST DOC LINK
 
-- `__tests__/AGENTS.md` documents hook-test conventions (renderHook wrappers, store selector mocks, query-key and invalidation assertions).
+- `__tests__/AGENTS.md` documents hook test harness, mocks, and invalidation assertions.
 
-## CONVENTIONS
+## PARENT DELTA
 
-- **Query keys**: `["admin", "domain", ...params]` — always namespaced with `"admin"`.
-- **Barrel export**: Import via `use-api.ts` for backward compat, or directly from domain hook.
-- **Refetch intervals**: Only `use-monitoring-api.ts` uses auto-refetch (60s). All others on-demand.
-- **Never `fetch()` directly** — always through `apiFetch` from `@/lib/api`.
-
-## ADDING A HOOK
-
-1. Create `src/hooks/use-{domain}-api.ts`
-2. Follow query key pattern: `["admin", "{domain}", ...params]`
-3. Export from `use-api.ts` barrel
-4. Use `useMutation` with `onSuccess` invalidation
+- Parent admin doc only names hooks area.
+- This file defines actual module inventory and barrel/non-barrel boundaries.

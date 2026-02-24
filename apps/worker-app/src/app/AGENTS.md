@@ -1,37 +1,41 @@
 # AGENTS: APP
 
-## OVERVIEW
+## PURPOSE
 
-App Router pages for field users. This layer coordinates mobile UX flows, route guards, and page-level data loading.
+Route-level composition for worker flows.
+Owns page topology, page shell usage, route redirect behavior.
 
-## STRUCTURE
+## KEY FILES
 
-```
-app/
-├── layout.tsx          # Root metadata, Providers mount, lang=ko
-├── login/ register/    # Auth entry flows
-├── home/ profile/      # Core worker dashboard pages
-├── posts/ actions/     # Reporting and corrective-action flows
-└── education/ votes/   # Learning and participation features
-```
+| Route                  | File                               | Notes                                              |
+| ---------------------- | ---------------------------------- | -------------------------------------------------- |
+| `/`                    | `app/page.tsx`                     | Hydration-aware redirect to login/home             |
+| `/login`               | `app/login/page.tsx`               | Wrapper only                                       |
+| `/login` logic         | `app/login/login-client.tsx`       | Credential submit + `/auth/me` site sync           |
+| `/home`                | `app/home/page.tsx`                | Posts + points + leaderboard summary               |
+| `/posts`               | `app/posts/page.tsx`               | Infinite query + status filter chips               |
+| `/posts/new`           | `app/posts/new/page.tsx`           | Draft autosave + image compression + warning modal |
+| `/actions`             | `app/actions/page.tsx`             | Action list by status                              |
+| `/actions/view`        | `app/actions/view/page.tsx`        | Status update + image upload/delete                |
+| `/education`           | `app/education/page.tsx`           | Contents + quizzes + TBM tabs                      |
+| `/education/quiz-take` | `app/education/quiz-take/page.tsx` | Attempt submit + result rendering                  |
+| `/votes`               | `app/votes/page.tsx`               | Recommendation submit + history toggle             |
+| Root shell             | `app/layout.tsx`                   | Metadata/viewport/html lang/provider mount         |
 
-## WHERE TO LOOK
+## PATTERNS
 
-| Task                         | File                     | Notes                                               |
-| ---------------------------- | ------------------------ | --------------------------------------------------- |
-| Add a new page               | `app/{feature}/page.tsx` | Keep `'use client'` on interactive pages            |
-| Adjust global metadata       | `app/layout.tsx`         | PWA metadata and viewport controls live here        |
-| New protected route behavior | feature page + guards    | Auth/attendance gates handled via shared components |
+- 16 page files under `app/**/page.tsx`; all include `'use client'`.
+- Auth-required screens compose `Header` + content + `BottomNav`.
+- Detail pages use query params (`/posts/view?id=...`, `/actions/view?id=...`, `/education/view?id=...`).
+- `/register` hard-redirects to `/login/`; no registration form route active.
+- Redirect behavior uses `window.location.replace` to avoid back-stack loops.
+- Page data loading mostly via hooks in `src/hooks/use-api.ts`.
 
-## CONVENTIONS
+## GOTCHAS
 
-- Worker pages are client-first and Korean-localized.
-- Route-level data comes from hooks in `src/hooks/`, not direct network calls.
-- Keep page components thin; move reusable UI to `src/components/`.
-- Preserve static-export compatibility for CF Pages.
-
-## ANTI-PATTERNS
-
-- No direct `fetch()` in page components.
-- No browser `alert()`/`confirm()` dialogs.
-- No page-local token storage logic; use Zustand auth store + API client.
+- `/votes` page bypasses recommendation hooks from `use-api.ts`; uses inline React Query calls.
+- `login-client.tsx` uses direct `fetch` to `/auth/login` and `/auth/me`, not `apiFetch`.
+- `posts/new` keeps local draft for 24h via `safework2_post_draft_<siteId>`.
+- `posts/new` uploads images after post create; post success can coexist with partial image failure.
+- `education/page.tsx` gates content items with `AttendanceGuard`.
+- `layout.tsx` sets `maximumScale: 1` and `userScalable: false`; preserve mobile UX intent.

@@ -1,28 +1,46 @@
 # AGENTS: ADMIN-APP
 
-## OVERVIEW
+## DELTA SCOPE
 
-Playwright coverage for admin dashboard flows: auth, navigation, moderation, attendance, monitoring, and settings.
+Admin-app browser suites only.
+Root `e2e/AGENTS.md` covers shared policies.
 
-## STRUCTURE
+## CURRENT FILE SET
 
-```
-admin-app/
-├── admin.setup.ts      # Auth bootstrap project
-├── helpers.ts          # adminLogin, navigateViaSidebar, SIDEBAR_ITEMS
-├── smoke.spec.ts       # Critical path checks (@smoke)
-└── *.spec.ts           # Feature suites (posts, members, points, etc.)
-```
+- `admin.setup.ts` auth bootstrap, writes storage state
+- `helpers.ts` `adminLogin`, `expectAdminShellVisible`, sidebar helpers
+- `smoke.spec.ts`
+- `login.spec.ts`
+- `auth.spec.ts`
+- `dashboard.spec.ts`
+- `navigation.spec.ts`
+- `pages.spec.ts`
+- `mobile-visual.spec.ts`
+- `hamburger.spec.ts`
+- `uiux-after-login.spec.ts`
+- `posts.spec.ts`
+- `members.spec.ts`
+- `attendance.spec.ts`
+- `points.spec.ts`
+- `announcements.spec.ts`
+- `education.spec.ts`
+- `education-registration.spec.ts`
+- `rewards.spec.ts`
+- `settings.spec.ts`
+- `monitoring.spec.ts`
+- `actions.spec.ts`
+- `audit.spec.ts`
 
-## CONVENTIONS
+## MODULE RULES
 
-- Use `adminLogin(page)` helper to respect rate-limit retry behavior.
-- Keep URL/base config from `playwright.config.ts`; avoid hardcoding host URLs in specs.
-- Reuse `SIDEBAR_ITEMS` for navigation assertions when possible.
-- Favor locator-driven waits over manual timeouts.
+- Reuse `adminLogin(page)` for authenticated flows.
+- Treat `AdminRateLimitError` as known environment blocker signal.
+- Keep sidebar coverage aligned with `SIDEBAR_ITEMS` export.
+- Keep Korean UI assertions (`로그인`, labels) stable.
+- Keep unauthenticated checks explicit in smoke/login suites.
 
-## ANTI-PATTERNS
+## ANTI-DRIFT
 
-- No duplicated login routines in each spec; use helper/setup project.
-- No brittle selectors tied to incidental DOM shape.
-- No backend mocking for admin E2E; tests run against live endpoints.
+- Do not duplicate auth bootstrap outside `admin.setup.ts` or helper.
+- Do not hardcode absolute domains inside specs.
+- Do not replace locator-based waits with fixed sleeps.

@@ -1,34 +1,33 @@
 # AGENTS: DURABLE-OBJECTS
 
-## OVERVIEW
+## PURPOSE
 
-Cloudflare Durable Objects for stateful coordination. Current usage centers on rate limiting and OTP lock windows.
+Stateful coordination runtime for rate limiting.
+Current scope: single Durable Object class `RateLimiter`.
 
-## STRUCTURE
+## KEY FILES
 
-```
-durable-objects/
-├── RateLimiter.ts   # DO class handling request/OTP rate limits
-└── __tests__/       # Behavior and edge-case tests
-```
+| File                            | Role                               | Current Facts                                                                                       |
+| ------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `RateLimiter.ts`                | DO request handler + state machine | Supports actions: `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`. |
+| `__tests__/RateLimiter.test.ts` | behavior verification              | Covers generic limiter windows plus OTP hourly/daily limit behavior.                                |
 
-## WHERE TO LOOK
+## RUNTIME SNAPSHOT
 
-| Task                          | File             | Notes                                       |
-| ----------------------------- | ---------------- | ------------------------------------------- |
-| Adjust throttling behavior    | `RateLimiter.ts` | Keep compatibility with middleware contract |
-| Add a new action path         | `RateLimiter.ts` | Extend existing action-dispatch shape       |
-| Validate lock-window behavior | `__tests__/`     | Cover OTP and generic limiter paths         |
+- Generic limiter state: `{ count, resetAt }` keyed by caller key.
+- Failure lock state: `{ failures, lockedUntil }` for OTP login lock window.
+- OTP limiter state: hourly + daily counters with separate reset timestamps.
+- Cleanup alarm runs every 7 days; prunes stale storage entries.
 
-## CONVENTIONS
+## PATTERNS
 
-- Keep object state serializable and version-safe.
-- Preserve distinct paths for generic API limits and OTP-specific limits.
-- Return stable JSON response envelopes so middleware callers remain compatible.
-- Prefer explicit constants for windows/thresholds over inline literals.
+- Action dispatch in `fetch()` uses strict POST JSON payload with discriminated `action`.
+- Response payloads stay minimal/stable for middleware compatibility.
+- OTP limits: hourly 5, daily 10, lock duration 15 minutes.
+- Unknown action and invalid payload return 400, not silent no-op.
 
-## ANTI-PATTERNS
+## GOTCHAS/WARNINGS
 
-- No in-memory assumptions outside DO storage semantics.
-- No breaking changes to action names without middleware updates.
-- No bypass path that skips lock-state updates on failure cases.
+- Changing action names requires matching updates in middleware DO client code.
+- Storage keys include `otp:{key}` namespace for OTP counters; preserve format.
+- `constructor` schedules cleanup alarm on first access via `blockConcurrencyWhile`.

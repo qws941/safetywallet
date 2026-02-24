@@ -1,35 +1,34 @@
 # AGENTS: DB
 
-## OVERVIEW
+## PURPOSE
 
-Drizzle ORM schema and batch helpers for D1. This directory defines database contracts consumed by routes, middleware, and scheduled jobs.
+Single-source DB contract for api-worker runtime.
+Only two runtime files: schema catalog + D1 batching helper.
 
-## STRUCTURE
+## KEY FILES
 
-```
-db/
-├── schema.ts      # 33 tables, enum definitions, relations
-├── helpers.ts     # D1-safe batching helpers (100-op chunks)
-└── __tests__/     # schema/helper tests
-```
+| File         | Role                | Current Facts                                                                    |
+| ------------ | ------------------- | -------------------------------------------------------------------------------- |
+| `schema.ts`  | Full Drizzle schema | 1558 lines. 32 `sqliteTable(...)` exports. Enums + relations colocated.          |
+| `helpers.ts` | D1 batch helpers    | `dbBatch<T>()`, `dbBatchChunked()`; chunk limit constant `D1_BATCH_LIMIT = 100`. |
 
-## WHERE TO LOOK
+## TABLE GROUPS (32)
 
-| Task             | File         | Notes                                         |
-| ---------------- | ------------ | --------------------------------------------- |
-| Add/modify table | `schema.ts`  | Keep enums and columns aligned with API types |
-| Add index/unique | `schema.ts`  | Prefer explicit index names                   |
-| Bulk writes      | `helpers.ts` | Use `dbBatchChunked()` for D1 bind limits     |
+- **Identity/access:** `users`, `sites`, `siteMemberships`, `accessPolicies`, `manualApprovals`, `joinCodeHistory`, `deviceRegistrations`.
+- **Safety lifecycle:** `posts`, `postImages`, `reviews`, `actions`, `actionImages`, `disputes`, `auditLogs`, `announcements`.
+- **Points/vote/recommendation:** `pointsLedger`, `pointPolicies`, `votes`, `voteCandidates`, `votePeriods`, `recommendations`.
+- **Attendance/sync:** `attendance`, `syncErrors`, `apiMetrics`, `pushSubscriptions`.
+- **Education:** `educationContents`, `quizzes`, `quizQuestions`, `quizAttempts`, `statutoryTrainings`, `tbmRecords`, `tbmAttendees`.
 
-## CONVENTIONS
+## PATTERNS
 
-- Keep enum constants exported from `schema.ts`; route/service logic imports from DB schema.
-- Use `integer(..., { mode: "timestamp" | "boolean" })` consistently for timestamp/flag columns.
-- Add relations and indexes in the same change as table columns.
-- For large inserts/updates, use `dbBatchChunked()` to avoid D1 batch-size failures.
+- Table + indexes + relations added in same file section; no split schema fragments.
+- Date-only fields intentionally stored as epoch integer in several tables (`votePeriods`, `statutoryTrainings`, `tbmRecords`).
+- `syncErrors` + `apiMetrics` support admin monitoring/alerting flows.
+- `helpers.ts` throws only when all chunks fail; partial chunk failure returned via `BatchChunkedResult`.
 
-## ANTI-PATTERNS
+## GOTCHAS/WARNINGS
 
-- No raw SQL migrations embedded in app logic; schema lives in Drizzle definitions.
-- No table/enum changes without corresponding type parity updates in `packages/types`.
-- No unbounded batch operations against D1; chunk writes.
+- Existing comment still says "33 tables" in legacy docs; actual `sqliteTable` count is 32.
+- `taskStatusEnum` remains in file but marked deprecated; prefer `actionStatusEnum`.
+- `dbBatchChunked()` logs failures and continues; callers must inspect `failedChunks` when partial success unacceptable.

@@ -1,34 +1,41 @@
 # AGENTS: SCRIPTS
 
-## OVERVIEW
+## DELTA SCOPE
 
-Utility scripts for data migration, test seeding, and infrastructure tasks.
+Repository utility scripts in `scripts/` only.
 
-## STRUCTURE
+## CURRENT FILE SET
 
-```
-scripts/
-├── check-anti-patterns.sh  # Lint for forbidden code patterns
-├── check-wrangler-sync.js  # Verify wrangler.toml matches schema
-├── create-cf-token.sh      # Generate Cloudflare API tokens
-├── create-test-user.ts     # Seed test users (tsx)
-├── create-test-user.sql    # Test user SQL template
-├── git-preflight.sh        # Git remote/auth/push preflight
-├── hash-admin-password.ts  # Hash admin credentials (tsx)
-├── import-aceviewer.ts     # Import legacy AceViewer data (tsx)
-├── lint-naming.js          # Monorepo naming convention check
-├── migrate-s4-enums.sql    # S4 enum migration SQL
-├── scaffold-e2e-spec.js    # Generate E2E test scaffolding
-└── sync-r2.sh              # Sync R2 bucket contents
-```
+- `check-anti-patterns.sh`
+- `check-wrangler-sync.js`
+- `create-cf-token.sh`
+- `create-test-user.ts`
+- `git-preflight.sh`
+- `hash-admin-password.ts`
+- `lint-naming.js`
+- `sync-r2.sh`
 
-## CONVENTIONS
+## FILE INTENT SNAPSHOT
 
-- **TypeScript First**: Complex logic in `.ts` (run via `tsx` or `ts-node`).
-- **Shell**: Use `.sh` for simple wrappers or CI tasks.
-- **SQL**: Store raw queries in `.sql` files for reference/manual execution.
+- Anti-pattern commit guard for staged files.
+- Root/app wrangler binding sync guard.
+- Cloudflare token bootstrap helper (manual/operator use).
+- Test-user SQL generator (`scripts/create-test-user.sql` output).
+- Git remote/auth/push preflight checker.
+- Admin password PBKDF2 hash generator.
+- Workspace package naming linter.
+- R2 static asset sync uploader.
 
-## ANTI-PATTERNS
+## MODULE RULES
 
-- **No Production Write**: Scripts should be read-only or strictly dev/test targeted unless explicitly named `migrate-*`.
-- **No Hardcoded Creds**: Use env vars.
+- Keep secret inputs from env only.
+- Keep scripts idempotent where practical.
+- Keep CI-called scripts non-interactive and deterministic.
+- Keep output paths explicit when scripts generate artifacts.
+- Keep shell scripts POSIX-safe enough for Ubuntu runners.
+
+## ANTI-DRIFT
+
+- Do not list deleted helper files in this doc.
+- Do not assume local-only paths in CI guard scripts.
+- Do not add plaintext credentials or tokens to script defaults.

@@ -1,27 +1,39 @@
 # AGENTS: ATTENDANCE
 
-## OVERVIEW
+## PURPOSE
 
-Attendance management surfaces: daily records, unmatched records, and FAS sync troubleshooting views.
+Attendance admin module. Scope: logs, unmatched records, FAS sync diagnostics.
 
-## WHERE TO LOOK
+## KEY FILES
 
-| Task                      | File                    | Notes                                   |
-| ------------------------- | ----------------------- | --------------------------------------- |
-| Main attendance dashboard | `page.tsx`              | Tab entry point for attendance views    |
-| FAS sync operations       | `sync/page.tsx`         | Manual sync + status checks             |
-| Resolve unmatched records | `unmatched/page.tsx`    | Record matching and reconciliation flow |
-| Shared helpers            | `attendance-helpers.ts` | Date/range and table shaping helpers    |
+| File                                 | Role                   | Notes                                             |
+| ------------------------------------ | ---------------------- | ------------------------------------------------- |
+| `page.tsx`                           | primary page           | tab switch (`logs`/`unmatched`) + anomaly filters |
+| `components/attendance-logs-tab.tsx` | logs UI                | date/result/company/anomaly filters               |
+| `components/unmatched-tab.tsx`       | unmatched UI           | record reconciliation view                        |
+| `components/attendance-stats.tsx`    | summary cards          | totals, success/fail, anomaly count               |
+| `attendance-helpers.ts`              | helper layer           | KST hour + date formatting                        |
+| `sync/page.tsx`                      | sync dashboard         | health normalization + card composition           |
+| `sync/components/*`                  | sync widgets           | manual sync, search, errors, logs                 |
+| `sync/sync-helpers.ts`               | sync formatter helpers | status/date formatting                            |
+| `unmatched/page.tsx`                 | deep-link page         | stand-alone unmatched table route                 |
+| `error.tsx`                          | feature error UI       | attendance-only fallback                          |
 
-## CONVENTIONS
+## PATTERNS
 
-- Keep UI as tab-driven workflows with clear loading/error states.
-- Use domain hooks from `src/hooks/` for API operations.
-- Preserve KST-based day/month assumptions used by attendance reports.
-- Show explicit status for sync operations and partial failures.
+| Pattern                   | Applied in      | Notes                                         |
+| ------------------------- | --------------- | --------------------------------------------- |
+| In-page tab orchestration | `page.tsx`      | avoids route jump for log/unmatched switching |
+| Derived anomaly logic     | `page.tsx`      | flags early/late check-in + duplicate names   |
+| Sync health normalization | `sync/page.tsx` | accepts `up/ok/healthy/0/empty` as healthy    |
 
-## ANTI-PATTERNS
+## GOTCHAS
 
-- No direct `fetch()` from page components.
-- No hidden retries for sync failures; surface retry intent in UI.
-- No attendance business-rule duplication outside shared helpers/hooks.
+- `useAttendanceLogs` currently called with `limit=2000`; heavy payload is intentional for admin filtering.
+- `attendance/unmatched/page.tsx` and unmatched tab overlap; both must remain aligned.
+- Date logic assumes 5AM KST day boundary via helper utilities.
+
+## PARENT DELTA
+
+- Parent app doc covers route tree only.
+- This file adds attendance-specific component/helper contracts and sync-card map.

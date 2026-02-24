@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE: SAFETYWALLET
 
-**Generated:** 2026-02-23 17:19:00 KST
-**Commit:** 5bd639a
+**Generated:** 2026-02-24 19:18:00 KST
+**Commit:** 05e51c4
 **Branch:** master
 
 ## OVERVIEW
@@ -48,14 +48,7 @@ safetywallet/
 
 ## AGENTS HIERARCHY
 
-- Root: `AGENTS.md`
-- Ops/pipeline: `.github/AGENTS.md`, `.github/workflows/AGENTS.md`
-- App/package level: `apps/api-worker/AGENTS.md`, `apps/worker-app/AGENTS.md`, `apps/admin-app/AGENTS.md`, `packages/types/AGENTS.md`, `packages/ui/AGENTS.md`, `e2e/AGENTS.md`, `scripts/AGENTS.md`, `docs/AGENTS.md`
-- Data submodules: `apps/api-worker/migrations/AGENTS.md`, `packages/types/src/dto/AGENTS.md`, `packages/types/src/i18n/AGENTS.md`
-- API deep modules: `apps/api-worker/src/routes/AGENTS.md`, `apps/api-worker/src/routes/__tests__/AGENTS.md`, `apps/api-worker/src/routes/admin/AGENTS.md`, `apps/api-worker/src/middleware/AGENTS.md`, `apps/api-worker/src/lib/AGENTS.md`, `apps/api-worker/src/lib/__tests__/AGENTS.md`, `apps/api-worker/src/db/AGENTS.md`, `apps/api-worker/src/scheduled/AGENTS.md`, `apps/api-worker/src/validators/AGENTS.md`, `apps/api-worker/src/durable-objects/AGENTS.md`
-- Frontend deep modules: `apps/admin-app/src/app/AGENTS.md`, `apps/admin-app/src/app/attendance/AGENTS.md`, `apps/admin-app/src/app/posts/AGENTS.md`, `apps/admin-app/src/app/votes/AGENTS.md`, `apps/admin-app/src/app/education/AGENTS.md`, `apps/admin-app/src/hooks/AGENTS.md`, `apps/admin-app/src/hooks/__tests__/AGENTS.md`, `apps/admin-app/src/components/AGENTS.md`, `apps/admin-app/src/stores/AGENTS.md`, `apps/worker-app/src/lib/AGENTS.md`, `apps/worker-app/src/app/AGENTS.md`, `apps/worker-app/src/hooks/AGENTS.md`, `apps/worker-app/src/components/AGENTS.md`, `apps/worker-app/src/stores/AGENTS.md`, `apps/worker-app/src/i18n/AGENTS.md`
-- E2E deep modules: `e2e/admin-app/AGENTS.md`, `e2e/api/AGENTS.md`, `e2e/worker-app/AGENTS.md`, `e2e/cross-app/AGENTS.md`
-- Docs deep modules: `docs/requirements/AGENTS.md`
+46 files. Root → app/package level → deep modules. Each child contains only delta from parent. Discover via `find . -name AGENTS.md -not -path '*/node_modules/*'`.
 
 ## CODE MAP
 
@@ -152,6 +145,6 @@ npm run typecheck        # tsc --noEmit all packages
 - **Integration**: FAS (Foreign Attendance System) syncs via Hyperdrive (MariaDB) every 5 minutes.
 - **Scheduled Tasks**: 9 CRON jobs across 4 schedules (5-min sync, daily overdue/PII, weekly retention, monthly settlement).
 - **E2E Tests**: 1000+ lines Playwright; primary verification method. 5 projects: api, admin-setup, worker-app, admin-app, cross-app.
-- **Scale**: ~80k LOC TypeScript, 36 route modules, 33 DB tables, 10 CF bindings.
+- **Scale**: ~83k LOC TypeScript, 36 route modules, 33 DB tables, 10 CF bindings.
 - **Deployment**: Cloudflare Git Integration is the deployer. GitHub Actions workflows are verify-only (health poll → Playwright smoke).
 - **Incident Automation**: 10-min CRON health monitor auto-creates/closes GitHub Issues.
