@@ -15,7 +15,10 @@ import { signJwt } from "../lib/jwt";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import { createLogger } from "../lib/logger";
-import { fasSearchEmployeeByPhone } from "../lib/fas-mariadb";
+import {
+  fasSearchEmployeeByPhone,
+  fasCheckWorkerAttendance,
+} from "../lib/fas-mariadb";
 import { syncSingleFasEmployee, socialNoToDob } from "../lib/fas-sync";
 import { authMiddleware } from "../middleware/auth";
 import {
@@ -572,20 +575,49 @@ auth.post(
 
     const requireAttendance = c.env.REQUIRE_ATTENDANCE_FOR_LOGIN !== "false";
     if (requireAttendance) {
-      const { start, end } = getTodayRange();
-      const attendanceRecords = await db
-        .select()
-        .from(attendance)
-        .where(
-          and(eq(attendance.userId, user.id), eq(attendance.result, "SUCCESS")),
-        )
-        .limit(100);
+      let attended = false;
 
-      const attended = attendanceRecords.some((record) => {
-        const checkinTime = record.checkinAt;
-        return checkinTime && checkinTime >= start && checkinTime < end;
-      });
-
+      if (c.env.FAS_HYPERDRIVE && user.externalWorkerId) {
+        try {
+          const now = new Date();
+          const koreaTime = new Date(
+            now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+          );
+          if (koreaTime.getHours() < 5) {
+            koreaTime.setDate(koreaTime.getDate() - 1);
+          }
+          const accsDay = `${koreaTime.getFullYear()}${String(koreaTime.getMonth() + 1).padStart(2, "0")}${String(koreaTime.getDate()).padStart(2, "0")}`;
+          const fasResult = await fasCheckWorkerAttendance(
+            c.env.FAS_HYPERDRIVE,
+            user.externalWorkerId,
+            accsDay,
+          );
+          attended = fasResult.hasAttendance;
+        } catch (fasErr) {
+          logger.error("FAS realtime attendance check failed", {
+            error: fasErr instanceof Error ? fasErr.message : String(fasErr),
+          });
+          // Fail open: allow login if FAS is unreachable
+          attended = true;
+        }
+      } else {
+        // Fallback to D1 if no Hyperdrive or no externalWorkerId
+        const { start, end } = getTodayRange();
+        const attendanceRecords = await db
+          .select()
+          .from(attendance)
+          .where(
+            and(
+              eq(attendance.userId, user.id),
+              eq(attendance.result, "SUCCESS"),
+            ),
+          )
+          .limit(100);
+        attended = attendanceRecords.some((record) => {
+          const checkinTime = record.checkinAt;
+          return checkinTime && checkinTime >= start && checkinTime < end;
+        });
+      }
       if (!attended) {
         return respondWithDelay(
           error(

@@ -17,6 +17,9 @@ REQUIRE_ATTENDANCE_FOR_POST = "false"
 ELASTICSEARCH_INDEX_PREFIX = "safetywallet-logs"
 ALLOWED_ORIGINS = "https://safetywallet.jclee.me,https://admin.safetywallet.jclee.me"
 VAPID_SUBJECT = "mailto:admin@safetywallet.jclee.me"
+FAS_DB_NAME = "mdidev"
+FAS_SITE_CD = "10"
+FAS_SITE_NAME = "송도세브란스"
 
 # Required secrets — use .dev.vars for local dev, `wrangler secret put <NAME>` for production:
 #   JWT_SECRET          — JWT signing key
@@ -109,6 +112,9 @@ ELASTICSEARCH_URL = "http://192.168.50.105:9200"
 ELASTICSEARCH_INDEX_PREFIX = "safetywallet-logs"
 ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:3001"
 VAPID_SUBJECT = "mailto:admin@safetywallet.jclee.me"
+FAS_DB_NAME = "mdidev"
+FAS_SITE_CD = "10"
+FAS_SITE_NAME = "송도세브란스"
 
 # Required secrets — use .dev.vars for local dev, `wrangler secret put <NAME> --env dev` for staging:
 #   JWT_SECRET / HMAC_SECRET / ENCRYPTION_KEY / ALERT_WEBHOOK_URL / FAS_SYNC_SECRET

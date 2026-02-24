@@ -17,19 +17,34 @@ export interface FasSource {
 }
 
 /** Hyperdrive connects to this database - queries to it don't need qualification */
-const HYPERDRIVE_DB = "mdidev";
+let HYPERDRIVE_DB = "mdidev";
 
 /** All configured FAS data sources. First entry is the default. */
-export const FAS_SOURCES: readonly FasSource[] = [
+export let FAS_SOURCES: readonly FasSource[] = [
   {
     dbName: "mdidev",
     siteCd: "10",
     d1SiteName: "송도세브란스",
     workerIdPrefix: "",
   },
-] as const;
+];
 
-export const DEFAULT_FAS_SOURCE: FasSource = FAS_SOURCES[0];
+export let DEFAULT_FAS_SOURCE: FasSource = FAS_SOURCES[0];
+
+/** Initialize FAS config from environment variables (removes hardcoding) */
+export function initFasConfig(env: {
+  FAS_DB_NAME?: string;
+  FAS_SITE_CD?: string;
+  FAS_SITE_NAME?: string;
+}): void {
+  const dbName = env.FAS_DB_NAME ?? "mdidev";
+  const siteCd = env.FAS_SITE_CD ?? "10";
+  const siteName = env.FAS_SITE_NAME ?? "송도세브란스";
+
+  HYPERDRIVE_DB = dbName;
+  FAS_SOURCES = [{ dbName, siteCd, d1SiteName: siteName, workerIdPrefix: "" }];
+  DEFAULT_FAS_SOURCE = FAS_SOURCES[0];
+}
 
 export function resolveFasSource(dbName?: string | null): FasSource {
   if (!dbName) return DEFAULT_FAS_SOURCE;

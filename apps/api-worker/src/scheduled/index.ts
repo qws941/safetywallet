@@ -30,6 +30,7 @@ import {
   fasGetEmployeesBatch,
   fasGetDailyAttendance,
   testConnection as testFasConnection,
+  initFasConfig,
   type FasEmployee,
 } from "../lib/fas-mariadb";
 import {
@@ -1674,6 +1675,7 @@ async function runScheduled(
   controller: ScheduledController,
   env: Env,
 ): Promise<void> {
+  initFasConfig(env);
   const trigger = controller.cron;
   log.info("Scheduled trigger", { trigger });
 
@@ -1781,11 +1783,6 @@ async function runScheduled(
         ),
         runMetricsAlertCheck(env).catch((err: unknown) => {
           log.error("Metrics alert check failed", {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }),
-        runFasAttendanceSync(env).catch((err: unknown) => {
-          log.error("FAS attendance sync failed", {
             error: err instanceof Error ? err.message : String(err),
           });
         }),

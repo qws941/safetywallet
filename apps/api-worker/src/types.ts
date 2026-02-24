@@ -39,6 +39,9 @@ export interface Env {
   FAS_HYPERDRIVE?: HyperdriveBinding;
   FAS_COMPANY_ID?: string;
   FAS_SYNC_SECRET?: string;
+  FAS_DB_NAME?: string;
+  FAS_SITE_CD?: string;
+  FAS_SITE_NAME?: string;
   // AceTime R2 bucket for photos + DB
   ACETIME_BUCKET?: R2Bucket;
   // Admin credentials

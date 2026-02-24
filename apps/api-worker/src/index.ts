@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 import { drizzle } from "drizzle-orm/d1";
-import { fasGetAllEmployeesPaginated } from "./lib/fas-mariadb";
+import { fasGetAllEmployeesPaginated, initFasConfig } from "./lib/fas-mariadb";
 import {
   syncFasEmployeesToD1,
   deactivateRetiredEmployees,
@@ -40,6 +40,10 @@ import { createLogger } from "./lib/logger";
 const logger = createLogger("index");
 const app = new Hono<{ Bindings: Env }>();
 
+app.use("*", async (c, next) => {
+  initFasConfig(c.env);
+  await next();
+});
 app.use("*", securityHeaders);
 app.use("*", requestLoggerMiddleware);
 app.use("*", analyticsMiddleware);
