@@ -1,12 +1,15 @@
 import { Hono } from "hono";
+import { drizzle } from "drizzle-orm/d1";
+import { and, desc, eq, gte } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { success, error } from "../lib/response";
 import { processImageForPrivacy, isJpegImage } from "../lib/image-privacy";
-import { computeImageHash } from "../lib/phash";
+import { computeImageHash, hammingDistance } from "../lib/phash";
 import { log, startTimer } from "../lib/observability";
 import { trackEvent } from "../middleware/analytics";
+import { postImages, posts, siteMemberships } from "../db/schema";
 import {
   classifyHazard,
   detectObjects,
@@ -25,6 +28,9 @@ const uploadRateLimit = rateLimitMiddleware({
   maxRequests: 20,
   windowMs: 60_000,
 });
+
+const DUPLICATE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+const DUPLICATE_HAMMING_THRESHOLD = 5;
 
 /**
  * Upload image with automatic EXIF stripping for privacy
@@ -46,9 +52,11 @@ app.post("/upload", uploadRateLimit, async (c) => {
   const { user } = c.get("auth");
 
   try {
+    const db = drizzle(c.env.DB);
     const formData = await c.req.formData();
     const rawFile = formData.get("file");
     const context = formData.get("context") as string | null;
+    const rawSiteId = formData.get("siteId");
 
     if (!rawFile || typeof rawFile === "string") {
       return error(c, "MISSING_FILE", "File is required", 400);
@@ -142,6 +150,98 @@ app.post("/upload", uploadRateLimit, async (c) => {
       }
     }
 
+    // Compute perceptual hash for duplicate detection
+    let imageHash: string | null = null;
+    let duplicateReference: {
+      postId: string;
+      fileUrl: string;
+      distance: number;
+    } | null = null;
+
+    const requestedSiteId =
+      typeof rawSiteId === "string" && rawSiteId.trim().length > 0
+        ? rawSiteId.trim()
+        : null;
+
+    try {
+      imageHash = await computeImageHash(publicBuffer);
+
+      if (imageHash) {
+        let effectiveSiteId = requestedSiteId;
+        if (!effectiveSiteId) {
+          const activeMemberships = await db
+            .select({ siteId: siteMemberships.siteId })
+            .from(siteMemberships)
+            .where(
+              and(
+                eq(siteMemberships.userId, user.id),
+                eq(siteMemberships.status, "ACTIVE"),
+              ),
+            )
+            .all();
+
+          if (activeMemberships.length === 1) {
+            effectiveSiteId = activeMemberships[0].siteId;
+          }
+        }
+
+        if (effectiveSiteId) {
+          const cutoff = new Date(Date.now() - DUPLICATE_LOOKBACK_MS);
+          const recentImages = await db
+            .select({
+              postId: postImages.postId,
+              fileUrl: postImages.fileUrl,
+              imageHash: postImages.imageHash,
+            })
+            .from(postImages)
+            .innerJoin(posts, eq(posts.id, postImages.postId))
+            .where(
+              and(
+                eq(posts.siteId, effectiveSiteId),
+                gte(posts.createdAt, cutoff),
+              ),
+            )
+            .orderBy(desc(posts.createdAt))
+            .limit(300)
+            .all();
+
+          for (const recent of recentImages) {
+            if (!recent.imageHash) {
+              continue;
+            }
+
+            const distance = hammingDistance(imageHash, recent.imageHash);
+            if (distance <= DUPLICATE_HAMMING_THRESHOLD) {
+              duplicateReference = {
+                postId: recent.postId,
+                fileUrl: recent.fileUrl,
+                distance,
+              };
+              break;
+            }
+          }
+        }
+      }
+    } catch (hashErr) {
+      log.warn("Image duplicate check skipped due to pHash error", {
+        action: "phash_duplicate_check_skipped",
+        userId: user.id,
+        metadata: {
+          filename,
+          error: hashErr instanceof Error ? hashErr.message : "unknown",
+        },
+      });
+    }
+
+    if (duplicateReference) {
+      return error(
+        c,
+        "DUPLICATE_IMAGE",
+        `Near-duplicate image found in post ${duplicateReference.postId}`,
+        409,
+      );
+    }
+
     await c.env.R2.put(filename, publicBuffer, {
       httpMetadata: {
         contentType: file.type,
@@ -155,21 +255,6 @@ app.post("/upload", uploadRateLimit, async (c) => {
         "processed-size": String(publicBuffer.byteLength),
       },
     });
-
-    // Compute perceptual hash for duplicate detection
-    let imageHash: string | null = null;
-    try {
-      imageHash = await computeImageHash(publicBuffer);
-    } catch (hashErr) {
-      log.warn("Failed to compute image hash", {
-        action: "phash_failed",
-        userId: user.id,
-        metadata: {
-          filename,
-          error: hashErr instanceof Error ? hashErr.message : "unknown",
-        },
-      });
-    }
 
     const fileUrl = `/r2/${filename}`;
 

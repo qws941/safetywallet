@@ -12,6 +12,8 @@ import {
   posts,
   announcements,
   voteCandidates,
+  votePeriods,
+  votes,
   attendance,
 } from "../db/schema";
 import {
@@ -197,6 +199,78 @@ function chunkArray<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(i, i + size));
   }
   return chunks;
+}
+
+const VOTE_REWARD_POINTS = [50, 30, 20] as const;
+const VOTE_REWARD_REASON_CODES = [
+  "VOTE_REWARD_RANK_1",
+  "VOTE_REWARD_RANK_2",
+  "VOTE_REWARD_RANK_3",
+] as const;
+
+async function tableExists(env: Env, tableName: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+  )
+    .bind(tableName)
+    .first<{ name: string }>();
+
+  return Boolean(row?.name);
+}
+
+async function findExistingColumn(
+  env: Env,
+  tableName: string,
+  candidateColumns: string[],
+): Promise<string | null> {
+  const info = await env.DB.prepare(`PRAGMA table_info("${tableName}")`).all<{
+    name: string;
+  }>();
+  const columnSet = new Set(
+    (Array.isArray(info.results) ? info.results : []).map((col) => col.name),
+  );
+
+  for (const column of candidateColumns) {
+    if (columnSet.has(column)) {
+      return column;
+    }
+  }
+
+  return null;
+}
+
+async function deleteFromOptionalTableByAge(
+  env: Env,
+  tableName: string,
+  candidateColumns: string[],
+  cutoffDate: Date,
+): Promise<number> {
+  const exists = await tableExists(env, tableName);
+  if (!exists) {
+    return 0;
+  }
+
+  const cutoffColumn = await findExistingColumn(
+    env,
+    tableName,
+    candidateColumns,
+  );
+  if (!cutoffColumn) {
+    log.warn("Data retention table has no usable cutoff column", {
+      tableName,
+      candidateColumns,
+    });
+    return 0;
+  }
+
+  const cutoffIso = cutoffDate.toISOString();
+  const result = await env.DB.prepare(
+    `DELETE FROM "${tableName}" WHERE ("${cutoffColumn}" < ? OR datetime("${cutoffColumn}", 'unixepoch') < ?)`,
+  )
+    .bind(cutoffIso, cutoffIso)
+    .run();
+
+  return result.meta?.changes ?? 0;
 }
 
 /** @internal Exported for testing */
@@ -540,10 +614,135 @@ async function runAutoNomination(env: Env): Promise<void> {
   });
 }
 
+async function runVoteRewardDistribution(env: Env): Promise<void> {
+  if (!env.KV) {
+    log.warn("KV binding unavailable; skipping vote reward distribution");
+    return;
+  }
+
+  const lock = await acquireSyncLock(env.KV, "vote-reward-distribution", 600);
+  if (!lock.acquired) {
+    log.info("Vote reward distribution already in progress, skipping");
+    return;
+  }
+
+  const db = drizzle(env.DB);
+  const nowEpoch = Math.floor(Date.now() / 1000);
+
+  try {
+    const systemUserId = await getOrCreateSystemUser(db);
+    const completedPeriods = await db
+      .select({
+        siteId: votePeriods.siteId,
+        month: votePeriods.month,
+        endDate: votePeriods.endDate,
+      })
+      .from(votePeriods)
+      .where(lt(votePeriods.endDate, nowEpoch))
+      .all();
+
+    if (completedPeriods.length === 0) {
+      log.info("No completed vote periods for reward distribution");
+      return;
+    }
+
+    let processedPeriods = 0;
+    let skippedPeriods = 0;
+    let rewardedUsers = 0;
+    let awardedPoints = 0;
+
+    for (const period of completedPeriods) {
+      const existingReward = await db
+        .select({ id: pointsLedger.id })
+        .from(pointsLedger)
+        .where(
+          and(
+            eq(pointsLedger.siteId, period.siteId),
+            eq(pointsLedger.settleMonth, period.month),
+            sql`${pointsLedger.reasonCode} IN (${VOTE_REWARD_REASON_CODES[0]}, ${VOTE_REWARD_REASON_CODES[1]}, ${VOTE_REWARD_REASON_CODES[2]})`,
+          ),
+        )
+        .limit(1)
+        .all();
+
+      if (existingReward.length > 0) {
+        skippedPeriods += 1;
+        continue;
+      }
+
+      const winners = await db
+        .select({
+          candidateId: votes.candidateId,
+          voteCount: sql<number>`COUNT(*)`.as("voteCount"),
+        })
+        .from(votes)
+        .where(
+          and(eq(votes.siteId, period.siteId), eq(votes.month, period.month)),
+        )
+        .groupBy(votes.candidateId)
+        .orderBy(desc(sql`COUNT(*)`), votes.candidateId)
+        .limit(3)
+        .all();
+
+      if (winners.length === 0) {
+        skippedPeriods += 1;
+        continue;
+      }
+
+      const rewards = winners.map((winner, index) => {
+        const points = VOTE_REWARD_POINTS[index];
+        return {
+          userId: winner.candidateId,
+          siteId: period.siteId,
+          amount: points,
+          reasonCode: VOTE_REWARD_REASON_CODES[index],
+          reasonText: `월간 투표 ${index + 1}위 보상 (${winner.voteCount}표)`,
+          settleMonth: period.month,
+          adminId: systemUserId,
+        };
+      });
+
+      await db.insert(pointsLedger).values(rewards);
+
+      processedPeriods += 1;
+      rewardedUsers += rewards.length;
+      awardedPoints += rewards.reduce((sum, reward) => sum + reward.amount, 0);
+    }
+
+    if (processedPeriods > 0) {
+      await db.insert(auditLogs).values({
+        actorId: systemUserId,
+        action: "VOTE_REWARD_DISTRIBUTED",
+        targetType: "VOTE",
+        targetId: new Date().toISOString(),
+        reason: JSON.stringify({
+          processedPeriods,
+          skippedPeriods,
+          rewardedUsers,
+          awardedPoints,
+        }),
+        ip: "SYSTEM",
+      });
+    }
+
+    log.info("Vote reward distribution completed", {
+      totalCompletedPeriods: completedPeriods.length,
+      processedPeriods,
+      skippedPeriods,
+      rewardedUsers,
+      awardedPoints,
+    });
+  } finally {
+    await releaseSyncLock(env.KV, "vote-reward-distribution", lock.holder);
+  }
+}
+
 async function runDataRetention(env: Env): Promise<void> {
   const db = drizzle(env.DB);
   const kstNow = getKSTDate();
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
   const THREE_YEARS_MS = 3 * 365 * 24 * 60 * 60 * 1000;
+  const oneYearCutoffDate = new Date(kstNow.getTime() - ONE_YEAR_MS);
   const cutoffDate = new Date(kstNow.getTime() - THREE_YEARS_MS);
 
   log.info("Running data retention cleanup", {
@@ -567,10 +766,76 @@ async function runDataRetention(env: Env): Promise<void> {
     .where(lt(auditLogs.createdAt, cutoffDate))
     .returning({ id: auditLogs.id });
 
+  const deletedAttendanceLogs = await db
+    .delete(attendance)
+    .where(lt(attendance.createdAt, cutoffDate))
+    .returning({ id: attendance.id });
+
+  const deletedVotes = await db
+    .delete(votes)
+    .where(lt(votes.votedAt, cutoffDate))
+    .returning({ id: votes.id });
+
+  const deletedPointsLedger = await db
+    .delete(pointsLedger)
+    .where(
+      and(
+        lt(pointsLedger.createdAt, cutoffDate),
+        sql`${pointsLedger.reasonCode} != 'MONTHLY_SNAPSHOT'`,
+      ),
+    )
+    .returning({ id: pointsLedger.id });
+
+  const deletedNotifications = await deleteFromOptionalTableByAge(
+    env,
+    "notifications",
+    ["created_at", "createdAt", "sent_at", "sentAt"],
+    oneYearCutoffDate,
+  );
+
+  const deletedVoteResults = await deleteFromOptionalTableByAge(
+    env,
+    "vote_results",
+    ["created_at", "createdAt", "calculated_at", "calculatedAt"],
+    cutoffDate,
+  );
+
+  const deletedAttendanceLogsLegacy = await deleteFromOptionalTableByAge(
+    env,
+    "attendance_logs",
+    ["created_at", "createdAt", "checkin_at", "checkinAt"],
+    cutoffDate,
+  );
+
+  const staleImageKeys: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const listed = await env.R2.list({ cursor });
+    for (const object of listed.objects) {
+      if (object.uploaded < cutoffDate) {
+        staleImageKeys.push(object.key);
+      }
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  for (const keyChunk of chunkArray(staleImageKeys, 100)) {
+    if (keyChunk.length > 0) {
+      await env.R2.delete(keyChunk);
+    }
+  }
+
   log.info("Deleted data retention entries", {
     actions: deletedActions.length,
     posts: deletedPosts.length,
     auditLogs: deletedAuditLogs.length,
+    attendanceLogs: deletedAttendanceLogs.length,
+    votes: deletedVotes.length,
+    voteResults: deletedVoteResults,
+    pointsLedger: deletedPointsLedger.length,
+    notifications: deletedNotifications,
+    attendanceLogsLegacy: deletedAttendanceLogsLegacy,
+    r2Images: staleImageKeys.length,
   });
 
   await db.insert(auditLogs).values({
@@ -583,6 +848,13 @@ async function runDataRetention(env: Env): Promise<void> {
       deletedActions: deletedActions.length,
       deletedPosts: deletedPosts.length,
       deletedAuditLogs: deletedAuditLogs.length,
+      deletedAttendanceLogs: deletedAttendanceLogs.length,
+      deletedVotes: deletedVotes.length,
+      deletedVoteResults,
+      deletedPointsLedger: deletedPointsLedger.length,
+      deletedNotifications,
+      deletedAttendanceLogsLegacy,
+      deletedR2Images: staleImageKeys.length,
     }),
     ip: "SYSTEM",
   });
@@ -1229,7 +1501,6 @@ async function runScheduled(
         }
       }
 
-      // Overdue action check and PII cleanup are independent — run in parallel
       await Promise.all([
         withRetry(() => runOverdueActionCheck(env), 2, 3000).catch(
           (err: unknown) => {
@@ -1241,6 +1512,13 @@ async function runScheduled(
         withRetry(() => runPiiLifecycleCleanup(env), 2, 3000).catch(
           (err: unknown) => {
             log.error("PII cleanup failed", {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          },
+        ),
+        withRetry(() => runVoteRewardDistribution(env), 2, 3000).catch(
+          (err: unknown) => {
+            log.error("Vote reward distribution failed", {
               error: err instanceof Error ? err.message : String(err),
             });
           },
