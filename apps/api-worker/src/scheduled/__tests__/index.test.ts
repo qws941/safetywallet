@@ -230,17 +230,17 @@ describe("scheduled helpers", () => {
         {
           timestamp: "2026-02-20T02:03:04.567Z",
           correlationId: "corr-123",
-          syncType: "FAS_ATTENDANCE",
-          errorCode: "FAS_ATTENDANCE_SYNC_FAILED",
-          errorMessage: "attendance down",
-          lockName: "fas-attendance",
+          syncType: "FAS_WORKER",
+          errorCode: "FAS_WORKER_SYNC_FAILED",
+          errorMessage: "worker down",
+          lockName: "fas-full",
         },
       );
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       const [url, init] = fetchSpy.mock.calls[0];
       expect(String(url)).toBe(
-        "https://elastic.example/safetywallet-logs-2026.02.20/_doc/FAS_ATTENDANCE-corr-123",
+        "https://elastic.example/safetywallet-logs-2026.02.20/_doc/FAS_WORKER-corr-123",
       );
       expect(init?.method).toBe("PUT");
 
@@ -248,8 +248,8 @@ describe("scheduled helpers", () => {
         metadata: { correlationId: string; eventId: string; lockName: string };
       };
       expect(body.metadata.correlationId).toBe("corr-123");
-      expect(body.metadata.eventId).toBe("FAS_ATTENDANCE-corr-123");
-      expect(body.metadata.lockName).toBe("fas-attendance");
+      expect(body.metadata.eventId).toBe("FAS_WORKER-corr-123");
+      expect(body.metadata.lockName).toBe("fas-full");
     });
 
     it("uses overridden Elasticsearch index prefix when provided", async () => {
@@ -325,7 +325,6 @@ describe("scheduled orchestrators", () => {
   const mockAcquireSyncLock = vi.fn();
   const mockReleaseSyncLock = vi.fn();
   const mockFasGetUpdatedEmployees = vi.fn();
-  const mockFasGetDailyAttendance = vi.fn();
   const mockFasGetEmployeesBatch = vi.fn();
   const mockTestFasConnection = vi.fn();
   const mockSyncFasEmployeesToD1 = vi.fn();
@@ -458,9 +457,8 @@ describe("scheduled orchestrators", () => {
       mockFasGetUpdatedEmployees(...args),
     fasGetEmployeesBatch: (...args: unknown[]) =>
       mockFasGetEmployeesBatch(...args),
-    fasGetDailyAttendance: (...args: unknown[]) =>
-      mockFasGetDailyAttendance(...args),
     testConnection: (...args: unknown[]) => mockTestFasConnection(...args),
+    initFasConfig: vi.fn(),
   }));
 
   vi.doMock("../../lib/fas-sync", () => ({
@@ -653,7 +651,6 @@ describe("scheduled orchestrators", () => {
       errors: [],
     });
     mockFasGetUpdatedEmployees.mockResolvedValue([]);
-    mockFasGetDailyAttendance.mockResolvedValue([]);
     mockFasGetEmployeesBatch.mockResolvedValue(new Map());
     mockSyncSingleFasEmployee.mockResolvedValue(undefined);
     mockHmac.mockResolvedValue("hash");
@@ -753,103 +750,6 @@ describe("scheduled orchestrators", () => {
 
     await expect(runFasFullSyncWithMocks(env)).rejects.toThrow("fas down");
     expect(mockReleaseSyncLock).toHaveBeenCalledWith(env.KV, "fas-full");
-  });
-
-  it("runFasAttendanceSync syncs checkins with override, dedupe, and placeholders", async () => {
-    const { runFasAttendanceSync: runFasAttendanceSyncWithMocks } =
-      await import("../index");
-    state.selectPlans.push(
-      { get: { id: "system" } },
-      { all: [{ id: "u1", externalWorkerId: "E-1" }] },
-      {
-        all: [
-          { id: "u1", externalWorkerId: "E-1" },
-          { id: "u2", externalWorkerId: "E-2" },
-        ],
-      },
-      { all: [{ id: "site-a" }, { id: "site-b" }] },
-      {
-        all: [
-          { userId: "u1", siteId: "site-b", joinedAt: "2026-02-20T00:00:00Z" },
-          { userId: "u2", siteId: "site-a", joinedAt: "2026-02-19T00:00:00Z" },
-        ],
-      },
-    );
-
-    mockFasGetDailyAttendance.mockResolvedValue([
-      { emplCd: "E-1", accsDay: "20260220", inTime: "0900" },
-      { emplCd: "E-1", accsDay: "20260220", inTime: "0830" },
-      { emplCd: "E-2", accsDay: "20260220", inTime: "0815" },
-      { emplCd: "E-3", accsDay: "20260220", inTime: "9999" },
-    ]);
-
-    const env = buildEnv({
-      FAS_HYPERDRIVE: {
-        connectionString: "conn",
-        host: "host",
-        port: 3306,
-        user: "user",
-        password: "pw",
-        database: "db",
-      },
-    });
-
-    await runFasAttendanceSyncWithMocks(env, "20260220");
-
-    expect(mockFasGetDailyAttendance).toHaveBeenCalledWith(
-      env.FAS_HYPERDRIVE,
-      "20260220",
-      "10",
-    );
-    expect(mockDbBatchChunked).toHaveBeenCalled();
-    expect(mockReleaseSyncLock).toHaveBeenCalledWith(env.KV, "fas-attendance");
-  });
-
-  it("runFasAttendanceSync exits when no checkins are present", async () => {
-    const { runFasAttendanceSync: runFasAttendanceSyncWithMocks } =
-      await import("../index");
-    state.selectPlans.push({ get: { id: "system" } });
-    mockFasGetDailyAttendance.mockResolvedValue([
-      { emplCd: "E-1", accsDay: "20260220", inTime: "0000" },
-      { emplCd: "E-2", accsDay: "20260220", inTime: "" },
-    ]);
-
-    const env = buildEnv({
-      FAS_HYPERDRIVE: {
-        connectionString: "conn",
-        host: "host",
-        port: 3306,
-        user: "user",
-        password: "pw",
-        database: "db",
-      },
-    });
-
-    await runFasAttendanceSyncWithMocks(env);
-
-    expect(mockDbBatchChunked).not.toHaveBeenCalled();
-    expect(mockReleaseSyncLock).toHaveBeenCalledWith(env.KV, "fas-attendance");
-  });
-
-  it("runFasAttendanceSync skips when attendance lock is not acquired", async () => {
-    const { runFasAttendanceSync: runFasAttendanceSyncWithMocks } =
-      await import("../index");
-    mockAcquireSyncLock.mockResolvedValue({ acquired: false });
-    const env = buildEnv({
-      FAS_HYPERDRIVE: {
-        connectionString: "conn",
-        host: "host",
-        port: 3306,
-        user: "user",
-        password: "pw",
-        database: "db",
-      },
-    });
-
-    await runFasAttendanceSyncWithMocks(env, "20260220");
-
-    expect(mockFasGetDailyAttendance).not.toHaveBeenCalled();
-    expect(mockReleaseSyncLock).not.toHaveBeenCalled();
   });
 
   it("scheduled routes */5 trigger to full sync branch and side jobs", async () => {

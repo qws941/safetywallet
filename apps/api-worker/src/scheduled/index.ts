@@ -28,7 +28,6 @@ import { dbBatchChunked } from "../db/helpers";
 import {
   fasGetUpdatedEmployees,
   fasGetEmployeesBatch,
-  fasGetDailyAttendance,
   testConnection as testFasConnection,
   initFasConfig,
   type FasEmployee,
@@ -55,13 +54,12 @@ import {
 import { apiMetrics } from "../db/schema";
 
 const log = createLogger("scheduled");
-const FAS_ATTENDANCE_SITE_CD = "10";
 const DEFAULT_ELASTICSEARCH_INDEX_PREFIX = "safetywallet-logs";
 
 interface SyncFailureTelemetry {
   timestamp: string;
   correlationId: string;
-  syncType: "FAS_WORKER" | "FAS_ATTENDANCE";
+  syncType: "FAS_WORKER";
   errorCode: string;
   errorMessage: string;
   lockName: string;
@@ -129,7 +127,7 @@ export async function emitSyncFailureToElk(
 }
 
 interface PersistSyncFailureOptions {
-  syncType: "FAS_WORKER" | "FAS_ATTENDANCE";
+  syncType: "FAS_WORKER";
   errorCode: string;
   errorMessage: string;
   lockName: string;
@@ -209,56 +207,12 @@ export function formatSettleMonth(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatAccsDayFromKst(kstDate: Date): string {
-  const y = kstDate.getFullYear();
-  const m = String(kstDate.getMonth() + 1).padStart(2, "0");
-  const d = String(kstDate.getDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
-}
-
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
     chunks.push(items.slice(i, i + size));
   }
   return chunks;
-}
-
-function parseFasKstCheckin(accsDay: string, inTime: string): Date | null {
-  if (!/^\d{8}$/.test(accsDay)) {
-    return null;
-  }
-
-  const hhmm = inTime.padStart(4, "0");
-  if (!/^\d{4}$/.test(hhmm)) {
-    return null;
-  }
-
-  const year = Number(accsDay.slice(0, 4));
-  const month = Number(accsDay.slice(4, 6));
-  const day = Number(accsDay.slice(6, 8));
-  const hour = Number(hhmm.slice(0, 2));
-  const minute = Number(hhmm.slice(2, 4));
-
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day) ||
-    !Number.isInteger(hour) ||
-    !Number.isInteger(minute) ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > 31 ||
-    hour < 0 ||
-    hour > 23 ||
-    minute < 0 ||
-    minute > 59
-  ) {
-    return null;
-  }
-
-  return new Date(Date.UTC(year, month - 1, day, hour - 9, minute, 0));
 }
 
 /** @internal Exported for testing */
@@ -919,289 +873,6 @@ async function runFasSyncIncremental(env: Env): Promise<void> {
     throw err;
   } finally {
     await releaseSyncLock(env.KV, "fas");
-  }
-}
-
-export async function runFasAttendanceSync(
-  env: Env,
-  accsDayOverride?: string,
-): Promise<void> {
-  if (!env.FAS_HYPERDRIVE) {
-    log.info("FAS_HYPERDRIVE not configured, skipping attendance sync");
-    return;
-  }
-
-  const lock = await acquireSyncLock(env.KV, "fas-attendance", 240);
-  if (!lock.acquired) {
-    log.info("FAS attendance sync already in progress, skipping");
-    return;
-  }
-
-  const db = drizzle(env.DB);
-  const systemUserId = await getOrCreateSystemUser(db);
-
-  try {
-    const kstNow = getKSTDate();
-    const accsDay =
-      accsDayOverride && /^\d{8}$/.test(accsDayOverride)
-        ? accsDayOverride
-        : formatAccsDayFromKst(kstNow);
-
-    const dailyAttendance = await withRetry(() =>
-      fasGetDailyAttendance(
-        env.FAS_HYPERDRIVE!,
-        accsDay,
-        FAS_ATTENDANCE_SITE_CD,
-      ),
-    );
-
-    const checkins = dailyAttendance.filter(
-      (row) => row.inTime && row.inTime !== "0000" && row.inTime.trim() !== "",
-    );
-    if (checkins.length === 0) {
-      log.info("FAS attendance sync: no checkins", { accsDay });
-      return;
-    }
-
-    const uniqueWorkerIds = [...new Set(checkins.map((row) => row.emplCd))];
-    const loadLinkedUsers = async () => {
-      const rows: { id: string; externalWorkerId: string | null }[] = [];
-      for (const workerIdChunk of chunkArray(uniqueWorkerIds, 50)) {
-        const chunkUsers = await db
-          .select({ id: users.id, externalWorkerId: users.externalWorkerId })
-          .from(users)
-          .where(
-            and(
-              eq(users.externalSystem, "FAS"),
-              inArray(users.externalWorkerId, workerIdChunk),
-              isNull(users.deletedAt),
-            ),
-          )
-          .all();
-        rows.push(...chunkUsers);
-      }
-      return rows;
-    };
-
-    let linkedUsers = await loadLinkedUsers();
-
-    const linkedWorkerIds = new Set(
-      linkedUsers
-        .map((user) => user.externalWorkerId)
-        .filter((value): value is string => Boolean(value)),
-    );
-    const missingWorkerIds = uniqueWorkerIds.filter(
-      (workerId) => !linkedWorkerIds.has(workerId),
-    );
-
-    let placeholderUsersCreated = 0;
-    if (missingWorkerIds.length > 0) {
-      const placeholderOps = missingWorkerIds.map((workerId) =>
-        db
-          .insert(users)
-          .values({
-            id: crypto.randomUUID(),
-            externalSystem: "FAS",
-            externalWorkerId: workerId,
-            name: `FAS-${workerId}`,
-            nameMasked: `FAS-${workerId}`,
-            role: "WORKER",
-          })
-          .onConflictDoNothing(),
-      );
-      try {
-        await dbBatchChunked(db, placeholderOps);
-      } catch (err) {
-        log.error("FAS attendance placeholder user batch failed", {
-          accsDay,
-          placeholderCount: placeholderOps.length,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        throw err;
-      }
-      placeholderUsersCreated = missingWorkerIds.length;
-
-      linkedUsers = await loadLinkedUsers();
-    }
-
-    const userByExternalWorkerId = new Map<string, string>();
-    for (const user of linkedUsers) {
-      if (user.externalWorkerId) {
-        userByExternalWorkerId.set(user.externalWorkerId, user.id);
-      }
-    }
-
-    const activeSites = await db
-      .select({ id: sites.id })
-      .from(sites)
-      .where(eq(sites.active, true))
-      .all();
-
-    if (activeSites.length === 0) {
-      log.info("FAS attendance sync: no active sites", { accsDay });
-      return;
-    }
-
-    const defaultSiteId = activeSites.length === 1 ? activeSites[0].id : null;
-    const fallbackSiteId = activeSites[0]?.id ?? null;
-    const userToSite = new Map<string, string>();
-
-    if (!defaultSiteId && linkedUsers.length > 0) {
-      const linkedUserIds = linkedUsers.map((u) => u.id);
-      for (const userIdChunk of chunkArray(linkedUserIds, 50)) {
-        const chunkMemberships = await db
-          .select({
-            userId: siteMemberships.userId,
-            siteId: siteMemberships.siteId,
-            joinedAt: siteMemberships.joinedAt,
-          })
-          .from(siteMemberships)
-          .where(
-            and(
-              eq(siteMemberships.status, "ACTIVE"),
-              inArray(siteMemberships.userId, userIdChunk),
-            ),
-          )
-          .orderBy(desc(siteMemberships.joinedAt))
-          .all();
-        for (const membership of chunkMemberships) {
-          if (!userToSite.has(membership.userId)) {
-            userToSite.set(membership.userId, membership.siteId);
-          }
-        }
-      }
-    }
-
-    const dedupedByWorker = new Map<string, (typeof dailyAttendance)[number]>();
-    for (const row of checkins) {
-      const existing = dedupedByWorker.get(row.emplCd);
-      if (!existing) {
-        dedupedByWorker.set(row.emplCd, row);
-        continue;
-      }
-
-      const existingTime = existing.inTime ?? "9999";
-      const nextTime = row.inTime ?? "9999";
-      if (nextTime < existingTime) {
-        dedupedByWorker.set(row.emplCd, row);
-      }
-    }
-
-    const valuesToInsert: (typeof attendance.$inferInsert)[] = [];
-    let missingUser = 0;
-    let missingSite = 0;
-    let invalidTime = 0;
-    let duplicateByWorkerCode = 0;
-
-    for (const row of dedupedByWorker.values()) {
-      if (!row.inTime) {
-        continue;
-      }
-
-      const userId = userByExternalWorkerId.get(row.emplCd);
-      if (!userId) {
-        missingUser++;
-        continue;
-      }
-
-      const siteId = defaultSiteId ?? userToSite.get(userId) ?? fallbackSiteId;
-      if (!siteId) {
-        missingSite++;
-        continue;
-      }
-
-      const checkinAt = parseFasKstCheckin(row.accsDay, row.inTime);
-      if (!checkinAt) {
-        invalidTime++;
-        continue;
-      }
-      valuesToInsert.push({
-        siteId,
-        userId,
-        externalWorkerId: row.emplCd,
-        checkinAt,
-        result: "SUCCESS",
-        source: "FAS",
-      });
-    }
-
-    duplicateByWorkerCode = Math.max(checkins.length - dedupedByWorker.size, 0);
-
-    if (valuesToInsert.length > 0) {
-      const ops = valuesToInsert.map((value) =>
-        db
-          .insert(attendance)
-          .values(value)
-          .onConflictDoUpdate({
-            target: [
-              attendance.externalWorkerId,
-              attendance.siteId,
-              attendance.checkinAt,
-            ],
-            set: {
-              userId: value.userId,
-              result: value.result,
-              source: value.source,
-            },
-          }),
-      );
-      try {
-        await dbBatchChunked(db, ops);
-      } catch (err) {
-        log.error("FAS attendance insert batch failed", {
-          accsDay,
-          attendanceCount: ops.length,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        throw err;
-      }
-    }
-
-    await db.insert(auditLogs).values({
-      actorId: systemUserId,
-      action: "ATTENDANCE_SYNCED",
-      targetType: "ATTENDANCE",
-      targetId: accsDay,
-      reason: JSON.stringify({
-        accsDay,
-        fetched: dailyAttendance.length,
-        checkins: checkins.length,
-        attemptedInsert: valuesToInsert.length,
-        duplicateByWorkerCode,
-        missingUser,
-        missingSite,
-        invalidTime,
-        placeholderUsersCreated,
-      }),
-    });
-
-    log.info("FAS attendance sync complete", {
-      accsDay,
-      fetched: dailyAttendance.length,
-      checkins: checkins.length,
-      attemptedInsert: valuesToInsert.length,
-      duplicateByWorkerCode,
-      missingUser,
-      missingSite,
-      invalidTime,
-      placeholderUsersCreated,
-    });
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    const errorCode = "FAS_ATTENDANCE_SYNC_FAILED";
-
-    log.error("FAS attendance sync failed", {
-      error: {
-        name: "SyncFailureError",
-        message: errorMessage,
-      },
-      errorCode,
-      syncType: "FAS_ATTENDANCE",
-    });
-
-    throw err;
-  } finally {
-    await releaseSyncLock(env.KV, "fas-attendance");
   }
 }
 
