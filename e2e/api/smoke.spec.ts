@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("API - Smoke Tests", () => {
-  test("health endpoint returns healthy", async ({ request }) => {
+  test("health endpoint returns healthy @smoke", async ({ request }) => {
     const response = await request.get("./health");
     expect(response.ok()).toBeTruthy();
 
@@ -10,7 +10,7 @@ test.describe("API - Smoke Tests", () => {
     expect(body.timestamp).toBeTruthy();
   });
 
-  test("auth login rejects invalid credentials", async ({ request }) => {
+  test("auth login rejects invalid credentials @smoke", async ({ request }) => {
     const response = await request.post("./auth/login", {
       data: {
         phone: "000-0000-0000",
@@ -24,14 +24,14 @@ test.describe("API - Smoke Tests", () => {
     expect(body.success).toBe(false);
   });
 
-  test("protected endpoint rejects unauthenticated request", async ({
+  test("protected endpoint rejects unauthenticated request @smoke", async ({
     request,
   }) => {
     const response = await request.get("./users/me");
     expect(response.status()).toBe(401);
   });
 
-  test("CORS headers present on preflight", async ({ request }) => {
+  test("CORS headers present on preflight @smoke", async ({ request }) => {
     const response = await request.fetch("./health", {
       method: "OPTIONS",
       headers: {
@@ -46,7 +46,7 @@ test.describe("API - Smoke Tests", () => {
     ).toBeTruthy();
   });
 
-  test("unknown route returns 404", async ({ request }) => {
+  test("unknown route returns 404 @smoke", async ({ request }) => {
     const response = await request.get("./this-route-does-not-exist");
     expect(response.status()).toBe(404);
     const body = await response.json();

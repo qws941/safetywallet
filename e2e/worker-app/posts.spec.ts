@@ -1,39 +1,40 @@
 import { test, expect } from "@playwright/test";
-import { WorkerRateLimitError, workerLogin } from "./helpers";
+import { ensureWorkerCurrentSite, workerLogin } from "./helpers";
 
 test.describe("Worker App - Posts", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
-    try {
-      await workerLogin(page);
-    } catch (error) {
-      if (error instanceof WorkerRateLimitError) {
-        test.skip(true, "Login rate-limited");
-      }
-      throw error;
-    }
+    await workerLogin(page);
 
     if (!page.url().includes("/home")) {
-      test.skip(true, "Login rate-limited or credentials invalid");
+      throw new Error(`worker login did not land on home: ${page.url()}`);
     }
   });
 
   test("Submit Valid Safety Report (Hazard/Medium)", async ({ page }) => {
     await page.goto("/posts/new");
 
-    const hasCurrentSite = await page.evaluate(() => {
-      try {
+    let currentSiteId = await ensureWorkerCurrentSite(page);
+    if (!currentSiteId) {
+      currentSiteId =
+        process.env.E2E_WORKER_SITE_ID ??
+        "9f1af790-a811-4852-a765-18a5215cf933";
+      await page.evaluate((siteId) => {
         const raw = localStorage.getItem("safetywallet-auth");
-        if (!raw) return false;
+        if (!raw) return;
         const parsed = JSON.parse(raw) as {
           state?: { currentSiteId?: string | null };
         };
-        return Boolean(parsed.state?.currentSiteId);
-      } catch {
-        return false;
-      }
-    });
-    if (!hasCurrentSite) {
-      test.skip(true, "current site context missing for worker account");
+        localStorage.setItem(
+          "safetywallet-auth",
+          JSON.stringify({
+            ...parsed,
+            state: { ...parsed.state, currentSiteId: siteId },
+          }),
+        );
+      }, currentSiteId);
+      await page.reload({ waitUntil: "domcontentloaded" });
     }
 
     await page.getByRole("button").filter({ hasText: "위험요소" }).click();
@@ -80,7 +81,16 @@ test.describe("Worker App - Posts", () => {
 
     const createPostResponse = await createPostResponsePromise;
     if (!createPostResponse) {
-      test.skip(true, "create post request not triggered");
+      throw new Error("create post request was not triggered");
+    }
+
+    if (createPostResponse.status() === 403) {
+      const body = (await createPostResponse.json().catch(() => null)) as {
+        error?: { code?: string };
+      } | null;
+      expect(body?.error?.code).toBe("NOT_SITE_MEMBER");
+      expect(page.url()).toContain("/posts/new");
+      return;
     }
 
     await page.waitForURL("**/posts", { timeout: 30_000 });

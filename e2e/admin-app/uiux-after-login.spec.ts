@@ -19,6 +19,7 @@ test.describe("Admin App - UIUX After Login", () => {
   test("covers all sidebar sections with visual records and issue log @smoke", async ({
     page,
   }) => {
+    test.setTimeout(180_000);
     await adminLogin(page);
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
 
@@ -69,7 +70,7 @@ test.describe("Admin App - UIUX After Login", () => {
       page.on("console", onConsole);
       page.on("response", onResponse);
 
-      await navigateViaSidebar(page, item.label);
+      await navigateViaSidebar(page, item.label, item.path);
       await expect(page).toHaveURL(item.urlPattern, { timeout: 20000 });
       await expect(page.locator("body")).toBeVisible();
 

@@ -1,41 +1,49 @@
 import { test, expect } from "@playwright/test";
-import { workerLogin } from "./helpers";
+import { ensureWorkerCurrentSite, workerLogin } from "./helpers";
 import { emitE2eIssueToElk } from "../shared/elk";
 
-type RouteProbe = {
+type MobileProbe = {
   route: string;
   finalUrl: string;
   criticalConsoleErrors: string[];
   failedRequests: string[];
-  transient503: string[];
+  hasHorizontalOverflow: boolean;
 };
 
-const ROUTES = [
+const AUTH_ROUTES = [
+  "/",
   "/home",
   "/posts",
+  "/posts/view",
+  "/posts/new",
   "/actions",
+  "/actions/view",
   "/votes",
   "/education",
+  "/education/view",
+  "/education/quiz-take",
   "/announcements",
   "/points",
   "/profile",
 ];
 
-test.describe("Worker App - UIUX After Login", () => {
-  test.describe.configure({ timeout: 120_000 });
+test.describe("Worker App - Mobile Visual View", () => {
+  test.describe.configure({ timeout: 180_000 });
 
-  test("covers post-login core screens with visual records and issue log @smoke", async ({
+  test("checks post-login mobile visual anomalies across all worker routes @smoke", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
     const loginResult = await workerLogin(page);
     expect(loginResult).toBe("home");
+    await ensureWorkerCurrentSite(page);
 
-    const probes: RouteProbe[] = [];
+    const probes: MobileProbe[] = [];
 
-    for (const route of ROUTES) {
+    for (const route of AUTH_ROUTES) {
       const criticalConsoleErrors: string[] = [];
       const failedRequests: string[] = [];
-      const transient503: string[] = [];
 
       const onConsole = (msg: { type: () => string; text: () => string }) => {
         if (msg.type() !== "error") return;
@@ -60,7 +68,7 @@ test.describe("Worker App - UIUX After Login", () => {
         url: () => string;
       }) => {
         const status = response.status();
-        if (status < 400) return;
+        if (status < 500) return;
         const url = response.url();
         const ignorable =
           url.includes("beacon.min.js") ||
@@ -68,10 +76,6 @@ test.describe("Worker App - UIUX After Login", () => {
           url.includes("cloudflare") ||
           url.includes("manifest");
         if (!ignorable) {
-          if (status === 503) {
-            transient503.push(`${status} ${url}`);
-            return;
-          }
           failedRequests.push(`${status} ${url}`);
         }
       };
@@ -83,9 +87,14 @@ test.describe("Worker App - UIUX After Login", () => {
       await page.waitForLoadState("domcontentloaded");
       await expect(page.locator("body")).toBeVisible();
 
-      const safeRoute = route.replace(/\//g, "_").replace(/^_/, "");
+      const hasHorizontalOverflow = await page.evaluate(() => {
+        const doc = document.documentElement;
+        return doc.scrollWidth > doc.clientWidth + 1;
+      });
+
+      const safeRoute = route.replace(/\//g, "_").replace(/^_/, "root");
       await page.screenshot({
-        path: test.info().outputPath(`worker-uiux-${safeRoute}.png`),
+        path: test.info().outputPath(`worker-mobile-visual-${safeRoute}.png`),
         fullPage: true,
       });
 
@@ -97,50 +106,34 @@ test.describe("Worker App - UIUX After Login", () => {
         finalUrl: page.url(),
         criticalConsoleErrors,
         failedRequests,
-        transient503,
+        hasHorizontalOverflow,
       });
 
       await emitE2eIssueToElk(test.info(), {
-        module: "e2e.worker.uiux",
-        message: `Worker route probe: ${route}`,
+        module: "e2e.worker.mobile.visual",
+        message: `Worker mobile visual probe: ${route}`,
         metadata: {
           route,
           finalUrl: page.url(),
           criticalConsoleErrors,
           failedRequests,
-          transient503,
+          hasHorizontalOverflow,
         },
       });
-
-      if (criticalConsoleErrors.length > 0 || failedRequests.length > 0) {
-        await test.info().attach(`worker-uiux-issue-${safeRoute}`, {
-          contentType: "application/json",
-          body: Buffer.from(
-            JSON.stringify(
-              {
-                route,
-                criticalConsoleErrors,
-                failedRequests,
-                transient503,
-              },
-              null,
-              2,
-            ),
-            "utf-8",
-          ),
-        });
-      }
     }
 
-    await test.info().attach("worker-uiux-issue-log", {
+    await test.info().attach("worker-mobile-visual-probes", {
       contentType: "application/json",
       body: Buffer.from(JSON.stringify(probes, null, 2), "utf-8"),
     });
 
-    await emitE2eIssueToElk(test.info(), {
-      module: "e2e.worker.uiux",
-      message: "Worker route UIUX probe summary",
-      metadata: { probes },
-    });
+    const anomalies = probes.filter(
+      (probe) =>
+        probe.hasHorizontalOverflow ||
+        probe.criticalConsoleErrors.length > 0 ||
+        probe.failedRequests.length > 0,
+    );
+
+    expect(anomalies).toEqual([]);
   });
 });

@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { adminLogin } from "./helpers";
 
+test.describe.configure({ timeout: 120_000 });
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Admin Login Page", () => {

@@ -1,41 +1,35 @@
 import { test, expect } from "@playwright/test";
-import { workerLogin } from "./helpers";
+import { adminLogin, SIDEBAR_ITEMS } from "./helpers";
 import { emitE2eIssueToElk } from "../shared/elk";
 
-type RouteProbe = {
-  route: string;
+type AdminMobileProbe = {
+  label: string;
+  path: string;
   finalUrl: string;
   criticalConsoleErrors: string[];
   failedRequests: string[];
-  transient503: string[];
+  hasHorizontalOverflow: boolean;
 };
 
-const ROUTES = [
-  "/home",
-  "/posts",
-  "/actions",
-  "/votes",
-  "/education",
-  "/announcements",
-  "/points",
-  "/profile",
+const ADMIN_MOBILE_ROUTES = [
+  { label: "대시보드", path: "/dashboard" },
+  ...SIDEBAR_ITEMS.map((item) => ({ label: item.label, path: item.path })),
 ];
 
-test.describe("Worker App - UIUX After Login", () => {
-  test.describe.configure({ timeout: 120_000 });
+test.describe("Admin App - Mobile Visual View", () => {
+  test.describe.configure({ timeout: 180_000 });
 
-  test("covers post-login core screens with visual records and issue log @smoke", async ({
+  test("checks mobile visual anomalies across admin sections @smoke", async ({
     page,
   }) => {
-    const loginResult = await workerLogin(page);
-    expect(loginResult).toBe("home");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await adminLogin(page);
 
-    const probes: RouteProbe[] = [];
+    const probes: AdminMobileProbe[] = [];
 
-    for (const route of ROUTES) {
+    for (const route of ADMIN_MOBILE_ROUTES) {
       const criticalConsoleErrors: string[] = [];
       const failedRequests: string[] = [];
-      const transient503: string[] = [];
 
       const onConsole = (msg: { type: () => string; text: () => string }) => {
         if (msg.type() !== "error") return;
@@ -60,18 +54,15 @@ test.describe("Worker App - UIUX After Login", () => {
         url: () => string;
       }) => {
         const status = response.status();
-        if (status < 400) return;
+        if (status < 500) return;
         const url = response.url();
         const ignorable =
           url.includes("beacon.min.js") ||
           url.includes("favicon") ||
           url.includes("cloudflare") ||
-          url.includes("manifest");
+          url.includes("manifest") ||
+          url.includes("/api/health");
         if (!ignorable) {
-          if (status === 503) {
-            transient503.push(`${status} ${url}`);
-            return;
-          }
           failedRequests.push(`${status} ${url}`);
         }
       };
@@ -79,13 +70,18 @@ test.describe("Worker App - UIUX After Login", () => {
       page.on("console", onConsole);
       page.on("response", onResponse);
 
-      await page.goto(route);
+      await page.goto(route.path);
       await page.waitForLoadState("domcontentloaded");
       await expect(page.locator("body")).toBeVisible();
 
-      const safeRoute = route.replace(/\//g, "_").replace(/^_/, "");
+      const hasHorizontalOverflow = await page.evaluate(() => {
+        const doc = document.documentElement;
+        return doc.scrollWidth > doc.clientWidth + 1;
+      });
+
+      const safeLabel = route.label.replace(/\s+/g, "-");
       await page.screenshot({
-        path: test.info().outputPath(`worker-uiux-${safeRoute}.png`),
+        path: test.info().outputPath(`admin-mobile-visual-${safeLabel}.png`),
         fullPage: true,
       });
 
@@ -93,54 +89,40 @@ test.describe("Worker App - UIUX After Login", () => {
       page.off("response", onResponse);
 
       probes.push({
-        route,
+        label: route.label,
+        path: route.path,
         finalUrl: page.url(),
         criticalConsoleErrors,
         failedRequests,
-        transient503,
+        hasHorizontalOverflow,
       });
 
       await emitE2eIssueToElk(test.info(), {
-        module: "e2e.worker.uiux",
-        message: `Worker route probe: ${route}`,
+        module: "e2e.admin.mobile.visual",
+        message: `Admin mobile visual probe: ${route.label}`,
         metadata: {
-          route,
+          label: route.label,
+          path: route.path,
           finalUrl: page.url(),
           criticalConsoleErrors,
           failedRequests,
-          transient503,
+          hasHorizontalOverflow,
         },
       });
-
-      if (criticalConsoleErrors.length > 0 || failedRequests.length > 0) {
-        await test.info().attach(`worker-uiux-issue-${safeRoute}`, {
-          contentType: "application/json",
-          body: Buffer.from(
-            JSON.stringify(
-              {
-                route,
-                criticalConsoleErrors,
-                failedRequests,
-                transient503,
-              },
-              null,
-              2,
-            ),
-            "utf-8",
-          ),
-        });
-      }
     }
 
-    await test.info().attach("worker-uiux-issue-log", {
+    await test.info().attach("admin-mobile-visual-probes", {
       contentType: "application/json",
       body: Buffer.from(JSON.stringify(probes, null, 2), "utf-8"),
     });
 
-    await emitE2eIssueToElk(test.info(), {
-      module: "e2e.worker.uiux",
-      message: "Worker route UIUX probe summary",
-      metadata: { probes },
-    });
+    const anomalies = probes.filter(
+      (probe) =>
+        probe.hasHorizontalOverflow ||
+        probe.criticalConsoleErrors.length > 0 ||
+        probe.failedRequests.length > 0,
+    );
+
+    expect(anomalies).toEqual([]);
   });
 });

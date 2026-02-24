@@ -1,22 +1,26 @@
 import { test, expect } from "@playwright/test";
-import { AdminRateLimitError, adminLogin } from "./helpers";
+import {
+  AdminRateLimitError,
+  adminLogin,
+  expectAdminShellVisible,
+} from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Admin Smoke Tests", () => {
-  test("should redirect root to login", async ({ page }) => {
+  test("should redirect root to login @smoke", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("should render login page", async ({ page }) => {
+  test("should render login page @smoke", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByPlaceholder("admin")).toBeVisible();
     await expect(page.getByPlaceholder("••••••••")).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   });
 
-  test("should show error for invalid credentials", async ({ page }) => {
+  test("should show error for invalid credentials @smoke", async ({ page }) => {
     await page.goto("/login");
     await page.getByPlaceholder("admin").fill("invalid");
     await page.getByPlaceholder("••••••••").fill("invalid");
@@ -26,7 +30,7 @@ test.describe("Admin Smoke Tests", () => {
     });
   });
 
-  test("should redirect dashboard to login when unauthenticated", async ({
+  test("should redirect dashboard to login when unauthenticated @smoke", async ({
     page,
   }) => {
     await page.goto("/dashboard");
@@ -56,15 +60,9 @@ test.describe("Admin Smoke Tests", () => {
         );
       }
 
-      test.skip(
-        true,
-        "admin/admin123 로그인 상태가 배포 환경에서 차단되어 smoke login 검증을 건너뜀",
-      );
-      return;
+      throw new Error(`admin 로그인 smoke 차단: ${message}`);
     }
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
-    await expect(
-      page.locator('aside, nav, [data-testid="sidebar"]').first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expectAdminShellVisible(page);
   });
 });

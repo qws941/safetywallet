@@ -4,7 +4,7 @@ const API_BASE = process.env.API_URL ?? "https://safetywallet.jclee.me/api";
 const WORKER_APP =
   process.env.WORKER_APP_URL ?? "https://safetywallet.jclee.me";
 const ADMIN_APP =
-  process.env.ADMIN_APP_URL ?? "https://safetywallet.jclee.me/admin";
+  process.env.ADMIN_APP_URL ?? "https://admin.safetywallet.jclee.me";
 const ADMIN_ORIGIN = new URL(ADMIN_APP).origin;
 
 test.describe("Cross-App Integration @smoke", () => {

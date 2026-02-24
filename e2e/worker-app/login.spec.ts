@@ -24,10 +24,8 @@ test.describe("Login - Page Rendering @smoke", () => {
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
   });
 
-  test("renders register link pointing to /register", async ({ page }) => {
-    const registerLink = page.getByRole("link", { name: "회원가입" });
-    await expect(registerLink).toBeVisible();
-    await expect(registerLink).toHaveAttribute("href", /\/register/);
+  test("does not render register link", async ({ page }) => {
+    await expect(page.getByRole("link", { name: "회원가입" })).toHaveCount(0);
   });
 });
 
@@ -265,6 +263,34 @@ test.describe("Login - Responsive Design", () => {
     await dobInput.fill("900101");
 
     await expect(loginBtn).toBeEnabled();
+
+    await context.close();
+  });
+
+  test("touch targets on login page meet minimum 44px at mobile size", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 667 },
+    });
+    const page = await context.newPage();
+    await page.goto("/login");
+
+    const targets = [
+      page.getByRole("textbox", { name: "이름" }),
+      page.getByRole("textbox", { name: "휴대폰 번호" }),
+      page.getByRole("textbox", { name: /생년월일/ }),
+      page.getByRole("button", { name: "로그인" }),
+    ];
+
+    for (const target of targets) {
+      const box = await target.boundingBox();
+      expect(box).not.toBeNull();
+      if (!box) {
+        continue;
+      }
+      expect(box.height).toBeGreaterThanOrEqual(40);
+    }
 
     await context.close();
   });

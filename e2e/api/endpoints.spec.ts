@@ -1,8 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 
 const ADMIN_ORIGIN = new URL(
-  process.env.ADMIN_APP_URL ?? "https://safewallet.jclee.me/admin",
+  process.env.ADMIN_APP_URL ?? "https://admin.safetywallet.jclee.me",
 ).origin;
+
+const WORKER_LOGIN_DATA = {
+  name: process.env.E2E_WORKER_NAME ?? "김선민",
+  phone: process.env.E2E_WORKER_PHONE ?? "01076015830",
+  dob: process.env.E2E_WORKER_DOB ?? "19990308",
+};
 
 test.describe("Auth Endpoints", () => {
   test.describe.configure({ mode: "serial" });
@@ -11,21 +17,53 @@ test.describe("Auth Endpoints", () => {
   let loginRefreshToken: string;
   let loginUser: Record<string, unknown>;
 
-  test("POST /auth/login with valid credentials returns 200 and tokens", async ({
-    request,
-  }) => {
-    const loginData = {
-      name: "테스트유저",
-      phone: "01012345678",
-      dob: "19950101",
-    };
-    let response = await request.post("./auth/login", { data: loginData });
+  const ensureLoginTokens = async (request: APIRequestContext) => {
+    if (loginAccessToken && loginRefreshToken && loginUser) {
+      return;
+    }
+
+    let response = await request.post("./auth/login", {
+      data: WORKER_LOGIN_DATA,
+    });
 
     if (response.status() === 429) {
       const retryAfter = Number(response.headers()["retry-after"] || "60");
       const waitMs = (retryAfter + 1) * 1000;
       await new Promise((r) => setTimeout(r, waitMs));
-      response = await request.post("./auth/login", { data: loginData });
+      response = await request.post("./auth/login", {
+        data: WORKER_LOGIN_DATA,
+      });
+    }
+
+    expect(response.status()).toBe(200);
+    const body = (await response.json()) as {
+      success: boolean;
+      data: {
+        accessToken: string;
+        refreshToken: string;
+        user: Record<string, unknown>;
+      };
+    };
+    expect(body.success).toBe(true);
+    loginAccessToken = body.data.accessToken;
+    loginRefreshToken = body.data.refreshToken;
+    loginUser = body.data.user;
+  };
+
+  test("POST /auth/login with valid credentials returns 200 and tokens", async ({
+    request,
+  }) => {
+    let response = await request.post("./auth/login", {
+      data: WORKER_LOGIN_DATA,
+    });
+
+    if (response.status() === 429) {
+      const retryAfter = Number(response.headers()["retry-after"] || "60");
+      const waitMs = (retryAfter + 1) * 1000;
+      await new Promise((r) => setTimeout(r, waitMs));
+      response = await request.post("./auth/login", {
+        data: WORKER_LOGIN_DATA,
+      });
     }
 
     expect(response.status()).toBe(200);
@@ -47,7 +85,7 @@ test.describe("Auth Endpoints", () => {
 
   test("POST /auth/login returns user info in response", async () => {
     expect(loginUser).toBeDefined();
-    expect(loginUser.name).toBe("테스트유저");
+    expect(loginUser.name).toBe(WORKER_LOGIN_DATA.name);
     expect(loginUser).toHaveProperty("id");
     expect(loginUser).toHaveProperty("role");
   });
@@ -55,6 +93,7 @@ test.describe("Auth Endpoints", () => {
   test("Authenticated request to /users/me succeeds with login token", async ({
     request,
   }) => {
+    await ensureLoginTokens(request);
     const meRes = await request.get("./users/me", {
       headers: { Authorization: `Bearer ${loginAccessToken}` },
     });
@@ -62,12 +101,13 @@ test.describe("Auth Endpoints", () => {
 
     const meBody = await meRes.json();
     expect(meBody.success).toBe(true);
-    expect(meBody.data.user.name).toBe("테스트유저");
+    expect(meBody.data.user.name).toBe(WORKER_LOGIN_DATA.name);
   });
 
   test("POST /auth/refresh with valid refresh token returns new tokens", async ({
     request,
   }) => {
+    await ensureLoginTokens(request);
     const refreshRes = await request.post("./auth/refresh", {
       data: { refreshToken: loginRefreshToken },
     });
