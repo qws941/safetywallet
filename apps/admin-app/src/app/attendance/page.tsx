@@ -38,7 +38,7 @@ export default function AttendancePage() {
       success: allLogs.filter((l) => l.result === "SUCCESS").length,
       fail: allLogs.filter((l) => l.result === "FAIL").length,
     }),
-    [allLogs],
+    [allLogs, logsResponse?.pagination?.total],
   );
 
   const anomalyCount = useMemo(() => {
