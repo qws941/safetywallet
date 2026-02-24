@@ -15,7 +15,7 @@ export class AdminRateLimitError extends Error {
  * Minimizes login calls to respect rate limiting (5 req/60s).
  */
 export async function adminLogin(page: Page): Promise<void> {
-  const deadline = Date.now() + 55_000;
+  const deadline = Date.now() + 25_000;
   let sawRateLimit = false;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -62,7 +62,13 @@ export async function adminLogin(page: Page): Promise<void> {
     throw new AdminRateLimitError();
   }
 
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+  if (page.isClosed()) {
+    throw new Error(
+      "admin login failed: page closed before dashboard redirect",
+    );
+  }
+
+  throw new Error(`admin login failed: final URL ${page.url()}`);
 }
 
 /**

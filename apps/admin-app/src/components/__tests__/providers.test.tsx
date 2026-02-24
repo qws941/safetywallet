@@ -159,7 +159,7 @@ describe("Providers", () => {
 
     expect(
       screen.getByText(
-        "배정된 현장이 없습니다. 관리자에게 현장 배정을 요청하세요.",
+        "계정의 현장 배정 정보를 아직 불러오지 못했습니다. 잠시 후 새로고침해 주세요. 계속되면 권한 관리자에게 문의하세요.",
       ),
     ).toBeInTheDocument();
   });

@@ -107,6 +107,33 @@ describe("AuthGuard", () => {
     });
   });
 
+  it("treats register path as protected and redirects to login", async () => {
+    setMockPathname("/register");
+    const replaceSpy = vi
+      .spyOn(window.location, "replace")
+      .mockImplementation(() => undefined);
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      currentSiteId: null,
+      _hasHydrated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+      setCurrentSite: vi.fn(),
+    });
+
+    renderWithClient(
+      <AuthGuard>
+        <div>register page</div>
+      </AuthGuard>,
+    );
+
+    await waitFor(() => {
+      expect(replaceSpy).toHaveBeenCalledWith("/login/");
+    });
+  });
+
   it("clears query cache when logged out after hydration", async () => {
     setMockPathname("/home");
     const clearSpy = vi.spyOn(QueryClient.prototype, "clear");
