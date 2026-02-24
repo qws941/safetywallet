@@ -71,7 +71,7 @@ app.post(
     const phoneHash = await hmac(c.env.HMAC_SECRET, normalizedPhone);
     const db = drizzle(c.env.DB);
     const { user: currentUser } = c.get("auth");
-    const key = `login_attempts:${phoneHash}`;
+    const key = `login:lockout:${phoneHash}`;
 
     await c.env.KV.delete(key);
 
