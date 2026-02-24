@@ -576,6 +576,50 @@ describe("routes/admin/posts", () => {
     });
   });
 
+  describe("DELETE /admin/posts/:id", () => {
+    it("deletes post with related data", async () => {
+      mockGetQueue.push({ id: "p1" });
+      mockAllQueue.push([{ fileUrl: "img1.jpg" }]);
+      mockAllQueue.push([{ id: "r1" }]);
+      mockAllQueue.push([{ id: "pt1" }]);
+
+      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const res = await app.request(
+        "/admin/posts/p1",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Requested by admin" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { deleted: boolean; postId: string };
+      };
+      expect(body.data.deleted).toBe(true);
+      expect(body.data.postId).toBe("p1");
+    });
+
+    it("returns 404 when target post does not exist", async () => {
+      mockGetQueue.push(undefined);
+
+      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const res = await app.request(
+        "/admin/posts/nonexistent",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Requested by admin" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe("DELETE /admin/posts/:id/emergency-purge", () => {
     it("purges a post with all related data", async () => {
       // select post

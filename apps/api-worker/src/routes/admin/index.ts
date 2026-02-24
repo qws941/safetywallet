@@ -16,6 +16,8 @@ import recommendationsApp from "./recommendations";
 import monitoringApp from "./monitoring";
 import imagesApp from "./images";
 import alertingApp from "./alerting";
+import settlementsApp from "./settlements";
+import distributionsApp from "./distributions";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -38,5 +40,7 @@ app.route("/", recommendationsApp);
 app.route("/", monitoringApp);
 app.route("/", imagesApp);
 app.route("/", alertingApp);
+app.route("/", settlementsApp);
+app.route("/", distributionsApp);
 
 export default app;

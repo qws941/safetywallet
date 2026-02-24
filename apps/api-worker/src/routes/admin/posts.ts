@@ -26,6 +26,7 @@ import {
   AdminManualApprovalSchema,
   AdminEmergencyDeleteSchema,
   AdminEmergencyActionPurgeSchema,
+  AdminDeletePostSchema,
 } from "../../validators/schemas";
 import { AppContext, requireManagerOrAdmin, getTodayRange } from "./helpers";
 import { dbBatchChunked } from "../../db/helpers";
@@ -500,6 +501,85 @@ app.post(
     });
 
     return success(c, { approval }, 201);
+  },
+);
+
+app.delete(
+  "/posts/:id",
+  requireManagerOrAdmin,
+  zValidator("json", AdminDeletePostSchema as never),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const postId = c.req.param("id");
+    const body: z.infer<typeof AdminDeletePostSchema> = c.req.valid("json");
+
+    const post = await db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .get();
+
+    if (!post) {
+      return error(c, "POST_NOT_FOUND", "Post not found", 404);
+    }
+
+    const [images] = await Promise.all([
+      db
+        .select({ fileUrl: postImages.fileUrl })
+        .from(postImages)
+        .where(eq(postImages.postId, postId))
+        .all(),
+      db
+        .select({ id: reviews.id })
+        .from(reviews)
+        .where(eq(reviews.postId, postId))
+        .all(),
+      db
+        .select({ id: pointsLedger.id })
+        .from(pointsLedger)
+        .where(eq(pointsLedger.postId, postId))
+        .all(),
+    ]);
+
+    for (const image of images) {
+      try {
+        await c.env.R2.delete(image.fileUrl);
+      } catch (e) {
+        logger.error("Failed to delete R2 image", {
+          fileUrl: image.fileUrl,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    const ops = [
+      db.delete(postImages).where(eq(postImages.postId, postId)),
+      db.delete(reviews).where(eq(reviews.postId, postId)),
+      db.delete(pointsLedger).where(eq(pointsLedger.postId, postId)),
+      db.delete(posts).where(eq(posts.id, postId)),
+    ];
+
+    try {
+      await dbBatchChunked(db, ops as Promise<unknown>[]);
+    } catch (e) {
+      logger.error("Admin post delete batch failed", {
+        postId,
+        operationCount: ops.length,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return error(c, "INTERNAL_ERROR", "Post delete failed", 500);
+    }
+
+    await db.insert(auditLogs).values({
+      action: "POST_DELETED",
+      actorId: user.id,
+      targetType: "POST",
+      targetId: postId,
+      reason: body.reason,
+    });
+
+    return success(c, { deleted: true, postId });
   },
 );
 

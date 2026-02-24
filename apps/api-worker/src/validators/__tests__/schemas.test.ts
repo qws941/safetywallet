@@ -345,6 +345,22 @@ const fixtures: Record<string, Fixture> = {
       smsTitle: "x".repeat(41),
     },
   },
+  SettlementSnapshotSchema: {
+    valid: { month: "2026-02" },
+    invalid: { month: "2026/02" },
+  },
+  SettlementFinalizeSchema: {
+    valid: { month: "2026-02", confirm: true },
+    invalid: { month: "2026-02", confirm: "yes" },
+  },
+  AdminDeletePostSchema: {
+    valid: { reason: "Inappropriate content" },
+    invalid: { reason: "" },
+  },
+  DistributionQuerySchema: {
+    valid: { month: "2026-02", page: 1, limit: 20 },
+    invalid: { month: "bad", page: -1 },
+  },
 };
 
 describe("schemas", () => {

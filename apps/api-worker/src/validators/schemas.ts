@@ -321,6 +321,28 @@ export const AdminEmergencyActionPurgeSchema = z.object({
   confirmActionId: z.string().min(1),
 });
 
+export const SettlementSnapshotSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+});
+
+export const SettlementFinalizeSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  confirm: z.boolean(),
+});
+
+export const AdminDeletePostSchema = z.object({
+  reason: z.string().min(1),
+});
+
+export const DistributionQuerySchema = z
+  .object({
+    month: z.string().regex(/^\d{4}-\d{2}$/),
+    reasonCode: z.string(),
+    page: z.coerce.number().int().min(1),
+    limit: z.coerce.number().int().min(1).max(100),
+  })
+  .partial();
+
 // ─── Education Schemas ───────────────────────────────────────────────────────
 
 export const CreateCourseSchema = z.object({
