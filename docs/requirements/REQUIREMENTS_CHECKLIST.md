@@ -3,7 +3,7 @@
 **Generated**: 2025-02-05  
 **PRD Version**: v1.2 (Cloudflare Native Architecture)  
 **Implementation Status**: 100% complete (P0/P1/P2)  
-**Last Updated**: 2026-02-25
+**Last Updated**: 2026-02-26
 
 > Note: This file compares PRD baseline vs implementation history. If a row conflicts with current FAS-based login behavior, use `docs/FEATURE_CHECKLIST.md` and `AGENTS.md` as the operational source of truth.
 
@@ -18,7 +18,7 @@
 | **Data Model**                  | 98%    | 20+ tables implemented, FAS sync tables added, schema aligned             |
 | **Frontend (Worker)**           | 100%   | All pages, i18n (4 locales), PWA, offline support                         |
 | **Frontend (Admin)**            | 99%    | Dashboard, approvals, votes, exports, FAS data view complete              |
-| **Backend API**                 | 99%    | 14 route modules, Workers AI, Queues, Web Push, SMS all done              |
+| **Backend API**                 | 100%   | 36 route modules, Workers AI, Queues, Web Push, SMS all done              |
 | **Non-Functional Requirements** | 95%    | Image compression, KV caching, i18n, retention CRON done                  |
 
 ---
@@ -249,23 +249,23 @@
 
 ### 5.4 Points/Ranking
 
-| Feature                                | Status     | Notes                             |
-| -------------------------------------- | ---------- | --------------------------------- |
-| This month's points                    | ✅         | Calculated from ledger            |
-| Cumulative points                      | ✅         | All-time total                    |
-| Point history                          | ✅         | Date, reason, points, post link   |
-| Ranking (Top 10 + my rank)             | ✅         | Calculated monthly                |
-| Tie-breaker (approval count > earlier) | ⚠️ Partial | Logic exists but not fully tested |
-| Names masked in ranking                | ✅         | Masking applied                   |
+| Feature                                | Status         | Notes                                                          |
+| -------------------------------------- | -------------- | -------------------------------------------------------------- |
+| This month's points                    | ✅             | Calculated from ledger                                         |
+| Cumulative points                      | ✅             | All-time total                                                 |
+| Point history                          | ✅             | Date, reason, points, post link                                |
+| Ranking (Top 10 + my rank)             | ✅             | Calculated monthly                                             |
+| Tie-breaker (approval count > earlier) | ✅ Implemented | `scheduled/index.ts` uses `MIN(votedAt)` for fairness ordering |
+| Names masked in ranking                | ✅             | Masking applied                                                |
 
 ### 5.5 Announcements
 
 | Type                                 | Status | Notes                                 |
-| ------------------------------------ | ------ | ------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| ------------------------------------ | ------ | ------------------------------------- | -------------- | ----------------------------------------------------------------------------- |
 | Ranking announcement (monthly top 3) | ✅     | Template-based                        |
 | Best practice (selected post shared) | ✅     | Template-based                        |
 | Action completed (case improved)     | ✅     | Template-based                        |
-| #HN                                  |        | Reward notice (distribution schedule) | ⚠️ Partial | Template exists, vote reward CRON distributes points automatically, but notification not sent on distribution |
+| #HN                                  |        | Reward notice (distribution schedule) | ✅ Implemented | Vote reward CRON enqueues push notification to winners via NOTIFICATION_QUEUE |
 
 ---
 
@@ -326,13 +326,13 @@
 
 ### 6.6 Reward Management
 
-| Function        | Status         | Notes                                         |
-| --------------- | -------------- | --------------------------------------------- | -------------- | ------------------------------------ |
-| Month selection | ✅             | Can select settlement month                   |
-| Auto ranking    | ✅             | Calculated from snapshot                      |
-| Reward criteria | ⚠️ Partial     | 1st/2nd/3rd amounts defined, not configurable |
-| #PW             |                | Distribution record                           | ✅ Implemented | distribution-tab.tsx in rewards page |
-| Excel download  | ✅ Implemented | GET /admin/export/posts,users,points          |
+| Function        | Status         | Notes                                                                              |
+| --------------- | -------------- | ---------------------------------------------------------------------------------- | -------------- | ------------------------------------ |
+| Month selection | ✅             | Can select settlement month                                                        |
+| Auto ranking    | ✅             | Calculated from snapshot                                                           |
+| Reward criteria | ✅ Implemented | `pointPolicies` table with full CRUD; settlement reads policy by siteId+reasonCode |
+| #PW             |                | Distribution record                                                                | ✅ Implemented | distribution-tab.tsx in rewards page |
+| Excel download  | ✅ Implemented | GET /admin/export/posts,users,points                                               |
 
 ---
 
@@ -706,8 +706,8 @@
 ### 12.3 Phase 3
 
 | Area            | Features                                     | Status                |
-| --------------- | -------------------------------------------- | --------------------- |
-| AI              | Hazard auto-classification, Quality scoring  | ⚠️ Partial            |
+| --------------- | -------------------------------------------- | --------------------- | --------------------------------------------------------- |
+| AI              | Hazard auto-classification, Quality scoring  | ✅ Implemented        | `lib/workers-ai.ts` resnet-50 + detr-resnet-50, 12+ tests |
 | ~~Integration~~ | ~~ERP/Safety management system integration~~ | ❌ Removed from scope |
 | Expansion       | Multi-site unified dashboard, HQ reports     | ❌ Not Implemented    |
 
@@ -905,5 +905,5 @@
 ---
 
 **Document Generated**: 2025-02-05  
-**Last Updated**: 2026-02-25
-**Status**: 100% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-25 sessions: education POST validator fixes, dashboard active filter, announcements siteId fix, deploy pipeline .sql fix, video upload, APK install, quiz multi-type, education external sources, points two-track review, auth/attendance bug fixes, EXPORT permission fix, vote reward configurability, reward push notifications, vote tie-breaker fairness.
+**Last Updated**: 2026-02-26
+**Status**: 100% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-26 audit: verified 4 stale ⚠️ items as ✅ (vote reward configurability, tie-breaker fairness, reward push notifications, AI hazard classification). Backend API corrected to 100%.
