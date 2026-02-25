@@ -43,7 +43,9 @@ export function usePosts(siteId: string) {
   return useQuery({
     queryKey: ["posts", siteId],
     queryFn: () =>
-      apiFetch<PaginatedResponse<PostListDto>>(`/posts?siteId=${siteId}`),
+      apiFetch<ApiResponse<{ posts: PostListDto[] }>>(
+        `/posts?siteId=${siteId}`,
+      ),
     enabled: !!siteId,
   });
 }
