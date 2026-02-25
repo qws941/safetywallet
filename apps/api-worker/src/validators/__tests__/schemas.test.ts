@@ -292,6 +292,44 @@ const fixtures: Record<string, Fixture> = {
       attendeeIds: [],
     },
   },
+  CreateQuizInputSchema: {
+    valid: {
+      siteId: "site-1",
+      title: "Safety quiz",
+    },
+    invalid: {
+      siteId: "site-1",
+      title: "",
+    },
+  },
+  CreateStatutoryTrainingInputSchema: {
+    valid: {
+      siteId: "site-1",
+      userId: "user-1",
+      trainingType: "NEW_WORKER",
+      trainingName: "Orientation",
+      trainingDate: "2026-02-20",
+    },
+    invalid: {
+      siteId: "site-1",
+      userId: "user-1",
+      trainingType: "INVALID_TYPE",
+      trainingName: "Orientation",
+      trainingDate: "2026-02-20",
+    },
+  },
+  CreateTbmInputSchema: {
+    valid: {
+      siteId: "site-1",
+      date: "2026-02-15",
+      topic: "Morning briefing",
+    },
+    invalid: {
+      siteId: "site-1",
+      date: "2026-02-15",
+      topic: "",
+    },
+  },
   UpdateTbmRecordSchema: {
     valid: { topic: "Updated topic" },
     invalid: { topic: "", location: "Gate A" },

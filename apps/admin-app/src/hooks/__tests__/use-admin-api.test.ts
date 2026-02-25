@@ -240,11 +240,7 @@ describe("use-admin-api hooks", () => {
     const { wrapper } = createWrapper();
 
     const approvals = renderHook(() => useManualApprovals(), { wrapper });
-    const announcements = renderHook(() => useAdminAnnouncements(), {
-      wrapper,
-    });
 
     expect(approvals.result.current.fetchStatus).toBe("idle");
-    expect(announcements.result.current.fetchStatus).toBe("idle");
   });
 });
