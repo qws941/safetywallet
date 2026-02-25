@@ -15,6 +15,8 @@ import {
   votePeriods,
   votes,
   attendance,
+  pointPolicies,
+  pushSubscriptions,
 } from "../db/schema";
 import {
   fasGetUpdatedEmployees,
@@ -28,6 +30,10 @@ import {
 import { createLogger } from "../lib/logger";
 import { acquireSyncLock, releaseSyncLock } from "../lib/sync-lock";
 import { dbBatchChunked } from "../db/helpers";
+import {
+  enqueueNotification,
+  type NotificationQueueMessage,
+} from "../lib/notification-queue";
 
 import {
   fireAlert,
@@ -201,6 +207,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+// Fallback defaults when no pointPolicies configured for a site
 const VOTE_REWARD_POINTS = [50, 30, 20] as const;
 const VOTE_REWARD_REASON_CODES = [
   "VOTE_REWARD_RANK_1",
@@ -680,7 +687,7 @@ async function runVoteRewardDistribution(env: Env): Promise<void> {
           and(eq(votes.siteId, period.siteId), eq(votes.month, period.month)),
         )
         .groupBy(votes.candidateId)
-        .orderBy(desc(sql`COUNT(*)`), votes.candidateId)
+        .orderBy(desc(sql`COUNT(*)`), sql`MIN(${votes.votedAt})`)
         .limit(3)
         .all();
 
@@ -689,13 +696,36 @@ async function runVoteRewardDistribution(env: Env): Promise<void> {
         continue;
       }
 
+      // Look up configurable reward amounts from pointPolicies
+      const rewardPolicies = await db
+        .select({
+          reasonCode: pointPolicies.reasonCode,
+          defaultAmount: pointPolicies.defaultAmount,
+        })
+        .from(pointPolicies)
+        .where(
+          and(
+            eq(pointPolicies.siteId, period.siteId),
+            inArray(pointPolicies.reasonCode, [...VOTE_REWARD_REASON_CODES]),
+            eq(pointPolicies.isActive, true),
+          ),
+        )
+        .all();
+
+      const rewardAmountMap = new Map<string, number>();
+      for (const policy of rewardPolicies) {
+        rewardAmountMap.set(policy.reasonCode, policy.defaultAmount);
+      }
+
       const rewards = winners.map((winner, index) => {
-        const points = VOTE_REWARD_POINTS[index];
+        const reasonCode = VOTE_REWARD_REASON_CODES[index];
+        const points =
+          rewardAmountMap.get(reasonCode) ?? VOTE_REWARD_POINTS[index];
         return {
           userId: winner.candidateId,
           siteId: period.siteId,
           amount: points,
-          reasonCode: VOTE_REWARD_REASON_CODES[index],
+          reasonCode,
           reasonText: `월간 투표 ${index + 1}위 보상 (${winner.voteCount}표)`,
           settleMonth: period.month,
           adminId: systemUserId,
@@ -703,6 +733,61 @@ async function runVoteRewardDistribution(env: Env): Promise<void> {
       });
 
       await db.insert(pointsLedger).values(rewards);
+
+      // Send push notifications to rewarded users
+      if (env.NOTIFICATION_QUEUE) {
+        try {
+          const rewardedUserIds = rewards.map((r) => r.userId);
+          const subs = await db
+            .select({
+              id: pushSubscriptions.id,
+              userId: pushSubscriptions.userId,
+              endpoint: pushSubscriptions.endpoint,
+              p256dh: pushSubscriptions.p256dh,
+              auth: pushSubscriptions.auth,
+              failCount: pushSubscriptions.failCount,
+            })
+            .from(pushSubscriptions)
+            .where(inArray(pushSubscriptions.userId, rewardedUserIds))
+            .all();
+
+          if (subs.length > 0) {
+            const queueMsg: NotificationQueueMessage = {
+              type: "push_bulk",
+              subscriptions: subs.map((s) => ({
+                id: s.id,
+                userId: s.userId,
+                endpoint: s.endpoint,
+                p256dh: s.p256dh,
+                auth: s.auth,
+                failCount: s.failCount,
+              })),
+              message: {
+                title: "투표 보상 지급",
+                body: "월간 안전스타 투표 보상 포인트가 지급되었습니다.",
+                data: { type: "VOTE_REWARD", url: "/points" },
+              },
+              enqueuedAt: new Date().toISOString(),
+            };
+            await enqueueNotification(env.NOTIFICATION_QUEUE, queueMsg);
+          }
+        } catch (notifErr) {
+          const errObj =
+            notifErr instanceof Error
+              ? {
+                  name: notifErr.name,
+                  message: notifErr.message,
+                  stack: notifErr.stack,
+                }
+              : {
+                  name: "UnknownError",
+                  message: String(notifErr),
+                };
+          log.warn("Failed to send reward notifications", {
+            error: errObj,
+          });
+        }
+      }
 
       processedPeriods += 1;
       rewardedUsers += rewards.length;
