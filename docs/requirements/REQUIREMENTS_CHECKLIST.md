@@ -194,11 +194,11 @@
 
 ### 4.4 Worker Edit Permissions
 
-| Scenario                               | Status     | Notes                                          |
-| -------------------------------------- | ---------- | ---------------------------------------------- |
-| Edit allowed in RECEIVED               | ✅         | Implemented in posts.ts                        |
-| Edit blocked after IN_REVIEW           | ✅         | Validation checks review_status                |
-| Supplementary attachments in NEED_INFO | ⚠️ Partial | Attachment endpoint exists but limited testing |
+| Scenario                               | Status | Notes                                            |
+| -------------------------------------- | ------ | ------------------------------------------------ |
+| Edit allowed in RECEIVED               | ✅     | Implemented in posts.ts                          |
+| Edit blocked after IN_REVIEW           | ✅     | Validation checks review_status                  |
+| Supplementary attachments in NEED_INFO | ✅     | Resubmit endpoint POST /:id/resubmit + worker UI |
 
 ---
 
@@ -350,13 +350,13 @@
 
 ### 7.2 Bonus Rules
 
-| Condition         |        Bonus         | Status     |
-| ----------------- | :------------------: | ---------- |
-| Risk level High   |          +5          | ✅         |
-| Risk level Medium |          +3          | ✅         |
-| Risk level Low    |          +0          | ✅         |
-| Action completed  |        +5~+20        | ✅         |
-| Info supplemented | +2 (first time only) | ⚠️ Partial |
+| Condition         |        Bonus         | Status |
+| ----------------- | :------------------: | ------ |
+| Risk level High   |          +5          | ✅     |
+| Risk level Medium |          +3          | ✅     |
+| Risk level Low    |          +0          | ✅     |
+| Action completed  |        +5~+20        | ✅     |
+| Info supplemented | +2 (first time only) | ✅     |
 
 ### 7.3 Limit Rules
 
