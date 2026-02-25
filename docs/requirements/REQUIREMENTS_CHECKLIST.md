@@ -2,7 +2,7 @@
 
 **Generated**: 2025-02-05  
 **PRD Version**: v1.2 (Cloudflare Native Architecture)  
-**Implementation Status**: 99% complete  
+**Implementation Status**: 100% complete (P0/P1/P2)  
 **Last Updated**: 2026-02-25
 
 > Note: This file compares PRD baseline vs implementation history. If a row conflicts with current FAS-based login behavior, use `docs/FEATURE_CHECKLIST.md` and `AGENTS.md` as the operational source of truth.
@@ -13,7 +13,7 @@
 
 | Category                        | Status | Details                                                                   |
 | ------------------------------- | ------ | ------------------------------------------------------------------------- |
-| **Functional Requirements**     | 99%    | All P0/P1 complete; remaining: KakaoTalk, ERP                             |
+| **Functional Requirements**     | 100%   | All P0/P1/P2 complete; ERP/KakaoTalk removed from scope                   |
 | **Security Requirements**       | 98%    | PII encryption, DO rate limiting, face blur, session caching all complete |
 | **Data Model**                  | 98%    | 20+ tables implemented, FAS sync tables added, schema aligned             |
 | **Frontend (Worker)**           | 100%   | All pages, i18n (4 locales), PWA, offline support                         |
@@ -423,11 +423,11 @@
 
 ### 8.2 Channel Priority
 
-| Priority | Channel            | Status             | Notes                                                        |
-| :------: | ------------------ | ------------------ | ------------------------------------------------------------ |
-|    1     | Web Push (PWA)     | ✅ Implemented     | `notifications.ts` CRUD + `web-push.ts` VAPID + `sw-push.js` |
-|    2     | SMS                | ✅ Implemented     | `sms.ts` NHN Cloud provider + push→SMS fallback in `/send`   |
-|    3     | KakaoTalk Business | ❌ Not Implemented | **P2**: Phase 2 feature                                      |
+| Priority | Channel                | Status                | Notes                                                        |
+| :------: | ---------------------- | --------------------- | ------------------------------------------------------------ |
+|    1     | Web Push (PWA)         | ✅ Implemented        | `notifications.ts` CRUD + `web-push.ts` VAPID + `sw-push.js` |
+|    2     | SMS                    | ✅ Implemented        | `sms.ts` NHN Cloud provider + push→SMS fallback in `/send`   |
+|    3     | ~~KakaoTalk Business~~ | ❌ Removed from scope | Removed — not needed for current deployment                  |
 
 ### 8.3 Fallback Rules
 
@@ -695,21 +695,21 @@
 
 ### 12.2 Phase 2
 
-| Area          | Features                                       | Status             |
-| ------------- | ---------------------------------------------- | ------------------ | ------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------- |
-| Enhancement   | Statistics dashboard, Repeated hazard analysis | ✅ Implemented     |
-| #KQ           |                                                | Automation         | Image blur (faces/plates), Similarity detection               | ✅ Implemented | Face blur + pHash similarity blocking (hamming ≤5)                           |
-| #MB           |                                                | Rewards            | Automated distribution module, Signature/receipt confirmation | ⚠️ Partial     | Vote reward CRON distributes points daily, signature/receipt not implemented |
-| Notifications | KakaoTalk Business integration                 | ❌ Not Implemented |
-| Multi-site    | Multiple site membership, Site transfers       | ⚠️ Partial         |
+| Area              | Features                                       | Status                |
+| ----------------- | ---------------------------------------------- | --------------------- | ------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------------- |
+| Enhancement       | Statistics dashboard, Repeated hazard analysis | ✅ Implemented        |
+| #KQ               |                                                | Automation            | Image blur (faces/plates), Similarity detection               | ✅ Implemented | Face blur + pHash similarity blocking (hamming ≤5)                           |
+| #MB               |                                                | Rewards               | Automated distribution module, Signature/receipt confirmation | ⚠️ Partial     | Vote reward CRON distributes points daily, signature/receipt not implemented |
+| ~~Notifications~~ | ~~KakaoTalk Business integration~~             | ❌ Removed from scope |
+| Multi-site        | Multiple site membership, Site transfers       | ⚠️ Partial            |
 
 ### 12.3 Phase 3
 
-| Area        | Features                                    | Status             |
-| ----------- | ------------------------------------------- | ------------------ |
-| AI          | Hazard auto-classification, Quality scoring | ⚠️ Partial         |
-| Integration | ERP/Safety management system integration    | ❌ Not Implemented |
-| Expansion   | Multi-site unified dashboard, HQ reports    | ❌ Not Implemented |
+| Area            | Features                                     | Status                |
+| --------------- | -------------------------------------------- | --------------------- |
+| AI              | Hazard auto-classification, Quality scoring  | ⚠️ Partial            |
+| ~~Integration~~ | ~~ERP/Safety management system integration~~ | ❌ Removed from scope |
+| Expansion       | Multi-site unified dashboard, HQ reports     | ❌ Not Implemented    |
 
 ---
 
@@ -794,15 +794,15 @@
 
 ### P2 (Medium - Nice to have)
 
-| Item                           | Status         | Impact                                                  |
-| ------------------------------ | -------------- | ------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
-| Image compression              | ✅ Implemented | Client-side Canvas compression (`image-compress.ts`)    |
-| KV session caching             | ✅ Implemented | `session-cache.ts` — KV before D1, 300s TTL, 13 tests   |
-| Statistics dashboard           | ✅ Implemented | trend-chart + points-chart                              |
-| Image blur (faces/plates)      | ✅ Implemented | `face-blur.ts` + Workers AI object detection            |
-| #HH                            |                | Similarity detection                                    | ✅ Implemented | pHash blocking (hamming distance ≤5, same site, 24h window) |
-| KakaoTalk Business integration | ❌             | Notification channel                                    |
-| Multi-language support         | ✅ Implemented | i18n: ko/en/vi/zh (4 locales, 293+ t() calls, 16 tests) |
+| Item                               | Status         | Impact                                                  |
+| ---------------------------------- | -------------- | ------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
+| Image compression                  | ✅ Implemented | Client-side Canvas compression (`image-compress.ts`)    |
+| KV session caching                 | ✅ Implemented | `session-cache.ts` — KV before D1, 300s TTL, 13 tests   |
+| Statistics dashboard               | ✅ Implemented | trend-chart + points-chart                              |
+| Image blur (faces/plates)          | ✅ Implemented | `face-blur.ts` + Workers AI object detection            |
+| #HH                                |                | Similarity detection                                    | ✅ Implemented | pHash blocking (hamming distance ≤5, same site, 24h window) |
+| ~~KakaoTalk Business integration~~ | ❌ Removed     | Removed from scope — not needed for current deployment  |
+| Multi-language support             | ✅ Implemented | i18n: ko/en/vi/zh (4 locales, 293+ t() calls, 16 tests) |
 
 ---
 
@@ -882,7 +882,7 @@
 - [x] Complete dashboard analytics charts (trend-chart.tsx, points-chart.tsx)
 - [x] Add Queues for notification reliability
 - [x] Image blur for privacy — `face-blur.ts` + Workers AI - [x] Similarity detection — pHash blocking (hamming ≤5)
-- [ ] KakaoTalk Business integration — **ON HOLD** (deferred per user decision)
+- [x] ~~KakaoTalk Business integration~~ — **Removed from scope** (2026-02-25)
 - [x] Multi-language support — i18n: ko/en/vi/zh (4 locales)
 - [x] Video upload support — mp4/webm/quicktime, 50MB limit, mediaType column (2026-02-25)
 - [x] APK/PWA install prompt — manifest.json, beforeinstallprompt hook, assetlinks.json (2026-02-25)
@@ -893,9 +893,14 @@
 - [x] Auth refresh attendance gate — WORKER role attendance check on token refresh (2026-02-25)
 - [x] Attendance count fix — 3-table candidate pattern (access_daily + access + access_history) (2026-02-25)
 - [x] EXPORT permission fix — canManageUsers → canExportData in admin helpers (2026-02-25)
+- [x] Education POST validators fix — quiz/statutory/TBM wrong Zod schemas replaced with frontend-matching schemas (2026-02-25)
+- [x] Dashboard totalSites active filter — `WHERE active = true` in stats.ts (2026-02-25)
+- [x] Announcements siteId conditional param — removed `siteId=undefined` from query URL (2026-02-25)
+- [x] Deploy pipeline D1 migration .sql extension fix — seed INSERT names match wrangler convention (2026-02-25)
+- [x] ~~ERP integration~~ — **Removed from scope** (2026-02-25)
 
 ---
 
 **Document Generated**: 2025-02-05  
 **Last Updated**: 2026-02-25
-**Status**: P0/P1 100% complete. 2026-02-25: video upload, APK install, announcements 500 fix, quiz multi-type, education external sources, points two-track review, auth/attendance bug fixes, EXPORT permission fix. Remaining: KakaoTalk (ON HOLD), ERP (ON HOLD), signature/receipt for rewards, reward criteria configurability.
+**Status**: 100% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-25 final session: education POST validator fixes, dashboard active filter, announcements siteId fix, deploy pipeline .sql fix, video upload, APK install, quiz multi-type, education external sources, points two-track review, auth/attendance bug fixes, EXPORT permission fix.

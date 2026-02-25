@@ -555,11 +555,11 @@
 - [x] 감사 로그 강화 ✅ NEW - disputes status, FAS sync audit 추가
 - [x] 미매칭 근로자 목록 ✅ - GET /attendance/unmatched 구현됨
 
-### Phase 2 (외부 서비스 의존 — 미구현)
+### Phase 2 (외부 서비스 의존)
 
-- [ ] KakaoTalk Business 알림 연동 — **보류** (사용자 결정에 따라 연기)
+- [x] ~~KakaoTalk Business 알림 연동~~ — **범위 제거** (2026-02-25)
 - [x] Workers AI (이미지 블러, 위험 분류) ✅ hazard classification via @cf/microsoft/resnet-50, object detection, waitUntil integration in image upload, 20 tests
-- [ ] ERP 연동 — **보류** (사용자 결정에 따라 연기)
+- [x] ~~ERP 연동~~ — **범위 제거** (2026-02-25)
 - [x] Cloudflare Queues (알림 안정성)
 - [x] 이미지 압축 최적화 ✅ client-side Canvas JPEG 80% + resize 1920px + EXIF strip (image-compress.ts, posts/new, actions/view)
 - [x] KV 세션 캐싱 ✅ auth middleware KV cache (300s TTL), session-cache.ts, 13 tests
@@ -576,3 +576,7 @@
 - [x] 인증 리프레시 출근 게이트 (WORKER 역할 토큰 갱신 시 출근 확인) ✅
 - [x] 출근 인원 카운트 수정 (3테이블 후보 패턴: access_daily + access + access_history) ✅
 - [x] EXPORT 권한 수정 (canManageUsers → canExportData) ✅
+- [x] 교육 POST 유효성 검사 수정 (퀴즈/법정교육/TBM Zod 스키마 프론트엔드 매칭) ✅ (2026-02-25)
+- [x] 대시보드 활성 현장 필터 (`WHERE active = true`) ✅ (2026-02-25)
+- [x] 공지사항 siteId 조건부 파라미터 수정 ✅ (2026-02-25)
+- [x] 배포 파이프라인 D1 마이그레이션 .sql 확장자 수정 ✅ (2026-02-25)
