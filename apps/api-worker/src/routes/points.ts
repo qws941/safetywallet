@@ -146,6 +146,60 @@ app.post("/award", zValidator("json", AwardPointsSchema), async (c) => {
   return success(c, { ...entry, user: targetUser }, 201);
 });
 
+app.get("/", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+
+  const siteId = c.req.query("siteId");
+  if (!siteId) {
+    return error(
+      c,
+      "MISSING_SITE_ID",
+      "siteId query parameter is required",
+      400,
+    );
+  }
+
+  await attendanceMiddleware(c, async () => {}, siteId);
+
+  const membership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .get();
+
+  if (!membership) {
+    return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
+  }
+
+  const balanceResult = await db
+    .select({
+      total: sql<number>`COALESCE(SUM(${pointsLedger.amount}), 0)`,
+    })
+    .from(pointsLedger)
+    .where(
+      and(eq(pointsLedger.userId, user.id), eq(pointsLedger.siteId, siteId)),
+    )
+    .get();
+
+  const history = await db
+    .select()
+    .from(pointsLedger)
+    .where(
+      and(eq(pointsLedger.userId, user.id), eq(pointsLedger.siteId, siteId)),
+    )
+    .orderBy(desc(pointsLedger.createdAt))
+    .limit(20)
+    .all();
+
+  return success(c, { balance: balanceResult?.total ?? 0, history });
+});
 app.get("/balance", async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
