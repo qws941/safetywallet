@@ -215,7 +215,7 @@ jobs:
           # INSERT OR IGNORE is idempotent — safe to re-run on every deploy
           echo "Seeding d1_migrations tracking table with already-applied migrations..."
           npx wrangler d1 execute safetywallet-db --remote --command \
-            "INSERT OR IGNORE INTO d1_migrations (name) VALUES ('0000_lovely_jocasta'), ('0001_add_user_pii_encrypted'), ('0002_add_false_report_restrictions'), ('0003_add_disputes'), ('0003_add_remaining_tables'), ('0004_dual_axis_state_machine'), ('0005_add_action_priority_description'), ('0006_add_missing_user_columns'), ('0007_add_api_metrics'), ('0008_add_push_subscriptions'), ('0009_drop_dead_pii_columns'), ('0010_add_attendance_unique_constraint'), ('0012_data_integrity_schema_fixes');"
+            "INSERT OR IGNORE INTO d1_migrations (name) VALUES ('0000_lovely_jocasta.sql'), ('0001_add_user_pii_encrypted.sql'), ('0002_add_false_report_restrictions.sql'), ('0003_add_disputes.sql'), ('0003_add_remaining_tables.sql'), ('0004_dual_axis_state_machine.sql'), ('0005_add_action_priority_description.sql'), ('0006_add_missing_user_columns.sql'), ('0007_add_api_metrics.sql'), ('0008_add_push_subscriptions.sql'), ('0009_drop_dead_pii_columns.sql'), ('0010_add_attendance_unique_constraint.sql'), ('0012_data_integrity_schema_fixes.sql');"
           echo "Waiting for D1 consistency..."
           sleep 5
           # Apply only truly-pending migrations (0013, 0014)
