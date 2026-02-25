@@ -7,6 +7,7 @@ import {
   users,
   attendance,
   siteMemberships,
+  sites,
   auditLogs,
   deviceRegistrations,
 } from "../db/schema";
@@ -1081,8 +1082,20 @@ auth.get("/me", authMiddleware, async (c) => {
     .orderBy(desc(siteMemberships.joinedAt))
     .limit(1);
 
-  const siteId =
+  let siteId =
     membershipResults.length > 0 ? membershipResults[0].siteId : null;
+
+  // Fallback: auto-assign first active site when no membership exists
+  if (!siteId) {
+    const fallbackSite = await db
+      .select({ id: sites.id })
+      .from(sites)
+      .where(eq(sites.active, true))
+      .limit(1);
+    if (fallbackSite.length > 0) {
+      siteId = fallbackSite[0].id;
+    }
+  }
 
   const { start, end } = getTodayRange();
   const attendanceRecords = await db
