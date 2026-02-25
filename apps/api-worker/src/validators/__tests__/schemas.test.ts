@@ -46,6 +46,12 @@ const fixtures: Record<string, Fixture> = {
     },
     invalid: { siteId: "site-1", category: "INVALID", content: "x" },
   },
+  ResubmitPostSchema: {
+    valid: {
+      supplementaryContent: "Additional safety details about the hazard",
+    },
+    invalid: { supplementaryContent: "" },
+  },
   ReviewActionSchema: {
     valid: { postId: "post-1", action: "APPROVE", comment: "ok" },
     invalid: { postId: "post-1", action: "UNKNOWN" },

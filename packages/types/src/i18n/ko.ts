@@ -134,6 +134,12 @@ export const ko = {
   "postsView.noComments": "아직 댓글이 없습니다",
   "postsView.addComment": "댓글 추가",
   "postsView.commentPlaceholder": "의견을 작성하세요",
+  "posts.view.resubmitButton": "보완 정보 제출",
+  "posts.view.resubmitPlaceholder": "추가 정보를 입력해주세요",
+  "posts.view.resubmitSubmit": "제출",
+  "posts.view.resubmitCancel": "취소",
+  "posts.view.resubmitSuccess": "보완 정보가 제출되었습니다",
+  "posts.view.resubmitError": "보완 정보 제출에 실패했습니다",
 
   // ==================== POINTS ====================
   "points.title": "포인트",

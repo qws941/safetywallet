@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { usePost } from "@/hooks/use-api";
+import { usePost, useResubmitPost } from "@/hooks/use-api";
 import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
@@ -15,10 +15,11 @@ import {
   Badge,
   Skeleton,
   Button,
+  useToast,
 } from "@safetywallet/ui";
 import { cn } from "@/lib/utils";
 import { Category, ReviewStatus, RejectReason } from "@safetywallet/types";
-import { AlertCircle, HelpCircle } from "lucide-react";
+import { AlertCircle, HelpCircle, Send } from "lucide-react";
 
 function LoadingState() {
   return (
@@ -38,8 +39,12 @@ function PostDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const t = useTranslation();
+  const { toast } = useToast();
   const postId = searchParams.get("id") || "";
   const { data, isLoading, error } = usePost(postId);
+  const resubmitPost = useResubmitPost();
+  const [showResubmitForm, setShowResubmitForm] = useState(false);
+  const [supplementaryContent, setSupplementaryContent] = useState("");
 
   const post = data?.data;
 
@@ -58,6 +63,41 @@ function PostDetailContent() {
   const latestReview = reviews?.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )[0];
+  const isResubmittable =
+    post?.reviewStatus === ReviewStatus.NEED_INFO ||
+    post?.reviewStatus === ReviewStatus.REJECTED;
+
+  const handleResubmit = () => {
+    if (!post || !supplementaryContent.trim()) {
+      return;
+    }
+
+    resubmitPost.mutate(
+      {
+        postId: post.id,
+        supplementaryContent: supplementaryContent.trim(),
+      },
+      {
+        onSuccess: () => {
+          setSupplementaryContent("");
+          setShowResubmitForm(false);
+          toast({
+            title: t("posts.view.resubmitSuccess"),
+          });
+        },
+        onError: (mutationError) => {
+          toast({
+            title: t("posts.view.resubmitError"),
+            description:
+              mutationError instanceof Error
+                ? mutationError.message
+                : t("posts.view.resubmitError"),
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   const getCategoryLabel = (category: Category) => {
     const categoryMap: Record<Category, string> = {
@@ -192,6 +232,60 @@ function PostDetailContent() {
               <div className="text-sm text-yellow-800 bg-white/50 p-2 rounded">
                 {latestReview.comment || t("posts.view.adminRequestedInfo")}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isResubmittable && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">
+                {t("posts.view.resubmitButton")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!showResubmitForm ? (
+                <Button
+                  type="button"
+                  onClick={() => setShowResubmitForm(true)}
+                  className="w-full"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {t("posts.view.resubmitButton")}
+                </Button>
+              ) : (
+                <>
+                  <textarea
+                    value={supplementaryContent}
+                    onChange={(e) => setSupplementaryContent(e.target.value)}
+                    placeholder={t("posts.view.resubmitPlaceholder")}
+                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    rows={4}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleResubmit}
+                      disabled={
+                        resubmitPost.isPending || !supplementaryContent.trim()
+                      }
+                    >
+                      {t("posts.view.resubmitSubmit")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowResubmitForm(false);
+                        setSupplementaryContent("");
+                      }}
+                      disabled={resubmitPost.isPending}
+                    >
+                      {t("posts.view.resubmitCancel")}
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

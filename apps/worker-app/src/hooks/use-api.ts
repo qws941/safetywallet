@@ -72,6 +72,28 @@ export function useCreatePost() {
   });
 }
 
+export function useResubmitPost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      postId,
+      supplementaryContent,
+    }: {
+      postId: string;
+      supplementaryContent: string;
+    }) =>
+      apiFetch<ApiResponse<{ post: PostDto }>>(`/posts/${postId}/resubmit`, {
+        method: "POST",
+        body: JSON.stringify({ supplementaryContent }),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["post", variables.postId] });
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+}
+
 // Site Info
 export function useSiteInfo(siteId: string | null) {
   return useQuery({

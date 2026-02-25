@@ -130,6 +130,10 @@ export const CreatePostSchema = z.object({
   metadata: z.record(z.unknown()).optional(),
 });
 
+export const ResubmitPostSchema = z.object({
+  supplementaryContent: z.string().min(1).max(2000),
+});
+
 // ─── Reviews Schemas ─────────────────────────────────────────────────────────
 
 export const ReviewActionSchema = z.object({
