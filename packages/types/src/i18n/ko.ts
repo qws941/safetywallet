@@ -85,6 +85,7 @@ export const ko = {
   "posts.searchPlaceholder": "게시물 검색...",
   "posts.filterAll": "전체",
   "posts.filterMine": "내 게시물",
+  "posts.addPhoto": "사진/동영상 추가",
   "posts.noPost": "게시물이 없습니다",
   "posts.loadingError": "게시물을 불러올 수 없습니다",
 

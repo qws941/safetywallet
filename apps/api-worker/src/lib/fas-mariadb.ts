@@ -727,6 +727,7 @@ export async function fasGetDailyAttendanceRealtimeStats(
   const conn = await getConnection(hyperdrive);
   const normalizedSiteCd =
     siteCd === undefined || siteCd === null ? null : siteCd;
+  const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
 
   const withSiteClause = (siteColumn: string) =>
     normalizedSiteCd ? ` AND ${siteColumn} = ?` : "";
@@ -736,32 +737,65 @@ export async function fasGetDailyAttendanceRealtimeStats(
   try {
     const checkedInWorkers = new Set<string>();
     const dedupCheckinEvents = new Set<string>();
+    const successfulSources: string[] = [];
+    let totalRows = 0;
 
-    const [rows] = await conn.query(
-      `SELECT ad.empl_cd AS empl_cd,
-              CONCAT(ad.accs_day, LPAD(COALESCE(ad.in_time, ''), 4, '0')) AS checkin_key
-         FROM ${tbl(source, "access_daily")} ad
-        WHERE ad.accs_day = ?${withSiteClause("ad.site_cd")}
-          AND ad.in_time IS NOT NULL
-          AND ad.in_time != '0000'
-          AND ad.in_time != ''`,
-      withParams([accsDay]),
-    );
+    const candidates = [
+      {
+        name: "access_daily",
+        query: `SELECT ad.empl_cd AS empl_cd,
+                CONCAT(ad.accs_day, LPAD(COALESCE(ad.in_time, ''), 4, '0')) AS checkin_key
+           FROM ${tbl(source, "access_daily")} ad
+          WHERE ad.accs_day = ?${withSiteClause("ad.site_cd")}`,
+        params: withParams([accsDay]),
+      },
+      {
+        name: "access",
+        query: `SELECT a.empl_cd AS empl_cd,
+                DATE_FORMAT(a.accs_dt, '%Y%m%d%H%i') AS checkin_key
+           FROM ${tbl(source, "access")} a
+          WHERE DATE(a.accs_dt) = ?${withSiteClause("a.site_cd")}`,
+        params: withParams([dateWithDash]),
+      },
+      {
+        name: "access_history",
+        query: `SELECT ah.empl_cd AS empl_cd,
+                DATE_FORMAT(ah.accs_dt, '%Y%m%d%H%i') AS checkin_key
+           FROM ${tbl(source, "access_history")} ah
+          WHERE DATE(ah.accs_dt) = ?${withSiteClause("ah.site_cd")}`,
+        params: withParams([dateWithDash]),
+      },
+    ];
 
-    const mapped = rows as Array<Record<string, unknown>>;
-    for (const row of mapped) {
-      const workerId = String(row["empl_cd"] || "").trim();
-      const checkinKey = String(row["checkin_key"] || "").trim();
-      if (!workerId || !checkinKey) {
+    for (const candidate of candidates) {
+      try {
+        const [rows] = await conn.query(candidate.query, candidate.params);
+        const mapped = rows as Array<Record<string, unknown>>;
+        totalRows += mapped.length;
+        for (const row of mapped) {
+          const workerId = String(row["empl_cd"] || "").trim();
+          const checkinKey = String(row["checkin_key"] || "").trim();
+          if (!workerId || !checkinKey) {
+            continue;
+          }
+          checkedInWorkers.add(workerId);
+          dedupCheckinEvents.add(`${workerId}|${checkinKey}`);
+        }
+        successfulSources.push(candidate.name);
+      } catch (err) {
+        logger.debug("FAS realtime stats source query failed", {
+          action: "fas_realtime_stats_fallback",
+          source: candidate.name,
+          error: { name: "QueryError", message: String(err) },
+        });
         continue;
       }
-      checkedInWorkers.add(workerId);
-      dedupCheckinEvents.add(`${workerId}|${checkinKey}`);
     }
 
     return {
-      source: "access_daily",
-      totalRows: mapped.length,
+      source:
+        successfulSources.length > 0 ? successfulSources.join("+") : "none",
+      totalRows,
       checkedInWorkers: checkedInWorkers.size,
       dedupCheckinEvents: dedupCheckinEvents.size,
     };

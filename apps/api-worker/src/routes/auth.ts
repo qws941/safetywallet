@@ -789,6 +789,69 @@ auth.post("/refresh", zValidator("json", RefreshTokenSchema), async (c) => {
     return error(c, "REFRESH_TOKEN_EXPIRED", "Refresh token has expired", 401);
   }
 
+  // Attendance gate: prevent refresh if worker has no attendance today
+  const requireAttendanceOnRefresh =
+    c.env.REQUIRE_ATTENDANCE_FOR_LOGIN !== "false";
+  if (requireAttendanceOnRefresh && user.role === "WORKER") {
+    let attended = false;
+
+    if (c.env.FAS_HYPERDRIVE && user.externalWorkerId) {
+      try {
+        const now = new Date();
+        const koreaTime = new Date(
+          now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
+        );
+        if (koreaTime.getHours() < 5) {
+          koreaTime.setDate(koreaTime.getDate() - 1);
+        }
+        const accsDay = `${koreaTime.getFullYear()}${String(koreaTime.getMonth() + 1).padStart(2, "0")}${String(koreaTime.getDate()).padStart(2, "0")}`;
+        const fasResult = await fasCheckWorkerAttendance(
+          c.env.FAS_HYPERDRIVE,
+          user.externalWorkerId,
+          accsDay,
+        );
+        attended = fasResult.hasAttendance;
+      } catch (fasErr) {
+        logger.error("FAS realtime attendance check failed during refresh", {
+          error: fasErr instanceof Error ? fasErr.message : String(fasErr),
+        });
+        // Fail open: allow refresh if FAS is unreachable
+        attended = true;
+      }
+    } else {
+      const { start, end } = getTodayRange();
+      const attendanceRecords = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(eq(attendance.userId, user.id), eq(attendance.result, "SUCCESS")),
+        )
+        .limit(100);
+      attended = attendanceRecords.some((record) => {
+        const checkinTime = record.checkinAt;
+        return checkinTime && checkinTime >= start && checkinTime < end;
+      });
+    }
+
+    if (!attended) {
+      // Clear refresh token to force re-login with attendance
+      await db
+        .update(users)
+        .set({
+          refreshToken: null,
+          refreshTokenExpiresAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+      return error(
+        c,
+        "ATTENDANCE_NOT_VERIFIED",
+        "오늘 출근 인증이 확인되지 않습니다. 게이트 안면인식 출근 후 이용 가능합니다.",
+        403,
+      );
+    }
+  }
+
   const newRefreshToken = crypto.randomUUID();
   const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const phoneForToken =

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { z } from "zod";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import {
@@ -39,6 +40,9 @@ interface CreateContentBody {
   contentUrl?: string;
   thumbnailUrl?: string;
   durationMinutes?: number;
+  externalSource?: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId?: string;
+  sourceUrl?: string;
   isActive?: boolean;
 }
 
@@ -57,6 +61,8 @@ interface CreateQuizQuestionBody {
   question?: string;
   options?: string[];
   correctAnswer?: number;
+  questionType?: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+  correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
 }
@@ -65,13 +71,128 @@ interface UpdateQuizQuestionBody {
   question?: string;
   options?: string[];
   correctAnswer?: number;
+  questionType?: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+  correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
 }
 
 interface SubmitQuizAttemptBody {
-  answers?: number[];
+  answers?:
+    | Array<number | number[] | string>
+    | Record<string, number | number[] | string>;
 }
+
+type QuizQuestionType =
+  | "SINGLE_CHOICE"
+  | "OX"
+  | "MULTI_CHOICE"
+  | "SHORT_ANSWER";
+
+const QUIZ_QUESTION_TYPES: QuizQuestionType[] = [
+  "SINGLE_CHOICE",
+  "OX",
+  "MULTI_CHOICE",
+  "SHORT_ANSWER",
+];
+
+const CreateQuizQuestionRequestSchema = z.object({
+  question: z.string().min(1),
+  options: z.array(z.string()).optional(),
+  correctAnswer: z.number().int().optional(),
+  questionType: z
+    .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER"])
+    .default("SINGLE_CHOICE"),
+  correctAnswerText: z.string().optional(),
+  explanation: z.string().optional(),
+  orderIndex: z.number().int().optional(),
+});
+
+const UpdateQuizQuestionRequestSchema = z.object({
+  question: z.string().min(1).optional(),
+  options: z.array(z.string()).optional(),
+  correctAnswer: z.number().int().optional(),
+  questionType: z
+    .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER"])
+    .optional(),
+  correctAnswerText: z.string().optional(),
+  explanation: z.string().optional(),
+  orderIndex: z.number().int().optional(),
+});
+
+const SubmitQuizAttemptRequestSchema = z.object({
+  answers: z.union([
+    z.array(z.union([z.number().int(), z.array(z.number().int()), z.string()])),
+    z.record(
+      z.union([z.number().int(), z.array(z.number().int()), z.string()]),
+    ),
+  ]),
+});
+
+const parseMultiChoiceAnswers = (
+  raw: string | null | undefined,
+): number[] | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const normalized = Array.from(
+      new Set(
+        parsed.filter(
+          (value) => Number.isInteger(value) && value >= 0,
+        ) as number[],
+      ),
+    ).sort((a, b) => a - b);
+    return normalized.length > 0 ? normalized : null;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeTextAnswer = (value: string | null | undefined): string =>
+  (value ?? "").trim().toLowerCase();
+
+const isQuizAnswerCorrect = (
+  question: {
+    correctAnswer: number;
+    questionType: string;
+    correctAnswerText: string | null;
+  },
+  answer: number | number[] | string | undefined,
+): boolean => {
+  const questionType = QUIZ_QUESTION_TYPES.includes(
+    question.questionType as QuizQuestionType,
+  )
+    ? (question.questionType as QuizQuestionType)
+    : "SINGLE_CHOICE";
+
+  if (questionType === "SINGLE_CHOICE" || questionType === "OX") {
+    return typeof answer === "number" && answer === question.correctAnswer;
+  }
+
+  if (questionType === "MULTI_CHOICE") {
+    if (!Array.isArray(answer)) return false;
+    const submitted = Array.from(
+      new Set(answer.filter((value) => Number.isInteger(value) && value >= 0)),
+    ).sort((a, b) => a - b);
+    const expected = parseMultiChoiceAnswers(question.correctAnswerText);
+    if (!expected) return false;
+    return (
+      submitted.length === expected.length &&
+      submitted.every((value, index) => value === expected[index])
+    );
+  }
+
+  if (questionType === "SHORT_ANSWER") {
+    if (typeof answer !== "string") return false;
+    return (
+      normalizeTextAnswer(answer) ===
+      normalizeTextAnswer(question.correctAnswerText)
+    );
+  }
+
+  return false;
+};
 
 interface CreateStatutoryTrainingBody {
   siteId: string;
@@ -111,6 +232,52 @@ interface CreateTbmBody {
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 app.use("*", authMiddleware);
+
+app.get("/youtube-oembed", async (c) => {
+  const url = c.req.query("url");
+  if (!url) return error(c, "MISSING_URL", "url query param required", 400);
+
+  const ytRegex =
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.match(ytRegex);
+  if (!match)
+    return error(
+      c,
+      "INVALID_YOUTUBE_URL",
+      "유효하지 않은 YouTube URL입니다",
+      400,
+    );
+
+  const videoId = match[1];
+  const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+
+  try {
+    const resp = await fetch(oembedUrl);
+    if (!resp.ok)
+      return error(
+        c,
+        "YOUTUBE_FETCH_FAILED",
+        "YouTube 정보를 가져올 수 없습니다",
+        502,
+      );
+
+    const data = (await resp.json()) as {
+      title?: string;
+      author_name?: string;
+      html?: string;
+    };
+
+    return success(c, {
+      videoId,
+      title: data.title,
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      authorName: data.author_name,
+      html: data.html,
+    });
+  } catch {
+    return error(c, "YOUTUBE_FETCH_ERROR", "YouTube API 오류", 502);
+  }
+});
 
 app.post("/contents", zValidator("json", CreateCourseSchema), async (c) => {
   const db = drizzle(c.env.DB);
@@ -156,6 +323,9 @@ app.post("/contents", zValidator("json", CreateCourseSchema), async (c) => {
       contentUrl: body.contentUrl ?? null,
       thumbnailUrl: body.thumbnailUrl ?? null,
       durationMinutes: body.durationMinutes ?? null,
+      externalSource: body.externalSource ?? "LOCAL",
+      externalId: body.externalId ?? null,
+      sourceUrl: body.sourceUrl ?? null,
       isActive: body.isActive ?? true,
       createdById: user.id,
     })
@@ -503,7 +673,7 @@ app.get("/quizzes/:id", async (c) => {
 
 app.post(
   "/quizzes/:quizId/questions",
-  zValidator("json", CreateQuizSchema),
+  zValidator("json", CreateQuizQuestionRequestSchema),
   async (c) => {
     const db = drizzle(c.env.DB);
     const { user } = c.get("auth");
@@ -536,34 +706,109 @@ app.post(
 
     const body = c.req.valid("json") as CreateQuizQuestionBody;
 
-    if (
-      !body.question ||
-      !Array.isArray(body.options) ||
-      body.correctAnswer === undefined
-    ) {
-      return error(
-        c,
-        "MISSING_FIELDS",
-        "question, options, correctAnswer are required",
-        400,
-      );
+    if (!body.question) {
+      return error(c, "MISSING_FIELDS", "question is required", 400);
     }
 
-    if (body.options.length === 0) {
-      return error(c, "INVALID_OPTIONS", "options must not be empty", 400);
+    const questionType = (body.questionType ??
+      "SINGLE_CHOICE") as QuizQuestionType;
+    if (!QUIZ_QUESTION_TYPES.includes(questionType)) {
+      return error(c, "INVALID_QUESTION_TYPE", "Invalid questionType", 400);
     }
 
-    if (
-      !Number.isInteger(body.correctAnswer) ||
-      body.correctAnswer < 0 ||
-      body.correctAnswer >= body.options.length
-    ) {
-      return error(
-        c,
-        "INVALID_CORRECT_ANSWER",
-        "correctAnswer must be a valid option index",
-        400,
+    let options: string[] = Array.isArray(body.options)
+      ? body.options.filter((option) => option.trim().length > 0)
+      : [];
+    let correctAnswer = body.correctAnswer;
+    let correctAnswerText = body.correctAnswerText?.trim() || null;
+
+    if (questionType === "OX") {
+      options = ["O", "X"];
+      if (
+        typeof correctAnswer !== "number" ||
+        !Number.isInteger(correctAnswer) ||
+        (correctAnswer !== 0 && correctAnswer !== 1)
+      ) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER",
+          "correctAnswer must be 0 (O) or 1 (X)",
+          400,
+        );
+      }
+      correctAnswerText = null;
+    }
+
+    if (questionType === "SINGLE_CHOICE") {
+      if (options.length < 2) {
+        return error(
+          c,
+          "INVALID_OPTIONS",
+          "options must have at least 2 items",
+          400,
+        );
+      }
+      if (
+        typeof correctAnswer !== "number" ||
+        !Number.isInteger(correctAnswer) ||
+        correctAnswer < 0 ||
+        correctAnswer >= options.length
+      ) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER",
+          "correctAnswer must be a valid option index",
+          400,
+        );
+      }
+      correctAnswerText = null;
+    }
+
+    if (questionType === "MULTI_CHOICE") {
+      if (options.length < 2) {
+        return error(
+          c,
+          "INVALID_OPTIONS",
+          "options must have at least 2 items",
+          400,
+        );
+      }
+      const parsedAnswers = parseMultiChoiceAnswers(correctAnswerText);
+      if (!parsedAnswers) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER_TEXT",
+          "correctAnswerText must be a JSON array of indices",
+          400,
+        );
+      }
+      const hasOutOfRange = parsedAnswers.some(
+        (index) => index >= options.length,
       );
+      if (hasOutOfRange) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER_TEXT",
+          "correctAnswerText contains out-of-range indices",
+          400,
+        );
+      }
+      correctAnswer = parsedAnswers[0];
+      correctAnswerText = JSON.stringify(parsedAnswers);
+    }
+
+    if (questionType === "SHORT_ANSWER") {
+      if (!correctAnswerText) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER_TEXT",
+          "correctAnswerText is required for SHORT_ANSWER",
+          400,
+        );
+      }
+      options = [];
+      correctAnswer = 0;
+      correctAnswerText = correctAnswerText.trim();
     }
 
     const question = await db
@@ -571,8 +816,10 @@ app.post(
       .values({
         quizId,
         question: body.question,
-        options: body.options,
-        correctAnswer: body.correctAnswer,
+        options,
+        correctAnswer: correctAnswer ?? 0,
+        questionType,
+        correctAnswerText,
         explanation: body.explanation ?? null,
         orderIndex: body.orderIndex ?? 0,
       })
@@ -585,7 +832,7 @@ app.post(
 
 app.put(
   "/quizzes/:quizId/questions/:questionId",
-  zValidator("json", SubmitQuizSchema),
+  zValidator("json", UpdateQuizQuestionRequestSchema),
   async (c) => {
     const db = drizzle(c.env.DB);
     const { user } = c.get("auth");
@@ -631,35 +878,119 @@ app.put(
 
     const body = c.req.valid("json") as UpdateQuizQuestionBody;
 
-    const nextOptions = body.options ?? existingQuestion.options;
-    const nextCorrectAnswer =
-      body.correctAnswer ?? existingQuestion.correctAnswer;
-
-    if (!Array.isArray(nextOptions) || nextOptions.length === 0) {
-      return error(c, "INVALID_OPTIONS", "options must not be empty", 400);
+    const nextQuestionType = (body.questionType ??
+      existingQuestion.questionType) as QuizQuestionType;
+    if (!QUIZ_QUESTION_TYPES.includes(nextQuestionType)) {
+      return error(c, "INVALID_QUESTION_TYPE", "Invalid questionType", 400);
     }
 
-    if (
-      !Number.isInteger(nextCorrectAnswer) ||
-      nextCorrectAnswer < 0 ||
-      nextCorrectAnswer >= nextOptions.length
-    ) {
-      return error(
-        c,
-        "INVALID_CORRECT_ANSWER",
-        "correctAnswer must be a valid option index",
-        400,
+    let nextOptions = body.options ?? existingQuestion.options;
+    nextOptions = Array.isArray(nextOptions)
+      ? nextOptions.filter((option) => option.trim().length > 0)
+      : [];
+
+    let nextCorrectAnswer =
+      body.correctAnswer ?? existingQuestion.correctAnswer;
+    let nextCorrectAnswerText =
+      body.correctAnswerText !== undefined
+        ? body.correctAnswerText?.trim() || null
+        : existingQuestion.correctAnswerText;
+
+    if (nextQuestionType === "OX") {
+      nextOptions = ["O", "X"];
+      if (
+        !Number.isInteger(nextCorrectAnswer) ||
+        (nextCorrectAnswer !== 0 && nextCorrectAnswer !== 1)
+      ) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER",
+          "correctAnswer must be 0 (O) or 1 (X)",
+          400,
+        );
+      }
+      nextCorrectAnswerText = null;
+    }
+
+    if (nextQuestionType === "SINGLE_CHOICE") {
+      if (nextOptions.length < 2) {
+        return error(
+          c,
+          "INVALID_OPTIONS",
+          "options must have at least 2 items",
+          400,
+        );
+      }
+      if (
+        !Number.isInteger(nextCorrectAnswer) ||
+        nextCorrectAnswer < 0 ||
+        nextCorrectAnswer >= nextOptions.length
+      ) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER",
+          "correctAnswer must be a valid option index",
+          400,
+        );
+      }
+      nextCorrectAnswerText = null;
+    }
+
+    if (nextQuestionType === "MULTI_CHOICE") {
+      if (nextOptions.length < 2) {
+        return error(
+          c,
+          "INVALID_OPTIONS",
+          "options must have at least 2 items",
+          400,
+        );
+      }
+      const parsedAnswers = parseMultiChoiceAnswers(nextCorrectAnswerText);
+      if (!parsedAnswers) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER_TEXT",
+          "correctAnswerText must be a JSON array of indices",
+          400,
+        );
+      }
+      const hasOutOfRange = parsedAnswers.some(
+        (index) => index >= nextOptions.length,
       );
+      if (hasOutOfRange) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER_TEXT",
+          "correctAnswerText contains out-of-range indices",
+          400,
+        );
+      }
+      nextCorrectAnswer = parsedAnswers[0];
+      nextCorrectAnswerText = JSON.stringify(parsedAnswers);
+    }
+
+    if (nextQuestionType === "SHORT_ANSWER") {
+      if (!nextCorrectAnswerText) {
+        return error(
+          c,
+          "INVALID_CORRECT_ANSWER_TEXT",
+          "correctAnswerText is required for SHORT_ANSWER",
+          400,
+        );
+      }
+      nextOptions = [];
+      nextCorrectAnswer = 0;
+      nextCorrectAnswerText = nextCorrectAnswerText.trim();
     }
 
     const updated = await db
       .update(quizQuestions)
       .set({
         ...(body.question !== undefined && { question: body.question }),
-        ...(body.options !== undefined && { options: body.options }),
-        ...(body.correctAnswer !== undefined && {
-          correctAnswer: body.correctAnswer,
-        }),
+        options: nextOptions,
+        correctAnswer: nextCorrectAnswer,
+        questionType: nextQuestionType,
+        correctAnswerText: nextCorrectAnswerText,
         ...(body.explanation !== undefined && {
           explanation: body.explanation,
         }),
@@ -729,7 +1060,7 @@ app.delete("/quizzes/:quizId/questions/:questionId", async (c) => {
 
 app.post(
   "/quizzes/:quizId/attempt",
-  zValidator("json", CreateStatutoryTrainingSchema),
+  zValidator("json", SubmitQuizAttemptRequestSchema),
   async (c) => {
     const db = drizzle(c.env.DB);
     const { user } = c.get("auth");
@@ -767,13 +1098,12 @@ app.post(
 
     const body = c.req.valid("json") as SubmitQuizAttemptBody;
 
-    if (!Array.isArray(body.answers)) {
-      return error(
-        c,
-        "INVALID_ANSWERS",
-        "answers must be an array of numbers",
-        400,
-      );
+    const answersByIndex = Array.isArray(body.answers) ? body.answers : null;
+    const answersByQuestionId =
+      !Array.isArray(body.answers) && body.answers ? body.answers : null;
+
+    if (!answersByIndex && !answersByQuestionId) {
+      return error(c, "INVALID_ANSWERS", "answers are required", 400);
     }
 
     const questions = await db
@@ -787,9 +1117,19 @@ app.post(
       return error(c, "NO_QUESTIONS", "Quiz has no questions", 400);
     }
 
+    const normalizedAnswers: Array<number | number[] | string> = questions.map(
+      (question, index) => {
+        if (answersByIndex) {
+          return answersByIndex[index] ?? "";
+        }
+        return answersByQuestionId?.[question.id] ?? "";
+      },
+    );
+
     let correctCount = 0;
     for (let i = 0; i < questions.length; i += 1) {
-      if (body.answers[i] === questions[i].correctAnswer) {
+      const submittedAnswer = normalizedAnswers[i];
+      if (isQuizAnswerCorrect(questions[i], submittedAnswer)) {
         correctCount += 1;
       }
     }
@@ -863,7 +1203,7 @@ app.post(
         quizId,
         userId: user.id,
         siteId: quiz.siteId,
-        answers: body.answers,
+        answers: normalizedAnswers,
         score,
         passed,
         pointsAwarded,

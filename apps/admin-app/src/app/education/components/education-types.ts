@@ -14,6 +14,9 @@ export type ContentFormState = {
   contentUrl: string;
   thumbnailUrl: string;
   durationMinutes: string;
+  externalSource: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId: string;
+  sourceUrl: string;
 };
 
 export type QuizFormState = {
@@ -27,11 +30,13 @@ export type QuizFormState = {
 
 export type QuestionFormState = {
   question: string;
+  questionType: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
   option1: string;
   option2: string;
   option3: string;
   option4: string;
   correctAnswer: string;
+  correctAnswerText: string;
   explanation: string;
 };
 
@@ -60,6 +65,8 @@ export type EducationContentItem = {
   title: string;
   contentType: CreateEducationContentInput["contentType"];
   description?: string | null;
+  externalSource?: "LOCAL" | "YOUTUBE" | "KOSHA";
+  sourceUrl?: string | null;
   createdAt: string;
 };
 

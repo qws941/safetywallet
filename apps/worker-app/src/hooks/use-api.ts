@@ -189,8 +189,14 @@ export function useQuizzes(siteId: string) {
           questions?: Array<{
             id: string;
             question: string;
-            options: string;
+            questionType?:
+              | "SINGLE_CHOICE"
+              | "OX"
+              | "MULTI_CHOICE"
+              | "SHORT_ANSWER";
+            options: string | string[];
             correctAnswer: number;
+            correctAnswerText?: string | null;
             explanation: string | null;
             displayOrder: number;
           }>;
@@ -215,8 +221,14 @@ export function useQuiz(id: string) {
           questions: Array<{
             id: string;
             question: string;
-            options: string;
+            questionType?:
+              | "SINGLE_CHOICE"
+              | "OX"
+              | "MULTI_CHOICE"
+              | "SHORT_ANSWER";
+            options: string | string[];
             correctAnswer: number;
+            correctAnswerText?: string | null;
             explanation: string | null;
             displayOrder: number;
           }>;
@@ -232,9 +244,11 @@ export function useSubmitQuizAttempt() {
     mutationFn: ({
       quizId,
       answers,
+      questionOrder,
     }: {
       quizId: string;
-      answers: Record<string, number>;
+      answers: Record<string, number | number[] | string>;
+      questionOrder?: string[];
     }) =>
       apiFetch<{
         attempt: {
@@ -246,7 +260,13 @@ export function useSubmitQuizAttempt() {
         };
       }>(`/education/quizzes/${quizId}/attempt`, {
         method: "POST",
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({
+          answers: questionOrder
+            ? questionOrder.map(
+                (questionId: string) => answers[questionId] ?? "",
+              )
+            : answers,
+        }),
         offlineQueue: true,
       }),
     onSuccess: (_, variables) => {

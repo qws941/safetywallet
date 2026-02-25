@@ -123,7 +123,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("48시간 이상 미처리 백로그가 있습니다"),
+        screen.getByText("48시간 이상 미검토 건이 있습니다"),
       ).toBeInTheDocument();
     });
 

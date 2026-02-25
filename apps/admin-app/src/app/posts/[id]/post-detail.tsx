@@ -75,7 +75,7 @@ export default function PostDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -93,23 +93,18 @@ export default function PostDetailPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <PostContentCard
-            post={post}
-            postId={postId}
-            canReview={canReview}
-            onRefresh={() => refetch()}
-          />
-          {canReview && (
-            <AssignmentForm postId={postId} onRefresh={() => refetch()} />
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <ReviewHistoryCard reviews={post.reviews} />
-          {post.metadata && <MetadataCard metadata={post.metadata} />}
-        </div>
+      <div className="space-y-6">
+        <PostContentCard
+          post={post}
+          postId={postId}
+          canReview={canReview}
+          onRefresh={() => refetch()}
+        />
+        {canReview && (
+          <AssignmentForm postId={postId} onRefresh={() => refetch()} />
+        )}
+        <ReviewHistoryCard reviews={post.reviews} />
+        {post.metadata && <MetadataCard metadata={post.metadata} />}
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

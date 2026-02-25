@@ -1,6 +1,6 @@
 # 안전지갑 기능 체크리스트
 
-> 최종 업데이트: 2026-02-16
+> 최종 업데이트: 2026-02-25
 
 ## 1. 사용자 인증 (Authentication)
 
@@ -197,6 +197,7 @@
 - [x] 제목 입력
 - [x] 내용 입력
 - [x] 이미지 첨부 (다중)
+- [x] 동영상 첨부 (mp4/webm/quicktime, 50MB 제한) ✅ (2026-02-25)
 - [x] 카테고리 선택
 - [x] 등록/취소
 
@@ -246,6 +247,7 @@
 - [x] 게시물 승인/반려
 - [x] 게시물 삭제
 - [x] 게시물/조치 긴급 삭제 (SUPER_ADMIN 전용, R2 이미지 + 관련 데이터 일괄 삭제)
+- [x] 게시물 승인 포인트 2트랙 심사 (정책 기반 포인트 지급, 거절 사유, 추가정보 요청) ✅ (2026-02-25)
 
 ### 8.7 투표 관리
 
@@ -471,6 +473,7 @@
 - [x] 교육자료 등록/수정/삭제 API (Admin)
 - [x] 교육자료 열람 UI (Worker App)
 - [x] 교육자료 관리 UI (Admin App)
+- [x] 외부 교육자료 연동 (YouTube oEmbed 프록시, KOSHA 콘텐츠) ✅ (2026-02-25)
 
 ### 13.2 퀴즈/평가 (Quiz)
 
@@ -479,6 +482,7 @@
 - [x] 퀴즈 응시 API (POST /education/quizzes/:id/attempt)
 - [x] 퀴즈 응시 UI (Worker App)
 - [x] 퀴즈 관리 UI (Admin App)
+- [x] 퀴즈 다중 유형 지원 (OX, 객관식, 단답형) ✅ (2026-02-25)
 
 ### 13.3 TBM (Toolbox Meeting)
 
@@ -502,14 +506,14 @@
 | 메인 화면       | 12      | 12      | 100%     |
 | 우수근로자 투표 | 14      | 14      | 100%     |
 | 포인트 시스템   | 8       | 8       | 100%     |
-| 게시물          | 12      | 12      | 100%     |
-| 관리자 기능     | 24      | 24      | 100%     |
+| 게시물          | 13      | 13      | 100%     |
+| 관리자 기능     | 25      | 25      | 100%     |
 | API             | 27      | 27      | 100%     |
 | 데이터베이스    | 39      | 39      | 100%     |
 | 보안            | 12      | 12      | 100%     |
 | 운영            | 16      | 16      | 100%     |
-| 안전교육        | 13      | 13      | 100%     |
-| **합계**        | **222** | **222** | **100%** |
+| 안전교육        | 15      | 15      | 100%     |
+| **합계**        | **227** | **227** | **100%** |
 
 ---
 
@@ -553,10 +557,22 @@
 
 ### Phase 2 (외부 서비스 의존 — 미구현)
 
-- [ ] KakaoTalk Business 알림 연동
+- [ ] KakaoTalk Business 알림 연동 — **보류** (사용자 결정에 따라 연기)
 - [x] Workers AI (이미지 블러, 위험 분류) ✅ hazard classification via @cf/microsoft/resnet-50, object detection, waitUntil integration in image upload, 20 tests
-- [ ] ERP 연동
+- [ ] ERP 연동 — **보류** (사용자 결정에 따라 연기)
 - [x] Cloudflare Queues (알림 안정성)
 - [x] 이미지 압축 최적화 ✅ client-side Canvas JPEG 80% + resize 1920px + EXIF strip (image-compress.ts, posts/new, actions/view)
 - [x] KV 세션 캐싱 ✅ auth middleware KV cache (300s TTL), session-cache.ts, 13 tests
 - [x] 다국어 지원 ✅ already implemented — full i18n framework (i18n/, locales/), 4 locales (ko/en/vi/zh), 293 t() calls across all 15 pages, locale-switcher component, I18nProvider, 16+ tests
+
+### 2026-02-25 세션 완료 항목
+
+- [x] 동영상 업로드 지원 (mp4/webm/quicktime, 50MB, mediaType 컬럼) ✅
+- [x] APK/PWA 설치 프롬프트 (manifest.json, beforeinstallprompt 훅, assetlinks.json) ✅
+- [x] 공지사항 500 오류 수정 (관리자 출근 게이트 우회, 글로벌 공지 가시성, 빈 조건 가드) ✅
+- [x] 퀴즈 다중 유형 (OX, 객관식, 단답형) ✅
+- [x] 교육 외부 소스 (YouTube oEmbed, KOSHA 콘텐츠) ✅
+- [x] 포인트 2트랙 심사 (승인+포인트, 거절+사유, 추가정보 요청) ✅
+- [x] 인증 리프레시 출근 게이트 (WORKER 역할 토큰 갱신 시 출근 확인) ✅
+- [x] 출근 인원 카운트 수정 (3테이블 후보 패턴: access_daily + access + access_history) ✅
+- [x] EXPORT 권한 수정 (canManageUsers → canExportData) ✅

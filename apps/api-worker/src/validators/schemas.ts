@@ -351,6 +351,11 @@ export const CreateCourseSchema = z.object({
   description: z.string().optional(),
   contentType: z.enum(EducationContentType),
   contentUrl: z.string().optional(),
+  thumbnailUrl: z.string().optional(),
+  durationMinutes: z.number().int().positive().optional(),
+  externalSource: z.enum(["LOCAL", "YOUTUBE", "KOSHA"] as const).optional(),
+  externalId: z.string().optional(),
+  sourceUrl: z.string().optional(),
   contentBody: z.string().optional(),
   sortOrder: z.number().int().optional(),
 });
@@ -376,8 +381,12 @@ export const CreateQuizSchema = z.object({
     .array(
       z.object({
         questionText: nonEmptyStr,
+        questionType: z
+          .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER"])
+          .default("SINGLE_CHOICE"),
         options: z.array(z.string().min(1)).min(2),
         correctIndex: z.number().int().min(0),
+        correctAnswerText: z.string().optional(),
         explanation: z.string().optional(),
         sortOrder: z.number().int().optional(),
       }),
@@ -388,7 +397,9 @@ export const CreateQuizSchema = z.object({
 export const SubmitQuizSchema = z.object({
   quizId: uuid,
   siteId: uuid,
-  answers: z.array(z.number().int()),
+  answers: z.array(
+    z.union([z.number().int(), z.array(z.number().int()), z.string()]),
+  ),
   startedAt: isoDateStr,
 });
 

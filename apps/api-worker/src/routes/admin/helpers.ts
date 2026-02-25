@@ -177,7 +177,7 @@ export const requireExportAccess = async (c: AppContext, next: Next) => {
 
   const db = drizzle(c.env.DB);
   const userRecord = await db
-    .select({ canExport: users.canManageUsers })
+    .select({ canExport: users.canExportData })
     .from(users)
     .where(eq(users.id, user.id))
     .get();

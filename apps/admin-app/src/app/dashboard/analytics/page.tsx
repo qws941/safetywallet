@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
       icon: AlertTriangle,
     },
     {
-      label: "평균 처리 시간",
+      label: "조치 대기",
       value: data.avgProcessingHours,
       suffix: "시간",
       icon: AlertCircle,

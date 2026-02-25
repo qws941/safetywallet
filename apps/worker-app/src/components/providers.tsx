@@ -6,6 +6,7 @@ import { Toaster } from "@safetywallet/ui";
 import { AuthGuard } from "./auth-guard";
 import { OfflineQueueIndicator } from "./offline-queue-indicator";
 import { I18nProvider } from "@/i18n";
+import { InstallBanner } from "./install-banner";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -26,6 +27,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <AuthGuard>{children}</AuthGuard>
         <OfflineQueueIndicator />
         <Toaster />
+        <InstallBanner />
       </I18nProvider>
     </QueryClientProvider>
   );

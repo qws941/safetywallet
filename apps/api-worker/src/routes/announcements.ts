@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, desc, or, isNull, lte } from "drizzle-orm";
+import { eq, and, desc, or, lte } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
@@ -45,7 +45,10 @@ app.get("/", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
   const offset = parseInt(c.req.query("offset") || "0");
 
-  await attendanceMiddleware(c, async () => {}, siteId);
+  // Admin users are exempt from attendance checks
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    await attendanceMiddleware(c, async () => {}, siteId);
+  }
 
   if (siteId) {
     const membership = await db
@@ -69,7 +72,7 @@ app.get("/", async (c) => {
 
   if (siteId) {
     conditions.push(
-      or(eq(announcements.siteId, siteId), isNull(announcements.siteId))!,
+      or(eq(announcements.siteId, siteId), eq(announcements.siteId, ""))!,
     );
   }
 
@@ -88,7 +91,7 @@ app.get("/", async (c) => {
     })
     .from(announcements)
     .leftJoin(users, eq(announcements.authorId, users.id))
-    .where(and(...conditions))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
     .limit(limit)
     .offset(offset)

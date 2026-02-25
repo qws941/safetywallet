@@ -312,6 +312,7 @@ export const postImages = sqliteTable(
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
     fileUrl: text("file_url").notNull(),
+    mediaType: text("media_type").notNull().default("image"),
     thumbnailUrl: text("thumbnail_url"),
     imageHash: text("image_hash"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
@@ -1161,6 +1162,9 @@ export const educationContents = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),
+    externalSource: text("external_source").notNull().default("LOCAL"),
+    externalId: text("external_id"),
+    sourceUrl: text("source_url"),
   },
   (table) => ({
     siteIdx: index("education_contents_site_idx").on(table.siteId),
@@ -1225,6 +1229,8 @@ export const quizQuestions = sqliteTable(
     correctAnswer: integer("correct_answer").notNull(),
     explanation: text("explanation"),
     orderIndex: integer("order_index").default(0).notNull(),
+    questionType: text("question_type").notNull().default("SINGLE_CHOICE"),
+    correctAnswerText: text("correct_answer_text"),
   },
   (table) => ({
     quizIdx: index("quiz_questions_quiz_idx").on(table.quizId),
@@ -1251,7 +1257,9 @@ export const quizAttempts = sqliteTable(
     siteId: text("site_id")
       .notNull()
       .references(() => sites.id, { onDelete: "cascade" }),
-    answers: text("answers", { mode: "json" }).$type<number[]>(),
+    answers: text("answers", { mode: "json" }).$type<
+      (number | number[] | string)[]
+    >(),
     score: integer("score").default(0).notNull(),
     passed: integer("passed", { mode: "boolean" }).default(false).notNull(),
     pointsAwarded: integer("points_awarded").default(0).notNull(),

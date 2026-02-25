@@ -97,18 +97,16 @@ function CategoryDistributionChart({ data }: { data: Record<string, number> }) {
 function HotspotChart({
   pendingCount,
   urgentCount,
-  avgProcessingHours,
   todayPostsCount,
 }: {
   pendingCount: number;
   urgentCount: number;
-  avgProcessingHours: number;
   todayPostsCount: number;
 }) {
   const hotspots = [
     {
       key: "pending",
-      label: "미처리 백로그",
+      label: "미검토",
       value: pendingCount,
       unit: "건",
       color: "#f97316",
@@ -121,13 +119,6 @@ function HotspotChart({
       color: "#ef4444",
     },
     {
-      key: "processing",
-      label: "평균 처리 시간",
-      value: avgProcessingHours,
-      unit: "시간",
-      color: "#3b82f6",
-    },
-    {
       key: "today",
       label: "오늘 접수량",
       value: todayPostsCount,
@@ -135,7 +126,6 @@ function HotspotChart({
       color: "#22c55e",
     },
   ].sort((a, b) => b.value - a.value);
-
   const maxValue = Math.max(...hotspots.map((item) => item.value), 1);
 
   return (
@@ -199,25 +189,24 @@ export default function DashboardPage() {
             <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
             <div>
               <p className="font-medium text-red-800">
-                48시간 이상 미처리 백로그가 있습니다
+                48시간 이상 미검토 건이 있습니다
               </p>
               <p className="text-sm text-red-600">
-                미처리 {stats?.pendingCount}건 · 평균 처리시간{" "}
+                미검토 {stats?.pendingCount}건 · 조치 대기{" "}
                 {stats?.avgProcessingHours}시간
               </p>
             </div>
           </div>
         )}
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="오늘 제보"
-          value={stats?.todayPostsCount ?? 0}
-          icon={FileText}
-          description="금일 등록된 제보"
+          title="오늘의 출근 현황"
+          value={stats?.activeUsersToday ?? 0}
+          icon={Users}
+          description="금일 출석 인원"
         />
         <StatsCard
-          title="미처리 백로그"
+          title="미검토 건수"
           value={stats?.pendingCount ?? 0}
           icon={Clock}
           description="검토 대기 중"
@@ -229,10 +218,16 @@ export default function DashboardPage() {
           description="즉시 처리 필요"
         />
         <StatsCard
-          title="평균 처리 시간"
+          title="조치 대기"
           value={`${stats?.avgProcessingHours ?? 0}h`}
           icon={Timer}
-          description="승인/반려까지"
+          description="평균 대기 시간"
+        />
+        <StatsCard
+          title="오늘 제보"
+          value={stats?.todayPostsCount ?? 0}
+          icon={FileText}
+          description="금일 등록된 제보"
         />
         <StatsCard
           title="전체 사용자"
@@ -247,12 +242,6 @@ export default function DashboardPage() {
           description="누적 제보 수"
         />
         <StatsCard
-          title="오늘 출근"
-          value={stats?.activeUsersToday ?? 0}
-          icon={Users}
-          description="금일 출석 인원"
-        />
-        <StatsCard
           title="전체 현장"
           value={stats?.totalSites ?? 0}
           icon={BarChart3}
@@ -265,7 +254,6 @@ export default function DashboardPage() {
         <HotspotChart
           pendingCount={stats?.pendingCount ?? 0}
           urgentCount={stats?.urgentCount ?? 0}
-          avgProcessingHours={stats?.avgProcessingHours ?? 0}
           todayPostsCount={stats?.todayPostsCount ?? 0}
         />
       </div>

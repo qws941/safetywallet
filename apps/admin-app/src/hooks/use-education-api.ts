@@ -13,6 +13,9 @@ export interface EducationContent {
   contentUrl: string | null;
   thumbnailUrl: string | null;
   durationMinutes: number | null;
+  externalSource: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId: string | null;
+  sourceUrl: string | null;
   isActive: boolean;
   createdById: string;
   createdAt: string;
@@ -34,7 +37,18 @@ export interface CreateEducationContentInput {
   contentUrl?: string;
   thumbnailUrl?: string;
   durationMinutes?: number;
+  externalSource?: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId?: string;
+  sourceUrl?: string;
 }
+
+type YouTubeOembedResponse = {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
+  authorName: string;
+  html?: string;
+};
 
 export interface Quiz {
   id: string;
@@ -55,8 +69,10 @@ export interface QuizQuestion {
   id: string;
   quizId: string;
   question: string;
+  questionType: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
   options: string[];
   correctAnswer: number;
+  correctAnswerText: string | null;
   explanation: string | null;
   orderIndex: number;
   createdAt: string;
@@ -89,6 +105,8 @@ export interface CreateQuizQuestionInput {
   question: string;
   options: string[];
   correctAnswer: number;
+  questionType?: string;
+  correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
 }
@@ -97,6 +115,8 @@ export interface UpdateQuizQuestionInput {
   question?: string;
   options?: string[];
   correctAnswer?: number;
+  questionType?: string;
+  correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
 }
@@ -257,6 +277,17 @@ export function useCreateEducationContent() {
       queryClient.invalidateQueries({
         queryKey: ["admin", "education-contents"],
       });
+    },
+  });
+}
+
+export function useYouTubeOembed() {
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const response = await apiFetch<{ data: YouTubeOembedResponse }>(
+        `/education/youtube-oembed?url=${encodeURIComponent(url)}`,
+      );
+      return response.data;
     },
   });
 }

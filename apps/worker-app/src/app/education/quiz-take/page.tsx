@@ -22,6 +22,43 @@ import {
 } from "@safetywallet/ui";
 import { AlertCircle, CheckCircle2, Clock, RotateCcw } from "lucide-react";
 
+type QuestionType = "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+type AnswerValue = number | number[] | string;
+
+const getQuestionType = (value: string | undefined): QuestionType => {
+  if (
+    value === "SINGLE_CHOICE" ||
+    value === "OX" ||
+    value === "MULTI_CHOICE" ||
+    value === "SHORT_ANSWER"
+  ) {
+    return value;
+  }
+  return "SINGLE_CHOICE";
+};
+
+const getQuestionTypeLabel = (type: QuestionType): string => {
+  if (type === "OX") return "OX 퀴즈";
+  if (type === "MULTI_CHOICE") return "복수 선택";
+  if (type === "SHORT_ANSWER") return "주관식";
+  return "단일 선택";
+};
+
+const parseQuestionOptions = (
+  options: string | string[] | undefined,
+): string[] => {
+  if (Array.isArray(options)) return options;
+  if (typeof options === "string") {
+    try {
+      const parsed = JSON.parse(options);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 function LoadingState() {
   return (
     <div className="min-h-screen bg-gray-50 pb-nav">
@@ -48,7 +85,7 @@ function QuizTakeContent() {
     useSubmitQuizAttempt();
   const { toast } = useToast();
 
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<{
     score: number;
@@ -95,8 +132,44 @@ function QuizTakeContent() {
     }));
   };
 
+  const handleMultiChoiceToggle = (questionId: string, optionIndex: number) => {
+    setAnswers((prev) => {
+      const existing = prev[questionId];
+      const current = Array.isArray(existing) ? existing : [];
+      const hasValue = current.includes(optionIndex);
+      return {
+        ...prev,
+        [questionId]: hasValue
+          ? current.filter((value) => value !== optionIndex)
+          : [...current, optionIndex],
+      };
+    });
+  };
+
+  const handleShortAnswerChange = (questionId: string, value: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: value,
+    }));
+  };
+
   const handleSubmit = () => {
-    if (Object.keys(answers).length < quiz.questions.length) {
+    const hasUnanswered = quiz.questions.some((question) => {
+      const questionType = getQuestionType(question.questionType);
+      const answer = answers[question.id];
+
+      if (questionType === "MULTI_CHOICE") {
+        return !Array.isArray(answer) || answer.length === 0;
+      }
+
+      if (questionType === "SHORT_ANSWER") {
+        return typeof answer !== "string" || answer.trim().length === 0;
+      }
+
+      return typeof answer !== "number";
+    });
+
+    if (hasUnanswered) {
       toast({
         title: t("education.quiz.selectAllAnswers"),
         variant: "destructive",
@@ -105,7 +178,11 @@ function QuizTakeContent() {
     }
 
     submitAttempt(
-      { quizId, answers },
+      {
+        quizId,
+        answers,
+        questionOrder: quiz.questions.map((question) => question.id),
+      },
       {
         onSuccess: (data) => {
           setLastResult({
@@ -217,8 +294,9 @@ function QuizTakeContent() {
 
         <div className="space-y-6">
           {quiz.questions.map((q, idx) => {
-            const options =
-              typeof q.options === "string" ? JSON.parse(q.options) : q.options;
+            const options = parseQuestionOptions(q.options);
+            const questionType = getQuestionType(q.questionType);
+            const answer = answers[q.id];
 
             return (
               <Card key={q.id}>
@@ -226,27 +304,30 @@ function QuizTakeContent() {
                   <CardTitle className="text-base font-medium flex gap-2">
                     <span className="text-primary">Q{idx + 1}.</span>
                     {q.question}
+                    <Badge variant="outline" className="ml-1">
+                      {getQuestionTypeLabel(questionType)}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {Array.isArray(options) &&
+                  {questionType === "SINGLE_CHOICE" &&
                     options.map((option: string, optIdx: number) => (
                       <label
-                        key={optIdx}
+                        key={`${q.id}-single-${optIdx}`}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          answers[q.id] === optIdx
+                          answer === optIdx
                             ? "border-primary bg-primary/5"
                             : "border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         <div
                           className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                            answers[q.id] === optIdx
+                            answer === optIdx
                               ? "border-primary"
                               : "border-gray-400"
                           }`}
                         >
-                          {answers[q.id] === optIdx && (
+                          {answer === optIdx && (
                             <div className="w-2 h-2 rounded-full bg-primary" />
                           )}
                         </div>
@@ -255,11 +336,87 @@ function QuizTakeContent() {
                           type="radio"
                           name={`q-${q.id}`}
                           className="hidden"
-                          checked={answers[q.id] === optIdx}
+                          checked={answer === optIdx}
                           onChange={() => handleAnswerSelect(q.id, optIdx)}
                         />
                       </label>
                     ))}
+
+                  {questionType === "OX" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        className={`rounded-lg border px-4 py-6 text-xl font-bold transition-colors ${
+                          answer === 0
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleAnswerSelect(q.id, 0)}
+                      >
+                        ⭕ O
+                      </button>
+                      <button
+                        type="button"
+                        className={`rounded-lg border px-4 py-6 text-xl font-bold transition-colors ${
+                          answer === 1
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleAnswerSelect(q.id, 1)}
+                      >
+                        ❌ X
+                      </button>
+                    </div>
+                  )}
+
+                  {questionType === "MULTI_CHOICE" &&
+                    options.map((option: string, optIdx: number) => {
+                      const selected =
+                        Array.isArray(answer) && answer.includes(optIdx);
+                      return (
+                        <label
+                          key={`${q.id}-multi-${optIdx}`}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded border flex items-center justify-center ${
+                              selected
+                                ? "border-primary bg-primary"
+                                : "border-gray-400"
+                            }`}
+                          >
+                            {selected && (
+                              <div className="w-2 h-2 rounded-sm bg-white" />
+                            )}
+                          </div>
+                          <span className="text-sm">{option}</span>
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={selected}
+                            onChange={() =>
+                              handleMultiChoiceToggle(q.id, optIdx)
+                            }
+                          />
+                        </label>
+                      );
+                    })}
+
+                  {questionType === "SHORT_ANSWER" && (
+                    <input
+                      type="text"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="정답을 입력해 주세요"
+                      value={typeof answer === "string" ? answer : ""}
+                      onChange={(event) =>
+                        handleShortAnswerChange(q.id, event.target.value)
+                      }
+                    />
+                  )}
                 </CardContent>
               </Card>
             );

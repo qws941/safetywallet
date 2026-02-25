@@ -37,6 +37,15 @@ import type {
   QuizItem,
 } from "./education-types";
 
+type QuestionType = "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+
+const QUESTION_TYPE_OPTIONS: Array<{ value: QuestionType; label: string }> = [
+  { value: "SINGLE_CHOICE", label: "단일 선택" },
+  { value: "OX", label: "OX 퀴즈" },
+  { value: "MULTI_CHOICE", label: "복수 선택" },
+  { value: "SHORT_ANSWER", label: "주관식" },
+];
+
 const INITIAL_QUIZ_FORM: QuizFormState = {
   title: "",
   description: "",
@@ -48,13 +57,39 @@ const INITIAL_QUIZ_FORM: QuizFormState = {
 
 const INITIAL_QUESTION_FORM: QuestionFormState = {
   question: "",
+  questionType: "SINGLE_CHOICE",
   option1: "",
   option2: "",
   option3: "",
   option4: "",
   correctAnswer: "0",
+  correctAnswerText: "",
   explanation: "",
 };
+
+const parseMultiChoiceAnswers = (
+  value: string | null | undefined,
+): number[] => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => Number.isInteger(item) && item >= 0)
+      .map((item) => Number(item));
+  } catch {
+    return [];
+  }
+};
+
+const createMultiOption = (value = "") => ({
+  id: `multi-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  value,
+});
+
+const getQuestionTypeLabel = (type: string | null | undefined): string =>
+  QUESTION_TYPE_OPTIONS.find((option) => option.value === type)?.label ??
+  "단일 선택";
 
 export function QuizzesTab() {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
@@ -68,6 +103,11 @@ export function QuizzesTab() {
   const [questionForm, setQuestionForm] = useState<QuestionFormState>(
     INITIAL_QUESTION_FORM,
   );
+  const [multiOptions, setMultiOptions] = useState(() => [
+    createMultiOption(),
+    createMultiOption(),
+  ]);
+  const [multiCorrectAnswers, setMultiCorrectAnswers] = useState<number[]>([]);
 
   const { data: quizzesData, isLoading } = useQuizzes();
   const { data: quizDetail } = useQuiz(expandedQuizId || "");
@@ -89,6 +129,8 @@ export function QuizzesTab() {
   const resetQuestionForm = () => {
     setEditingQuestionId(null);
     setQuestionForm(INITIAL_QUESTION_FORM);
+    setMultiOptions([createMultiOption(), createMultiOption()]);
+    setMultiCorrectAnswers([]);
   };
 
   const onCreateQuiz = async () => {
@@ -113,42 +155,155 @@ export function QuizzesTab() {
   };
 
   const fillQuestionForm = (question: QuizQuestion) => {
+    const questionType = (question.questionType ??
+      "SINGLE_CHOICE") as QuestionType;
     setEditingQuestionId(question.id);
     setQuestionForm({
       question: question.question,
+      questionType,
       option1: question.options[0] || "",
       option2: question.options[1] || "",
       option3: question.options[2] || "",
       option4: question.options[3] || "",
-      correctAnswer: String(question.correctAnswer),
+      correctAnswer: String(question.correctAnswer ?? 0),
+      correctAnswerText: question.correctAnswerText || "",
       explanation: question.explanation || "",
     });
+
+    if (questionType === "MULTI_CHOICE") {
+      setMultiOptions(
+        question.options.length > 0
+          ? question.options.map((option) => createMultiOption(option))
+          : [createMultiOption(), createMultiOption()],
+      );
+      setMultiCorrectAnswers(
+        parseMultiChoiceAnswers(question.correctAnswerText),
+      );
+    } else {
+      setMultiOptions([createMultiOption(), createMultiOption()]);
+      setMultiCorrectAnswers([]);
+    }
   };
 
   const onSubmitQuestion = async () => {
-    if (!expandedQuizId || !questionForm.question) return;
+    if (!expandedQuizId || !questionForm.question.trim()) return;
 
-    const options = [
-      questionForm.option1,
-      questionForm.option2,
-      questionForm.option3,
-      questionForm.option4,
-    ].filter((v) => v.trim().length > 0);
+    const questionType = questionForm.questionType;
+    let options: string[] = [];
+    let correctAnswer = 0;
+    let correctAnswerText: string | undefined;
 
-    if (options.length < 2) {
-      toast({
-        variant: "destructive",
-        description: "선택지는 최소 2개 이상 입력해야 합니다.",
-      });
-      return;
+    if (questionType === "SINGLE_CHOICE") {
+      options = [
+        questionForm.option1,
+        questionForm.option2,
+        questionForm.option3,
+        questionForm.option4,
+      ].filter((value) => value.trim().length > 0);
+
+      if (options.length < 2) {
+        toast({
+          variant: "destructive",
+          description: "선택지는 최소 2개 이상 입력해야 합니다.",
+        });
+        return;
+      }
+
+      const selected = Number(questionForm.correctAnswer);
+      if (
+        !Number.isInteger(selected) ||
+        selected < 0 ||
+        selected >= options.length
+      ) {
+        toast({
+          variant: "destructive",
+          description: "정답을 올바르게 선택해 주세요.",
+        });
+        return;
+      }
+
+      correctAnswer = selected;
     }
+
+    if (questionType === "OX") {
+      options = ["O", "X"];
+      const selected = Number(questionForm.correctAnswer);
+      if (selected !== 0 && selected !== 1) {
+        toast({
+          variant: "destructive",
+          description: "OX 정답을 선택해 주세요.",
+        });
+        return;
+      }
+      correctAnswer = selected;
+    }
+
+    if (questionType === "MULTI_CHOICE") {
+      options = multiOptions
+        .map((option) => option.value)
+        .filter((value) => value.trim().length > 0);
+      if (options.length < 2) {
+        toast({
+          variant: "destructive",
+          description: "복수 선택 문항은 선택지가 최소 2개 필요합니다.",
+        });
+        return;
+      }
+
+      const selectedIndexes = Array.from(new Set(multiCorrectAnswers)).sort(
+        (a, b) => a - b,
+      );
+      if (selectedIndexes.length === 0) {
+        toast({
+          variant: "destructive",
+          description: "복수 선택 문항의 정답을 1개 이상 선택해 주세요.",
+        });
+        return;
+      }
+
+      const hasOutOfRange = selectedIndexes.some(
+        (index) => index >= options.length,
+      );
+      if (hasOutOfRange) {
+        toast({
+          variant: "destructive",
+          description: "정답 선택이 선택지 범위를 벗어났습니다.",
+        });
+        return;
+      }
+
+      correctAnswer = selectedIndexes[0];
+      correctAnswerText = JSON.stringify(selectedIndexes);
+    }
+
+    if (questionType === "SHORT_ANSWER") {
+      const answerText = questionForm.correctAnswerText.trim();
+      if (!answerText) {
+        toast({
+          variant: "destructive",
+          description: "정답 텍스트를 입력해 주세요.",
+        });
+        return;
+      }
+      options = [];
+      correctAnswer = 0;
+      correctAnswerText = answerText;
+    }
+
+    const editingQuestion = sortedQuizQuestions.find(
+      (item) => item.id === editingQuestionId,
+    );
 
     const payload: CreateQuizQuestionInput = {
       question: questionForm.question,
+      questionType,
       options,
-      correctAnswer: Number(questionForm.correctAnswer),
+      correctAnswer,
+      correctAnswerText,
       explanation: questionForm.explanation || undefined,
-      orderIndex: sortedQuizQuestions.length,
+      orderIndex: editingQuestion
+        ? editingQuestion.orderIndex
+        : sortedQuizQuestions.length,
     };
 
     try {
@@ -377,45 +532,41 @@ export function QuizzesTab() {
                         }))
                       }
                     />
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {["option1", "option2", "option3", "option4"].map(
-                        (key, idx) => (
-                          <Input
-                            key={key}
-                            placeholder={`선택지 ${idx + 1}`}
-                            value={
-                              questionForm[
-                                key as keyof typeof questionForm
-                              ] as string
-                            }
-                            onChange={(e) =>
-                              setQuestionForm((prev) => ({
-                                ...prev,
-                                [key]: e.target.value,
-                              }))
-                            }
-                          />
-                        ),
-                      )}
-                    </div>
+
                     <div className="grid gap-3 md:grid-cols-2">
                       <Select
-                        value={questionForm.correctAnswer}
-                        onValueChange={(value) =>
+                        value={questionForm.questionType}
+                        onValueChange={(value) => {
+                          const nextType = value as QuestionType;
                           setQuestionForm((prev) => ({
                             ...prev,
-                            correctAnswer: value,
-                          }))
-                        }
+                            questionType: nextType,
+                            correctAnswerText:
+                              nextType === "SHORT_ANSWER"
+                                ? prev.correctAnswerText
+                                : "",
+                          }));
+                          if (nextType === "MULTI_CHOICE") {
+                            setMultiOptions([
+                              createMultiOption(),
+                              createMultiOption(),
+                            ]);
+                            setMultiCorrectAnswers([]);
+                          }
+                          if (nextType !== "MULTI_CHOICE") {
+                            setMultiCorrectAnswers([]);
+                          }
+                        }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="정답 번호" />
+                          <SelectValue placeholder="문항 유형" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="0">1번</SelectItem>
-                          <SelectItem value="1">2번</SelectItem>
-                          <SelectItem value="2">3번</SelectItem>
-                          <SelectItem value="3">4번</SelectItem>
+                          {QUESTION_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Input
@@ -429,6 +580,168 @@ export function QuizzesTab() {
                         }
                       />
                     </div>
+
+                    {questionForm.questionType === "SINGLE_CHOICE" && (
+                      <>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {(
+                            [
+                              "option1",
+                              "option2",
+                              "option3",
+                              "option4",
+                            ] as const
+                          ).map((key, idx) => (
+                            <Input
+                              key={key}
+                              placeholder={`선택지 ${idx + 1}`}
+                              value={questionForm[key]}
+                              onChange={(e) =>
+                                setQuestionForm((prev) => ({
+                                  ...prev,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                            />
+                          ))}
+                        </div>
+                        <Select
+                          value={questionForm.correctAnswer}
+                          onValueChange={(value) =>
+                            setQuestionForm((prev) => ({
+                              ...prev,
+                              correctAnswer: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="정답" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">1번</SelectItem>
+                            <SelectItem value="1">2번</SelectItem>
+                            <SelectItem value="2">3번</SelectItem>
+                            <SelectItem value="3">4번</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
+
+                    {questionForm.questionType === "OX" && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-md border p-3 text-center font-medium">
+                            O
+                          </div>
+                          <div className="rounded-md border p-3 text-center font-medium">
+                            X
+                          </div>
+                        </div>
+                        <Select
+                          value={questionForm.correctAnswer}
+                          onValueChange={(value) =>
+                            setQuestionForm((prev) => ({
+                              ...prev,
+                              correctAnswer: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="정답" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">O (⭕)</SelectItem>
+                            <SelectItem value="1">X (❌)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
+
+                    {questionForm.questionType === "MULTI_CHOICE" && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">선택지</div>
+                        {multiOptions.map((option, optionIdx) => (
+                          <div
+                            key={option.id}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={multiCorrectAnswers.includes(optionIdx)}
+                              onChange={(e) => {
+                                setMultiCorrectAnswers((prev) => {
+                                  if (e.target.checked) {
+                                    return [...prev, optionIdx];
+                                  }
+                                  return prev.filter(
+                                    (value) => value !== optionIdx,
+                                  );
+                                });
+                              }}
+                            />
+                            <Input
+                              placeholder={`선택지 ${optionIdx + 1}`}
+                              value={option.value}
+                              onChange={(e) => {
+                                const next = [...multiOptions];
+                                next[optionIdx] = {
+                                  ...next[optionIdx],
+                                  value: e.target.value,
+                                };
+                                setMultiOptions(next);
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                if (multiOptions.length <= 2) return;
+                                const next = multiOptions.filter(
+                                  (_, idx) => idx !== optionIdx,
+                                );
+                                setMultiOptions(next);
+                                setMultiCorrectAnswers((prev) =>
+                                  prev
+                                    .filter((value) => value !== optionIdx)
+                                    .map((value) =>
+                                      value > optionIdx ? value - 1 : value,
+                                    ),
+                                );
+                              }}
+                            >
+                              제거
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            setMultiOptions((prev) => [
+                              ...prev,
+                              createMultiOption(),
+                            ])
+                          }
+                        >
+                          선택지 추가
+                        </Button>
+                      </div>
+                    )}
+
+                    {questionForm.questionType === "SHORT_ANSWER" && (
+                      <Input
+                        placeholder="정답 텍스트"
+                        value={questionForm.correctAnswerText}
+                        onChange={(e) =>
+                          setQuestionForm((prev) => ({
+                            ...prev,
+                            correctAnswerText: e.target.value,
+                          }))
+                        }
+                      />
+                    )}
+
                     <div className="flex gap-2">
                       <Button type="button" onClick={onSubmitQuestion}>
                         {editingQuestionId ? "문항 수정" : "문항 추가"}
@@ -445,48 +758,81 @@ export function QuizzesTab() {
                     </div>
 
                     <div className="space-y-2">
-                      {sortedQuizQuestions.map((item, idx) => (
-                        <div
-                          key={item.id}
-                          className="rounded-md border p-3 text-sm"
-                        >
-                          <div className="mb-1 font-medium">
-                            {idx + 1}. {item.question}
-                          </div>
-                          <ol className="ml-5 list-decimal space-y-1 text-muted-foreground">
-                            {item.options.map((opt, optionIdx) => (
-                              <li
-                                key={`${item.id}-${optionIdx}`}
-                                className={
-                                  optionIdx === item.correctAnswer
-                                    ? "font-semibold text-foreground"
-                                    : ""
-                                }
+                      {sortedQuizQuestions.map((item, idx) => {
+                        const itemType = (item.questionType ??
+                          "SINGLE_CHOICE") as QuestionType;
+                        const correctMultiAnswers =
+                          itemType === "MULTI_CHOICE"
+                            ? parseMultiChoiceAnswers(item.correctAnswerText)
+                            : [];
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded-md border p-3 text-sm"
+                          >
+                            <div className="mb-2 flex items-center gap-2">
+                              <div className="font-medium">
+                                {idx + 1}. {item.question}
+                              </div>
+                              <Badge variant="outline">
+                                {getQuestionTypeLabel(itemType)}
+                              </Badge>
+                            </div>
+
+                            {itemType !== "SHORT_ANSWER" && (
+                              <ol className="ml-5 list-decimal space-y-1 text-muted-foreground">
+                                {item.options.map((opt, optionIdx) => {
+                                  const isCorrect =
+                                    itemType === "MULTI_CHOICE"
+                                      ? correctMultiAnswers.includes(optionIdx)
+                                      : optionIdx === item.correctAnswer;
+                                  return (
+                                    <li
+                                      key={`${item.id}-${optionIdx}`}
+                                      className={
+                                        isCorrect
+                                          ? "font-semibold text-foreground"
+                                          : ""
+                                      }
+                                    >
+                                      {opt}
+                                    </li>
+                                  );
+                                })}
+                              </ol>
+                            )}
+
+                            {itemType === "SHORT_ANSWER" && (
+                              <div className="text-muted-foreground">
+                                정답 텍스트:{" "}
+                                <span className="font-semibold text-foreground">
+                                  {item.correctAnswerText || "-"}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="mt-2 flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => fillQuestionForm(item)}
                               >
-                                {opt}
-                              </li>
-                            ))}
-                          </ol>
-                          <div className="mt-2 flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => fillQuestionForm(item)}
-                            >
-                              수정
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => onDeleteQuestion(item.id)}
-                            >
-                              삭제
-                            </Button>
+                                수정
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => onDeleteQuestion(item.id)}
+                              >
+                                삭제
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       {sortedQuizQuestions.length === 0 && (
                         <p className="text-sm text-muted-foreground">
                           등록된 문항이 없습니다.

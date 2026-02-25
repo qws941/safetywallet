@@ -3,7 +3,7 @@
 **Generated**: 2025-02-05  
 **PRD Version**: v1.2 (Cloudflare Native Architecture)  
 **Implementation Status**: 99% complete  
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-25
 
 > Note: This file compares PRD baseline vs implementation history. If a row conflicts with current FAS-based login behavior, use `docs/FEATURE_CHECKLIST.md` and `AGENTS.md` as the operational source of truth.
 
@@ -108,13 +108,13 @@
 
 ### 3.2 Permission Flags
 
-| Flag            | Status         | Notes                                         |
-| --------------- | -------------- | --------------------------------------------- |
-| `PII_VIEW_FULL` | ✅ Implemented | Field in users table, checked on PII access   |
-| `POINT_AWARD`   | ✅ Implemented | Checked in points award endpoint              |
-| `EXPORT`        | ⚠️ Partial     | Field exists, export endpoint not implemented |
-| `POLICY_EDIT`   | ✅ Implemented | policies.ts CRUD endpoints implemented        |
-| `NOTICE_EDIT`   | ✅ Implemented | Checked in announcements creation             |
+| Flag            | Status         | Notes                                                                      |
+| --------------- | -------------- | -------------------------------------------------------------------------- |
+| `PII_VIEW_FULL` | ✅ Implemented | Field in users table, checked on PII access                                |
+| `POINT_AWARD`   | ✅ Implemented | Checked in points award endpoint                                           |
+| `EXPORT`        | ✅ Implemented | `canExportData` field enforced in admin export endpoint (fixed 2026-02-25) |
+| `POLICY_EDIT`   | ✅ Implemented | policies.ts CRUD endpoints implemented                                     |
+| `NOTICE_EDIT`   | ✅ Implemented | Checked in announcements creation                                          |
 
 ### 3.3 Permission Matrix
 
@@ -217,15 +217,15 @@
 
 ### 5.2 Post Creation
 
-| Field            | Required | Status | Notes                               |
-| ---------------- | -------- | ------ | ----------------------------------- |
-| Category         | ✓        | ✅     | Radio buttons for 5 categories      |
-| Floor/Zone       | ✓        | ✅     | Dropdown + text input               |
-| Location detail  | ✓        | ✅     | Text field                          |
-| Risk level       | -        | ✅     | Select (High/Medium/Low)            |
-| Content          | ✓        | ✅     | Text area, min 20 chars recommended |
-| Photo            | \*       | ✅     | Image upload, varies by category    |
-| Anonymous option | -        | ✅     | Toggle, default ON                  |
+| Field            | Required | Status | Notes                                                 |
+| ---------------- | -------- | ------ | ----------------------------------------------------- |
+| Category         | ✓        | ✅     | Radio buttons for 5 categories                        |
+| Floor/Zone       | ✓        | ✅     | Dropdown + text input                                 |
+| Location detail  | ✓        | ✅     | Text field                                            |
+| Risk level       | -        | ✅     | Select (High/Medium/Low)                              |
+| Content          | ✓        | ✅     | Text area, min 20 chars recommended                   |
+| Photo/Video      | \*       | ✅     | Image + video upload (mp4/webm/quicktime, 50MB limit) |
+| Anonymous option | -        | ✅     | Toggle, default ON                                    |
 
 **Category-Specific Fields**:
 
@@ -505,13 +505,15 @@
 
 ### 9.5 PostImages Table
 
-| Field         | Status | Notes            |
-| ------------- | ------ | ---------------- |
-| image_id (PK) | ✅     | UUID             |
-| post_id (FK)  | ✅     | Post             |
-| file_url      | ✅     | R2 URL           |
-| thumbnail_url | ✅     | R2 thumbnail URL |
-| created_at    | ✅     | Timestamp        |
+| Field         | Status | Notes                                           |
+| ------------- | ------ | ----------------------------------------------- |
+| image_id (PK) | ✅     | UUID                                            |
+| post_id (FK)  | ✅     | Post                                            |
+| file_url      | ✅     | R2 URL                                          |
+| thumbnail_url | ✅     | R2 thumbnail URL                                |
+| created_at    | ✅     | Timestamp                                       |
+| image_hash    | ✅     | pHash for duplicate detection                   |
+| media_type    | ✅     | `image` or `video` (migration 0014, 2026-02-25) |
 
 ### 9.6 Reviews Table
 
@@ -879,13 +881,21 @@
 - [x] Add image compression — `image-compress.ts` client-side Canvas
 - [x] Complete dashboard analytics charts (trend-chart.tsx, points-chart.tsx)
 - [x] Add Queues for notification reliability
-- [x] Image blur for privacy — `face-blur.ts` + Workers AI
-      #NY|- [x] Similarity detection — pHash blocking (hamming ≤5)
-- [ ] KakaoTalk Business integration
+- [x] Image blur for privacy — `face-blur.ts` + Workers AI - [x] Similarity detection — pHash blocking (hamming ≤5)
+- [ ] KakaoTalk Business integration — **ON HOLD** (deferred per user decision)
 - [x] Multi-language support — i18n: ko/en/vi/zh (4 locales)
+- [x] Video upload support — mp4/webm/quicktime, 50MB limit, mediaType column (2026-02-25)
+- [x] APK/PWA install prompt — manifest.json, beforeinstallprompt hook, assetlinks.json (2026-02-25)
+- [x] Announcements 500 fix — admin attendance gate bypass, global visibility eq(''), empty conditions guard (2026-02-25)
+- [x] Quiz multi-type — OX, MULTI_CHOICE, SHORT_ANSWER question types (2026-02-25)
+- [x] Education external sources — YouTube oEmbed proxy, KOSHA content integration (2026-02-25)
+- [x] Points two-track review — approve with policy points, reject with reasons, request-info flow (2026-02-25)
+- [x] Auth refresh attendance gate — WORKER role attendance check on token refresh (2026-02-25)
+- [x] Attendance count fix — 3-table candidate pattern (access_daily + access + access_history) (2026-02-25)
+- [x] EXPORT permission fix — canManageUsers → canExportData in admin helpers (2026-02-25)
 
 ---
 
 **Document Generated**: 2025-02-05  
-#ZV|**Last Updated**: 2026-02-25
-#BM|**Status**: P0/P1 100% complete - All core requirements implemented; KV session caching done; Cloudflare Queues done; Workers AI hazard classification done; i18n done (4 locales: ko/en/vi/zh); pHash similarity detection done; remaining items are P2/Phase 2 external dependencies only (KakaoTalk Business, ERP)
+**Last Updated**: 2026-02-25
+**Status**: P0/P1 100% complete. 2026-02-25: video upload, APK install, announcements 500 fix, quiz multi-type, education external sources, points two-track review, auth/attendance bug fixes, EXPORT permission fix. Remaining: KakaoTalk (ON HOLD), ERP (ON HOLD), signature/receipt for rewards, reward criteria configurability.

@@ -153,7 +153,11 @@ export default function NewPostPage() {
       }
 
       selectedFiles.forEach((file) => {
-        if (file.size > 10 * 1024 * 1024) {
+        const maxSize = file.type.startsWith("video/")
+          ? 50 * 1024 * 1024
+          : 10 * 1024 * 1024;
+
+        if (file.size > maxSize) {
           skippedCount++;
         } else {
           validFiles.push(file);
@@ -200,9 +204,12 @@ export default function NewPostPage() {
         let successCount = 0;
         let failCount = 0;
 
-        const compressedFiles = await compressImages(files);
+        const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+        const videoFiles = files.filter((f) => f.type.startsWith("video/"));
+        const compressedImages = await compressImages(imageFiles);
+        const allFiles = [...compressedImages, ...videoFiles];
 
-        for (const file of compressedFiles) {
+        for (const file of allFiles) {
           const formData = new FormData();
           formData.append("file", file);
 
@@ -369,14 +376,14 @@ export default function NewPostPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t("posts.addPhoto")}</CardTitle>
+              <CardTitle className="text-base">사진/동영상 추가</CardTitle>
             </CardHeader>
             <CardContent>
               <input
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -385,17 +392,35 @@ export default function NewPostPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary transition-colors"
               >
-                {t("posts.addPhoto")}
+                사진/동영상 추가
               </button>
 
               {files.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {files.map((file, idx) => (
                     <div
-                      key={idx}
-                      className="flex items-center justify-between p-2 bg-gray-100 rounded"
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      className="flex items-center justify-between gap-2 p-2 bg-gray-100 rounded"
                     >
-                      <span className="text-sm">{file.name}</span>
+                      {file.type.startsWith("video/") ? (
+                        <div className="flex items-center gap-3 min-w-0">
+                          <video
+                            src={URL.createObjectURL(file)}
+                            className="h-16 w-24 rounded object-cover bg-black"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(file.size / (1024 * 1024)).toFixed(1)} MB
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm truncate">{file.name}</span>
+                      )}
                       <button
                         type="button"
                         onClick={() => removeFile(idx)}

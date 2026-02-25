@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@safetywallet/ui";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import {
   useAdminAnnouncements,
   useCreateAnnouncement,
@@ -144,11 +145,10 @@ export default function AnnouncementsPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <textarea
+            <RichTextEditor
               placeholder="내용"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              content={content}
+              onChange={setContent}
             />
             <label className="flex items-center gap-2">
               <input
@@ -227,9 +227,10 @@ export default function AnnouncementsPage() {
                       </Badge>
                     )}
                   </div>
-                  <p className="whitespace-pre-wrap text-muted-foreground">
-                    {announcement.content}
-                  </p>
+                  <div
+                    className="prose prose-sm max-w-none text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: announcement.content }}
+                  />
                   <p className="mt-2 text-sm text-muted-foreground">
                     {new Date(announcement.createdAt).toLocaleString("ko-KR")}
                     {announcement.scheduledAt && (

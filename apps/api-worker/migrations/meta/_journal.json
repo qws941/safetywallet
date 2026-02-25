@@ -92,6 +92,20 @@
       "when": 1771825234618,
       "tag": "0012_data_integrity_schema_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1740400000000,
+      "tag": "0013_add_quiz_types_education_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1771977412294,
+      "tag": "0014_add_media_type_to_post_images",
+      "breakpoints": true
     }
   ]
 }

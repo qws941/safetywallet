@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ReviewAction, RejectReason, ReviewStatus } from "@safetywallet/types";
+import { ReviewAction, ReviewStatus } from "@safetywallet/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ReviewActions } from "@/components/review-actions";
 
-const mockMutate = vi.fn();
-const mockUseReviewPost = vi.fn();
+const mockReviewMutate = vi.fn();
+const mockAdminReviewMutate = vi.fn();
 
 vi.mock("@safetywallet/ui", async () => {
   const React = await import("react");
@@ -21,30 +21,63 @@ vi.mock("@safetywallet/ui", async () => {
   };
 });
 
-vi.mock("@/hooks/use-api", () => ({
-  useReviewPost: () => mockUseReviewPost(),
+vi.mock("lucide-react", () => ({
+  Check: () => null,
+  X: () => null,
+  HelpCircle: () => null,
+  AlertTriangle: () => null,
+  Coins: () => null,
+  ChevronDown: () => null,
+}));
+
+vi.mock("@/hooks/use-posts-api", () => ({
+  useReviewPost: () => ({ mutate: mockReviewMutate, isPending: false }),
+  useAdminReviewPost: () => ({
+    mutate: mockAdminReviewMutate,
+    isPending: false,
+  }),
+}));
+
+vi.mock("@/hooks/use-points-api", () => ({
+  usePolicies: () => ({ data: [] }),
 }));
 
 describe("ReviewActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseReviewPost.mockReturnValue({ mutate: mockMutate, isPending: false });
   });
 
-  it("approves post and calls completion callback", async () => {
+  it("approves post with points and calls completion callback", async () => {
     const onComplete = vi.fn();
-    mockMutate.mockImplementation(
-      (_payload, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.();
+    mockAdminReviewMutate.mockImplementation(
+      (_payload: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.();
       },
     );
 
     render(<ReviewActions postId="post-1" onComplete={onComplete} />);
+
+    // Step 1: Click "승인" to open points panel
     fireEvent.click(screen.getByRole("button", { name: "승인" }));
 
+    // Step 2: Points panel shows with default 5 points
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
-        { postId: "post-1", action: ReviewAction.APPROVE },
+      expect(
+        screen.getByRole("button", { name: /승인 \(5점 지급\)/ }),
+      ).toBeInTheDocument();
+    });
+
+    // Step 3: Confirm approve with points
+    fireEvent.click(screen.getByRole("button", { name: /승인 \(5점 지급\)/ }));
+
+    await waitFor(() => {
+      expect(mockAdminReviewMutate).toHaveBeenCalledWith(
+        {
+          postId: "post-1",
+          action: "APPROVE",
+          pointsToAward: 5,
+          reasonCode: "POST_APPROVED",
+        },
         expect.any(Object),
       );
     });
@@ -61,11 +94,10 @@ describe("ReviewActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "거절" }));
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
+      expect(mockAdminReviewMutate).toHaveBeenCalledWith(
         {
           postId: "post-1",
-          action: ReviewAction.REJECT,
-          reason: RejectReason.DUPLICATE,
+          action: "REJECT",
           comment: "중복 확인",
         },
         expect.any(Object),
@@ -74,6 +106,12 @@ describe("ReviewActions", () => {
   });
 
   it("requests more info and handles urgent flow", async () => {
+    mockAdminReviewMutate.mockImplementation(
+      (_payload: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.();
+      },
+    );
+
     render(
       <ReviewActions postId="post-1" currentStatus={ReviewStatus.IN_REVIEW} />,
     );
@@ -85,21 +123,23 @@ describe("ReviewActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "요청 보내기" }));
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
+      expect(mockAdminReviewMutate).toHaveBeenCalledWith(
         {
           postId: "post-1",
-          action: ReviewAction.REQUEST_MORE,
+          action: "REQUEST_MORE",
           comment: "작업 위치를 추가로 기입해주세요",
         },
         expect.any(Object),
       );
     });
 
+    // Back to default view — click urgent
     fireEvent.click(screen.getByRole("button", { name: "긴급 지정" }));
+    // Confirm in urgent panel
     fireEvent.click(screen.getByRole("button", { name: "긴급 지정" }));
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
+      expect(mockReviewMutate).toHaveBeenCalledWith(
         { postId: "post-1", action: ReviewAction.MARK_URGENT },
         expect.any(Object),
       );
@@ -144,9 +184,9 @@ describe("ReviewActions", () => {
   });
 
   it("cancels urgent confirm flow", async () => {
-    mockMutate.mockImplementation(
-      (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.();
+    mockAdminReviewMutate.mockImplementation(
+      (_payload: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.();
       },
     );
 
@@ -161,10 +201,10 @@ describe("ReviewActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "요청 보내기" }));
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalled();
+      expect(mockAdminReviewMutate).toHaveBeenCalled();
     });
 
-    // Now in urgent confirm view
+    // Now click urgent, then cancel
     fireEvent.click(screen.getByRole("button", { name: "긴급 지정" }));
     const cancelButton = screen.getByRole("button", { name: "취소" });
     fireEvent.click(cancelButton);

@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 
 import {
   MapPin,
@@ -22,7 +23,7 @@ import {
   actionStatusColors,
   buildLocationString,
 } from "../post-detail-helpers";
-
+import { ImageLightbox } from "@/components/image-lightbox";
 interface PostContentCardProps {
   post: Post;
   postId: string;
@@ -37,6 +38,10 @@ export function PostContentCard({
   onRefresh,
 }: PostContentCardProps) {
   const location = buildLocationString(post);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const imagesList = post.images?.map((img) => img.fileUrl) || [];
 
   return (
     <Card className="p-6">
@@ -121,25 +126,35 @@ export function PostContentCard({
                 img: { fileUrl: string; thumbnailUrl?: string },
                 idx: number,
               ) => (
-                <a
+                <button
                   key={img.fileUrl}
-                  href={img.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setLightboxOpen(true);
+                  }}
+                  className="relative w-full aspect-square"
                 >
                   <Image
                     src={img.thumbnailUrl || img.fileUrl}
                     alt={`첨부 ${idx + 1}`}
-                    width={512}
-                    height={512}
-                    className="aspect-square w-full rounded-lg border object-cover hover:opacity-80 transition-opacity"
+                    fill
+                    className="rounded-lg border object-cover hover:opacity-80 transition-opacity"
                     unoptimized
                   />
-                </a>
+                </button>
               ),
             )}
           </div>
         </div>
+      )}
+
+      {imagesList.length > 0 && (
+        <ImageLightbox
+          images={imagesList}
+          initialIndex={selectedImageIndex}
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+        />
       )}
 
       {canReview && (
@@ -148,6 +163,8 @@ export function PostContentCard({
           <ReviewActions
             postId={postId}
             currentStatus={post.status}
+            category={post.category}
+            riskLevel={post.riskLevel}
             onComplete={onRefresh}
           />
         </div>

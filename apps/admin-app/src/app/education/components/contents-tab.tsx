@@ -29,6 +29,7 @@ import {
   useCreateEducationContent,
   useDeleteEducationContent,
   useEducationContents,
+  useYouTubeOembed,
   type CreateEducationContentInput,
 } from "@/hooks/use-api";
 import { useAuthStore } from "@/stores/auth";
@@ -42,6 +43,9 @@ const INITIAL_FORM: ContentFormState = {
   contentUrl: "",
   thumbnailUrl: "",
   durationMinutes: "",
+  externalSource: "LOCAL",
+  externalId: "",
+  sourceUrl: "",
 };
 
 export function ContentsTab() {
@@ -50,13 +54,58 @@ export function ContentsTab() {
 
   const [contentForm, setContentForm] =
     useState<ContentFormState>(INITIAL_FORM);
+  const [sourceMode, setSourceMode] = useState<"LOCAL" | "YOUTUBE" | "KOSHA">(
+    "LOCAL",
+  );
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
 
   const { data: contentsData, isLoading } = useEducationContents();
   const createMutation = useCreateEducationContent();
   const deleteMutation = useDeleteEducationContent();
+  const ytOembed = useYouTubeOembed();
 
   const contents: EducationContentItem[] = contentsData?.contents ?? [];
+
+  const setMode = (mode: "LOCAL" | "YOUTUBE" | "KOSHA") => {
+    setSourceMode(mode);
+    setContentForm((prev) => ({
+      ...prev,
+      externalSource: mode,
+      externalId: mode === "YOUTUBE" ? prev.externalId : "",
+      sourceUrl: mode === "LOCAL" ? "" : prev.sourceUrl,
+    }));
+    if (mode !== "YOUTUBE") {
+      setYoutubeUrl("");
+    }
+  };
+
+  const onFetchYoutubeInfo = async () => {
+    if (!youtubeUrl.trim()) {
+      toast({
+        variant: "destructive",
+        description: "YouTube URL을 입력해 주세요.",
+      });
+      return;
+    }
+
+    try {
+      const data = await ytOembed.mutateAsync(youtubeUrl.trim());
+      setContentForm((prev) => ({
+        ...prev,
+        title: data.title || prev.title,
+        contentType: "VIDEO",
+        thumbnailUrl: data.thumbnailUrl || prev.thumbnailUrl,
+        contentUrl: youtubeUrl.trim(),
+        externalSource: "YOUTUBE",
+        externalId: data.videoId,
+        sourceUrl: youtubeUrl.trim(),
+      }));
+      toast({ description: "YouTube 정보를 불러왔습니다." });
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+  };
 
   const onCreateContent = async () => {
     if (!currentSiteId || !contentForm.title) return;
@@ -71,9 +120,20 @@ export function ContentsTab() {
         durationMinutes: contentForm.durationMinutes
           ? Number(contentForm.durationMinutes)
           : undefined,
+        externalSource: sourceMode,
+        externalId:
+          sourceMode === "YOUTUBE"
+            ? contentForm.externalId || undefined
+            : undefined,
+        sourceUrl:
+          sourceMode === "LOCAL"
+            ? undefined
+            : contentForm.sourceUrl || undefined,
       });
       toast({ description: "교육자료가 등록되었습니다." });
       setContentForm(INITIAL_FORM);
+      setSourceMode("LOCAL");
+      setYoutubeUrl("");
     } catch (error) {
       toast({ variant: "destructive", description: getErrorMessage(error) });
     }
@@ -97,6 +157,82 @@ export function ContentsTab() {
           <CardTitle>교육자료 등록</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={sourceMode === "LOCAL" ? "default" : "outline"}
+              onClick={() => setMode("LOCAL")}
+            >
+              📝 직접 입력
+            </Button>
+            <Button
+              type="button"
+              variant={sourceMode === "YOUTUBE" ? "default" : "outline"}
+              onClick={() => setMode("YOUTUBE")}
+            >
+              ▶️ YouTube
+            </Button>
+            <Button
+              type="button"
+              variant={sourceMode === "KOSHA" ? "default" : "outline"}
+              onClick={() => setMode("KOSHA")}
+            >
+              🏛️ KOSHA
+            </Button>
+          </div>
+
+          {sourceMode === "YOUTUBE" && (
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex flex-col gap-2 md:flex-row">
+                <Input
+                  placeholder="YouTube URL"
+                  value={youtubeUrl}
+                  onChange={(e) => {
+                    const nextUrl = e.target.value;
+                    setYoutubeUrl(nextUrl);
+                    setContentForm((prev) => ({
+                      ...prev,
+                      externalSource: "YOUTUBE",
+                      sourceUrl: nextUrl,
+                    }));
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={onFetchYoutubeInfo}
+                  disabled={ytOembed.isPending}
+                >
+                  정보 가져오기
+                </Button>
+              </div>
+              {contentForm.thumbnailUrl && (
+                <img
+                  src={contentForm.thumbnailUrl}
+                  alt="YouTube thumbnail"
+                  className="h-32 w-56 rounded-md border object-cover"
+                />
+              )}
+            </div>
+          )}
+
+          {sourceMode === "KOSHA" && (
+            <div className="space-y-2 rounded-md border p-3">
+              <Input
+                placeholder="KOSHA URL"
+                value={contentForm.sourceUrl}
+                onChange={(e) =>
+                  setContentForm((prev) => ({
+                    ...prev,
+                    externalSource: "KOSHA",
+                    externalId: "",
+                    sourceUrl: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          )}
+
           <div className="grid gap-3 md:grid-cols-2">
             <Input
               placeholder="제목"
@@ -204,6 +340,7 @@ export function ContentsTab() {
                   <tr className="border-b text-left">
                     <th className="px-2 py-2">제목</th>
                     <th className="px-2 py-2">유형</th>
+                    <th className="px-2 py-2">출처</th>
                     <th className="px-2 py-2">설명</th>
                     <th className="px-2 py-2">등록일</th>
                     <th className="px-2 py-2">관리</th>
@@ -217,6 +354,22 @@ export function ContentsTab() {
                         <Badge variant="outline">
                           {getContentTypeLabel(item.contentType)}
                         </Badge>
+                      </td>
+                      <td className="px-2 py-2">
+                        {item.externalSource === "YOUTUBE" && (
+                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                            YouTube
+                          </Badge>
+                        )}
+                        {item.externalSource === "KOSHA" && (
+                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                            KOSHA
+                          </Badge>
+                        )}
+                        {(item.externalSource === "LOCAL" ||
+                          !item.externalSource) && (
+                          <Badge variant="secondary">직접</Badge>
+                        )}
                       </td>
                       <td className="px-2 py-2 text-muted-foreground">
                         {item.description || "-"}

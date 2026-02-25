@@ -101,15 +101,6 @@ export default function PostsPage() {
 
   const columns: Column<Post>[] = [
     {
-      key: "content",
-      header: "내용",
-      sortable: true,
-      render: (item) =>
-        item.content.length > 30
-          ? item.content.substring(0, 30) + "..."
-          : item.content,
-    },
-    {
       key: "category",
       header: "카테고리",
       render: (item) => categoryLabels[item.category] || item.category,
@@ -120,52 +111,23 @@ export default function PostsPage() {
       render: (item) => item.riskLevel || "-",
     },
     {
+      key: "author.nameMasked",
+      header: "작성자",
+    },
+    {
+      key: "createdAt",
+      header: "제보일시",
+      sortable: true,
+      render: (item) => new Date(item.createdAt).toLocaleDateString("ko-KR"),
+    },
+    {
       key: "status",
-      header: "검토상태",
+      header: "처리상태",
       render: (item) => (
         <Badge variant={statusColors[item.status]}>
           {statusLabels[item.status] || item.status}
         </Badge>
       ),
-    },
-    {
-      key: "actionStatus",
-      header: "조치상태",
-      render: (item) => {
-        const as = (item.actionStatus ?? "NONE") as ActionStatus;
-        if (as === ActionStatus.NONE)
-          return <span className="text-muted-foreground">-</span>;
-        return (
-          <Badge
-            variant={actionStatusColors[as] || "outline"}
-            className={
-              as === ActionStatus.VERIFIED
-                ? "bg-green-100 text-green-800 hover:bg-green-200 border-transparent"
-                : as === ActionStatus.OVERDUE
-                  ? ""
-                  : ""
-            }
-          >
-            {actionStatusLabels[as] || as}
-          </Badge>
-        );
-      },
-    },
-    {
-      key: "author.nameMasked",
-      header: "작성자",
-    },
-    {
-      key: "isUrgent",
-      header: "긴급",
-      render: (item) =>
-        item.isUrgent ? <Badge variant="destructive">긴급</Badge> : null,
-    },
-    {
-      key: "createdAt",
-      header: "작성일",
-      sortable: true,
-      render: (item) => new Date(item.createdAt).toLocaleDateString("ko-KR"),
     },
   ];
 

@@ -17,7 +17,6 @@ import {
   siteMemberships,
   users,
   reviews,
-  auditLogs,
 } from "../db/schema";
 
 const app = new Hono<{
@@ -31,8 +30,6 @@ type CategoryType =
   | "INCONVENIENCE"
   | "SUGGESTION"
   | "BEST_PRACTICE";
-
-type VisibilityType = "WORKER_PUBLIC" | "ADMIN_ONLY";
 
 const validCategories: CategoryType[] = [
   "HAZARD",
@@ -442,14 +439,28 @@ app.post("/:id/images", async (c) => {
     return error(c, "NO_FILE", "No file provided", 400);
   }
 
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+  ];
   if (!allowedTypes.includes(file.type)) {
     return error(c, "INVALID_FILE_TYPE", "Invalid file type", 400);
   }
 
-  const maxSize = 10 * 1024 * 1024;
+  const isVideo = file.type.startsWith("video/");
+  const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
   if (file.size > maxSize) {
-    return error(c, "FILE_TOO_LARGE", "File too large (max 10MB)", 400);
+    return error(
+      c,
+      "FILE_TOO_LARGE",
+      `File too large (max ${isVideo ? "50MB" : "10MB"})`,
+      400,
+    );
   }
 
   const ext = file.name.split(".").pop() || "jpg";
@@ -464,6 +475,7 @@ app.post("/:id/images", async (c) => {
     .values({
       postId,
       fileUrl: key,
+      mediaType: isVideo ? "video" : "image",
     })
     .returning()
     .get();

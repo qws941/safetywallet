@@ -113,6 +113,37 @@ export function useReviewPost() {
   });
 }
 
+export function useAdminReviewPost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      postId,
+      action,
+      comment,
+      pointsToAward,
+      reasonCode,
+    }: {
+      postId: string;
+      action: "APPROVE" | "REJECT" | "REQUEST_MORE";
+      comment?: string;
+      pointsToAward?: number;
+      reasonCode?: string;
+    }) =>
+      apiFetch(`/admin/posts/${postId}/review`, {
+        method: "POST",
+        body: JSON.stringify({ action, comment, pointsToAward, reasonCode }),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "posts"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "post", variables.postId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
 export function useDeleteAdminPost() {
   const queryClient = useQueryClient();
 
