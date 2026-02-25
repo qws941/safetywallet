@@ -78,7 +78,7 @@ jobs:
         run: |
           forbidden='safework2-api\.jclee\.workers\.dev|safetywallet-api\.jclee\.workers\.dev|workspace=safework2-api|Deploy SafeWork2'
           targets='.github/workflows docs/cloudflare-operations.md package.json'
-          if grep -rnE "$forbidden" $targets; then
+          if grep -rnE --exclude='ci.yml' "$forbidden" $targets; then
             echo "::error::Legacy runtime naming detected. Use single-worker safetywallet naming."
             exit 1
           fi
