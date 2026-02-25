@@ -898,9 +898,12 @@
 - [x] Announcements siteId conditional param — removed `siteId=undefined` from query URL (2026-02-25)
 - [x] Deploy pipeline D1 migration .sql extension fix — seed INSERT names match wrangler convention (2026-02-25)
 - [x] ~~ERP integration~~ — **Removed from scope** (2026-02-25)
+- [x] Vote reward configurability — pointPolicies DB lookup replaces hardcoded [50,30,20] with fallback (2026-02-25)
+- [x] Reward push notifications — enqueues push notification to winners after vote reward distribution (2026-02-25)
+- [x] Vote tie-breaker fairness — MIN(votedAt) instead of arbitrary UUID ordering (2026-02-25)
 
 ---
 
 **Document Generated**: 2025-02-05  
 **Last Updated**: 2026-02-25
-**Status**: 100% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-25 final session: education POST validator fixes, dashboard active filter, announcements siteId fix, deploy pipeline .sql fix, video upload, APK install, quiz multi-type, education external sources, points two-track review, auth/attendance bug fixes, EXPORT permission fix.
+**Status**: 100% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-25 sessions: education POST validator fixes, dashboard active filter, announcements siteId fix, deploy pipeline .sql fix, video upload, APK install, quiz multi-type, education external sources, points two-track review, auth/attendance bug fixes, EXPORT permission fix, vote reward configurability, reward push notifications, vote tie-breaker fairness.
