@@ -57,7 +57,7 @@ export default function HomePage() {
       enabled: !!currentSiteId,
     });
 
-  const recentPosts = postsData?.data?.slice(0, 3) || [];
+  const recentPosts = postsData?.data?.posts?.slice(0, 3) || [];
   const pointsBalance = pointsData?.data?.balance || 0;
   const myRank = leaderboardData?.myRank || null;
   const totalParticipants = leaderboardData?.leaderboard?.length || 0;
