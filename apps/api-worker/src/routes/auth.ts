@@ -1094,6 +1094,16 @@ auth.get("/me", authMiddleware, async (c) => {
       .limit(1);
     if (fallbackSite.length > 0) {
       siteId = fallbackSite[0].id;
+      // Create membership so attendanceMiddleware won't 403
+      await db
+        .insert(siteMemberships)
+        .values({
+          userId,
+          siteId,
+          role: "WORKER",
+          status: "ACTIVE",
+        })
+        .onConflictDoNothing();
     }
   }
 
