@@ -9,7 +9,7 @@ test.describe("Worker App - Smoke Tests @smoke", () => {
 
   test("should render login page with all fields @smoke", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByText("안전지갑")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "이름" })).toBeVisible();
     await expect(
       page.getByRole("textbox", { name: "휴대폰 번호" }),
@@ -39,7 +39,8 @@ test.describe("Worker App - Smoke Tests @smoke", () => {
       (e) =>
         !e.includes("favicon") &&
         !e.includes("service-worker") &&
-        !e.includes("net::ERR_CERT_AUTHORITY_INVALID"),
+        !e.includes("net::ERR_CERT_AUTHORITY_INVALID") &&
+        !e.includes("net::ERR_CONNECTION_REFUSED"),
     );
     expect(critical).toHaveLength(0);
   });

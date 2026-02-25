@@ -6,9 +6,9 @@ test.describe("Login - Page Rendering @smoke", () => {
   });
 
   test("displays card title and description", async ({ page }) => {
-    await expect(page.getByText("안전지갑")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
     await expect(
-      page.getByText("휴대폰, 이름, 생년월일로 로그인"),
+      page.getByText("출근 인식된 사용자만 로그인할 수 있습니다"),
     ).toBeVisible();
   });
 
@@ -216,7 +216,7 @@ test.describe("Login - Responsive Design", () => {
     ).toBeVisible();
     await expect(page.getByRole("textbox", { name: /생년월일/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "로그인" })).toBeVisible();
-    await expect(page.getByText("안전지갑")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
 
     await context.close();
   });

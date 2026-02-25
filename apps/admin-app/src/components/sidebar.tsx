@@ -206,6 +206,7 @@ export function Sidebar() {
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
           className="text-white hover:bg-slate-800"
+          data-testid="mobile-menu-toggle"
         >
           {collapsed ? <Menu size={20} /> : <X size={20} />}
         </Button>

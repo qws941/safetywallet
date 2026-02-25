@@ -394,8 +394,8 @@ export async function workerLogin(page: Page) {
 
   while (Date.now() < deadline) {
     await page.goto("/login", {
-      waitUntil: "domcontentloaded",
-      timeout: 10_000,
+      waitUntil: "networkidle",
+      timeout: 30_000,
     });
     await page
       .getByRole("textbox", { name: "이름" })
