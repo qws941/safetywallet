@@ -111,6 +111,7 @@ app.get("/stats", requireAdmin, async (c) => {
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(sites)
+      .where(eq(sites.active, true))
       .get(),
     db
       .select({ count: sql<number>`COUNT(*)` })

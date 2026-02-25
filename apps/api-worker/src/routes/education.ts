@@ -9,10 +9,13 @@ import {
   CreateCourseSchema,
   UpdateCourseSchema,
   CreateQuizSchema,
+  CreateQuizInputSchema,
   SubmitQuizSchema,
   CreateStatutoryTrainingSchema,
+  CreateStatutoryTrainingInputSchema,
   UpdateStatutoryTrainingSchema,
   CreateTbmRecordSchema,
+  CreateTbmInputSchema,
   UpdateTbmRecordSchema,
   AttendTbmSchema,
 } from "../validators/schemas";
@@ -497,7 +500,7 @@ app.delete("/contents/:id", async (c) => {
   return success(c, { deleted: true });
 });
 
-app.post("/quizzes", zValidator("json", UpdateCourseSchema), async (c) => {
+app.post("/quizzes", zValidator("json", CreateQuizInputSchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
@@ -1269,7 +1272,7 @@ app.get("/quizzes/:quizId/my-attempts", async (c) => {
 
 app.post(
   "/statutory",
-  zValidator("json", UpdateStatutoryTrainingSchema),
+  zValidator("json", CreateStatutoryTrainingInputSchema),
   async (c) => {
     const db = drizzle(c.env.DB);
     const { user } = c.get("auth");
@@ -1565,7 +1568,7 @@ app.put(
   },
 );
 
-app.post("/tbm", zValidator("json", UpdateTbmRecordSchema), async (c) => {
+app.post("/tbm", zValidator("json", CreateTbmInputSchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 

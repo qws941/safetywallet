@@ -147,11 +147,11 @@ export function useSetMemberActiveStatus() {
 // Announcements
 export function useAdminAnnouncements() {
   const siteId = useAuthStore((s) => s.currentSiteId);
+  const params = siteId ? `?siteId=${siteId}` : "";
 
   return useQuery({
     queryKey: ["admin", "announcements", siteId],
-    queryFn: () => apiFetch<Announcement[]>(`/announcements?siteId=${siteId}`),
-    enabled: !!siteId,
+    queryFn: () => apiFetch<Announcement[]>(`/announcements${params}`),
   });
 }
 
