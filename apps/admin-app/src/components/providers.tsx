@@ -42,7 +42,7 @@ function SiteBootstrap({ children }: { children: ReactNode }) {
 function SiteBootstrapGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, isAdmin, _hasHydrated } = useAuthStore();
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname === "/login" || pathname === "/login/";
 
   if (isLoginPage) {
     return <>{children}</>;

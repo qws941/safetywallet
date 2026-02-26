@@ -84,7 +84,12 @@
   },
   "posts": {
     "title": "안전 보고",
-    "new": "새 보고서",
+    "new": {
+      "title": "새 보고서",
+      "anonymous": "익명으로 제보",
+      "zone": "구역",
+      "unsafeBehaviorWarning": "불안전행동 제보 시 개인정보가 포함되지 않도록 주의해주세요."
+    },
     "createReport": "보고서 작성",
     "selectCategory": "카테고리를 선택하세요",
     "category": {
@@ -161,6 +166,12 @@
       "title": "제보 상세보기",
       "categoryLabel": "카테고리",
       "statusLabel": "상태",
+      "status": {
+        "pending": "검토 대기",
+        "inReview": "검토 중",
+        "approved": "승인됨",
+        "rejected": "반려됨"
+      },
       "urgent": "긴급",
       "received": "접수됨",
       "inReview": "검토 중",
