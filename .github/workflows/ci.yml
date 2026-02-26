@@ -59,7 +59,7 @@ jobs:
 
   ci:
     name: Lint & Typecheck
-    uses: qws941/.github/.github/workflows/_ci-node.yml@master
+    uses: qws941/.github/.github/workflows/_ci-node.yml@592b0060500e43fe436c40df954b3bb82e5908b3 # master
     with:
       node-version: "20"
       turbo: true
