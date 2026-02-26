@@ -19,9 +19,19 @@ interface AuthContext {
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 vi.mock("../../middleware/auth", () => ({
-  authMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) =>
-    next(),
-  ),
+  authMiddleware: vi.fn(async (c: any, next: () => Promise<void>) => {
+    c.set("auth", {
+      user: {
+        id: "admin-1",
+        phone: "01012345678",
+        role: "SUPER_ADMIN",
+        name: "Admin",
+        nameMasked: "Ad***",
+      },
+      loginDate: "2026-01-01",
+    });
+    await next();
+  }),
 }));
 
 vi.mock("../../lib/audit", () => ({
