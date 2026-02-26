@@ -361,7 +361,7 @@ app.get("/contents", async (c) => {
     return error(c, "MISSING_SITE_ID", "siteId is required", 400);
   }
 
-  const adminMembership = await db
+  const membership = await db
     .select()
     .from(siteMemberships)
     .where(
@@ -369,13 +369,11 @@ app.get("/contents", async (c) => {
         eq(siteMemberships.userId, user.id),
         eq(siteMemberships.siteId, siteId),
         eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
       ),
     )
     .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-
+  if (!membership && user.role !== "SUPER_ADMIN")
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   const includeInactive = c.req.query("includeInactive") === "true";
   const limit = Math.min(
     Number.parseInt(c.req.query("limit") || "20", 10),
@@ -428,7 +426,7 @@ app.get("/contents/:id", async (c) => {
     return error(c, "CONTENT_NOT_FOUND", "Education content not found", 404);
   }
 
-  const adminMembership = await db
+  const membership = await db
     .select()
     .from(siteMemberships)
     .where(
@@ -436,13 +434,11 @@ app.get("/contents/:id", async (c) => {
         eq(siteMemberships.userId, user.id),
         eq(siteMemberships.siteId, content.siteId),
         eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
       ),
     )
     .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-
+  if (!membership && user.role !== "SUPER_ADMIN")
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   return success(c, content);
 });
 
@@ -587,7 +583,7 @@ app.get("/quizzes", async (c) => {
     return error(c, "INVALID_STATUS", "Invalid status", 400);
   }
 
-  const adminMembership = await db
+  const membership = await db
     .select()
     .from(siteMemberships)
     .where(
@@ -595,13 +591,11 @@ app.get("/quizzes", async (c) => {
         eq(siteMemberships.userId, user.id),
         eq(siteMemberships.siteId, siteId),
         eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
       ),
     )
     .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-
+  if (!membership && user.role !== "SUPER_ADMIN")
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   const limit = Math.min(
     Number.parseInt(c.req.query("limit") || "20", 10),
     100,
@@ -649,7 +643,7 @@ app.get("/quizzes/:id", async (c) => {
     return error(c, "QUIZ_NOT_FOUND", "Quiz not found", 404);
   }
 
-  const adminMembership = await db
+  const membership = await db
     .select()
     .from(siteMemberships)
     .where(
@@ -657,13 +651,11 @@ app.get("/quizzes/:id", async (c) => {
         eq(siteMemberships.userId, user.id),
         eq(siteMemberships.siteId, quiz.siteId),
         eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
       ),
     )
     .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-
+  if (!membership && user.role !== "SUPER_ADMIN")
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   const questions = await db
     .select()
     .from(quizQuestions)
@@ -1656,7 +1648,7 @@ app.get("/tbm", async (c) => {
     return error(c, "MISSING_SITE_ID", "siteId is required", 400);
   }
 
-  const adminMembership = await db
+  const membership = await db
     .select()
     .from(siteMemberships)
     .where(
@@ -1664,13 +1656,11 @@ app.get("/tbm", async (c) => {
         eq(siteMemberships.userId, user.id),
         eq(siteMemberships.siteId, siteId),
         eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
       ),
     )
     .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-
+  if (!membership && user.role !== "SUPER_ADMIN")
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   const limit = Math.min(
     Number.parseInt(c.req.query("limit") || "20", 10),
     100,
@@ -1730,7 +1720,7 @@ app.get("/tbm/:id", async (c) => {
     return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
   }
 
-  const adminMembership = await db
+  const membership = await db
     .select()
     .from(siteMemberships)
     .where(
@@ -1738,13 +1728,11 @@ app.get("/tbm/:id", async (c) => {
         eq(siteMemberships.userId, user.id),
         eq(siteMemberships.siteId, tbm.record.siteId),
         eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
       ),
     )
     .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-
+  if (!membership && user.role !== "SUPER_ADMIN")
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   const attendees = await db
     .select({
       attendee: tbmAttendees,
