@@ -35,6 +35,28 @@ function getTodayKSTDate(): string {
   return `${year}-${month}-${day}`;
 }
 
+// GET / - List recommendations for a site
+recommendationsRoute.get("/", authMiddleware, async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
+  const offset = parseInt(c.req.query("offset") || "0");
+
+  if (!siteId) {
+    return error(c, "MISSING_PARAMS", "siteId는 필수입니다.", 400);
+  }
+
+  const records = await db
+    .select()
+    .from(recommendations)
+    .where(eq(recommendations.siteId, siteId))
+    .orderBy(desc(recommendations.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return success(c, { recommendations: records, limit, offset });
+});
+
 // POST / - Create a recommendation (1/day/site limit)
 recommendationsRoute.post(
   "/",

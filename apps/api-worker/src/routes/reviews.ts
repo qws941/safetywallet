@@ -333,4 +333,34 @@ app.get("/post/:postId", async (c) => {
   return success(c, formattedReviews);
 });
 
+// GET / - List recent reviews for a site
+app.get("/", async (c) => {
+  const db = drizzle(c.env.DB);
+  const siteId = c.req.query("siteId");
+  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
+  const offset = parseInt(c.req.query("offset") || "0");
+
+  if (!siteId) {
+    return error(c, "MISSING_PARAMS", "siteId는 필수입니다.", 400);
+  }
+
+  const records = await db
+    .select({
+      id: reviews.id,
+      postId: reviews.postId,
+      action: reviews.action,
+      comment: reviews.comment,
+      adminId: reviews.adminId,
+      createdAt: reviews.createdAt,
+    })
+    .from(reviews)
+    .innerJoin(posts, eq(reviews.postId, posts.id))
+    .where(eq(posts.siteId, siteId))
+    .orderBy(desc(reviews.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return success(c, { reviews: records, limit, offset });
+});
+
 export default app;

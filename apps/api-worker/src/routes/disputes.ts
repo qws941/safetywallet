@@ -96,6 +96,32 @@ disputesRoute.post(
   },
 );
 
+// GET / - List disputes for current user (alias for /my)
+disputesRoute.get("/", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
+  const offset = parseInt(c.req.query("offset") || "0");
+  const status = c.req.query("status") as
+    | (typeof disputeStatusEnum)[number]
+    | undefined;
+
+  const conditions = [eq(disputes.userId, user.id)];
+  if (status) {
+    conditions.push(eq(disputes.status, status));
+  }
+
+  const records = await db
+    .select()
+    .from(disputes)
+    .where(and(...conditions))
+    .orderBy(desc(disputes.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return success(c, { disputes: records, limit, offset });
+});
+
 disputesRoute.get("/my", async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");

@@ -483,4 +483,11 @@ app.get("/leaderboard/:siteId", async (c) => {
   return success(c, { leaderboard, myRank });
 });
 
+// GET /ranking/:siteId - Alias for /leaderboard/:siteId
+app.get("/ranking/:siteId", (c) => {
+  const siteId = c.req.param("siteId");
+  const query = new URL(c.req.url).search;
+  return c.redirect(`/api/points/leaderboard/${siteId}${query}`, 307);
+});
+
 export default app;

@@ -18,6 +18,11 @@ export async function attendanceMiddleware(
   siteId?: string,
 ) {
   const auth = c.get("auth");
+
+  // Admin users bypass attendance check
+  if (auth?.user?.role === "SUPER_ADMIN" || auth?.user?.role === "SITE_ADMIN") {
+    return next();
+  }
   const resolvedSiteId = siteId?.trim() || undefined;
   const db = drizzle(c.env.DB);
 
