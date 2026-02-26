@@ -16,6 +16,8 @@ Parent `.github/AGENTS.md` covers top-level config ownership.
 - `labeler.yml` (`name: Auto-label PRs`)
 - `stale.yml` (`name: Stale issue/PR cleanup`)
 - `ssl-fix.yml` (`name: SSL Diagnostic & Fix`)
+- `codex-auto-issue.yml` (`name: Codex Auto-Issue`)
+- `codex-triage.yml` (`name: Codex Triage`)
 
 ## FLOW LINKS
 
