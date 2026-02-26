@@ -312,13 +312,23 @@ function QuizTakeContent() {
                 <CardContent className="space-y-2">
                   {questionType === "SINGLE_CHOICE" &&
                     options.map((option: string, optIdx: number) => (
-                      <label
+                      <div
                         key={`${q.id}-single-${optIdx}`}
+                        role="radio"
+                        aria-checked={answer === optIdx}
+                        tabIndex={0}
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                           answer === optIdx
                             ? "border-primary bg-primary/5"
                             : "border-gray-200 hover:bg-gray-50"
                         }`}
+                        onClick={() => handleAnswerSelect(q.id, optIdx)}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Enter") {
+                            e.preventDefault();
+                            handleAnswerSelect(q.id, optIdx);
+                          }
+                        }}
                       >
                         <div
                           className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -332,14 +342,7 @@ function QuizTakeContent() {
                           )}
                         </div>
                         <span className="text-sm">{option}</span>
-                        <input
-                          type="radio"
-                          name={`q-${q.id}`}
-                          className="sr-only"
-                          checked={answer === optIdx}
-                          onChange={() => handleAnswerSelect(q.id, optIdx)}
-                        />
-                      </label>
+                      </div>
                     ))}
 
                   {questionType === "OX" && (
@@ -374,13 +377,23 @@ function QuizTakeContent() {
                       const selected =
                         Array.isArray(answer) && answer.includes(optIdx);
                       return (
-                        <label
+                        <div
                           key={`${q.id}-multi-${optIdx}`}
+                          role="checkbox"
+                          aria-checked={selected}
+                          tabIndex={0}
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                             selected
                               ? "border-primary bg-primary/5"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
+                          onClick={() => handleMultiChoiceToggle(q.id, optIdx)}
+                          onKeyDown={(e) => {
+                            if (e.key === " " || e.key === "Enter") {
+                              e.preventDefault();
+                              handleMultiChoiceToggle(q.id, optIdx);
+                            }
+                          }}
                         >
                           <div
                             className={`w-4 h-4 rounded border flex items-center justify-center ${
@@ -394,15 +407,7 @@ function QuizTakeContent() {
                             )}
                           </div>
                           <span className="text-sm">{option}</span>
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={selected}
-                            onChange={() =>
-                              handleMultiChoiceToggle(q.id, optIdx)
-                            }
-                          />
-                        </label>
+                        </div>
                       );
                     })}
 
