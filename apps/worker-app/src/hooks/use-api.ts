@@ -389,10 +389,19 @@ interface AttendanceStatus {
 export function useAttendanceToday(siteId: string | null) {
   return useQuery({
     queryKey: ["attendance", "today", siteId],
-    queryFn: () =>
-      apiFetch<ApiResponse<AttendanceStatus>>(
-        `/attendance/today?siteId=${siteId}`,
-      ).then((r) => r.data),
+    queryFn: async () => {
+      const res = await apiFetch<
+        ApiResponse<{
+          hasAttendance: boolean;
+          records: Array<{ checkinAt: string | null }>;
+        }>
+      >(`/attendance/today?siteId=${siteId}`);
+      const raw = res.data;
+      return {
+        attended: raw.hasAttendance,
+        checkinAt: raw.records?.[0]?.checkinAt ?? null,
+      };
+    },
     enabled: !!siteId,
     staleTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,

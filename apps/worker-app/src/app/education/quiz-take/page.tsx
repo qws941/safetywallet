@@ -335,7 +335,7 @@ function QuizTakeContent() {
                         <input
                           type="radio"
                           name={`q-${q.id}`}
-                          className="hidden"
+                          className="sr-only"
                           checked={answer === optIdx}
                           onChange={() => handleAnswerSelect(q.id, optIdx)}
                         />
@@ -396,7 +396,7 @@ function QuizTakeContent() {
                           <span className="text-sm">{option}</span>
                           <input
                             type="checkbox"
-                            className="hidden"
+                            className="sr-only"
                             checked={selected}
                             onChange={() =>
                               handleMultiChoiceToggle(q.id, optIdx)

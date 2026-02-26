@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
-import { usePosts, usePoints } from "@/hooks/use-api";
+import { usePosts, usePoints, useAttendanceToday } from "@/hooks/use-api";
 import type { ApiResponse } from "@safetywallet/types";
 import { useLeaderboard } from "@/hooks/use-leaderboard";
 import { Header } from "@/components/header";
@@ -29,11 +29,6 @@ interface AnnouncementItem {
   createdAt: string;
 }
 
-interface AttendanceStatus {
-  attended: boolean;
-  checkinAt: string | null;
-}
-
 export default function HomePage() {
   const { currentSiteId, isAuthenticated, _hasHydrated } = useAuth();
   const isReady = _hasHydrated && isAuthenticated;
@@ -49,16 +44,7 @@ export default function HomePage() {
     useLeaderboard(activeSiteId || null);
 
   const { data: attendanceData, isLoading: attendanceLoading } =
-    useQuery<AttendanceStatus>({
-      queryKey: ["attendance", "today", currentSiteId],
-      queryFn: async () => {
-        const res = await apiFetch<{ data: AttendanceStatus }>(
-          `/attendance/today?siteId=${currentSiteId}`,
-        );
-        return res.data;
-      },
-      enabled: !!activeSiteId,
-    });
+    useAttendanceToday(activeSiteId || null);
 
   const recentPosts = postsData?.data?.posts?.slice(0, 3) || [];
   const pointsBalance = pointsData?.data?.balance || 0;
