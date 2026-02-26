@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
 import { usePosts, usePoints } from "@/hooks/use-api";
+import type { ApiResponse } from "@safetywallet/types";
 import { useLeaderboard } from "@/hooks/use-leaderboard";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
@@ -65,7 +66,7 @@ export default function HomePage() {
   const { data: announcementsData } = useQuery<AnnouncementItem[]>({
     queryKey: ["announcements", "recent", currentSiteId],
     queryFn: async () => {
-      const res = await apiFetch<{ data: AnnouncementItem[] }>(
+      const res = await apiFetch<ApiResponse<{ data: AnnouncementItem[] }>>(
         `/announcements?siteId=${currentSiteId}&limit=3`,
       );
       return res.data?.data || [];

@@ -5,7 +5,6 @@ import { apiFetch } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import type {
   ApiResponse,
-  PaginatedResponse,
   PostDto,
   PostListDto,
   CreatePostDto,
@@ -141,7 +140,7 @@ export function useAnnouncements(siteId: string) {
   return useQuery({
     queryKey: ["announcements", siteId],
     queryFn: () =>
-      apiFetch<PaginatedResponse<AnnouncementDto>>(
+      apiFetch<ApiResponse<{ data: AnnouncementDto[] }>>(
         `/announcements?siteId=${siteId}`,
       ).then((r) => r.data),
     enabled: !!siteId,
@@ -418,7 +417,7 @@ export function useMyActions(params?: {
   return useQuery({
     queryKey: ["actions", "my", params],
     queryFn: () =>
-      apiFetch<PaginatedResponse<ActionDto>>(
+      apiFetch<ApiResponse<{ data: ActionDto[] }>>(
         `/actions/my${qs ? `?${qs}` : ""}`,
       ).then((r) => r.data),
     staleTime: 1000 * 60 * 2,
