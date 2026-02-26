@@ -19,16 +19,22 @@ vi.mock("@hono/zod-validator", () => ({
         req: {
           raw: Request;
           addValidatedData: (target: string, data: unknown) => void;
+          param: () => Record<string, string>;
         };
       },
       next: () => Promise<void>,
     ) => {
-      const cloned = c.req.raw.clone();
-      try {
-        const body = await cloned.json();
-        c.req.addValidatedData("json", body);
-      } catch {
-        c.req.addValidatedData("json", {});
+      if (_target === "param") {
+        const params = c.req.param();
+        c.req.addValidatedData("param", params);
+      } else {
+        const cloned = c.req.raw.clone();
+        try {
+          const body = await cloned.json();
+          c.req.addValidatedData("json", body);
+        } catch {
+          c.req.addValidatedData("json", {});
+        }
       }
       await next();
     };

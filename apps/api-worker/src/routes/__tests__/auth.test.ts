@@ -423,16 +423,7 @@ describe("auth", () => {
       expect(res.status).toBe(200);
     });
 
-    it("succeeds with plain ADMIN_PASSWORD when hash is not set", async () => {
-      mockGet.mockResolvedValueOnce({
-        id: "admin-1",
-        name: "관리자",
-        nameMasked: "관*자",
-        role: "SUPER_ADMIN",
-        piiViewFull: true,
-      });
-      mockRun.mockResolvedValueOnce(undefined);
-
+    it("rejects login when ADMIN_PASSWORD_HASH is not set", async () => {
       const { app, env } = await createApp(undefined, {
         ADMIN_PASSWORD_HASH: undefined,
       });
@@ -445,7 +436,7 @@ describe("auth", () => {
         },
         env,
       );
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(500);
       expect(verifyPassword).not.toHaveBeenCalled();
     });
   });
