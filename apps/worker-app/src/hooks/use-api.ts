@@ -143,7 +143,7 @@ export function useAnnouncements(siteId: string) {
     queryFn: () =>
       apiFetch<PaginatedResponse<AnnouncementDto>>(
         `/announcements?siteId=${siteId}`,
-      ),
+      ).then((r) => r.data),
     enabled: !!siteId,
   });
 }
@@ -420,7 +420,7 @@ export function useMyActions(params?: {
     queryFn: () =>
       apiFetch<PaginatedResponse<ActionDto>>(
         `/actions/my${qs ? `?${qs}` : ""}`,
-      ),
+      ).then((r) => r.data),
     staleTime: 1000 * 60 * 2,
   });
 }

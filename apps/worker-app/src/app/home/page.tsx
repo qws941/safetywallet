@@ -68,7 +68,7 @@ export default function HomePage() {
       const res = await apiFetch<{ data: AnnouncementItem[] }>(
         `/announcements?siteId=${currentSiteId}&limit=3`,
       );
-      return res.data || [];
+      return res.data?.data || [];
     },
     enabled: !!currentSiteId,
   });

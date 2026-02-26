@@ -131,7 +131,7 @@ describe("use-api hooks", () => {
   it("usePoints and useAnnouncements fetch with site id", async () => {
     vi.mocked(apiFetch)
       .mockResolvedValueOnce({ data: { balance: 100, history: [] } })
-      .mockResolvedValueOnce({ items: [], total: 0 });
+      .mockResolvedValueOnce({ success: true, data: { items: [], total: 0 } });
     const { wrapper } = createWrapper();
 
     renderHook(() => usePoints("site-3"), { wrapper });
@@ -222,7 +222,10 @@ describe("use-api hooks", () => {
   });
 
   it("useMyActions builds query string from params", async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(apiFetch).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0 },
+    });
     const { wrapper } = createWrapper();
 
     renderHook(
@@ -238,7 +241,10 @@ describe("use-api hooks", () => {
   });
 
   it("useMyActions sets each search param branch when provided", async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(apiFetch).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0 },
+    });
     const { wrapper } = createWrapper();
 
     renderHook(() => useMyActions({ status: "ASSIGNED" }), { wrapper });
@@ -253,7 +259,10 @@ describe("use-api hooks", () => {
   });
 
   it("useMyActions with no params calls /actions/my without query string", async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(apiFetch).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0 },
+    });
     const { wrapper } = createWrapper();
 
     renderHook(() => useMyActions(), { wrapper });
