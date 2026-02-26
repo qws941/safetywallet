@@ -412,7 +412,7 @@ describe("use-api hooks", () => {
               score: 100,
               passed: true,
               totalQuestions: 2,
-              correctAnswers: 2,
+              correctCount: 2,
             },
           },
           timestamp: "2026-01-01T00:00:00.000Z",

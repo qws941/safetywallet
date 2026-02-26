@@ -285,7 +285,7 @@ export function useSubmitQuizAttempt() {
             score: number;
             passed: boolean;
             totalQuestions: number;
-            correctAnswers: number;
+            correctCount: number;
           };
         }>
       >(`/education/quizzes/${quizId}/attempt`, {
@@ -319,7 +319,7 @@ export function useMyQuizAttempts(quizId: string) {
             score: number;
             passed: boolean;
             totalQuestions: number;
-            correctAnswers: number;
+            correctCount: number;
             createdAt: string;
           }>;
         }>
