@@ -8,20 +8,23 @@ import { hmac, encrypt } from "../lib/crypto";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import { authMiddleware } from "../middleware/auth";
-import { fasAuthMiddleware } from "../middleware/fas-auth";
 import { maskName } from "../utils/common";
 import { AdminSyncWorkersSchema } from "../validators/schemas";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
-// Manual fasAuthMiddleware invocation per project convention (see AGENTS.md).
-// Previously used app.use("*", fasAuthMiddleware) which violates the pattern. See #46.
-
 app.post(
   "/workers/sync",
-  fasAuthMiddleware,
+  authMiddleware,
   zValidator("json", AdminSyncWorkersSchema),
   async (c) => {
+    const auth = c.get("auth");
+    if (
+      auth?.user?.role !== "SUPER_ADMIN" &&
+      auth?.user?.role !== "SITE_ADMIN"
+    ) {
+      return c.json(error(c, "FORBIDDEN", "관리자 권한이 필요합니다"), 403);
+    }
     const db = drizzle(c.env.DB);
 
     let data: {

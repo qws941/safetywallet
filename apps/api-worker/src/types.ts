@@ -34,13 +34,12 @@ export interface Env {
   SMS_SENDER?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
-  FAS_API_KEY?: string;
   // AceTime FAS MariaDB via Hyperdrive
   FAS_HYPERDRIVE?: HyperdriveBinding;
   FAS_COMPANY_ID?: string;
-  FAS_SYNC_SECRET?: string;
   FAS_DB_NAME?: string;
   FAS_SITE_CD?: string;
+  FAS_SYNC_SECRET?: string;
   FAS_SITE_NAME?: string;
   // Admin credentials
   ADMIN_USERNAME?: string;

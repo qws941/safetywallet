@@ -18,8 +18,8 @@ interface AuthContext {
 }
 
 // ── Mocks ──────────────────────────────────────────────────────────────
-vi.mock("../../middleware/fas-auth", () => ({
-  fasAuthMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) =>
+vi.mock("../../middleware/auth", () => ({
+  authMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) =>
     next(),
   ),
 }));

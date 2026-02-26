@@ -23,12 +23,6 @@ vi.mock("../../middleware/auth", () => ({
   ),
 }));
 
-vi.mock("../../middleware/fas-auth", () => ({
-  fasAuthMiddleware: vi.fn(async (_c: unknown, next: () => Promise<void>) =>
-    next(),
-  ),
-}));
-
 vi.mock("../../lib/audit", () => ({
   logAuditWithContext: vi.fn(),
 }));

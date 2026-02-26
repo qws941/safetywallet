@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, inArray, or, isNull } from "drizzle-orm";
 import { attendance, users, siteMemberships } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
-import { fasAuthMiddleware } from "../middleware/fas-auth";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
@@ -73,9 +72,16 @@ const attendanceRoute = new Hono<{
 
 attendanceRoute.post(
   "/sync",
-  fasAuthMiddleware,
+  authMiddleware,
   zValidator("json", AttendanceSyncBodySchema),
   async (c) => {
+    const auth = c.get("auth");
+    if (
+      auth?.user?.role !== "SUPER_ADMIN" &&
+      auth?.user?.role !== "SITE_ADMIN"
+    ) {
+      return c.json(error(c, "FORBIDDEN", "관리자 권한이 필요합니다"), 403);
+    }
     const logger = createLogger("attendance");
     const idempotencyKey = c.req.header("Idempotency-Key");
     if (idempotencyKey) {
