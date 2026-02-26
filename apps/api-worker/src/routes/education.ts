@@ -442,59 +442,63 @@ app.get("/contents/:id", async (c) => {
   return success(c, content);
 });
 
-app.delete("/contents/:id", async (c) => {
-  const db = drizzle(c.env.DB);
-  const { user } = c.get("auth");
-  const id = c.req.param("id");
+app.delete(
+  "/contents/:id",
+  zValidator("param", z.object({ id: z.string().min(1) })),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const id = c.req.valid("param").id;
 
-  const content = await db
-    .select()
-    .from(educationContents)
-    .where(eq(educationContents.id, id))
-    .get();
+    const content = await db
+      .select()
+      .from(educationContents)
+      .where(eq(educationContents.id, id))
+      .get();
 
-  if (!content) {
-    return error(c, "CONTENT_NOT_FOUND", "Education content not found", 404);
-  }
+    if (!content) {
+      return error(c, "CONTENT_NOT_FOUND", "Education content not found", 404);
+    }
 
-  const adminMembership = await db
-    .select()
-    .from(siteMemberships)
-    .where(
-      and(
-        eq(siteMemberships.userId, user.id),
-        eq(siteMemberships.siteId, content.siteId),
-        eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
-      ),
-    )
-    .get();
-  if (!adminMembership && user.role !== "SUPER_ADMIN")
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+    const adminMembership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, content.siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+          eq(siteMemberships.role, "SITE_ADMIN"),
+        ),
+      )
+      .get();
+    if (!adminMembership && user.role !== "SUPER_ADMIN")
+      return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
 
-  await db
-    .update(educationContents)
-    .set({
-      isActive: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(educationContents.id, id));
+    await db
+      .update(educationContents)
+      .set({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(educationContents.id, id));
 
-  await logAuditWithContext(
-    c,
-    db,
-    "EDUCATION_CONTENT_DELETED",
-    user.id,
-    "EDUCATION_CONTENT",
-    id,
-    {
-      siteId: content.siteId,
-      title: content.title,
-    },
-  );
+    await logAuditWithContext(
+      c,
+      db,
+      "EDUCATION_CONTENT_DELETED",
+      user.id,
+      "EDUCATION_CONTENT",
+      id,
+      {
+        siteId: content.siteId,
+        title: content.title,
+      },
+    );
 
-  return success(c, { deleted: true });
-});
+    return success(c, { deleted: true });
+  },
+);
 
 app.post("/quizzes", zValidator("json", CreateQuizInputSchema), async (c) => {
   const db = drizzle(c.env.DB);

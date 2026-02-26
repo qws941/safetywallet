@@ -75,182 +75,192 @@ app.post(
     data.visibility = data.visibility || "WORKER_PUBLIC";
     data.isAnonymous = data.isAnonymous ?? false;
 
-    const userRecord = await db
-      .select({ restrictedUntil: users.restrictedUntil })
-      .from(users)
-      .where(eq(users.id, user.id))
-      .get();
+    try {
+      const userRecord = await db
+        .select({ restrictedUntil: users.restrictedUntil })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .get();
 
-    if (
-      userRecord?.restrictedUntil &&
-      userRecord.restrictedUntil > new Date()
-    ) {
-      return error(
-        c,
-        "USER_RESTRICTED",
-        `Posting restricted until ${userRecord.restrictedUntil.toISOString()}`,
-        403,
-      );
-    }
-
-    const membership = await db
-      .select()
-      .from(siteMemberships)
-      .where(
-        and(
-          eq(siteMemberships.userId, user.id),
-          eq(siteMemberships.siteId, data.siteId),
-          eq(siteMemberships.status, "ACTIVE"),
-        ),
-      )
-      .get();
-
-    if (!membership) {
-      return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
-    }
-
-    const postId = crypto.randomUUID();
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    // Location-based duplicate detection (existing)
-    const canCheckDuplicate = Boolean(data.locationFloor && data.locationZone);
-    const duplicateConditions = [
-      sql`${posts.siteId} = ${data.siteId}`,
-      sql`${posts.locationFloor} = ${data.locationFloor ?? ""}`,
-      sql`${posts.locationZone} = ${data.locationZone ?? ""}`,
-      sql`${posts.createdAt} >= ${cutoff}`,
-    ];
-
-    if (data.hazardType) {
-      duplicateConditions.push(sql`${posts.hazardType} = ${data.hazardType}`);
-    }
-
-    const duplicateWhereSql = sql.join(duplicateConditions, sql` and `);
-
-    // Content similarity detection: find recent posts with matching keywords
-    let contentSimilar = false;
-    if (data.content && data.content.length >= 10) {
-      const keywords = data.content
-        .replace(/[^\p{L}\p{N}\s]/gu, "")
-        .split(/\s+/)
-        .filter((w: string) => w.length >= 2)
-        .slice(0, 5);
-
-      if (keywords.length >= 2) {
-        const likeConditions = keywords.map(
-          (kw: string) => sql`${posts.content} LIKE ${"%" + kw + "%"}`,
+      if (
+        userRecord?.restrictedUntil &&
+        userRecord.restrictedUntil > new Date()
+      ) {
+        return error(
+          c,
+          "USER_RESTRICTED",
+          `Posting restricted until ${userRecord.restrictedUntil.toISOString()}`,
+          403,
         );
-        const recentSimilar = await db
-          .select({ id: posts.id })
-          .from(posts)
-          .where(
-            and(
-              eq(posts.siteId, data.siteId),
-              sql`${posts.createdAt} >= ${cutoff}`,
-              sql`(${sql.join(likeConditions, sql` OR `)})`,
-            ),
-          )
-          .limit(1)
-          .all();
-        contentSimilar = recentSimilar.length > 0;
       }
-    }
 
-    const duplicateOfPostId = canCheckDuplicate
-      ? sql`(
+      const membership = await db
+        .select()
+        .from(siteMemberships)
+        .where(
+          and(
+            eq(siteMemberships.userId, user.id),
+            eq(siteMemberships.siteId, data.siteId),
+            eq(siteMemberships.status, "ACTIVE"),
+          ),
+        )
+        .get();
+
+      if (!membership) {
+        return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
+      }
+
+      const postId = crypto.randomUUID();
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      // Location-based duplicate detection (existing)
+      const canCheckDuplicate = Boolean(
+        data.locationFloor && data.locationZone,
+      );
+      const duplicateConditions = [
+        sql`${posts.siteId} = ${data.siteId}`,
+        sql`${posts.locationFloor} = ${data.locationFloor ?? ""}`,
+        sql`${posts.locationZone} = ${data.locationZone ?? ""}`,
+        sql`${posts.createdAt} >= ${cutoff}`,
+      ];
+
+      if (data.hazardType) {
+        duplicateConditions.push(sql`${posts.hazardType} = ${data.hazardType}`);
+      }
+
+      const duplicateWhereSql = sql.join(duplicateConditions, sql` and `);
+
+      // Content similarity detection: find recent posts with matching keywords
+      let contentSimilar = false;
+      if (data.content && data.content.length >= 10) {
+        const keywords = data.content
+          .replace(/[^\p{L}\p{N}\s]/gu, "")
+          .split(/\s+/)
+          .filter((w: string) => w.length >= 2)
+          .slice(0, 5);
+
+        if (keywords.length >= 2) {
+          const likeConditions = keywords.map(
+            (kw: string) => sql`${posts.content} LIKE ${"%" + kw + "%"}`,
+          );
+          const recentSimilar = await db
+            .select({ id: posts.id })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.siteId, data.siteId),
+                sql`${posts.createdAt} >= ${cutoff}`,
+                sql`(${sql.join(likeConditions, sql` OR `)})`,
+              ),
+            )
+            .limit(1)
+            .all();
+          contentSimilar = recentSimilar.length > 0;
+        }
+      }
+
+      const duplicateOfPostId = canCheckDuplicate
+        ? sql`(
         select ${posts.id}
         from ${posts}
         where ${duplicateWhereSql}
         order by ${posts.createdAt} desc
         limit 1
       )`
-      : null;
-    const isPotentialDuplicate =
-      canCheckDuplicate || contentSimilar
-        ? canCheckDuplicate
-          ? sql`exists(select 1 from ${posts} where ${duplicateWhereSql})`
-          : true
-        : false;
+        : null;
+      const isPotentialDuplicate =
+        canCheckDuplicate || contentSimilar
+          ? canCheckDuplicate
+            ? sql`exists(select 1 from ${posts} where ${duplicateWhereSql})`
+            : true
+          : false;
 
-    // pHash-based image duplicate detection
-    let imageDuplicate = false;
-    const hashes = Array.isArray(data.imageHashes) ? data.imageHashes : [];
-    if (hashes.some((h: string | null) => h)) {
-      const recentImages = await db
-        .select({ imageHash: postImages.imageHash, postId: postImages.postId })
-        .from(postImages)
-        .innerJoin(posts, eq(posts.id, postImages.postId))
-        .where(
-          and(
-            eq(posts.siteId, data.siteId),
-            sql`${posts.createdAt} >= ${cutoff}`,
-            sql`${postImages.imageHash} IS NOT NULL`,
-          ),
-        )
-        .all();
-
-      for (const hash of hashes) {
-        if (!hash) continue;
-        for (const recent of recentImages) {
-          if (
-            recent.imageHash &&
-            hammingDistance(hash, recent.imageHash) <= DUPLICATE_THRESHOLD
-          ) {
-            imageDuplicate = true;
-            break;
-          }
-        }
-        if (imageDuplicate) break;
-      }
-    }
-
-    // Combine all duplicate signals
-    const finalIsPotentialDuplicate = isPotentialDuplicate || imageDuplicate;
-
-    const insertPostQuery = db.insert(posts).values({
-      id: postId,
-      userId: user.id,
-      siteId: data.siteId,
-      content: data.content,
-      category: data.category,
-      hazardType: data.hazardType,
-      riskLevel: data.riskLevel,
-      visibility: data.visibility,
-      locationFloor: data.locationFloor,
-      locationZone: data.locationZone,
-      locationDetail: data.locationDetail,
-      isAnonymous: data.isAnonymous,
-      metadata: data.metadata,
-      isPotentialDuplicate: finalIsPotentialDuplicate,
-      duplicateOfPostId,
-    });
-
-    const imageInsertQueries = Array.isArray(data.imageUrls)
-      ? data.imageUrls
-          .filter((fileUrl: string) => Boolean(fileUrl))
-          .map((fileUrl: string, idx: number) =>
-            db.insert(postImages).values({
-              postId,
-              fileUrl,
-              thumbnailUrl: null,
-              imageHash: hashes[idx] ?? null,
-            }),
+      // pHash-based image duplicate detection
+      let imageDuplicate = false;
+      const hashes = Array.isArray(data.imageHashes) ? data.imageHashes : [];
+      if (hashes.some((h: string | null) => h)) {
+        const recentImages = await db
+          .select({
+            imageHash: postImages.imageHash,
+            postId: postImages.postId,
+          })
+          .from(postImages)
+          .innerJoin(posts, eq(posts.id, postImages.postId))
+          .where(
+            and(
+              eq(posts.siteId, data.siteId),
+              sql`${posts.createdAt} >= ${cutoff}`,
+              sql`${postImages.imageHash} IS NOT NULL`,
+            ),
           )
-      : [];
+          .all();
 
-    await db.batch([insertPostQuery, ...imageInsertQueries]);
+        for (const hash of hashes) {
+          if (!hash) continue;
+          for (const recent of recentImages) {
+            if (
+              recent.imageHash &&
+              hammingDistance(hash, recent.imageHash) <= DUPLICATE_THRESHOLD
+            ) {
+              imageDuplicate = true;
+              break;
+            }
+          }
+          if (imageDuplicate) break;
+        }
+      }
 
-    const newPost = await db
-      .select()
-      .from(posts)
-      .where(eq(posts.id, postId))
-      .get();
+      // Combine all duplicate signals
+      const finalIsPotentialDuplicate = isPotentialDuplicate || imageDuplicate;
 
-    if (!newPost) {
-      return error(c, "POST_CREATION_FAILED", "Failed to create post", 500);
+      const insertPostQuery = db.insert(posts).values({
+        id: postId,
+        userId: user.id,
+        siteId: data.siteId,
+        content: data.content,
+        category: data.category,
+        hazardType: data.hazardType,
+        riskLevel: data.riskLevel,
+        visibility: data.visibility,
+        locationFloor: data.locationFloor,
+        locationZone: data.locationZone,
+        locationDetail: data.locationDetail,
+        isAnonymous: data.isAnonymous,
+        metadata: data.metadata,
+        isPotentialDuplicate: finalIsPotentialDuplicate,
+        duplicateOfPostId,
+      });
+
+      const imageInsertQueries = Array.isArray(data.imageUrls)
+        ? data.imageUrls
+            .filter((fileUrl: string) => Boolean(fileUrl))
+            .map((fileUrl: string, idx: number) =>
+              db.insert(postImages).values({
+                postId,
+                fileUrl,
+                thumbnailUrl: null,
+                imageHash: hashes[idx] ?? null,
+              }),
+            )
+        : [];
+
+      await db.batch([insertPostQuery, ...imageInsertQueries]);
+
+      const newPost = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .get();
+
+      if (!newPost) {
+        return error(c, "POST_CREATION_FAILED", "Failed to create post", 500);
+      }
+
+      return success(c, { post: newPost }, 201);
+    } catch (e) {
+      console.error("Failed to create post:", e);
+      return error(c, "INTERNAL_ERROR", "Failed to create post", 500);
     }
-
-    return success(c, { post: newPost }, 201);
   },
 );
 

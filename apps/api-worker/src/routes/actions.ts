@@ -71,47 +71,52 @@ app.post("/", validateJson("json", CreateActionSchema), async (c) => {
     return error(c, "MISSING_POST_ID", "postId is required", 400);
   }
 
-  const post = await db
-    .select()
-    .from(posts)
-    .where(eq(posts.id, data.postId))
-    .get();
+  try {
+    const post = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, data.postId))
+      .get();
 
-  if (!post) {
-    return error(c, "POST_NOT_FOUND", "Post not found", 404);
+    if (!post) {
+      return error(c, "POST_NOT_FOUND", "Post not found", 404);
+    }
+
+    const membership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, post.siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
+
+    if (!membership || membership.role === "WORKER") {
+      return error(c, "UNAUTHORIZED", "Not authorized to create actions", 403);
+    }
+
+    const newAction = await db
+      .insert(actions)
+      .values({
+        postId: data.postId,
+        assigneeType: data.assigneeType || "UNASSIGNED",
+        assigneeId: data.assigneeId || null,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        priority: data.priority || null,
+        description: data.description || null,
+        actionStatus: "NONE",
+      })
+      .returning()
+      .get();
+
+    return success(c, { action: newAction }, 201);
+  } catch (e) {
+    console.error("Failed to create action:", e);
+    return error(c, "INTERNAL_ERROR", "Failed to create action", 500);
   }
-
-  const membership = await db
-    .select()
-    .from(siteMemberships)
-    .where(
-      and(
-        eq(siteMemberships.userId, user.id),
-        eq(siteMemberships.siteId, post.siteId),
-        eq(siteMemberships.status, "ACTIVE"),
-      ),
-    )
-    .get();
-
-  if (!membership || membership.role === "WORKER") {
-    return error(c, "UNAUTHORIZED", "Not authorized to create actions", 403);
-  }
-
-  const newAction = await db
-    .insert(actions)
-    .values({
-      postId: data.postId,
-      assigneeType: data.assigneeType || "UNASSIGNED",
-      assigneeId: data.assigneeId || null,
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      priority: data.priority || null,
-      description: data.description || null,
-      actionStatus: "NONE",
-    })
-    .returning()
-    .get();
-
-  return success(c, { action: newAction }, 201);
 });
 
 app.get("/", async (c) => {

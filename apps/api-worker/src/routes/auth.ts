@@ -956,9 +956,8 @@ auth.post(
 
     const ADMIN_USERNAME = c.env.ADMIN_USERNAME;
     const ADMIN_PASSWORD_HASH = c.env.ADMIN_PASSWORD_HASH;
-    const ADMIN_PASSWORD = c.env.ADMIN_PASSWORD;
 
-    if (!ADMIN_USERNAME || (!ADMIN_PASSWORD_HASH && !ADMIN_PASSWORD)) {
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH) {
       return respondWithDelay(
         error(
           c,
@@ -970,12 +969,10 @@ auth.post(
     }
 
     const usernameMatch = body.username === ADMIN_USERNAME;
-    let passwordMatch = false;
-    if (ADMIN_PASSWORD_HASH) {
-      passwordMatch = await verifyPassword(body.password, ADMIN_PASSWORD_HASH);
-    } else if (ADMIN_PASSWORD) {
-      passwordMatch = body.password === ADMIN_PASSWORD;
-    }
+    const passwordMatch = await verifyPassword(
+      body.password,
+      ADMIN_PASSWORD_HASH,
+    );
 
     if (!usernameMatch || !passwordMatch) {
       return respondWithDelay(

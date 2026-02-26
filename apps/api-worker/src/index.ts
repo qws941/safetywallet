@@ -8,7 +8,7 @@ import {
   deactivateRetiredEmployees,
 } from "./lib/fas-sync";
 import type { Env } from "./types";
-import { success } from "./lib/response";
+import { success, error } from "./lib/response";
 
 import auth from "./routes/auth";
 import attendanceRoute from "./routes/attendance";
@@ -214,15 +214,10 @@ api.route("/notifications", notificationsRoute);
 
 // Catch-all for unmatched API routes — return 404 JSON instead of SPA HTML
 api.all("*", (c) => {
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: "NOT_FOUND",
-        message: `Route not found: ${c.req.method} ${c.req.path}`,
-      },
-      timestamp: new Date().toISOString(),
-    },
+  return error(
+    c,
+    "NOT_FOUND",
+    `Route not found: ${c.req.method} ${c.req.path}`,
     404,
   );
 });
