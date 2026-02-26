@@ -1,150 +1,220 @@
-# PROJECT KNOWLEDGE BASE: SAFETYWALLET
+# PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-02-24 19:18:00 KST
-**Commit:** 05e51c4
+**Generated:** 2026-02-26
+**Commit:** c6ea65a
 **Branch:** master
 
 ## OVERVIEW
 
-SafetyWallet — Construction site safety reporting PWA. Turborepo monorepo: Cloudflare Workers API (Hono 4 + Drizzle ORM + D1) backend, two Next.js 14 static-export frontends (Worker PWA + Admin Dashboard), shared packages for types and UI.
+GitHub community health files **Single Source of Truth (SSoT)** for all `qws941` repositories. Contains governance files, reusable CI/CD workflows, issue templates, and label definitions that auto-sync to 10+ downstream repos. No application code — config and policy only.
 
 ## STRUCTURE
 
-```
-safetywallet/
-├── apps/
-│   ├── api-worker/        # Cloudflare Workers API (Hono + Drizzle + D1)
-│   ├── worker-app/        # Next.js 14 Worker PWA (static export, port 3000)
-│   └── admin-app/         # Next.js 14 Admin Dashboard (static export, port 3001)
-├── packages/
-│   ├── types/             # Shared TS types, enums, DTOs, i18n keys
-│   └── ui/                # Shared shadcn/ui + Tailwind v4 component library
-├── e2e/                   # Playwright E2E tests (5 projects, production-first)
-├── scripts/               # Build, deployment, hash, and sync helpers (tsx)
-├── docs/                  # PRDs, requirement docs, runbooks
-└── .sisyphus/             # AI agent planning artifacts
+```text
+./
+├── .github/
+│   ├── workflows/
+│   │   ├── _ci-node.yml            # Reusable Node.js CI (workflow_call)
+│   │   ├── _ci-python.yml          # Reusable Python CI (workflow_call)
+│   │   ├── _deploy-cf-worker.yml   # Reusable CF Worker deploy (workflow_call)
+│   │   ├── auto-merge.yml          # Dependabot + owner auto-merge (synced)
+│   │   ├── labeler.yml             # PR auto-labeling workflow (synced)
+│   │   ├── stale.yml               # Stale issue cleanup 14d+5d (synced)
+│   │   └── sync-files.yml          # File sync orchestrator (push to master)
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml          # Structured bug report form
+│   │   ├── feature_request.yml     # Structured feature request form
+│   │   └── config.yml              # Blank issues disabled, security redirect
+│   ├── CODEOWNERS                  # * @qws941
+│   ├── FUNDING.yml                 # github: qws941
+│   ├── PULL_REQUEST_TEMPLATE.md    # What/Why/Kind/Changes/Testing/Checklist
+│   ├── copilot-instructions.md     # SSoT context, 5 rules, key file table
+│   ├── dependabot.yml              # Weekly github-actions updates
+│   ├── labeler.yml                 # PR auto-label path rules
+│   └── sync.yml                    # Sync target config: 2 groups, 10 repos
+├── scripts/
+│   ├── labels.yml                  # 17 standard labels (type:*/priority:*/status:*)
+│   └── sync-labels.sh              # gh CLI label sync script
+├── profile/
+│   └── README.md                   # GitHub profile page content
+├── .editorconfig                   # 2-space JS/TS/YAML, 4-space Python, tabs Makefile
+├── CODE_OF_CONDUCT.md              # Contributor Covenant v2.1
+├── CONTRIBUTING.md                 # Trunk-based dev, conventional commits, review policy
+├── LICENSE                         # MIT
+├── OWNERS                          # Google3-style: approvers + reviewers = qws941
+└── SECURITY.md                     # Security policy: security@jclee.me, 48h SLA
 ```
 
 ## WHERE TO LOOK
 
-| Task               | Location                            | Notes                                       |
-| :----------------- | :---------------------------------- | :------------------------------------------ |
-| Add API endpoint   | `apps/api-worker/src/routes/`       | 19 core + 17 admin Hono route modules       |
-| Add admin endpoint | `apps/api-worker/src/routes/admin/` | Global `.use('*', authMiddleware)`          |
-| Modify DB schema   | `apps/api-worker/src/db/schema.ts`  | Drizzle ORM, 33 tables                      |
-| Manage migrations  | `apps/api-worker/migrations/`       | Ordered SQL + `meta/_journal.json`          |
-| Add middleware     | `apps/api-worker/src/middleware/`   | 8 middleware modules                        |
-| Add shared DTO     | `packages/types/src/dto/`           | `*Dto` suffix, type-only, barrel export     |
-| Edit i18n strings  | `packages/types/src/i18n/ko.ts`     | Shared Korean localization keys             |
-| UI Components      | `packages/ui/src/components/`       | 14 shadcn components, CVA variants          |
-| Worker App pages   | `apps/worker-app/src/app/`          | 16 pages, client-only, Korean UI            |
-| Admin App pages    | `apps/admin-app/src/app/`           | 29 pages, 17 feature dirs                   |
-| CI/Deploy workflow | `.github/workflows/`                | 9 workflows, verify-only (CF deploys)       |
-| CF Bindings        | `apps/api-worker/wrangler.toml`     | D1, R2×3, KV, DO, Queue+DLQ, AI, Hyperdrive |
-| E2E Tests          | `e2e/`                              | 5 Playwright projects, production URLs      |
-| Unit Tests         | `*/__tests__/`                      | Vitest, co-located with source              |
-| Scheduled Tasks    | `apps/api-worker/src/scheduled/`    | 9 CRONs across 4 schedules                  |
-| Product docs       | `docs/`                             | PRD v1.1 + 4 requirement docs               |
-
-## AGENTS HIERARCHY
-
-46 files. Root → app/package level → deep modules. Each child contains only delta from parent. Discover via `find . -name AGENTS.md -not -path '*/node_modules/*'`.
-
-## CODE MAP
-
-### Entry Points
-
-| App        | Path                                 | Framework  | Port    |
-| :--------- | :----------------------------------- | :--------- | :------ |
-| api-worker | `apps/api-worker/src/index.ts`       | Hono 4     | Workers |
-| worker-app | `apps/worker-app/src/app/layout.tsx` | Next.js 14 | 3000    |
-| admin-app  | `apps/admin-app/src/app/layout.tsx`  | Next.js 14 | 3001    |
-
-### API Worker
-
-- **19 core route modules**: auth, attendance, votes, posts, actions, users, sites, announcements, points, reviews, fas, disputes, policies, approvals, education, acetime, recommendations, images, notifications.
-- **17 admin route modules**: fas, access-policies, posts, stats, images, helpers, users, attendance, votes, trends, monitoring, recommendations, audit, export, alerting, sync-errors.
-- **8 middleware**: auth (JWT daily rotation 5AM KST), permission (RBAC), attendance, rate-limit (DO-backed), request-logger, analytics (5-min buckets), security-headers, fas-auth.
-- **Global middleware chain**: security-headers → request-logger → analytics → CORS → hono-logger.
-- **Catch-all**: SPA serving from R2, hostname-based routing (admin.\* → admin/, main → root).
-
-### Worker App (PWA)
-
-- **16 pages**: /, /home, /actions, /announcements, /education, /login, /points, /posts, /profile, /register, /votes + detail/form variants.
-- **6 hooks**: use-api, use-auth, use-leaderboard, use-locale, use-push-subscription, use-translation.
-- **State**: Single Zustand store (`safetywallet-auth`), `_hasHydrated` for static-export safety.
-- **PWA**: Push notifications, offline submission queue, service worker.
-
-### Admin App (Dashboard)
-
-- **29 pages**: Dashboard, analytics, attendance/sync/unmatched, actions, announcements, approvals, audit, education, login, members, monitoring, points/policies, posts, recommendations, rewards, settings, sync-errors, votes/candidates.
-- **17 hooks**: Domain-organized TanStack Query hooks with `["admin", "domain", ...params]` key pattern.
-- **State**: Single Zustand store (`safetywallet-admin-auth`) with `isAdmin` computed.
-
-### Shared Packages
-
-- **types**: Barrel `index.ts` → enums, DTOs (`*Dto` suffix), API types, i18n keys. Build to `dist/`.
-- **ui**: 14 shadcn components (alert-dialog, avatar, badge, button, card, dialog, input, select, sheet, skeleton, switch, toast, toaster, use-toast). Tailwind v4 + CVA.
+| Task                          | Location                           | Notes                                                      |
+| ----------------------------- | ---------------------------------- | ---------------------------------------------------------- |
+| Add/modify synced files       | `.github/sync.yml`                 | Defines file mappings and target repos                     |
+| Add a new sync target repo    | `.github/sync.yml` → `repos:`      | Add to both Group 1 and Group 2 (unless custom auto-merge) |
+| Reusable CI workflows         | `.github/workflows/_*.yml`         | `_` prefix = `workflow_call` only, not synced              |
+| Synced workflows              | `.github/workflows/{name}.yml`     | No `_` prefix = synced to downstream repos                 |
+| Issue templates               | `.github/ISSUE_TEMPLATE/`          | Bug report + feature request forms                         |
+| PR template                   | `.github/PULL_REQUEST_TEMPLATE.md` | What/Why/Kind/Changes/Testing/Checklist format             |
+| Standard labels               | `scripts/labels.yml`               | 17 labels: `type:*`, `priority:*`, `status:*`              |
+| Label sync to repos           | `scripts/sync-labels.sh`           | Uses `gh` CLI, run manually                                |
+| Contribution rules            | `CONTRIBUTING.md`                  | Trunk-based dev, conventional commits, review SLA          |
+| Security reports              | `SECURITY.md`                      | Email security@jclee.me, 48h response SLA                  |
+| GitHub profile page           | `profile/README.md`                | Rendered at github.com/qws941                              |
+| Editor formatting             | `.editorconfig`                    | Synced to all repos                                        |
+| Copilot context for this repo | `.github/copilot-instructions.md`  | SSoT-specific rules, NOT synced                            |
 
 ## CONVENTIONS
 
-- **Strict TypeScript**: No `any`, no `ignore`, all configs `strict: true`.
-- **Barrel Exports**: Use `index.ts` for clean package imports.
-- **Path Aliases**: `@/` maps to `src/` within applications.
-- **Response Format**: Always use `success(c, data)` or `error(c, code, msg)` helpers → `{success, data/error, timestamp}`.
-- **Authentication**: JWT based on `loginDate` with daily rotation at 5 AM KST. PII is HMAC-SHA256 hashed.
-- **Zustand Store**: Auth and offline state managed exclusively via Zustand with `persist` middleware + `createJSONStorage(localStorage)`.
-- **Offline First**: Submission queue logic to handle intermittent site connectivity.
-- **Testing**: Vitest (unit, 60% backend / 50% frontend coverage thresholds) + Playwright (E2E, production-first, 5 projects).
+### SSoT Sync Model
 
-## ANTI-PATTERNS
+This repo is the canonical source. Changes propagate automatically:
 
-- **No `as any`**: Active removal of legacy type casts.
-- **No Browser Dialogs**: Use UI modal components instead of `alert()` or `confirm()`.
-- **No `console.log`**: Use structured logging for production observability (scripts exempt).
-- **No Secrets in Git**: Specifically check `.env` and Wrangler/local config files.
-- **No Manual Tokens**: Never use `localStorage` or cookies directly for JWTs; use Zustand stores.
-- **No RSC (Worker App)**: Worker app follows Absolute Zero RSC policy; all pages/components use `'use client'`.
-- **No Placeholder Promises**: Do not ship `Promise.resolve()` mocks.
-- **No Manual Deploy**: Deploy script blocked; Cloudflare Git Integration handles all deployments.
+- **Sync trigger**: Push to `master` on paths: `OWNERS`, `LICENSE`, `.editorconfig`, `AGENTS.md`, `.github/sync.yml`, `.github/workflows/codex-triage.yml`
+- **Sync engine**: `BetaHuhn/repo-file-sync-action` via `.github/workflows/sync-files.yml`
+- **Sync PRs**: Prefixed `chore: `, labeled `sync`, assigned to `qws941`
+
+**Synced files** (must remain generic, no repo-specific content):
+
+| File                               | Targets                                 |
+| ---------------------------------- | --------------------------------------- |
+| `OWNERS`                           | All 10 repos                            |
+| `LICENSE`                          | All 10 repos                            |
+| `.editorconfig`                    | All 10 repos                            |
+| `.github/labeler.yml`              | All 10 repos                            |
+| `.github/workflows/stale.yml`      | All 10 repos                            |
+| `.github/workflows/labeler.yml`    | All 10 repos                            |
+| `.github/workflows/auto-merge.yml` | 9 repos (excludes `terraform` — custom) |
+| `AGENTS.md`                        | All 10 repos                            |
+| `.github/workflows/codex-triage.yml`| All 10 repos                            |
+
+**NOT synced** (repo-specific by design):
+
+- `.github/dependabot.yml` — different ecosystems per repo
+- `.github/CODEOWNERS` — terraform has custom path rules
+- `.github/copilot-instructions.md` — repo-specific context
+
+### Sync Target Repos
+
+`blacklist`, `hycu_fsds`, `propose`, `qws941`, `resume`, `safetywallet`, `splunk`, `terraform`, `tmux`, `youtube`
+
+### Reusable Workflows
+
+Three `workflow_call` workflows prefixed with `_` (not synced, called via `uses:`):
+
+| Workflow                | Purpose                      | Key Inputs                                           |
+| ----------------------- | ---------------------------- | ---------------------------------------------------- |
+| `_ci-node.yml`          | Node.js CI (lint/type/test)  | `node-version`, `turbo`, `run-lint`, `run-test`      |
+| `_ci-python.yml`        | Python CI (ruff/mypy/pytest) | `python-version`, `run-mypy`, `run-test`, `src-dirs` |
+| `_deploy-cf-worker.yml` | Cloudflare Worker deploy     | `working-directory`, `environment`, `deploy-command` |
+
+Usage pattern in consuming repos:
+
+```yaml
+jobs:
+  ci:
+    uses: qws941/.github/.github/workflows/_ci-node.yml@master
+    with:
+      node-version: "20"
+    secrets: inherit
+```
+
+### GitHub Actions
+
+- SHA-pin all actions with `# vN` version comment suffix
+- Never use mutable tags (`@v4`) — always full commit SHA
+
+### Commit and PR Conventions
+
+- **Conventional Commits**: `type(scope): imperative summary` (≤72 chars, lowercase)
+- **Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `chore`, `perf`, `build`, `revert`
+- **Branch naming**: `type/description` (e.g., `feat/add-metrics-export`)
+- **PR size**: ~200 LOC max
+- **Merge policy**: Squash merge only. Merge commits disabled.
+- **Review SLA**: 24 hours. `nit:` prefix for non-blocking feedback.
+- **PR body format**: What / Why / Testing sections
+
+### Labels
+
+17 standard labels across all repos, defined in `scripts/labels.yml`:
+
+- `type:bug`, `type:feature`, `type:docs`, `type:refactor`, `type:ci`, `type:chore`, `type:security`, `type:test`, `type:infra`
+- `priority:critical`, `priority:high`, `priority:medium`, `priority:low`
+- `status:blocked`, `status:in-progress`, `status:needs-review`, `status:wontfix`, `status:duplicate`
+
+### Governance
+
+- **OWNERS** (Google3/K8s-style): Defines approvers and reviewers. Hierarchical. Synced.
+- **CODEOWNERS** (GitHub-native): Enforces required reviews. NOT synced (repo-specific).
+- Both set to `qws941` at root level.
+
+### Codex Integration
+
+`chatgpt-codex-connector` GitHub App is installed with access to all repositories.
+
+**Triggers:**
+
+| Trigger | Action | Context |
+| ------- | ------ | ------- |
+| `@codex review` in PR comment | Code review using AGENTS.md conventions | PR diff + repo context |
+| `@codex <task>` in PR comment | Execute arbitrary task (fix, refactor, test) | PR context |
+| `@codex` in issue comment | Investigate and propose fix, create PR | Issue context |
+| Automatic review (if enabled) | Review every new PR without @mention | Per-repo Codex setting |
+
+**Configuration:**
+
+- Codex reads `AGENTS.md` at repo root automatically — no additional config needed.
+- `## Review guidelines` section (below) customizes review behavior.
+- Enable automatic reviews per-repo at `chatgpt.com/codex/settings/code-review`.
+- AGENTS.md is synced to all 10 repos via `sync.yml` Group 1.
+
+## Review guidelines
+
+- Enforce conventional commit format in PR titles: `type(scope): summary`.
+- All GitHub Actions must be SHA-pinned with `# vN` version comment — flag any mutable tag (`@v4`).
+- Never approve PRs that add `as any`, `@ts-ignore`, `@ts-expect-error`, or empty `catch {}` blocks.
+- Never approve PRs that hardcode IPs, secrets, or credentials.
+- Synced files (OWNERS, LICENSE, .editorconfig, AGENTS.md, labeler.yml, workflow files) must remain generic — flag any repo-specific content.
+- PR size should be ~200 LOC max. Flag PRs exceeding 400 LOC.
+- Squash merge only — flag merge commits or rebase merges.
+- Trunk-based development — flag long-lived feature branches.
+- Review SLA context: non-blocking feedback uses `nit:` prefix.
+- For Terraform changes: verify no hardcoded IPs, use variables/env vars.
+- For workflow changes: verify SHA-pinned actions, correct `workflow_call` inputs, proper permissions scoping.
+
+## ANTI-PATTERNS (THIS PROJECT)
+
+- Never put repo-specific content in synced files — they propagate to all repos.
+- Never sync `dependabot.yml` or `CODEOWNERS` — they vary per repo.
+- Never use mutable action tags (`@v4`) — always SHA-pin with version comment.
+- Never hardcode IPs or secrets — use Terraform variables or env vars.
+- Never suppress type errors (`as any`, `@ts-ignore`) or delete failing tests.
+- Never use merge commits — squash merge only.
+- Never create long-lived feature branches — trunk-based development only.
 
 ## UNIQUE STYLES
 
-- **5 AM KST Cutoff**: The logical "day" starts at 5:00 AM Korea Standard Time. `getTodayRange()` helper.
-- **Worker App Client-Side Only**: `apps/worker-app` pages use `'use client'` (Zero RSC pattern).
-- **Korean Localization**: The Worker PWA is fully localized in Korean via `packages/types/src/i18n/ko.ts`.
-- **Review Workflow**: Strict state machine: `RECEIVED` → `IN_REVIEW` → `APPROVED`/`REJECTED`/`NEED_INFO`.
-- **Admin Global Auth**: Only `apps/api-worker/src/routes/admin/` uses `.use('*', authMiddleware)`; all other routes apply auth per-handler.
+- Config-only repo: no application code, no build system, no tests.
+- Dual governance: OWNERS (intent/policy) + CODEOWNERS (GitHub enforcement) coexist.
+- Reusable workflow naming: `_` prefix distinguishes callable workflows from synced workflows.
+- Sync groups: Group 1 (governance + workflows → all repos) vs Group 2 (auto-merge → excludes terraform).
+- GitHub auto-inherits: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` apply to all repos without syncing.
 
 ## COMMANDS
 
 ```bash
-npm run dev              # Start all apps via Turborepo
-npm run dev:worker       # Start worker-app only (port 3000)
-npm run dev:admin        # Start admin-app only (port 3001)
-npm run build            # Full monorepo build
-tsc --noEmit             # Global type check (Quality Gate)
+# Sync labels to all repos (requires gh CLI auth)
+bash scripts/sync-labels.sh
 
-# Database
-npx drizzle-kit generate # Create DB migration SQL
-npx drizzle-kit push     # Sync schema directly to D1
-
-# Testing
-npm run test             # Vitest unit tests (all apps)
-npx playwright test      # E2E tests (requires running apps)
-
-# CI
-npm run lint             # ESLint across monorepo
-npm run typecheck        # tsc --noEmit all packages
+# File sync happens automatically on push to master
+# Manual trigger available via workflow_dispatch on sync-files.yml
 ```
 
 ## NOTES
 
-- **Package Manager**: npm (standardized; avoid pnpm).
-- **Static Export**: Both `worker-app` and `admin-app` are static exports for CF Pages/R2.
-- **Integration**: FAS (Foreign Attendance System) syncs via Hyperdrive (MariaDB) every 5 minutes.
-- **Scheduled Tasks**: 9 CRON jobs across 4 schedules (5-min sync, daily overdue/PII, weekly retention, monthly settlement).
-- **E2E Tests**: 1000+ lines Playwright; primary verification method. 5 projects: api, admin-setup, worker-app, admin-app, cross-app.
-- **Scale**: ~83k LOC TypeScript, 36 route modules, 33 DB tables, 10 CF bindings.
-- **Deployment**: Cloudflare Git Integration is the deployer. GitHub Actions workflows are verify-only (health poll → Playwright smoke).
-- **Incident Automation**: 10-min CRON health monitor auto-creates/closes GitHub Issues.
+- This is a personal account `.github` repo, not a GitHub Organization `.github` repo. GitHub still honors community health file inheritance for the account's repos.
+- `profile/README.md` renders as the GitHub profile page at `github.com/qws941`.
+- Reusable workflows are consumed via `uses: qws941/.github/.github/workflows/_ci-node.yml@master` — note the double `.github` path segment.
+- The `terraform` repo has custom auto-merge (risk-based) and custom CODEOWNERS, which is why those files are excluded from sync Group 2 / not synced respectively.
+- Secrets required: `GH_PAT` for sync-files workflow, `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` for CF Worker deploy workflow.
+- `chatgpt-codex-connector` GitHub App installed with all-repo access. `@codex review` works in any repo PR. `@codex` works in issue comments to investigate and propose fixes.
+- AGENTS.md is synced to all downstream repos — Codex reads it automatically for review context in every repo.
