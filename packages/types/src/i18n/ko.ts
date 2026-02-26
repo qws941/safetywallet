@@ -89,6 +89,43 @@ export const ko = {
   "posts.noPost": "게시물이 없습니다",
   "posts.loadingError": "게시물을 불러올 수 없습니다",
 
+  // ---- Post Categories ----
+  "posts.category.hazard": "위험",
+  "posts.category.unsafeBehavior": "불안전한 행동",
+  "posts.category.inconvenience": "불편사항",
+  "posts.category.suggestion": "제안",
+  "posts.category.bestPractice": "우수 사례",
+
+  // ---- Post View Status ----
+  "posts.view.status.pending": "대기 중",
+  "posts.view.status.inReview": "검토 중",
+  "posts.view.status.approved": "승인됨",
+  "posts.view.status.rejected": "반려됨",
+
+  // ---- Post Page List ----
+  "posts.pageList.all": "전체",
+  "posts.pageList.urgent": "긴급",
+  "posts.pageList.received": "접수됨",
+  "posts.pageList.inReview": "검토 중",
+  "posts.pageList.approved": "승인됨",
+  "posts.pageList.rejected": "반려됨",
+  "posts.pageList.needInfo": "보완 요청",
+  "posts.pageList.myReportsList": "내 보고서",
+  "posts.pageList.newReport": "새 보고서",
+  "posts.pageList.noReportsYet": "보고서가 없습니다",
+  "posts.pageList.findHazards": "위험 요소를 찾아보세요",
+
+  // ---- New Post Form ----
+  "posts.selectCategory": "카테고리 선택",
+  "posts.description": "설명",
+  "posts.location": "위치",
+  "posts.submit": "제출",
+  "posts.new.anonymous": "익명",
+  "posts.new.zone": "구역",
+  "posts.new.unsafeBehaviorWarning": "불안전한 행동에 주의하세요",
+  "posts.error.uploadFailed": "업로드에 실패했습니다",
+  "posts.success.submitted": "보고서가 제출되었습니다",
+
   // ==================== CREATE POST ====================
   "postsCreate.title": "새 게시물 작성",
   "postsCreate.categoryLabel": "카테고리",
@@ -141,6 +178,32 @@ export const ko = {
   "posts.view.resubmitSuccess": "보완 정보가 제출되었습니다",
   "posts.view.resubmitError": "보완 정보 제출에 실패했습니다",
 
+  // ---- Post View Details ----
+  "posts.view.received": "접수됨",
+  "posts.view.inReview": "검토 중",
+  "posts.view.needInfo": "보완 요청",
+  "posts.view.approved": "승인됨",
+  "posts.view.rejected": "반려됨",
+  "posts.view.urgent": "긴급",
+  "posts.view.notFound": "게시물을 찾을 수 없습니다",
+  "posts.view.back": "뒤로",
+  "posts.view.rejectReasonTitle": "반려 사유",
+  "posts.view.reason": "사유",
+  "posts.view.infoRequestTitle": "보완 요청",
+  "posts.view.adminRequestedInfo": "관리자가 추가 정보를 요청했습니다",
+  "posts.view.photo": "사진",
+  "posts.view.details": "상세 정보",
+  "posts.view.createdAt": "작성일",
+  "posts.view.createdBy": "작성자",
+
+  // ---- Post Reject Reasons ----
+  "posts.rejectReasons.duplicate": "중복 보고",
+  "posts.rejectReasons.unclearPhoto": "불분명한 사진",
+  "posts.rejectReasons.insufficient": "정보 부족",
+  "posts.rejectReasons.false": "허위 보고",
+  "posts.rejectReasons.irrelevant": "관련 없음",
+  "posts.rejectReasons.other": "기타",
+
   // ==================== POINTS ====================
   "points.title": "포인트",
   "points.totalPoints": "총 포인트",
@@ -176,6 +239,13 @@ export const ko = {
   "actions.noActions": "조치 사항이 없습니다",
   "actions.loadingError": "조치 사항을 불러올 수 없습니다",
   "actions.retryButton": "다시 시도",
+
+  // ---- Action Status ----
+  "actions.status.assigned": "배정됨",
+  "actions.status.inProgress": "진행 중",
+  "actions.status.completed": "완료됨",
+  "actions.status.verified": "확인됨",
+  "actions.status.overdue": "기한 초과",
 
   // ==================== CREATE ACTION ====================
   "actionsCreate.title": "새 조치 추가",
@@ -468,6 +538,8 @@ export const ko = {
   "postCard.comment": "댓글",
   "postCard.share": "공유",
   "postCard.moreOptions": "더보기",
+  "postCard.reviewStatusNeedInfo": "보완 요청",
+  "postCard.actionStatusVerified": "확인됨",
 
   // ==================== RANKING CARD ====================
   "rankingCard.rank": "순위",

@@ -35,16 +35,18 @@ interface AttendanceStatus {
 }
 
 export default function HomePage() {
-  const { currentSiteId } = useAuth();
+  const { currentSiteId, isAuthenticated, _hasHydrated } = useAuth();
+  const isReady = _hasHydrated && isAuthenticated;
+  const activeSiteId = isReady ? currentSiteId : "";
   const t = useTranslation();
   const { data: postsData, isLoading: postsLoading } = usePosts(
-    currentSiteId || "",
+    activeSiteId || "",
   );
   const { data: pointsData, isLoading: pointsLoading } = usePoints(
-    currentSiteId || "",
+    activeSiteId || "",
   );
   const { data: leaderboardData, isLoading: leaderboardLoading } =
-    useLeaderboard(currentSiteId || null);
+    useLeaderboard(activeSiteId || null);
 
   const { data: attendanceData, isLoading: attendanceLoading } =
     useQuery<AttendanceStatus>({
@@ -55,7 +57,7 @@ export default function HomePage() {
         );
         return res.data;
       },
-      enabled: !!currentSiteId,
+      enabled: !!activeSiteId,
     });
 
   const recentPosts = postsData?.data?.posts?.slice(0, 3) || [];
@@ -71,7 +73,7 @@ export default function HomePage() {
       );
       return res.data?.data || [];
     },
-    enabled: !!currentSiteId,
+    enabled: !!activeSiteId,
   });
   const recentAnnouncements = announcementsData || [];
 
