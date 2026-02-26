@@ -153,22 +153,24 @@ export function useEducationContents(siteId: string) {
   return useQuery({
     queryKey: ["education-contents", siteId],
     queryFn: () =>
-      apiFetch<{
-        contents: Array<{
-          id: string;
-          siteId: string;
-          title: string;
-          content: string;
-          contentType: string;
-          category: string;
-          isRequired: boolean;
-          displayOrder: number;
-          createdAt: string;
-          contentUrl?: string;
-          thumbnailUrl?: string;
-          description?: string;
-        }>;
-      }>(`/education/contents?siteId=${siteId}`).then((r) => r.contents),
+      apiFetch<
+        ApiResponse<{
+          contents: Array<{
+            id: string;
+            siteId: string;
+            title: string;
+            content: string;
+            contentType: string;
+            category: string;
+            isRequired: boolean;
+            displayOrder: number;
+            createdAt: string;
+            contentUrl?: string;
+            thumbnailUrl?: string;
+            description?: string;
+          }>;
+        }>
+      >(`/education/contents?siteId=${siteId}`).then((r) => r.data.contents),
     enabled: !!siteId,
   });
 }
@@ -177,8 +179,8 @@ export function useEducationContent(id: string) {
   return useQuery({
     queryKey: ["education-content", id],
     queryFn: () =>
-      apiFetch<{
-        content: {
+      apiFetch<
+        ApiResponse<{
           id: string;
           title: string;
           content: string;
@@ -189,8 +191,8 @@ export function useEducationContent(id: string) {
           contentUrl?: string;
           thumbnailUrl?: string;
           description?: string;
-        };
-      }>(`/education/contents/${id}`).then((r) => r.content),
+        }>
+      >(`/education/contents/${id}`).then((r) => r.data),
     enabled: !!id,
   });
 }
@@ -200,32 +202,34 @@ export function useQuizzes(siteId: string) {
   return useQuery({
     queryKey: ["quizzes", siteId],
     queryFn: () =>
-      apiFetch<{
-        quizzes: Array<{
-          id: string;
-          title: string;
-          description: string | null;
-          passingScore: number;
-          timeLimitMinutes: number | null;
-          maxAttempts: number;
-          isActive: boolean;
-          createdAt: string;
-          questions?: Array<{
+      apiFetch<
+        ApiResponse<{
+          quizzes: Array<{
             id: string;
-            question: string;
-            questionType?:
-              | "SINGLE_CHOICE"
-              | "OX"
-              | "MULTI_CHOICE"
-              | "SHORT_ANSWER";
-            options: string | string[];
-            correctAnswer: number;
-            correctAnswerText?: string | null;
-            explanation: string | null;
-            displayOrder: number;
+            title: string;
+            description: string | null;
+            passingScore: number;
+            timeLimitMinutes: number | null;
+            maxAttempts: number;
+            isActive: boolean;
+            createdAt: string;
+            questions?: Array<{
+              id: string;
+              question: string;
+              questionType?:
+                | "SINGLE_CHOICE"
+                | "OX"
+                | "MULTI_CHOICE"
+                | "SHORT_ANSWER";
+              options: string | string[];
+              correctAnswer: number;
+              correctAnswerText?: string | null;
+              explanation: string | null;
+              displayOrder: number;
+            }>;
           }>;
-        }>;
-      }>(`/education/quizzes?siteId=${siteId}`).then((r) => r.quizzes),
+        }>
+      >(`/education/quizzes?siteId=${siteId}`).then((r) => r.data.quizzes),
     enabled: !!siteId,
   });
 }
@@ -234,8 +238,8 @@ export function useQuiz(id: string) {
   return useQuery({
     queryKey: ["quiz", id],
     queryFn: () =>
-      apiFetch<{
-        quiz: {
+      apiFetch<
+        ApiResponse<{
           id: string;
           title: string;
           description: string | null;
@@ -256,8 +260,8 @@ export function useQuiz(id: string) {
             explanation: string | null;
             displayOrder: number;
           }>;
-        };
-      }>(`/education/quizzes/${id}`).then((r) => r.quiz),
+        }>
+      >(`/education/quizzes/${id}`).then((r) => r.data),
     enabled: !!id,
   });
 }
@@ -274,15 +278,17 @@ export function useSubmitQuizAttempt() {
       answers: Record<string, number | number[] | string>;
       questionOrder?: string[];
     }) =>
-      apiFetch<{
-        attempt: {
-          id: string;
-          score: number;
-          passed: boolean;
-          totalQuestions: number;
-          correctAnswers: number;
-        };
-      }>(`/education/quizzes/${quizId}/attempt`, {
+      apiFetch<
+        ApiResponse<{
+          attempt: {
+            id: string;
+            score: number;
+            passed: boolean;
+            totalQuestions: number;
+            correctAnswers: number;
+          };
+        }>
+      >(`/education/quizzes/${quizId}/attempt`, {
         method: "POST",
         body: JSON.stringify({
           answers: questionOrder
@@ -292,7 +298,7 @@ export function useSubmitQuizAttempt() {
             : answers,
         }),
         offlineQueue: true,
-      }),
+      }).then((r) => r.data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["quiz-attempts", variables.quizId],
@@ -306,16 +312,20 @@ export function useMyQuizAttempts(quizId: string) {
   return useQuery({
     queryKey: ["quiz-attempts", quizId],
     queryFn: () =>
-      apiFetch<{
-        attempts: Array<{
-          id: string;
-          score: number;
-          passed: boolean;
-          totalQuestions: number;
-          correctAnswers: number;
-          createdAt: string;
-        }>;
-      }>(`/education/quizzes/${quizId}/my-attempts`).then((r) => r.attempts),
+      apiFetch<
+        ApiResponse<{
+          attempts: Array<{
+            id: string;
+            score: number;
+            passed: boolean;
+            totalQuestions: number;
+            correctAnswers: number;
+            createdAt: string;
+          }>;
+        }>
+      >(`/education/quizzes/${quizId}/my-attempts`).then(
+        (r) => r.data.attempts,
+      ),
     enabled: !!quizId,
   });
 }
@@ -325,18 +335,34 @@ export function useTbmRecords(siteId: string) {
   return useQuery({
     queryKey: ["tbm-records", siteId],
     queryFn: () =>
-      apiFetch<{
-        records: Array<{
-          id: string;
-          title: string;
-          date: string;
-          location: string | null;
-          content: string | null;
-          safetyTopic: string | null;
-          leader?: { nameMasked: string };
-          _count?: { attendees: number };
-        }>;
-      }>(`/education/tbm?siteId=${siteId}`).then((r) => r.records),
+      apiFetch<
+        ApiResponse<{
+          records: Array<{
+            tbm: {
+              id: string;
+              siteId: string;
+              date: number;
+              topic: string;
+              content: string | null;
+              leaderId: string;
+              createdAt: string;
+              updatedAt: string;
+            };
+            leaderName: string;
+          }>;
+        }>
+      >(`/education/tbm?siteId=${siteId}`).then((r) =>
+        r.data.records.map((rec) => ({
+          id: rec.tbm.id,
+          title: rec.tbm.topic,
+          date: new Date(rec.tbm.date * 1000).toLocaleDateString("ko-KR"),
+          location: null as string | null,
+          content: rec.tbm.content,
+          safetyTopic: rec.tbm.topic,
+          leader: rec.leaderName ? { nameMasked: rec.leaderName } : undefined,
+          _count: { attendees: 0 },
+        })),
+      ),
     enabled: !!siteId,
   });
 }
@@ -365,7 +391,9 @@ export function useAttendanceToday(siteId: string | null) {
   return useQuery({
     queryKey: ["attendance", "today", siteId],
     queryFn: () =>
-      apiFetch<AttendanceStatus>(`/attendance/today?siteId=${siteId}`),
+      apiFetch<ApiResponse<AttendanceStatus>>(
+        `/attendance/today?siteId=${siteId}`,
+      ).then((r) => r.data),
     enabled: !!siteId,
     staleTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,

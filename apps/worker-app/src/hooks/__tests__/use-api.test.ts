@@ -162,22 +162,27 @@ describe("use-api hooks", () => {
   it("useEducationContents and useEducationContent return transformed payload", async () => {
     vi.mocked(apiFetch)
       .mockResolvedValueOnce({
-        contents: [
-          {
-            id: "c1",
-            siteId: "s",
-            title: "t",
-            content: "c",
-            contentType: "TEXT",
-            category: "GEN",
-            isRequired: false,
-            displayOrder: 1,
-            createdAt: "2026-01-01",
-          },
-        ],
+        success: true,
+        data: {
+          contents: [
+            {
+              id: "c1",
+              siteId: "s",
+              title: "t",
+              content: "c",
+              contentType: "TEXT",
+              category: "GEN",
+              isRequired: false,
+              displayOrder: 1,
+              createdAt: "2026-01-01",
+            },
+          ],
+        },
+        timestamp: "2026-01-01T00:00:00.000Z",
       })
       .mockResolvedValueOnce({
-        content: {
+        success: true,
+        data: {
           id: "c2",
           title: "제목",
           content: "본문",
@@ -186,6 +191,7 @@ describe("use-api hooks", () => {
           isRequired: false,
           createdAt: "2026-01-01",
         },
+        timestamp: "2026-01-01T00:00:00.000Z",
       });
 
     const { wrapper } = createWrapper();
@@ -199,7 +205,11 @@ describe("use-api hooks", () => {
   });
 
   it("useAttendanceToday respects enabled flag and endpoint", async () => {
-    vi.mocked(apiFetch).mockResolvedValue({ attended: true, checkinAt: null });
+    vi.mocked(apiFetch).mockResolvedValue({
+      success: true,
+      data: { attended: true, checkinAt: null },
+      timestamp: "2026-01-01T00:00:00.000Z",
+    });
     const { wrapper } = createWrapper();
 
     renderHook(() => useAttendanceToday(null), { wrapper });
@@ -350,24 +360,29 @@ describe("use-api hooks", () => {
     vi.mocked(apiFetch).mockImplementation((url) => {
       if (url === "/education/quizzes?siteId=site-q") {
         return Promise.resolve({
-          quizzes: [
-            {
-              id: "q1",
-              title: "안전 퀴즈",
-              description: null,
-              passingScore: 80,
-              timeLimitMinutes: 10,
-              maxAttempts: 3,
-              isActive: true,
-              createdAt: "2026-01-01",
-            },
-          ],
+          success: true,
+          data: {
+            quizzes: [
+              {
+                id: "q1",
+                title: "안전 퀴즈",
+                description: null,
+                passingScore: 80,
+                timeLimitMinutes: 10,
+                maxAttempts: 3,
+                isActive: true,
+                createdAt: "2026-01-01",
+              },
+            ],
+          },
+          timestamp: "2026-01-01T00:00:00.000Z",
         });
       }
 
       if (url === "/education/quizzes/q1") {
         return Promise.resolve({
-          quiz: {
+          success: true,
+          data: {
             id: "q1",
             title: "안전 퀴즈",
             description: null,
@@ -376,22 +391,31 @@ describe("use-api hooks", () => {
             maxAttempts: 3,
             questions: [],
           },
+          timestamp: "2026-01-01T00:00:00.000Z",
         });
       }
 
       if (url === "/education/quizzes/q1/my-attempts") {
-        return Promise.resolve({ attempts: [] });
+        return Promise.resolve({
+          success: true,
+          data: { attempts: [] },
+          timestamp: "2026-01-01T00:00:00.000Z",
+        });
       }
 
       if (url === "/education/quizzes/q1/attempt") {
         return Promise.resolve({
-          attempt: {
-            id: "qa1",
-            score: 100,
-            passed: true,
-            totalQuestions: 2,
-            correctAnswers: 2,
+          success: true,
+          data: {
+            attempt: {
+              id: "qa1",
+              score: 100,
+              passed: true,
+              totalQuestions: 2,
+              correctAnswers: 2,
+            },
           },
+          timestamp: "2026-01-01T00:00:00.000Z",
         });
       }
 
@@ -436,7 +460,11 @@ describe("use-api hooks", () => {
   it("tbm hooks fetch records and attendance mutation invalidates tbm list", async () => {
     vi.mocked(apiFetch).mockImplementation((url) => {
       if (url === "/education/tbm?siteId=site-t") {
-        return Promise.resolve({ records: [] });
+        return Promise.resolve({
+          success: true,
+          data: { records: [] },
+          timestamp: "2026-01-01T00:00:00.000Z",
+        });
       }
 
       if (url === "/education/tbm/tbm-1/attend") {
