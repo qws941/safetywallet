@@ -50,7 +50,7 @@ test.describe("Worker App - Education YouTube", () => {
     await expect(iframe).toBeVisible();
 
     const src = await iframe.getAttribute("src");
-    expect(src).toContain("https://www.youtube.com/embed/dQw4w9WgXcQ");
+    expect(src).toContain("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
 
     expect(src).toContain("origin=");
 
