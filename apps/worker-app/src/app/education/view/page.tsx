@@ -38,6 +38,24 @@ function LoadingState() {
   );
 }
 
+function toYouTubeEmbedUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const videoId =
+      parsed.searchParams.get("v") ||
+      (parsed.hostname === "youtu.be" ? parsed.pathname.slice(1) : null) ||
+      (parsed.pathname.startsWith("/embed/")
+        ? parsed.pathname.split("/embed/")[1]
+        : null);
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+  } catch {
+    // not a valid URL — fall through
+  }
+  return url;
+}
+
 function EducationDetailContent() {
   const router = useRouter();
   const t = useTranslation();
@@ -99,9 +117,10 @@ function EducationDetailContent() {
         {data.contentType === "VIDEO" && data.contentUrl && (
           <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
             <iframe
-              src={data.contentUrl}
+              src={toYouTubeEmbedUrl(data.contentUrl)}
               className="w-full h-full"
               allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               title={data.title}
             />
           </div>
