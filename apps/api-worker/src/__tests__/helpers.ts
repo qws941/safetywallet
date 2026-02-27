@@ -107,7 +107,7 @@ export function createMockEnv(overrides?: TestBindings): TestBindings {
     DB: createMockD1(),
     KV: kv,
     R2: r2,
-    STATIC: r2,
+    ASSETS: { fetch: vi.fn() } as unknown as Fetcher,
     JWT_SECRET: "jwt-secret",
     HMAC_SECRET: "hmac-secret",
     ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef",
@@ -183,7 +183,7 @@ export function createTestEnv(overrides?: Partial<Env>): Env {
   return {
     DB: db as unknown as D1Database,
     R2: r2 as unknown as R2Bucket,
-    STATIC: r2 as unknown as R2Bucket,
+    ASSETS: { fetch: vi.fn() } as unknown as Fetcher,
     KV: kv as unknown as KVNamespace,
     JWT_SECRET: "jwt-secret",
     HMAC_SECRET: "hmac-secret",
