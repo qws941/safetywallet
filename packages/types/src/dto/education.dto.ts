@@ -24,6 +24,7 @@ export interface EducationContentDto {
   description: string | null;
   contentType: EducationContentType;
   contentUrl: string | null;
+  sourceUrl: string | null;
   contentBody: string | null;
   sortOrder: number;
   isActive: boolean;

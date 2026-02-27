@@ -128,10 +128,11 @@ function EducationDetailContent() {
 
         {/* Content Type Specific Display */}
         {data.contentType === "VIDEO" &&
-          data.contentUrl &&
+          (data.contentUrl || data.sourceUrl) &&
           (() => {
-            const embedUrl = toYouTubeEmbedUrl(data.contentUrl);
-            const watchUrl = toYouTubeWatchUrl(data.contentUrl);
+            const videoUrl = data.contentUrl || data.sourceUrl!;
+            const embedUrl = toYouTubeEmbedUrl(videoUrl);
+            const watchUrl = toYouTubeWatchUrl(videoUrl);
             return (
               <div className="space-y-2">
                 <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">

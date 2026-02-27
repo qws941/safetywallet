@@ -457,6 +457,7 @@ describe("DTO and envelope shapes", () => {
       description: "기본 교육",
       contentType: EducationContentType.TEXT,
       contentUrl: null,
+      sourceUrl: null,
       contentBody: "본문",
       sortOrder: 1,
       isActive: true,

@@ -188,6 +188,7 @@ export function useEducationContent(id: string) {
           isRequired: boolean;
           createdAt: string;
           contentUrl?: string;
+          sourceUrl?: string;
           thumbnailUrl?: string;
           description?: string;
         }>

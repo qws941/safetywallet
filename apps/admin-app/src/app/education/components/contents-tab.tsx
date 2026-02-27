@@ -195,6 +195,7 @@ export function ContentsTab() {
                       ...prev,
                       externalSource: "YOUTUBE",
                       sourceUrl: nextUrl,
+                      contentUrl: nextUrl,
                     }));
                   }}
                 />
