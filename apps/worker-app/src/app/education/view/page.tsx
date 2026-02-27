@@ -55,7 +55,9 @@ function toYouTubeEmbedUrl(url: string): string {
     }
 
     if (videoId) {
-      return `https://www.youtube.com/embed/${videoId}`;
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&origin=${encodeURIComponent(origin)}`;
     }
   } catch {
     // not a valid URL — fall through
@@ -140,7 +142,8 @@ function EducationDetailContent() {
                     src={embedUrl}
                     className="w-full h-full"
                     allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
                     title={data.title}
                   />
                 </div>
