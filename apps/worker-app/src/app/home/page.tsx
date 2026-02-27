@@ -82,8 +82,7 @@ export default function HomePage() {
             {t("auth.noSitesAvailable")}
           </h2>
           <p className="text-sm text-muted-foreground max-w-xs">
-            관리자에게 현장 배정을 요청해 주세요. 배정 후 앱을 다시 열어주시면
-            됩니다.
+            잠시만 기다려주세요...
           </p>
         </main>
         <BottomNav />

@@ -7,7 +7,7 @@
     "dateOfBirth": "생년월일",
     "site": "현장",
     "selectSite": "현장을 선택하세요",
-    "noSitesAvailable": "배치된 현장이 없습니다",
+    "noSitesAvailable": "데이터 로딩 중...",
     "siteId": "사이트 ID",
     "siteIdPlaceholder": "사이트 ID를 입력하세요",
     "password": "비밀번호",
