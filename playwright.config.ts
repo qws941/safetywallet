@@ -1,4 +1,8 @@
+import { config } from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
+
+// Load .env from project root for E2E credentials
+config();
 
 // Production URLs as defaults — CI and local both hit production
 // Override with env vars for staging/local dev:

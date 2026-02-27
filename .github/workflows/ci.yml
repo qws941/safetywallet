@@ -320,6 +320,12 @@ jobs:
           API_URL: ${{ steps.smoke_urls.outputs.api_url }}
           WORKER_APP_URL: ${{ steps.smoke_urls.outputs.worker_url }}
           ADMIN_APP_URL: ${{ steps.smoke_urls.outputs.admin_url }}
+          E2E_ADMIN_USERNAME: ${{ secrets.E2E_ADMIN_USERNAME }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_WORKER_NAME: ${{ secrets.E2E_WORKER_NAME }}
+          E2E_WORKER_PHONE: ${{ secrets.E2E_WORKER_PHONE }}
+          E2E_WORKER_DOB: ${{ secrets.E2E_WORKER_DOB }}
+          E2E_WORKER_SITE_ID: ${{ secrets.E2E_WORKER_SITE_ID }}
 
       - name: Warn if E2E skipped
         if: steps.smoke_urls.outputs.api_reachable != 'true'
