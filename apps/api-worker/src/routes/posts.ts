@@ -111,7 +111,7 @@ app.post(
       }
 
       const postId = crypto.randomUUID();
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const cutoff = Math.floor(Date.now() / 1000) - 86400;
 
       // Location-based duplicate detection (existing)
       const canCheckDuplicate = Boolean(
