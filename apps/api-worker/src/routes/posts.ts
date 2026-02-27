@@ -159,19 +159,24 @@ app.post(
         }
       }
 
-      const duplicateOfPostId = canCheckDuplicate
-        ? sql`(
-        select ${posts.id}
-        from ${posts}
-        where ${duplicateWhereSql}
-        order by ${posts.createdAt} desc
-        limit 1
-      )`
-        : null;
+      let duplicateOfPostId: string | null = null;
+      if (canCheckDuplicate) {
+        const dupResult = await db
+          .select({ id: posts.id })
+          .from(posts)
+          .where(duplicateWhereSql)
+          .orderBy(desc(posts.createdAt))
+          .limit(1)
+          .get();
+        if (dupResult) {
+          duplicateOfPostId = dupResult.id;
+        }
+      }
+
       const isPotentialDuplicate =
         canCheckDuplicate || contentSimilar
           ? canCheckDuplicate
-            ? sql`exists(select 1 from ${posts} where ${duplicateWhereSql})`
+            ? !!duplicateOfPostId
             : true
           : false;
 
