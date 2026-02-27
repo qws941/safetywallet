@@ -198,6 +198,18 @@ jobs:
 
       - run: npm ci
 
+      - name: Download worker-app build
+        uses: actions/download-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: build-worker-app
+          path: apps/worker-app/out/
+
+      - name: Download admin-app build
+        uses: actions/download-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: build-admin-app
+          path: apps/admin-app/out/
+
       - name: Build static assets
         run: npm run build:static
 
