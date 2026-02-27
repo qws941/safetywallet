@@ -367,7 +367,7 @@ describe("use-api hooks", () => {
 
   it("quiz hooks fetch lists/details, submit attempt, and fetch my attempts", async () => {
     vi.mocked(apiFetch).mockImplementation((url) => {
-      if (url === "/education/quizzes?siteId=site-q") {
+      if (url === "/education/quizzes?siteId=site-q&status=PUBLISHED") {
         return Promise.resolve({
           success: true,
           data: {
@@ -387,7 +387,6 @@ describe("use-api hooks", () => {
           timestamp: "2026-01-01T00:00:00.000Z",
         });
       }
-
       if (url === "/education/quizzes/q1") {
         return Promise.resolve({
           success: true,
@@ -452,7 +451,9 @@ describe("use-api hooks", () => {
       });
     });
 
-    expect(apiFetch).toHaveBeenCalledWith("/education/quizzes?siteId=site-q");
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/education/quizzes?siteId=site-q&status=PUBLISHED",
+    );
     expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1");
     expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1/my-attempts");
     expect(apiFetch).toHaveBeenCalledWith("/education/quizzes/q1/attempt", {
@@ -499,6 +500,7 @@ describe("use-api hooks", () => {
 
     expect(apiFetch).toHaveBeenCalledWith("/education/tbm/tbm-1/attend", {
       method: "POST",
+      body: JSON.stringify({ tbmRecordId: "tbm-1" }),
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["tbm-records"] });
   });

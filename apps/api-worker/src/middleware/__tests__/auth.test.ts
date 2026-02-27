@@ -54,7 +54,7 @@ function makeEnv(dbOverride?: unknown): Env {
     DB: (dbOverride ?? createMockD1()) as D1Database,
     KV: {} as KVNamespace,
     R2: {} as R2Bucket,
-    ASSETS: { fetch: vi.fn() } as unknown as Fetcher,
+    STATIC: {} as R2Bucket,
     JWT_SECRET: "test-secret",
     HMAC_SECRET: "test",
     ENCRYPTION_KEY: "test",

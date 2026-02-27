@@ -246,6 +246,61 @@ function getMimeType(path: string): string {
   return MIME_TYPES[ext] || "application/octet-stream";
 }
 
+// Static SPA serving — hostname-based routing:
+//   admin.safetywallet.jclee.me → R2 "admin/" prefix (admin-app)
+//   safetywallet.jclee.me       → R2 root (worker-app)
+app.get("*", async (c) => {
+  const url = new URL(c.req.url);
+  const isAdmin = url.hostname.startsWith("admin.");
+  const keyPrefix = isAdmin ? "admin/" : "";
+  const spaFallbackKey = isAdmin ? "admin/index.html" : "index.html";
+
+  let path = url.pathname;
+
+  if (path.endsWith("/")) {
+    path += "index.html";
+  } else if (!path.includes(".")) {
+    path += "/index.html";
+  }
+
+  const rawKey = path.startsWith("/") ? path.slice(1) : path;
+  const key = `${keyPrefix}${rawKey}`;
+
+  try {
+    const object = await c.env.STATIC.get(key);
+
+    if (object) {
+      const headers = new Headers();
+      headers.set("Content-Type", getMimeType(path));
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      if (path.endsWith(".html")) {
+        headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      }
+
+      return new Response(object.body, { headers });
+    }
+
+    const indexObject = await c.env.STATIC.get(spaFallbackKey);
+    if (indexObject) {
+      return new Response(indexObject.body, {
+        headers: {
+          "Content-Type": "text/html",
+          "Cache-Control": "public, max-age=0, must-revalidate",
+        },
+      });
+    }
+
+    return c.json({ error: "Not Found", path: c.req.path }, 404);
+  } catch (err) {
+    logger.error("Static serve error", {
+      error: err instanceof Error ? err.message : String(err),
+      hostname: url.hostname,
+    });
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+});
+
 app.onError((err, c) => {
   const log = createLogger("onError", {
     elasticsearchUrl: c.env.ELASTICSEARCH_URL,

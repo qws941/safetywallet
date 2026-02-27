@@ -26,7 +26,7 @@ function makeEnv(): Env {
   return {
     DB: {} as D1Database,
     R2: {} as R2Bucket,
-    ASSETS: { fetch: vi.fn() } as unknown as Fetcher,
+    STATIC: {} as R2Bucket,
     KV: {} as KVNamespace,
     JWT_SECRET: "test",
     HMAC_SECRET: "test",
