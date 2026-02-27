@@ -84,6 +84,16 @@ test.describe("Worker App - Posts", () => {
       throw new Error("create post request was not triggered");
     }
 
+    if (
+      createPostResponse.status() >= 400 &&
+      createPostResponse.status() !== 403
+    ) {
+      const body = await createPostResponse.json().catch(() => null);
+      throw new Error(
+        `create post failed: ${createPostResponse.status()} ${JSON.stringify(body)}`,
+      );
+    }
+
     if (createPostResponse.status() === 403) {
       const body = (await createPostResponse.json().catch(() => null)) as {
         error?: { code?: string };

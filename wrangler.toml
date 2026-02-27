@@ -27,15 +27,17 @@ binding = "DB"
 database_name = "safetywallet-db"
 database_id = "45065dd5-1f89-4a1b-9e13-228594f309ce"
 
+# Workers Static Assets configuration
+[assets]
+directory = "dist"
+binding = "ASSETS"
+not_found_handling = "none"
+run_worker_first = true
+
 # R2 Bucket for images
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "safetywallet-images"
-
-# R2 Bucket for static frontend files
-[[r2_buckets]]
-binding = "STATIC"
-bucket_name = "safetywallet-static"
 
 # R2 Bucket for AceTime data (photos + DB from NAS)
 [[r2_buckets]]

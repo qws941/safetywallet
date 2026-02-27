@@ -121,13 +121,15 @@ binding = "DB"
 database_name = "safetywallet-db-dev"
 database_id = "edeb67f3-0135-4ccc-bf5c-dd1914460b06"
 
+[env.dev.assets]
+directory = "dist"
+binding = "ASSETS"
+not_found_handling = "none"
+run_worker_first = true
+
 [[env.dev.r2_buckets]]
 binding = "R2"
 bucket_name = "safetywallet-images"
-
-[[env.dev.r2_buckets]]
-binding = "STATIC"
-bucket_name = "safetywallet-static"
 
 [[env.dev.r2_buckets]]
 binding = "ACETIME_BUCKET"

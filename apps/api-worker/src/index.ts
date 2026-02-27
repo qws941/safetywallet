@@ -241,57 +241,68 @@ const MIME_TYPES: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-function getMimeType(path: string): string {
+const getMimeType = (path: string): string => {
   const ext = path.substring(path.lastIndexOf("."));
   return MIME_TYPES[ext] || "application/octet-stream";
-}
+};
 
 // Static SPA serving — hostname-based routing:
-//   admin.safetywallet.jclee.me → R2 "admin/" prefix (admin-app)
-//   safetywallet.jclee.me       → R2 root (worker-app)
-app.get("*", async (c) => {
+//   admin.safetywallet.jclee.me → serves /admin/index.html on 404
+//   safetywallet.jclee.me       → serves /index.html on 404
+// Note: with Workers Static Assets and run_worker_first = true,
+// missing assets are intercepted here instead of returning 404
+app.all("*", async (c) => {
   const url = new URL(c.req.url);
   const isAdmin = url.hostname.startsWith("admin.");
-  const keyPrefix = isAdmin ? "admin/" : "";
-  const spaFallbackKey = isAdmin ? "admin/index.html" : "index.html";
 
+  // Clean up path logic for SPA routing
   let path = url.pathname;
-
   if (path.endsWith("/")) {
     path += "index.html";
   } else if (!path.includes(".")) {
     path += "/index.html";
   }
 
-  const rawKey = path.startsWith("/") ? path.slice(1) : path;
-  const key = `${keyPrefix}${rawKey}`;
+  // Prepend admin/ if it's the admin hostname
+  const targetPath = isAdmin ? `/admin${path}` : path;
+  const targetUrl = new URL(targetPath, c.req.url);
 
   try {
-    const object = await c.env.STATIC.get(key);
+    // Try to fetch the requested asset
+    let response = await c.env.ASSETS.fetch(targetUrl);
 
-    if (object) {
-      const headers = new Headers();
-      headers.set("Content-Type", getMimeType(path));
-      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    // SPA Fallback: If not found, serve the index.html for that specific app
+    if (response.status === 404) {
+      const fallbackPath = isAdmin ? "/admin/index.html" : "/index.html";
+      const fallbackUrl = new URL(fallbackPath, c.req.url);
+      response = await c.env.ASSETS.fetch(fallbackUrl);
 
-      if (path.endsWith(".html")) {
-        headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      // Override headers for SPA entry points to prevent caching
+      if (response.status === 200) {
+        const newResponse = new Response(response.body, response);
+        newResponse.headers.set("Content-Type", "text/html");
+        newResponse.headers.set(
+          "Cache-Control",
+          "public, max-age=0, must-revalidate",
+        );
+        return newResponse;
       }
-
-      return new Response(object.body, { headers });
     }
 
-    const indexObject = await c.env.STATIC.get(spaFallbackKey);
-    if (indexObject) {
-      return new Response(indexObject.body, {
-        headers: {
-          "Content-Type": "text/html",
-          "Cache-Control": "public, max-age=0, must-revalidate",
-        },
-      });
+    // Add aggressive caching for immutable static assets (JS/CSS)
+    if (
+      response.status === 200 &&
+      path.match(/\.(js|css|woff2?|png|jpg|jpeg|svg|gif|ico)$/)
+    ) {
+      const newResponse = new Response(response.body, response);
+      newResponse.headers.set(
+        "Cache-Control",
+        "public, max-age=31536000, immutable",
+      );
+      return newResponse;
     }
 
-    return c.json({ error: "Not Found", path: c.req.path }, 404);
+    return response;
   } catch (err) {
     logger.error("Static serve error", {
       error: err instanceof Error ? err.message : String(err),

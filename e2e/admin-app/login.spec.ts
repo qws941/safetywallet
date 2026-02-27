@@ -10,6 +10,12 @@ test.describe("Admin Login Page", () => {
     await page.goto("/login");
   });
 
+  test("should redirect to dashboard on successful login @smoke", async ({
+    page,
+  }) => {
+    await adminLogin(page);
+  });
+
   test("should render login form with correct elements", async ({ page }) => {
     await expect(page.getByText("송도세브란스 관리자")).toBeVisible();
     await expect(page.getByPlaceholder("admin")).toBeVisible();
@@ -61,11 +67,5 @@ test.describe("Admin Login Page", () => {
     await page.getByPlaceholder("••••••••").fill("wrongpass");
     await page.getByPlaceholder("••••••••").press("Enter");
     await expect(page).toHaveURL(/\/login/);
-  });
-
-  test("should redirect to dashboard on successful login @smoke", async ({
-    page,
-  }) => {
-    await adminLogin(page);
   });
 });

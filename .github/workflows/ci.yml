@@ -198,6 +198,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Build static assets
+        run: npm run build:static
+
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy
         env:

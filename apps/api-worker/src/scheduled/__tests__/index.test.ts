@@ -606,7 +606,7 @@ describe("scheduled orchestrators", () => {
     return {
       DB: {} as D1Database,
       R2: {} as R2Bucket,
-      STATIC: {} as R2Bucket,
+      ASSETS: { fetch: vi.fn() } as unknown as Fetcher,
       KV: kv,
       JWT_SECRET: "jwt",
       HMAC_SECRET: "hmac",
