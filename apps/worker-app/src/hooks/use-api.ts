@@ -372,7 +372,10 @@ export function useAttendTbm() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tbmId: string) =>
-      apiFetch(`/education/tbm/${tbmId}/attend`, { method: "POST" }),
+      apiFetch(`/education/tbm/${tbmId}/attend`, {
+        method: "POST",
+        body: JSON.stringify({ tbmRecordId: tbmId }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tbm-records"] });
     },
