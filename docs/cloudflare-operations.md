@@ -71,17 +71,14 @@ Deploy execution is CI-only.
 
 ### CI/CD Production
 
-- Trigger: CI workflow success on `master` (`workflow_run`)
-- Workflow: `.github/workflows/deploy-production.yml`
-- Single-worker behavior: deploys the worker only
-- Deploy source: checked out by git ref (`github.event.workflow_run.head_sha`)
-- Pre-deploy verification: `.github/workflows/deploy-verify.yml` via `workflow_call`
-- Post-deploy verification: `.github/workflows/deploy-verify.yml` via `workflow_call`
+- Trigger: Push to `master` → Cloudflare Git Integration auto-deploys
+- No dedicated deploy workflow — CF handles build and deploy via git integration
+- Post-deploy monitoring: `.github/workflows/deploy-monitoring.yml` watches completion
 
 ### CI/CD Staging
 
 - No dedicated staging deployment workflow is currently checked in under `.github/workflows/`.
-- Staging verification exists in `.github/workflows/deploy-verify.yml` (`environment=staging`).
+- Staging verification is not currently automated via a dedicated workflow.
 - Manual deploy is prohibited.
 
 ## D1 Migrations

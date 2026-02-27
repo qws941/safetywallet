@@ -1,6 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-02-26
+**Generated:** 2026-02-27
 **Branch:** master
 
 <!-- WARNING: This file is a sync target from qws941/.github via BetaHuhn/repo-file-sync-action.
@@ -26,7 +26,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ├── scripts/                  # Operational scripts (lint, verify, migrate, sync)
 ├── docs/                     # PRD, implementation plans, feature checklists
 │   └── requirements/         # Detailed requirement specs
-├── .github/workflows/        # 11 GitHub Actions workflows
+├── .github/workflows/        # 14 GitHub Actions workflows
 ├── turbo.json                # Pipeline: build/dev/lint/typecheck/test/test:e2e/clean
 ├── vitest.config.ts          # Workspace vitest: 5 project configs
 ├── playwright.config.ts      # 5 projects: api, admin-setup, worker-app, admin-app, cross-app
@@ -40,7 +40,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 | ---------------------- | ----------------------------------------- | -------------------------------------------------- |
 | API routes             | `apps/api-worker/src/routes/`             | 18 route modules + admin subtree                   |
 | API middleware         | `apps/api-worker/src/middleware/`         | Auth, CORS, logging, analytics, security headers   |
-| Database schema        | `apps/api-worker/src/db/schema.ts`        | 33 Drizzle tables on Cloudflare D1                 |
+| Database schema        | `apps/api-worker/src/db/schema.ts`        | 32 Drizzle tables on Cloudflare D1                 |
 | DB migrations          | `apps/api-worker/migrations/`             | Sequential SQL migrations                          |
 | Durable Objects        | `apps/api-worker/src/durable-objects/`    | RateLimiter DO                                     |
 | Scheduled tasks (cron) | `apps/api-worker/src/scheduled/`          | \*/5min, monthly, weekly Sun 3am, daily 9pm        |
@@ -50,7 +50,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 | Shared types/DTOs      | `packages/types/src/`                     | dto/ and i18n/ subdirectories                      |
 | Shared UI components   | `packages/ui/src/components/`             | Cross-app reusable components                      |
 | E2E tests              | `e2e/`                                    | api/, admin-app/, worker-app/, cross-app/, shared/ |
-| CI/CD                  | `.github/workflows/`                      | ci.yml → deploy-production.yml → deploy-verify.yml |
+| CI/CD                  | `.github/workflows/`                      | ci.yml + deploy-monitoring.yml (CF Git deploys)    |
 | Deploy monitoring      | `.github/workflows/deploy-monitoring.yml` | Post-deploy health + Slack notify                  |
 | Requirement specs      | `docs/requirements/`                      | PRD, implementation plan, feature checklist        |
 
@@ -68,7 +68,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 
 | Binding              | Type             | Purpose                             |
 | -------------------- | ---------------- | ----------------------------------- |
-| `DB`                 | D1               | Primary database (33 tables)        |
+| `DB`                 | D1               | Primary database (32 tables)        |
 | `IMAGES_BUCKET`      | R2               | User-uploaded images                |
 | `BACKUP_BUCKET`      | R2               | Database backups                    |
 | `ASSETS_BUCKET`      | R2               | Static assets / admin SPA           |
@@ -92,7 +92,7 @@ RateLimiter Durable Object exported from `src/durable-objects/RateLimiter.ts`.
 ### Deployment
 
 - **Manual deploy is disabled** — all deploy scripts exit with error
-- **Production**: Push to `master` → CI (`ci.yml`) → deploy-production → deploy-verify → deploy-monitoring → Slack notify
+- **Production**: Push to `master` → CF Git Integration auto-deploys → deploy-monitoring → Slack notify
 - **CF Git Integration**: Cloudflare auto-deploys on push to master
 - **Pipeline**: R2 asset sync → D1 migration → smoke test → production verify
 

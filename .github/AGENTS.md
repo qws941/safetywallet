@@ -9,7 +9,7 @@ Exact files present in this directory only.
 
 - `.github/dependabot.yml`
 - `.github/labeler.yml`
-- `.github/workflows/*.yml` (9 workflow files)
+- `.github/workflows/*.yml` (14 workflow files)
 
 ## OWNERSHIP SPLIT
 

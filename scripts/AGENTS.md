@@ -14,6 +14,7 @@ Repository utility scripts in `scripts/` only.
 - `hash-admin-password.ts`
 - `lint-naming.js`
 - `sync-r2.sh`
+- `verify.sh`
 
 ## FILE INTENT SNAPSHOT
 
@@ -25,6 +26,7 @@ Repository utility scripts in `scripts/` only.
 - Admin password PBKDF2 hash generator.
 - Workspace package naming linter.
 - R2 static asset sync uploader.
+- Full project verification (build, lint, typecheck, tests).
 
 ## MODULE RULES
 
