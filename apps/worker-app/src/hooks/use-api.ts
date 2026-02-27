@@ -228,7 +228,9 @@ export function useQuizzes(siteId: string) {
             }>;
           }>;
         }>
-      >(`/education/quizzes?siteId=${siteId}`).then((r) => r.data.quizzes),
+      >(`/education/quizzes?siteId=${siteId}&status=PUBLISHED`).then(
+        (r) => r.data.quizzes,
+      ),
     enabled: !!siteId,
   });
 }

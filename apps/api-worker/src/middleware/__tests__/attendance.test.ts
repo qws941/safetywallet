@@ -46,13 +46,13 @@ function makeEnv(overrides: Record<string, unknown> = {}): Env {
     DB: createMockD1() as unknown as D1Database,
     KV: { get: vi.fn().mockResolvedValue(null) } as unknown as KVNamespace,
     R2: {} as R2Bucket,
-    STATIC: {} as R2Bucket,
+    ASSETS: { fetch: vi.fn() } as unknown as Fetcher,
     JWT_SECRET: "test",
     HMAC_SECRET: "test",
     ENCRYPTION_KEY: "test",
     ENVIRONMENT: "test",
-    REQUIRE_ATTENDANCE_FOR_LOGIN: "false",
     REQUIRE_ATTENDANCE_FOR_POST: "true",
+    REQUIRE_ATTENDANCE_FOR_LOGIN: "false",
     ...overrides,
   } as Env;
 }
