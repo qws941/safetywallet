@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle, Button } from "@safetywallet/ui";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 
@@ -43,10 +44,12 @@ export function ImageLightbox({
         <DialogTitle className="sr-only">이미지 보기</DialogTitle>
 
         <div className="relative w-full h-[85vh] flex items-center justify-center group">
-          <img
+          <Image
             src={currentImage}
             alt={`이미지 ${currentIndex + 1}`}
-            className="max-w-full max-h-full object-contain"
+            fill
+            unoptimized
+            className="object-contain"
           />
 
           {images.length > 1 && (

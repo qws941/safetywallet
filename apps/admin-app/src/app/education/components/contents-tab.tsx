@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Plus, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -207,9 +208,12 @@ export function ContentsTab() {
                 </Button>
               </div>
               {contentForm.thumbnailUrl && (
-                <img
+                <Image
                   src={contentForm.thumbnailUrl}
                   alt="YouTube thumbnail"
+                  width={224}
+                  height={128}
+                  unoptimized
                   className="h-32 w-56 rounded-md border object-cover"
                 />
               )}
