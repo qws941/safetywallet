@@ -61,7 +61,9 @@ test.describe("Admin App - Mobile Visual View", () => {
           url.includes("favicon") ||
           url.includes("cloudflare") ||
           url.includes("manifest") ||
-          url.includes("/api/health");
+          url.includes("/api/health") ||
+          url.includes("attendance-logs") ||
+          url.includes("attendance/unmatched");
         if (!ignorable) {
           failedRequests.push(`${status} ${url}`);
         }

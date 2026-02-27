@@ -74,6 +74,11 @@ test.describe("Admin Education Registration", () => {
     await expect(
       page.getByText("TBM 기록이 등록되었습니다.", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("cell", { name: tbmTopic })).toBeVisible();
+    // Re-navigate to force fresh table data after creation
+    await page.goto("/education");
+    await page.getByRole("button", { name: "TBM" }).click();
+    await expect(page.getByRole("cell", { name: tbmTopic })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });

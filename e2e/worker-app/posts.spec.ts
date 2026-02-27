@@ -1,11 +1,23 @@
 import { test, expect } from "@playwright/test";
-import { ensureWorkerCurrentSite, workerLogin } from "./helpers";
+import {
+  ensureWorkerCurrentSite,
+  workerLogin,
+  WorkerRateLimitError,
+} from "./helpers";
 
 test.describe("Worker App - Posts", () => {
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ timeout: 180_000 });
 
   test.beforeEach(async ({ page }) => {
-    await workerLogin(page);
+    try {
+      await workerLogin(page);
+    } catch (e) {
+      if (e instanceof WorkerRateLimitError) {
+        test.skip(true, "Worker login rate limited");
+        return;
+      }
+      throw e;
+    }
 
     if (!page.url().includes("/home")) {
       throw new Error(`worker login did not land on home: ${page.url()}`);

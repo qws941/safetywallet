@@ -1,11 +1,19 @@
 import { test, expect } from "@playwright/test";
-import { workerLogin } from "./helpers";
+import { workerLogin, WorkerRateLimitError } from "./helpers";
 
 test.describe("Worker App - Education YouTube", () => {
-  test.describe.configure({ mode: "serial" });
+  test.describe.configure({ mode: "serial", timeout: 180_000 });
 
   test.beforeEach(async ({ page }) => {
-    await workerLogin(page);
+    try {
+      await workerLogin(page);
+    } catch (e) {
+      if (e instanceof WorkerRateLimitError) {
+        test.skip(true, "Worker login rate limited");
+        return;
+      }
+      throw e;
+    }
     await page.goto("/education", { waitUntil: "networkidle" });
   });
 

@@ -36,14 +36,21 @@ async function tryAdminLoginToken(): Promise<string | null> {
 
   const deadline = Date.now() + 180_000;
   for (let attempt = 0; attempt < 6; attempt++) {
-    const loginRes = await fetch(`${API_URL}/auth/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: ADMIN_USERNAME,
-        password: ADMIN_PASSWORD,
-      }),
-    });
+    let loginRes: Response;
+    try {
+      loginRes = await fetch(`${API_URL}/auth/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: ADMIN_USERNAME,
+          password: ADMIN_PASSWORD,
+        }),
+      });
+    } catch {
+      // Network error (DNS, connection refused) — wait and retry
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+      continue;
+    }
 
     if (loginRes.status === 429) {
       const retryAfter = parseRetryAfterSeconds(
