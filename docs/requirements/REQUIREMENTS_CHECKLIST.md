@@ -2,8 +2,8 @@
 
 **Generated**: 2025-02-05  
 **PRD Version**: v1.2 (Cloudflare Native Architecture)  
-**Implementation Status**: 100% complete (P0/P1/P2)  
-**Last Updated**: 2026-02-26
+**Implementation Status**: ~98% complete (P0/P1/P2)  
+**Last Updated**: 2026-02-27
 
 > Note: This file compares PRD baseline vs implementation history. If a row conflicts with current FAS-based login behavior, use `docs/FEATURE_CHECKLIST.md` and `AGENTS.md` as the operational source of truth.
 
@@ -16,7 +16,7 @@
 | **Functional Requirements**     | 100%   | All P0/P1/P2 complete; ERP/KakaoTalk removed from scope                   |
 | **Security Requirements**       | 98%    | PII encryption, DO rate limiting, face blur, session caching all complete |
 | **Data Model**                  | 98%    | 20+ tables implemented, FAS sync tables added, schema aligned             |
-| **Frontend (Worker)**           | 100%   | All pages, i18n (4 locales), PWA, offline support                         |
+| **Frontend (Worker)**           | 98%    | All pages, i18n (2 active/4 declared locales), PWA, offline support       |
 | **Frontend (Admin)**            | 99%    | Dashboard, approvals, votes, exports, FAS data view complete              |
 | **Backend API**                 | 100%   | 36 route modules, Workers AI, Queues, Web Push, SMS all done              |
 | **Non-Functional Requirements** | 95%    | Image compression, KV caching, i18n, retention CRON done                  |
@@ -663,11 +663,11 @@
 
 ### 11.4 Accessibility
 
-| Item      | Requirement                                             | Status | Notes                                                     |
-| --------- | ------------------------------------------------------- | ------ | --------------------------------------------------------- |
-| Languages | Korean required; English/Vietnamese/Chinese recommended | ✅     | i18n implemented: ko/en/vi/zh (4 locales, 293+ t() calls) |
-| Font size | System setting integration                              | ✅     | Tailwind responsive                                       |
-| Icons     | Main functions icon-centric                             | ✅     | Lucide icons used                                         |
+| Item      | Requirement                                             | Status | Notes                                                                              |
+| --------- | ------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------- |
+| Languages | Korean required; English/Vietnamese/Chinese recommended | ⚠️     | i18n: ko/en active; vi/zh declared but not imported (loader.ts imports ko/en only) |
+| Font size | System setting integration                              | ✅     | Tailwind responsive                                                                |
+| Icons     | Main functions icon-centric                             | ✅     | Lucide icons used                                                                  |
 
 ### 11.5 Device Compatibility
 
@@ -794,15 +794,15 @@
 
 ### P2 (Medium - Nice to have)
 
-| Item                               | Status         | Impact                                                  |
-| ---------------------------------- | -------------- | ------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
-| Image compression                  | ✅ Implemented | Client-side Canvas compression (`image-compress.ts`)    |
-| KV session caching                 | ✅ Implemented | `session-cache.ts` — KV before D1, 300s TTL, 13 tests   |
-| Statistics dashboard               | ✅ Implemented | trend-chart + points-chart                              |
-| Image blur (faces/plates)          | ✅ Implemented | `face-blur.ts` + Workers AI object detection            |
-| #HH                                |                | Similarity detection                                    | ✅ Implemented | pHash blocking (hamming distance ≤5, same site, 24h window) |
-| ~~KakaoTalk Business integration~~ | ❌ Removed     | Removed from scope — not needed for current deployment  |
-| Multi-language support             | ✅ Implemented | i18n: ko/en/vi/zh (4 locales, 293+ t() calls, 16 tests) |
+| Item                               | Status         | Impact                                                                        |
+| ---------------------------------- | -------------- | ----------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
+| Image compression                  | ✅ Implemented | Client-side Canvas compression (`image-compress.ts`)                          |
+| KV session caching                 | ✅ Implemented | `session-cache.ts` — KV before D1, 300s TTL, 13 tests                         |
+| Statistics dashboard               | ✅ Implemented | trend-chart + points-chart                                                    |
+| Image blur (faces/plates)          | ✅ Implemented | `face-blur.ts` + Workers AI object detection                                  |
+| #HH                                |                | Similarity detection                                                          | ✅ Implemented | pHash blocking (hamming distance ≤5, same site, 24h window) |
+| ~~KakaoTalk Business integration~~ | ❌ Removed     | Removed from scope — not needed for current deployment                        |
+| Multi-language support             | ⚠️ Partial     | i18n: ko/en active; vi/zh declared but not imported. 293+ t() calls, 16 tests |
 
 ---
 
@@ -856,8 +856,8 @@
    - Dashboard trend charts implemented (trend-chart.tsx, points-chart.tsx)
    - Admin trends API: 3 endpoints in admin/trends.ts
 
-10. **Accessibility** - ✅ RESOLVED
-    - i18n framework: 4 locales (ko/en/vi/zh), 293+ t() calls, 16+ tests
+10. **Accessibility** - ⚠️ PARTIAL
+    - i18n framework: ko/en active, vi/zh declared but not imported (loader.ts). 293+ t() calls, 16+ tests
 
 ---
 
@@ -883,7 +883,7 @@
 - [x] Add Queues for notification reliability
 - [x] Image blur for privacy — `face-blur.ts` + Workers AI - [x] Similarity detection — pHash blocking (hamming ≤5)
 - [x] ~~KakaoTalk Business integration~~ — **Removed from scope** (2026-02-25)
-- [x] Multi-language support — i18n: ko/en/vi/zh (4 locales)
+- [ ] Multi-language support — i18n: ko/en active only; vi/zh need loader.ts import (downgraded 2026-02-27)
 - [x] Video upload support — mp4/webm/quicktime, 50MB limit, mediaType column (2026-02-25)
 - [x] APK/PWA install prompt — manifest.json, beforeinstallprompt hook, assetlinks.json (2026-02-25)
 - [x] Announcements 500 fix — admin attendance gate bypass, global visibility eq(''), empty conditions guard (2026-02-25)
@@ -902,8 +902,15 @@
 - [x] Reward push notifications — enqueues push notification to winners after vote reward distribution (2026-02-25)
 - [x] Vote tie-breaker fairness — MIN(votedAt) instead of arbitrary UUID ordering (2026-02-25)
 
+## Cross-Reference Audit Trail
+
+| Date       | Auditor   | Findings                   | Actions Taken                                                                                                                                                               |
+| ---------- | --------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-02-26 | Automated | 4 stale ⚠️ items checked   | Verified vote reward configurability, tie-breaker fairness, reward push notifications, AI hazard classification as ✅ via code inspection                                   |
+| 2026-02-27 | Automated | i18n status false positive | Downgraded vi/zh from ✅ to ⚠️ Partial: `worker-app/src/i18n/loader.ts` declares ko/en/vi/zh but only imports ko/en. Supermemory stale entries confirmed as false positives |
+
 ---
 
 **Document Generated**: 2025-02-05  
-**Last Updated**: 2026-02-26
-**Status**: 100% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-26 audit: verified 4 stale ⚠️ items as ✅ (vote reward configurability, tie-breaker fairness, reward push notifications, AI hazard classification). Backend API corrected to 100%.
+**Last Updated**: 2026-02-27
+**Status**: ~98% complete. All P0/P1/P2 features implemented. ERP and KakaoTalk removed from scope (2026-02-25). 2026-02-27 cross-reference audit: i18n vi/zh locales downgraded from ✅ to ⚠️ Partial (loader.ts imports ko/en only). Vote reward configurability, reward push notifications, AI hazard classification confirmed ✅ via code inspection.
