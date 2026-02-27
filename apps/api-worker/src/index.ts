@@ -351,7 +351,6 @@ app.onError((err, c) => {
   );
 });
 
-import { scheduled } from "./scheduled";
 import {
   processNotificationBatch,
   type NotificationQueueMessage,
@@ -362,7 +361,7 @@ export { app };
 
 export default {
   fetch: app.fetch,
-  scheduled,
+
   async queue(
     batch: MessageBatch<NotificationQueueMessage>,
     env: Env,

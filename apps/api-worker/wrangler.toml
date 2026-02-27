@@ -97,9 +97,6 @@ tag = "v1"
 new_sqlite_classes = ["RateLimiter"]
 
 
-[triggers]
-crons = ["*/5 * * * *", "0 0 1 * *", "0 3 * * SUN", "0 21 * * *"]
-
 # Development Environment
 [env.dev]
 name = "safetywallet-dev"
