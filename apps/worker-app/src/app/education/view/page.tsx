@@ -41,12 +41,19 @@ function LoadingState() {
 function toYouTubeEmbedUrl(url: string): string {
   try {
     const parsed = new URL(url);
-    const videoId =
-      parsed.searchParams.get("v") ||
-      (parsed.hostname === "youtu.be" ? parsed.pathname.slice(1) : null) ||
-      (parsed.pathname.startsWith("/embed/")
-        ? parsed.pathname.split("/embed/")[1]
-        : null);
+    const host = parsed.hostname.replace(/^(www\.|m\.)/, "");
+    const isYouTube = host === "youtube.com" || host === "youtube-nocookie.com";
+    let videoId: string | null = null;
+
+    if (isYouTube) {
+      videoId =
+        parsed.searchParams.get("v") ||
+        parsed.pathname.match(/^\/(embed|shorts|live|v)\/([^/?#]+)/)?.[2] ||
+        null;
+    } else if (host === "youtu.be") {
+      videoId = parsed.pathname.slice(1).split(/[/?#]/)[0] || null;
+    }
+
     if (videoId) {
       return `https://www.youtube.com/embed/${videoId}`;
     }
@@ -54,6 +61,12 @@ function toYouTubeEmbedUrl(url: string): string {
     // not a valid URL — fall through
   }
   return url;
+}
+
+function toYouTubeWatchUrl(url: string): string | null {
+  const embedUrl = toYouTubeEmbedUrl(url);
+  const match = embedUrl.match(/\/embed\/([^/?#]+)/);
+  return match ? `https://www.youtube.com/watch?v=${match[1]}` : null;
 }
 
 function EducationDetailContent() {
@@ -114,17 +127,36 @@ function EducationDetailContent() {
         </div>
 
         {/* Content Type Specific Display */}
-        {data.contentType === "VIDEO" && data.contentUrl && (
-          <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
-            <iframe
-              src={toYouTubeEmbedUrl(data.contentUrl)}
-              className="w-full h-full"
-              allowFullScreen
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              title={data.title}
-            />
-          </div>
-        )}
+        {data.contentType === "VIDEO" &&
+          data.contentUrl &&
+          (() => {
+            const embedUrl = toYouTubeEmbedUrl(data.contentUrl);
+            const watchUrl = toYouTubeWatchUrl(data.contentUrl);
+            return (
+              <div className="space-y-2">
+                <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
+                  <iframe
+                    src={embedUrl}
+                    className="w-full h-full"
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    title={data.title}
+                  />
+                </div>
+                {watchUrl && (
+                  <a
+                    href={watchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    YouTube에서 보기
+                  </a>
+                )}
+              </div>
+            );
+          })()}
 
         {data.contentType === "IMAGE" && data.contentUrl && (
           <div className="rounded-lg overflow-hidden border border-gray-200">
