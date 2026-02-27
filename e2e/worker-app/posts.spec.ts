@@ -103,7 +103,7 @@ test.describe("Worker App - Posts", () => {
       return;
     }
 
-    await page.waitForURL("**/posts", { timeout: 30_000 });
+    await page.waitForURL(/\/posts\/?$/, { timeout: 30_000 });
 
     expect(page.url()).toContain("/posts");
     expect(page.url()).not.toContain("/posts/new");

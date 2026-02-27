@@ -34,7 +34,9 @@ test.describe("Admin Education Registration", () => {
     await page.getByRole("button", { name: "퀴즈 등록" }).click();
     await createQuizResponse;
 
-    await expect(page.getByText("퀴즈가 등록되었습니다.")).toBeVisible();
+    await expect(
+      page.getByText("퀴즈가 등록되었습니다.", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole("cell", { name: quizTitle })).toBeVisible();
   });
 
@@ -69,7 +71,9 @@ test.describe("Admin Education Registration", () => {
     await page.getByRole("button", { name: "TBM 등록" }).click();
     await createTbmResponse;
 
-    await expect(page.getByText("TBM 기록이 등록되었습니다.")).toBeVisible();
+    await expect(
+      page.getByText("TBM 기록이 등록되었습니다.", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole("cell", { name: tbmTopic })).toBeVisible();
   });
 });
