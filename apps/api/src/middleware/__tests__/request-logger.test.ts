@@ -56,7 +56,7 @@ describe("requestLoggerMiddleware", () => {
       "request",
       expect.objectContaining({
         elasticsearchUrl: "http://localhost:9200",
-        elasticsearchIndexPrefix: "safework2-logs",
+        elasticsearchIndexPrefix: "safetywallet-logs",
       }),
     );
   });
