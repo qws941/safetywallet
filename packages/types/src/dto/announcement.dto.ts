@@ -3,6 +3,7 @@ export interface CreateAnnouncementDto {
   title: string;
   content: string;
   isPinned?: boolean;
+  scheduledAt?: string | null;
 }
 
 export interface AnnouncementDto {
@@ -12,6 +13,9 @@ export interface AnnouncementDto {
   title: string;
   content: string;
   isPinned: boolean;
+  isPublished: boolean;
+  scheduledAt: string | null;
+  status: "DRAFT" | "PUBLISHED" | "SCHEDULED";
   createdAt: string;
   updatedAt: string;
   author: {
@@ -24,4 +28,5 @@ export interface UpdateAnnouncementDto {
   title?: string;
   content?: string;
   isPinned?: boolean;
+  scheduledAt?: string | null;
 }

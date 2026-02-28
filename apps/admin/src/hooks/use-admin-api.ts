@@ -199,7 +199,7 @@ export function useUpdateAnnouncement() {
       scheduledAt?: string | null;
     }) =>
       apiFetch(`/announcements/${id}`, {
-        method: "PUT",
+        method: "PATCH",
         body: JSON.stringify({ title, content, isPinned, scheduledAt }),
       }),
     onSuccess: () => {
