@@ -587,7 +587,7 @@ describe("auth", () => {
         nameMasked: "K**",
         role: "WORKER",
         piiViewFull: false,
-      } as unknown);
+      } as never);
 
       const { app, env } = await createApp(undefined, {
         FAS_HYPERDRIVE: {},

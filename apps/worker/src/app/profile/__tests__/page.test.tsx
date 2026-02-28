@@ -88,14 +88,14 @@ describe("app/profile/page", () => {
     vi.mocked(useProfile).mockReturnValue({
       data: { data: { user: { nameMasked: "홍*동", phone: "010-1111-2222" } } },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useSiteInfo).mockReturnValue({
       data: { data: { site: { name: "송도현장", address: "인천" } } },
-    });
+    } as never);
     vi.mocked(useLeaveSite).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
-    });
+    } as never);
     vi.mocked(usePushSubscription).mockReturnValue({
       isSupported: true,
       isSubscribed: false,
@@ -120,10 +120,14 @@ describe("app/profile/page", () => {
   });
 
   it("handles leave-site success", async () => {
-    const mutate = vi.fn((_payload, options: { onSuccess: () => void }) =>
-      options.onSuccess(),
+    const mutate = vi.fn(
+      (_payload: unknown, options: { onSuccess: () => void }) =>
+        options.onSuccess(),
     );
-    vi.mocked(useLeaveSite).mockReturnValue({ mutate, isPending: false });
+    vi.mocked(useLeaveSite).mockReturnValue({
+      mutate,
+      isPending: false,
+    } as never);
 
     render(<ProfilePage />);
 

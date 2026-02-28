@@ -34,9 +34,13 @@ describe("app/points/page", () => {
 
   it("renders points and ranking table", () => {
     vi.mocked(usePoints).mockReturnValue({
-      data: { data: { balance: 500, history: [] } },
+      data: {
+        data: { balance: 500, history: [] },
+        success: true,
+        timestamp: "",
+      },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useLeaderboard).mockReturnValue({
       data: {
         myRank: 1,
@@ -51,7 +55,7 @@ describe("app/points/page", () => {
         ],
       },
       isLoading: false,
-    });
+    } as never);
 
     render(<PointsPage />);
 
@@ -61,13 +65,17 @@ describe("app/points/page", () => {
 
   it("switches ranking tabs and shows empty history", () => {
     vi.mocked(usePoints).mockReturnValue({
-      data: { data: { balance: 0, history: [] } },
+      data: {
+        data: { balance: 0, history: [] },
+        success: true,
+        timestamp: "",
+      },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useLeaderboard).mockReturnValue({
       data: { myRank: null, leaderboard: [] },
       isLoading: false,
-    });
+    } as never);
 
     render(<PointsPage />);
 

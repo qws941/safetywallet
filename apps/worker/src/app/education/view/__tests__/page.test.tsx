@@ -17,10 +17,10 @@ describe("app/education/view/page", () => {
   it("renders not found state", () => {
     setMockSearchParams({ id: "e1" });
     vi.mocked(useEducationContent).mockReturnValue({
-      data: null,
+      data: undefined,
       isLoading: false,
       error: new Error("x"),
-    });
+    } as never);
 
     render(<EducationViewPage />);
     fireEvent.click(screen.getByRole("button", { name: "common.back" }));
@@ -32,8 +32,10 @@ describe("app/education/view/page", () => {
     setMockSearchParams({ id: "e1" });
     vi.mocked(useEducationContent).mockReturnValue({
       data: {
+        id: "e1",
         title: "교육 자료",
         contentType: "TEXT",
+        category: "SAFETY",
         isRequired: true,
         createdAt: "2026-02-28T00:00:00Z",
         content: "교육 상세",
@@ -41,7 +43,7 @@ describe("app/education/view/page", () => {
       },
       isLoading: false,
       error: null,
-    });
+    } as never);
 
     render(<EducationViewPage />);
 

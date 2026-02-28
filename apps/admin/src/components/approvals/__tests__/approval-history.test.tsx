@@ -40,7 +40,7 @@ vi.mock("@safetywallet/ui", () => ({
 const mockUseManualApprovals = vi.mocked(useManualApprovals);
 
 const toResult = (value: unknown): ReturnType<typeof useManualApprovals> =>
-  value as ReturnType<typeof useManualApprovals>;
+  value as never;
 
 describe("ApprovalHistory", () => {
   beforeEach(() => {

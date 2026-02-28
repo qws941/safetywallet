@@ -21,14 +21,14 @@ describe("RecommendationStatsPage", () => {
         dailyCounts: [{ date: "2026-02-10", count: 2 }],
       },
       isLoading: false,
-    } as ReturnType<typeof useRecommendationStats>);
+    } as never);
   });
 
   it("renders loading skeleton when query is loading", () => {
     mockUseRecommendationStats.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useRecommendationStats>);
+    } as never);
 
     render(<RecommendationStatsPage />);
 
@@ -56,7 +56,7 @@ describe("RecommendationStatsPage", () => {
         dailyCounts: [],
       },
       isLoading: false,
-    } as ReturnType<typeof useRecommendationStats>);
+    } as never);
 
     render(<RecommendationStatsPage />);
 

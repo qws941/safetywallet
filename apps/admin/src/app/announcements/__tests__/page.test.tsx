@@ -125,8 +125,7 @@ const mockUseDeleteAnnouncement = vi.mocked(useDeleteAnnouncement);
 
 const toAnnouncementsResult = (
   value: unknown,
-): ReturnType<typeof useAdminAnnouncements> =>
-  value as ReturnType<typeof useAdminAnnouncements>;
+): ReturnType<typeof useAdminAnnouncements> => value as never;
 
 describe("AnnouncementsPage", () => {
   beforeEach(() => {
@@ -141,15 +140,15 @@ describe("AnnouncementsPage", () => {
     mockUseCreateAnnouncement.mockReturnValue({
       mutate: createMutateMock,
       isPending: false,
-    } as ReturnType<typeof useCreateAnnouncement>);
+    } as never);
     mockUseUpdateAnnouncement.mockReturnValue({
       mutate: updateMutateMock,
       isPending: false,
-    } as ReturnType<typeof useUpdateAnnouncement>);
+    } as never);
     mockUseDeleteAnnouncement.mockReturnValue({
       mutate: deleteMutateMock,
       isPending: false,
-    } as ReturnType<typeof useDeleteAnnouncement>);
+    } as never);
   });
 
   it("renders loading and empty states", () => {

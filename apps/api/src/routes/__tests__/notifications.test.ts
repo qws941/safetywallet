@@ -686,7 +686,7 @@ describe("routes/notifications", () => {
           endpoint: "https://fcm.googleapis.com/fcm/send/test",
           statusCode: 410,
         } as any,
-      ] as Array<{ success: boolean; statusCode?: number }>);
+      ] as never);
       vi.mocked(shouldRemoveSubscription).mockImplementation(
         (result: { success: boolean; statusCode?: number }) =>
           !result.success && result.statusCode === 410,
@@ -750,7 +750,7 @@ describe("routes/notifications", () => {
           endpoint: "https://fcm.googleapis.com/fcm/send/test",
           statusCode: 500,
         } as any,
-      ] as Array<{ success: boolean; statusCode?: number }>);
+      ] as never);
       vi.mocked(shouldRemoveSubscription).mockReturnValue(false);
 
       const app = await createApp(makeAuth("ADMIN"));

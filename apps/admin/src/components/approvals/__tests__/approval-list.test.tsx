@@ -102,8 +102,7 @@ const mockUseApproveManualRequest = vi.mocked(useApproveManualRequest);
 
 const toApprovalsResult = (
   value: unknown,
-): ReturnType<typeof useManualApprovals> =>
-  value as ReturnType<typeof useManualApprovals>;
+): ReturnType<typeof useManualApprovals> => value as never;
 
 const approvals: ManualApprovalItem[] = [
   {
@@ -139,7 +138,7 @@ describe("ApprovalList", () => {
       mutate: approveMutateMock,
       mutateAsync: approveMutateAsyncMock,
       isPending: false,
-    } as ReturnType<typeof useApproveManualRequest>);
+    } as never);
   });
 
   it("renders pending list and approves single item", async () => {

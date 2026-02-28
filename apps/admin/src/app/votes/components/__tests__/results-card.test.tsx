@@ -60,7 +60,7 @@ describe("results card", () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof useVoteResults>);
+    } as never);
   });
 
   it("renders results rows", () => {
@@ -96,14 +96,14 @@ describe("results card", () => {
     mockUseVoteResults.mockReturnValueOnce({
       data: [],
       isLoading: true,
-    } as ReturnType<typeof useVoteResults>);
+    } as never);
     const { rerender } = render(<ResultsCard month="2026-02" />);
     expect(screen.getByText("로딩 중...")).toBeInTheDocument();
 
     mockUseVoteResults.mockReturnValueOnce({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useVoteResults>);
+    } as never);
     rerender(<ResultsCard month="2026-02" />);
     expect(screen.getByText("투표 결과가 없습니다")).toBeInTheDocument();
   });

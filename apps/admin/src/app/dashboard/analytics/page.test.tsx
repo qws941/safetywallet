@@ -74,27 +74,27 @@ describe("AnalyticsPage", () => {
         avgProcessingHours: 3.5,
       },
       isLoading: false,
-    } as ReturnType<typeof useStats>);
+    } as never);
 
     mockUsePostsTrend.mockReturnValue({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof usePostsTrend>);
+    } as never);
     mockUseAttendanceTrend.mockReturnValue({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useAttendanceTrend>);
+    } as never);
     mockUsePointsDistribution.mockReturnValue({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof usePointsDistribution>);
+    } as never);
   });
 
   it("renders loading skeleton while stats query is loading", () => {
     mockUseStats.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useStats>);
+    } as never);
 
     render(<AnalyticsPage />);
 
@@ -106,7 +106,7 @@ describe("AnalyticsPage", () => {
     mockUseStats.mockReturnValue({
       data: undefined,
       isLoading: false,
-    } as ReturnType<typeof useStats>);
+    } as never);
 
     const { container } = render(<AnalyticsPage />);
     expect(container.firstChild).toBeNull();
@@ -127,7 +127,7 @@ describe("AnalyticsPage", () => {
     mockUsePostsTrend.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof usePostsTrend>);
+    } as never);
 
     render(<AnalyticsPage />);
 

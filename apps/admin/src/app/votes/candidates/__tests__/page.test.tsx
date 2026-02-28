@@ -91,11 +91,11 @@ describe("vote candidates page", () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof useVoteCandidates>);
+    } as never);
 
     mockUseDeleteVoteCandidate.mockReturnValue({
       mutate: deleteMock,
-    } as ReturnType<typeof useDeleteVoteCandidate>);
+    } as never);
   });
 
   it("renders candidate management page", () => {
@@ -109,7 +109,7 @@ describe("vote candidates page", () => {
     mockUseVoteCandidates.mockReturnValueOnce({
       data: [],
       isLoading: true,
-    } as ReturnType<typeof useVoteCandidates>);
+    } as never);
 
     render(<VoteCandidatesPage />);
     expect(screen.getByText("로딩 중...")).toBeInTheDocument();

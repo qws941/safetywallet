@@ -32,11 +32,11 @@ describe("app/posts/view/page", () => {
       data: undefined,
       isLoading: false,
       error: new Error("x"),
-    });
+    } as never);
     vi.mocked(useResubmitPost).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
-    });
+    } as never);
 
     render(<PostViewPage />);
     fireEvent.click(screen.getByRole("button", { name: "posts.view.back" }));
@@ -45,10 +45,14 @@ describe("app/posts/view/page", () => {
 
   it("renders detail and resubmits need-info post", async () => {
     setMockSearchParams({ id: "p1" });
-    const mutate = vi.fn((_payload, options: { onSuccess: () => void }) =>
-      options.onSuccess(),
+    const mutate = vi.fn(
+      (_payload: unknown, options: { onSuccess: () => void }) =>
+        options.onSuccess(),
     );
-    vi.mocked(useResubmitPost).mockReturnValue({ mutate, isPending: false });
+    vi.mocked(useResubmitPost).mockReturnValue({
+      mutate,
+      isPending: false,
+    } as never);
     vi.mocked(usePost).mockReturnValue({
       data: {
         data: {
@@ -68,7 +72,7 @@ describe("app/posts/view/page", () => {
       },
       isLoading: false,
       error: null,
-    });
+    } as never);
 
     render(<PostViewPage />);
     fireEvent.click(

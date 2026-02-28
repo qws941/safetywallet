@@ -34,7 +34,7 @@ describe("rankings tab", () => {
     mockUseMonthlyRankings.mockReturnValueOnce({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useMonthlyRankings>);
+    } as never);
     render(<RankingsTab />);
     expect(screen.getByText("로딩 중...")).toBeInTheDocument();
   });
@@ -52,7 +52,7 @@ describe("rankings tab", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useMonthlyRankings>);
+    } as never);
     render(<RankingsTab />);
     expect(screen.getByText(/월간 순위/)).toBeInTheDocument();
     expect(screen.getByText("홍길동")).toBeInTheDocument();

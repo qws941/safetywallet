@@ -32,12 +32,14 @@ describe("app/actions/view/page", () => {
     vi.mocked(useUpdateActionStatus).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
-    });
+    } as never);
     vi.mocked(useUploadActionImage).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
-    });
-    vi.mocked(useDeleteActionImage).mockReturnValue({ mutate: vi.fn() });
+    } as never);
+    vi.mocked(useDeleteActionImage).mockReturnValue({
+      mutate: vi.fn(),
+    } as never);
   });
 
   it("renders not found state", () => {
@@ -45,7 +47,7 @@ describe("app/actions/view/page", () => {
       data: undefined,
       isLoading: false,
       error: new Error("x"),
-    });
+    } as never);
     render(<ActionViewPage />);
     fireEvent.click(screen.getByRole("button", { name: "actions.view.back" }));
     expect(getMockRouter().back).toHaveBeenCalled();
@@ -56,7 +58,7 @@ describe("app/actions/view/page", () => {
     vi.mocked(useUpdateActionStatus).mockReturnValue({
       mutate,
       isPending: false,
-    });
+    } as never);
     vi.mocked(useAction).mockReturnValue({
       data: {
         data: {
@@ -72,7 +74,7 @@ describe("app/actions/view/page", () => {
       },
       isLoading: false,
       error: null,
-    });
+    } as never);
 
     render(<ActionViewPage />);
     fireEvent.click(

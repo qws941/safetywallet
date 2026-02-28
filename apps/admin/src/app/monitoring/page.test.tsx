@@ -49,38 +49,40 @@ describe("MonitoringPage", () => {
         statusBreakdown: { "2xx": 1200, "4xx": 20, "5xx": 14 },
       },
       isLoading: false,
-    } as ReturnType<typeof useMonitoringSummary>);
+    } as never);
 
-    mockUseMonitoringMetrics.mockImplementation((kind: string) => {
-      if (kind === "time") {
+    mockUseMonitoringMetrics.mockImplementation(
+      (kind?: "time" | "endpoint") => {
+        if (kind === "time") {
+          return {
+            data: {
+              rows: [
+                {
+                  bucket: "2026-02-28T10:00:00.000Z",
+                  totalRequests: 100,
+                  totalErrors: 5,
+                },
+              ],
+            },
+            isLoading: false,
+          } as never;
+        }
+
         return {
           data: {
             rows: [
               {
-                bucket: "2026-02-28T10:00:00.000Z",
-                totalRequests: 100,
-                totalErrors: 5,
+                method: "GET",
+                endpoint: "/admin/posts",
+                totalRequests: 20,
+                avgDurationMs: 120,
               },
             ],
           },
           isLoading: false,
-        } as ReturnType<typeof useMonitoringMetrics>;
-      }
-
-      return {
-        data: {
-          rows: [
-            {
-              method: "GET",
-              endpoint: "/admin/posts",
-              totalRequests: 20,
-              avgDurationMs: 120,
-            },
-          ],
-        },
-        isLoading: false,
-      } as ReturnType<typeof useMonitoringMetrics>;
-    });
+        } as never;
+      },
+    );
 
     mockUseMonitoringTopErrors.mockReturnValue({
       data: {
@@ -95,7 +97,7 @@ describe("MonitoringPage", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useMonitoringTopErrors>);
+    } as never);
   });
 
   it("renders summary cards and metric sections", () => {
@@ -113,11 +115,11 @@ describe("MonitoringPage", () => {
     mockUseMonitoringMetrics.mockReturnValue({
       data: { rows: [] },
       isLoading: false,
-    } as ReturnType<typeof useMonitoringMetrics>);
+    } as never);
     mockUseMonitoringTopErrors.mockReturnValue({
       data: { rows: [] },
       isLoading: false,
-    } as ReturnType<typeof useMonitoringTopErrors>);
+    } as never);
 
     render(<MonitoringPage />);
 
@@ -132,15 +134,15 @@ describe("MonitoringPage", () => {
     mockUseMonitoringSummary.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useMonitoringSummary>);
+    } as never);
     mockUseMonitoringMetrics.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useMonitoringMetrics>);
+    } as never);
     mockUseMonitoringTopErrors.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useMonitoringTopErrors>);
+    } as never);
 
     render(<MonitoringPage />);
 

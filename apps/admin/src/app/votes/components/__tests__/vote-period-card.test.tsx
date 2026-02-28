@@ -41,11 +41,11 @@ describe("vote period card", () => {
     toastMock.mockReset();
     mockUseVotePeriod.mockReturnValue({
       data: { startDate: "1706742000", endDate: "1709251200" },
-    } as ReturnType<typeof useVotePeriod>);
+    } as never);
     mockUseUpdateVotePeriod.mockReturnValue({
       mutateAsync: mutateAsyncMock,
       isPending: false,
-    } as ReturnType<typeof useUpdateVotePeriod>);
+    } as never);
   });
 
   it("renders period dates and status", () => {

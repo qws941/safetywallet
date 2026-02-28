@@ -92,10 +92,10 @@ const mockUseAdminPosts = vi.mocked(useAdminPosts);
 const mockUseMySites = vi.mocked(useMySites);
 
 const toAdminPostsResult = (value: unknown): ReturnType<typeof useAdminPosts> =>
-  value as ReturnType<typeof useAdminPosts>;
+  value as never;
 
 const toMySitesResult = (value: unknown): ReturnType<typeof useMySites> =>
-  value as ReturnType<typeof useMySites>;
+  value as never;
 
 describe("PostsPage", () => {
   beforeEach(() => {

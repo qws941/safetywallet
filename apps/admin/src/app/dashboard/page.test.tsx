@@ -40,21 +40,18 @@ const mockUsePointsDistribution = vi.mocked(usePointsDistribution);
 
 const toDashboardStatsResult = (
   value: unknown,
-): ReturnType<typeof useDashboardStats> =>
-  value as ReturnType<typeof useDashboardStats>;
+): ReturnType<typeof useDashboardStats> => value as never;
 
 const toPostsTrendResult = (value: unknown): ReturnType<typeof usePostsTrend> =>
-  value as ReturnType<typeof usePostsTrend>;
+  value as never;
 
 const toAttendanceTrendResult = (
   value: unknown,
-): ReturnType<typeof useAttendanceTrend> =>
-  value as ReturnType<typeof useAttendanceTrend>;
+): ReturnType<typeof useAttendanceTrend> => value as never;
 
 const toPointsDistributionResult = (
   value: unknown,
-): ReturnType<typeof usePointsDistribution> =>
-  value as ReturnType<typeof usePointsDistribution>;
+): ReturnType<typeof usePointsDistribution> => value as never;
 
 function createMockQueryResult<T>(
   data: T,

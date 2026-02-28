@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const cnMock = vi.fn(() => "merged-class");
 
 vi.mock("@safetywallet/ui", () => ({
-  cn: (...args: unknown[]) => cnMock(...args),
+  cn: (...args: string[]) => cnMock(...(args as [])),
 }));
 
 describe("lib/utils", () => {

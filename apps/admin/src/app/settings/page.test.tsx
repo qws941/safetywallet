@@ -25,14 +25,14 @@ describe("SettingsPage", () => {
       data: { id: "site-1", name: "현장 A", active: true },
       isLoading: false,
       error: null,
-    } as ReturnType<typeof useSite>);
+    } as never);
 
     mockUseUpdateSite.mockReturnValue({
       mutateAsync: mutateAsyncMock,
       isPending: false,
       isSuccess: false,
       isError: false,
-    } as ReturnType<typeof useUpdateSite>);
+    } as never);
   });
 
   it("shows spinner state while loading", () => {
@@ -40,7 +40,7 @@ describe("SettingsPage", () => {
       data: undefined,
       isLoading: true,
       error: null,
-    } as ReturnType<typeof useSite>);
+    } as never);
 
     render(<SettingsPage />);
     expect(screen.queryByText("설정")).not.toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("SettingsPage", () => {
       data: undefined,
       isLoading: false,
       error: new Error("boom"),
-    } as ReturnType<typeof useSite>);
+    } as never);
 
     render(<SettingsPage />);
     expect(
@@ -88,7 +88,7 @@ describe("SettingsPage", () => {
       isPending: false,
       isSuccess: true,
       isError: true,
-    } as ReturnType<typeof useUpdateSite>);
+    } as never);
 
     render(<SettingsPage />);
 

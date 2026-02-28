@@ -116,20 +116,20 @@ describe("contents tab", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useEducationContents>);
+    } as never);
 
     mockUseCreateEducationContent.mockReturnValue({
       mutateAsync: createAsyncMock,
       isPending: false,
-    } as ReturnType<typeof useCreateEducationContent>);
+    } as never);
     mockUseDeleteEducationContent.mockReturnValue({
       mutateAsync: deleteAsyncMock,
       isPending: false,
-    } as ReturnType<typeof useDeleteEducationContent>);
+    } as never);
     mockUseYouTubeOembed.mockReturnValue({
       mutateAsync: oembedAsyncMock,
       isPending: false,
-    } as ReturnType<typeof useYouTubeOembed>);
+    } as never);
   });
 
   it("renders list and creates content", async () => {

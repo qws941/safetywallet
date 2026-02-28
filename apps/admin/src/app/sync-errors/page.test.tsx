@@ -133,12 +133,12 @@ describe("SyncErrorsPage", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useSyncErrors>);
+    } as never);
 
     mockUseUpdateSyncErrorStatus.mockReturnValue({
       mutate: updateStatusMock,
       isPending: false,
-    } as ReturnType<typeof useUpdateSyncErrorStatus>);
+    } as never);
   });
 
   it("renders header and open row actions", () => {
@@ -156,7 +156,7 @@ describe("SyncErrorsPage", () => {
     mockUseSyncErrors.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useSyncErrors>);
+    } as never);
 
     render(<SyncErrorsPage />);
     expect(screen.getByText("로딩 중...")).toBeInTheDocument();

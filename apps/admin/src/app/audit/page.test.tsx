@@ -58,7 +58,7 @@ describe("AuditPage", () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof useAuditLogs>);
+    } as never);
   });
 
   it("renders heading and mapped action/target labels", () => {
@@ -75,7 +75,7 @@ describe("AuditPage", () => {
     mockUseAuditLogs.mockReturnValue({
       data: [],
       isLoading: true,
-    } as ReturnType<typeof useAuditLogs>);
+    } as never);
 
     render(<AuditPage />);
     expect(screen.getByText("로딩 중...")).toBeInTheDocument();

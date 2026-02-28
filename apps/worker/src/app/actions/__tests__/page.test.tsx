@@ -21,7 +21,7 @@ describe("app/actions/page", () => {
     vi.mocked(useMyActions).mockReturnValue({
       data: undefined,
       isLoading: true,
-    });
+    } as never);
     render(<ActionsPage />);
     expect(screen.getByText("actions.list.myList")).toBeInTheDocument();
   });
@@ -30,7 +30,7 @@ describe("app/actions/page", () => {
     vi.mocked(useMyActions).mockReturnValue({
       data: { data: [] },
       isLoading: false,
-    });
+    } as never);
     render(<ActionsPage />);
     expect(screen.getByText("actions.list.empty")).toBeInTheDocument();
   });
@@ -50,7 +50,7 @@ describe("app/actions/page", () => {
         ],
       },
       isLoading: false,
-    });
+    } as never);
 
     render(<ActionsPage />);
     fireEvent.click(screen.getByText("안전 점검"));

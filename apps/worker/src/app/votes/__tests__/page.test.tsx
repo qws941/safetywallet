@@ -24,15 +24,15 @@ describe("app/votes/page", () => {
     vi.mocked(useTodayRecommendation).mockReturnValue({
       data: { data: { hasRecommendedToday: false } },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useMyRecommendationHistory).mockReturnValue({
       data: { data: [] },
-    });
+    } as never);
     vi.mocked(useSubmitRecommendation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
       error: null,
-    });
+    } as never);
   });
 
   it("shows site-required state when no site is selected", () => {
@@ -53,14 +53,15 @@ describe("app/votes/page", () => {
   });
 
   it("submits recommendation when form is complete", async () => {
-    const mutate = vi.fn((_payload, options: { onSuccess: () => void }) =>
-      options.onSuccess(),
+    const mutate = vi.fn(
+      (_payload: unknown, options: { onSuccess: () => void }) =>
+        options.onSuccess(),
     );
     vi.mocked(useSubmitRecommendation).mockReturnValue({
       mutate,
       isPending: false,
       error: null,
-    });
+    } as never);
     vi.mocked(useAuth).mockReturnValue({
       currentSiteId: "site-1",
       isAuthenticated: true,
@@ -111,7 +112,7 @@ describe("app/votes/page", () => {
         },
       },
       isLoading: false,
-    });
+    } as never);
 
     render(<VotesPage />);
 

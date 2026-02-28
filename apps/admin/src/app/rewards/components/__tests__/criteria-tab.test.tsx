@@ -99,18 +99,18 @@ describe("criteria tab", () => {
           isActive: true,
         },
       ],
-    } as ReturnType<typeof usePolicies>);
+    } as never);
     mockUseCreatePolicy.mockReturnValue({
       mutate: createMutateMock,
       isPending: false,
-    } as ReturnType<typeof useCreatePolicy>);
+    } as never);
     mockUseUpdatePolicy.mockReturnValue({
       mutate: updateMutateMock,
       isPending: false,
-    } as ReturnType<typeof useUpdatePolicy>);
+    } as never);
     mockUseDeletePolicy.mockReturnValue({
       mutate: deleteMutateMock,
-    } as ReturnType<typeof useDeletePolicy>);
+    } as never);
   });
 
   it("creates policy", async () => {

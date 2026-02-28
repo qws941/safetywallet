@@ -65,7 +65,7 @@ describe("tbm tab", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useTbmRecords>);
+    } as never);
     mockUseTbmRecord.mockReturnValue({
       data: {
         attendeeCount: 1,
@@ -76,10 +76,10 @@ describe("tbm tab", () => {
           },
         ],
       },
-    } as ReturnType<typeof useTbmRecord>);
+    } as never);
     mockUseCreateTbmRecord.mockReturnValue({
       mutateAsync: createAsyncMock,
-    } as ReturnType<typeof useCreateTbmRecord>);
+    } as never);
   });
 
   it("creates tbm record", async () => {

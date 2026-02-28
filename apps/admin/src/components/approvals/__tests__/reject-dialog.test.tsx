@@ -57,7 +57,7 @@ describe("RejectDialog", () => {
     mockUseRejectManualRequest.mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as ReturnType<typeof useRejectManualRequest>);
+    } as never);
   });
 
   it("returns null when closed", () => {

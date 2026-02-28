@@ -38,13 +38,19 @@ describe("app/education/page", () => {
     vi.mocked(useEducationContents).mockReturnValue({
       data: [],
       isLoading: false,
-    });
-    vi.mocked(useQuizzes).mockReturnValue({ data: [], isLoading: false });
-    vi.mocked(useTbmRecords).mockReturnValue({ data: [], isLoading: false });
+    } as never);
+    vi.mocked(useQuizzes).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as never);
+    vi.mocked(useTbmRecords).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as never);
     vi.mocked(useAttendTbm).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
-    });
+    } as never);
   });
 
   it("renders empty contents tab", () => {
@@ -62,10 +68,13 @@ describe("app/education/page", () => {
   });
 
   it("handles TBM attend action", async () => {
-    const mutate = vi.fn((_id, options: { onSuccess: () => void }) =>
+    const mutate = vi.fn((_id: unknown, options: { onSuccess: () => void }) =>
       options.onSuccess(),
     );
-    vi.mocked(useAttendTbm).mockReturnValue({ mutate, isPending: false });
+    vi.mocked(useAttendTbm).mockReturnValue({
+      mutate,
+      isPending: false,
+    } as never);
     vi.mocked(useTbmRecords).mockReturnValue({
       data: [
         {
@@ -73,12 +82,14 @@ describe("app/education/page", () => {
           title: "안전 미팅",
           date: "2026-02-28",
           location: "A동",
+          content: null,
+          safetyTopic: "안전",
           leader: { nameMasked: "관리자" },
           _count: { attendees: 3 },
         },
       ],
       isLoading: false,
-    });
+    } as never);
 
     render(<EducationPage />);
     fireEvent.click(screen.getByRole("button", { name: "education.tbm" }));

@@ -85,13 +85,13 @@ describe("statutory tab", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useStatutoryTrainings>);
+    } as never);
     mockUseCreateStatutoryTraining.mockReturnValue({
       mutateAsync: createAsyncMock,
-    } as ReturnType<typeof useCreateStatutoryTraining>);
+    } as never);
     mockUseUpdateStatutoryTraining.mockReturnValue({
       mutateAsync: updateAsyncMock,
-    } as ReturnType<typeof useUpdateStatutoryTraining>);
+    } as never);
   });
 
   it("creates statutory training", async () => {

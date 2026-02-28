@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock auth middleware
 vi.mock("../../middleware/auth", () => ({
@@ -456,7 +456,7 @@ describe("routes/images", () => {
       const { blurPersonRegions } = await import("../../lib/face-blur");
 
       vi.mocked(detectObjects).mockResolvedValueOnce([
-        { cls: "person", score: 0.9 },
+        { cls: "person", score: 0.9 } as never,
       ]);
       vi.mocked(filterPersonDetections).mockReturnValueOnce([
         { x: 1, y: 2, width: 10, height: 10 },

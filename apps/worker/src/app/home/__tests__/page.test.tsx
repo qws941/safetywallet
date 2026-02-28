@@ -47,21 +47,36 @@ describe("app/home/page", () => {
       setCurrentSite: vi.fn(),
     });
     vi.mocked(usePosts).mockReturnValue({
-      data: { data: { posts: [] } },
+      data: { data: { posts: [] }, success: true, timestamp: "" },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(usePoints).mockReturnValue({
-      data: { data: { balance: 1200 } },
+      data: {
+        data: { balance: 1200, history: [] },
+        success: true,
+        timestamp: "",
+      },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useLeaderboard).mockReturnValue({
-      data: { myRank: 2, leaderboard: [{ userId: "u1" }] },
+      data: {
+        myRank: 2,
+        leaderboard: [
+          {
+            userId: "u1",
+            rank: 1,
+            nameMasked: "홍*동",
+            totalPoints: 100,
+            isCurrentUser: false,
+          },
+        ],
+      },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useAttendanceToday).mockReturnValue({
       data: { attended: true, checkinAt: "2026-02-28T08:10:00Z" },
       isLoading: false,
-    });
+    } as never);
     vi.mocked(useQuery).mockReturnValue({
       data: [],
       isLoading: false,

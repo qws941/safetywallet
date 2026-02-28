@@ -91,26 +91,26 @@ describe("quizzes tab", () => {
         ],
       },
       isLoading: false,
-    } as ReturnType<typeof useQuizzes>);
+    } as never);
     mockUseQuiz.mockReturnValue({
       data: {
         title: "안전 퀴즈",
         questions: [],
       },
-    } as ReturnType<typeof useQuiz>);
+    } as never);
     mockUseCreateQuiz.mockReturnValue({
       mutateAsync: createQuizAsyncMock,
       isPending: false,
-    } as ReturnType<typeof useCreateQuiz>);
+    } as never);
     mockUseCreateQuizQuestion.mockReturnValue({
       mutateAsync: createQuestionAsyncMock,
-    } as ReturnType<typeof useCreateQuizQuestion>);
+    } as never);
     mockUseUpdateQuizQuestion.mockReturnValue({
       mutateAsync: updateQuestionAsyncMock,
-    } as ReturnType<typeof useUpdateQuizQuestion>);
+    } as never);
     mockUseDeleteQuizQuestion.mockReturnValue({
       mutateAsync: deleteQuestionAsyncMock,
-    } as ReturnType<typeof useDeleteQuizQuestion>);
+    } as never);
   });
 
   it("creates quiz and shows quiz list", async () => {

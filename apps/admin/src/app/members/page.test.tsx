@@ -66,7 +66,7 @@ const mockUseSetMemberActiveStatus = vi.mocked(useSetMemberActiveStatus);
 const mockUseAuthStore = vi.mocked(useAuthStore);
 
 const toMembersResult = (value: unknown): ReturnType<typeof useMembers> =>
-  value as ReturnType<typeof useMembers>;
+  value as never;
 
 describe("MembersPage", () => {
   beforeEach(() => {
@@ -83,7 +83,7 @@ describe("MembersPage", () => {
     mockUseSetMemberActiveStatus.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
-    } as unknown as ReturnType<typeof useSetMemberActiveStatus>);
+    } as unknown as never);
 
     mockUseAuthStore.mockImplementation((selector) =>
       selector({

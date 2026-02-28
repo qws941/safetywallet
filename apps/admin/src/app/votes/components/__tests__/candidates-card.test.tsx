@@ -100,16 +100,16 @@ describe("candidates card", () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof useVoteCandidates>);
+    } as never);
     mockUseMembers.mockReturnValue({
       data: [{ id: "m1", user: { id: "u1", name: "김철수" } }],
-    } as ReturnType<typeof useMembers>);
+    } as never);
     mockUseAddVoteCandidate.mockReturnValue({
       mutateAsync: addAsyncMock,
-    } as ReturnType<typeof useAddVoteCandidate>);
+    } as never);
     mockUseDeleteVoteCandidate.mockReturnValue({
       mutateAsync: deleteAsyncMock,
-    } as ReturnType<typeof useDeleteVoteCandidate>);
+    } as never);
   });
 
   it("renders candidate table and add dialog trigger", () => {

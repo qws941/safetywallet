@@ -35,13 +35,11 @@ const mockUseAuthStore = vi.mocked(useAuthStore);
 
 const toAttendanceLogsResult = (
   value: unknown,
-): ReturnType<typeof useAttendanceLogs> =>
-  value as ReturnType<typeof useAttendanceLogs>;
+): ReturnType<typeof useAttendanceLogs> => value as never;
 
 const toUnmatchedResult = (
   value: unknown,
-): ReturnType<typeof useUnmatchedRecords> =>
-  value as ReturnType<typeof useUnmatchedRecords>;
+): ReturnType<typeof useUnmatchedRecords> => value as never;
 
 describe("AttendancePage", () => {
   beforeEach(() => {

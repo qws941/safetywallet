@@ -11,7 +11,7 @@ vi.mock("@/lib/api", () => ({
 describe("OfflineQueueIndicator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(flushOfflineQueue).mockResolvedValue(undefined);
+    vi.mocked(flushOfflineQueue).mockResolvedValue(undefined as never);
   });
 
   it("returns null when queue is empty", () => {

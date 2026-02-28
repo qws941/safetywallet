@@ -62,9 +62,9 @@ const mockUseMembers = vi.mocked(useMembers);
 const mockUseCreateManualApproval = vi.mocked(useCreateManualApproval);
 
 const toSitesResult = (value: unknown): ReturnType<typeof useMySites> =>
-  value as ReturnType<typeof useMySites>;
+  value as never;
 const toMembersResult = (value: unknown): ReturnType<typeof useMembers> =>
-  value as ReturnType<typeof useMembers>;
+  value as never;
 
 describe("ApprovalDialog", () => {
   beforeEach(() => {
@@ -84,7 +84,7 @@ describe("ApprovalDialog", () => {
     mockUseCreateManualApproval.mockReturnValue({
       mutate: mutateMock,
       isPending: false,
-    } as ReturnType<typeof useCreateManualApproval>);
+    } as never);
   });
 
   it("returns null when closed", () => {

@@ -56,7 +56,7 @@ describe("app/posts/new/page", () => {
     });
     vi.mocked(useCreatePost).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ data: { post: { id: "p1" } } }),
-    });
+    } as never);
   });
 
   it("renders category options and hides location for inconvenience", () => {
@@ -87,7 +87,7 @@ describe("app/posts/new/page", () => {
     const mutateAsync = vi
       .fn()
       .mockResolvedValue({ data: { post: { id: "p1" } } });
-    vi.mocked(useCreatePost).mockReturnValue({ mutateAsync });
+    vi.mocked(useCreatePost).mockReturnValue({ mutateAsync } as never);
 
     render(<NewPostPage />);
 

@@ -31,7 +31,7 @@ describe("app/announcements/page", () => {
     vi.mocked(useAnnouncements).mockReturnValue({
       data: undefined,
       isLoading: true,
-    });
+    } as never);
     render(<AnnouncementsPage />);
     expect(screen.getByText("header")).toBeInTheDocument();
   });
@@ -40,7 +40,7 @@ describe("app/announcements/page", () => {
     vi.mocked(useAnnouncements).mockReturnValue({
       data: { data: [] },
       isLoading: false,
-    });
+    } as never);
     render(<AnnouncementsPage />);
     expect(screen.getByText("announcements.empty")).toBeInTheDocument();
   });
@@ -55,12 +55,11 @@ describe("app/announcements/page", () => {
             content: "세부 내용",
             createdAt: "2026-02-28T00:00:00Z",
             isPinned: true,
-            type: "RANKING",
           },
         ],
       },
       isLoading: false,
-    });
+    } as never);
 
     render(<AnnouncementsPage />);
     fireEvent.click(screen.getByText("공지사항"));
