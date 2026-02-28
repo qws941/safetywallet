@@ -44,7 +44,8 @@ export async function analyticsMiddleware(
   // Extract endpoint pattern (remove IDs for aggregation)
   const endpoint = path
     .replace(/\/[a-f0-9-]{36}/gi, "/:id") // UUID
-    .replace(/\/\d+/g, "/:id"); // Numeric IDs
+    .replace(/\/\d+/g, "/:id") // Numeric IDs
+    .slice(0, 96); // Analytics Engine indexes limited to 96 bytes
 
   let status = "200";
   let errorType: string | null = null;
@@ -154,7 +155,7 @@ export function trackEvent<E extends { Bindings: Env }>(
 
   // Do NOT await - non-blocking
   c.env.ANALYTICS.writeDataPoint({
-    indexes: [eventName],
+    indexes: [eventName.slice(0, 96)],
     blobs: [data.category || "", data.siteId || "", data.userId || ""],
     doubles: [data.count || 1, data.value || 0, timestamp],
   });

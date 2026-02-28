@@ -42,7 +42,9 @@ export function usePushSubscription() {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       setState((prev) => ({ ...prev, isSubscribed: !!subscription }));
-    } catch {}
+    } catch (err) {
+      console.warn("Failed to check push subscription", err);
+    }
   }, []);
 
   useEffect(() => {

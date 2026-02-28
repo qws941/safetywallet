@@ -30,7 +30,9 @@ export default function SettingsPage() {
         data: { name, active },
       });
       setIsDirty(false);
-    } catch {}
+    } catch (err) {
+      console.error("Failed to save site settings", err);
+    }
   };
 
   if (isLoading) {
