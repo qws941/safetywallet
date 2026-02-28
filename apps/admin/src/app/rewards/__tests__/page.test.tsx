@@ -29,7 +29,7 @@ describe("rewards page", () => {
     expect(screen.getByText("포상 관리")).toBeInTheDocument();
     expect(screen.getByText("rankings-tab")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "포상 기준" }));
+    fireEvent.click(screen.getByRole("button", { name: "포상 기준 설정" }));
     expect(screen.getByText("criteria-tab")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "지급 내역" }));

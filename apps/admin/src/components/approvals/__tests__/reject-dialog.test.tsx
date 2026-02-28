@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RejectDialog } from "../reject-dialog";
 import { useRejectManualRequest } from "@/hooks/use-api";
 
-const toastMock = vi.fn();
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
 const mutateMock = vi.fn();
 
 vi.mock("@/hooks/use-api", () => ({

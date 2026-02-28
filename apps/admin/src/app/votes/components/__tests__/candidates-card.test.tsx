@@ -127,7 +127,7 @@ describe("candidates card", () => {
     fireEvent.change(screen.getByPlaceholderText("이름 또는 전화번호 검색"), {
       target: { value: "김" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "선택" }));
+    fireEvent.click(screen.getByRole("button", { name: /선택/ }));
 
     await waitFor(() => {
       expect(addAsyncMock).toHaveBeenCalledWith({
@@ -142,7 +142,7 @@ describe("candidates card", () => {
     render(<CandidatesCard month="2026-02" />);
 
     fireEvent.click(screen.getByRole("button", { name: "후보자 추가" }));
-    fireEvent.click(screen.getByRole("button", { name: "선택" }));
+    fireEvent.click(screen.getByRole("button", { name: /선택/ }));
 
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(

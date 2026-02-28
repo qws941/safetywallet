@@ -87,7 +87,7 @@ describe("tbm tab", () => {
     fireEvent.change(screen.getByPlaceholderText("주제"), {
       target: { value: "안전 점검" },
     });
-    fireEvent.change(screen.getByDisplayValue(""), {
+    fireEvent.change(screen.getAllByDisplayValue("")[0], {
       target: { value: "2026-02-02" },
     });
     fireEvent.click(screen.getByRole("button", { name: "TBM 등록" }));

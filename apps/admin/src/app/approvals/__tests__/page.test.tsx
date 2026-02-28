@@ -22,6 +22,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  cn: (...classes: Array<string | false | null | undefined>) =>
+    classes.filter(Boolean).join(" "),
   Button: ({
     children,
     onClick,

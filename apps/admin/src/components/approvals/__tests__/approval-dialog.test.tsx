@@ -8,7 +8,7 @@ import {
   useMySites,
 } from "@/hooks/use-api";
 
-const toastMock = vi.fn();
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
 const mutateMock = vi.fn();
 
 vi.mock("@/hooks/use-api", () => ({

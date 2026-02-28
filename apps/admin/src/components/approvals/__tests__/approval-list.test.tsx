@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApprovalList } from "../approval-list";
 import { useApproveManualRequest, useManualApprovals } from "@/hooks/use-api";
 
-const toastMock = vi.fn();
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
 const approveMutateMock = vi.fn();
 const approveMutateAsyncMock = vi.fn();
 

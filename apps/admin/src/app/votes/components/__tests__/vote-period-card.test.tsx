@@ -12,6 +12,23 @@ vi.mock("@/hooks/use-votes", () => ({
   useUpdateVotePeriod: vi.fn(),
 }));
 
+vi.mock("../../votes-helpers", () => ({
+  epochToKstDateString: (epoch: string) => {
+    const map: Record<string, string> = {
+      "1706742000": "2024-02-01",
+      "1709251200": "2024-03-01",
+    };
+    return map[epoch] || "";
+  },
+  dateStringToKstEpoch: (date: string) => date,
+  getPeriodStatus: () => "ENDED",
+  PERIOD_STATUS_CONFIG: {
+    ACTIVE: { label: "ACTIVE", className: "" },
+    UPCOMING: { label: "UPCOMING", className: "" },
+    ENDED: { label: "ENDED", className: "" },
+  },
+}));
+
 vi.mock("@safetywallet/ui", () => ({
   Card: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -55,11 +72,14 @@ describe("vote period card", () => {
   });
 
   it("submits updated period", async () => {
+    mutateAsyncMock.mockResolvedValueOnce({});
     render(<VotePeriodCard month="2026-02" />);
 
-    const inputs = screen.getAllByDisplayValue(/2024|2026/);
-    fireEvent.change(inputs[0], { target: { value: "2026-02-01" } });
-    fireEvent.change(inputs[1], { target: { value: "2026-02-29" } });
+    // Wait for useEffect to populate dates from mocked epochToKstDateString
+    await waitFor(() => {
+      expect(screen.getByLabelText("종료일")).toHaveValue("2024-03-01");
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => {
@@ -72,6 +92,11 @@ describe("vote period card", () => {
   it("shows error toast when update fails", async () => {
     mutateAsyncMock.mockRejectedValueOnce(new Error("저장 실패"));
     render(<VotePeriodCard month="2026-02" />);
+
+    // Wait for useEffect to populate valid dates before clicking save
+    await waitFor(() => {
+      expect(screen.getByLabelText("종료일")).toHaveValue("2024-03-01");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 

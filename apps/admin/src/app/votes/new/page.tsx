@@ -38,8 +38,11 @@ export default function NewVotePage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">투표 월</label>
+              <label className="text-sm font-medium" htmlFor="vote-month">
+                투표 월
+              </label>
               <Input
+                id="vote-month"
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}

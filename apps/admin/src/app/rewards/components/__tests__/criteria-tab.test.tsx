@@ -131,8 +131,8 @@ describe("criteria tab", () => {
 
   it("edits and deletes policy", async () => {
     render(<CriteriaTab />);
-    fireEvent.click(screen.getByRole("button", { name: "수정" }));
-    fireEvent.click(screen.getByRole("button", { name: "수정" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "수정" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "수정" })[1]);
     await waitFor(() => {
       expect(updateMutateMock).toHaveBeenCalled();
     });

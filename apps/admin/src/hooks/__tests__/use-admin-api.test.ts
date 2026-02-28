@@ -150,7 +150,7 @@ describe("use-admin-api hooks", () => {
     );
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/announcements/a1",
-      expect.objectContaining({ method: "PUT" }),
+      expect.objectContaining({ method: "PATCH" }),
     );
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/announcements/a1",

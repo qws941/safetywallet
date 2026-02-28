@@ -5,20 +5,27 @@ import VoteCandidatesPage from "../page";
 import { useDeleteVoteCandidate, useVoteCandidates } from "@/hooks/use-votes";
 
 const deleteMock = vi.fn();
-const toastMock = vi.fn();
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
 
 vi.mock("@/hooks/use-votes", () => ({
   useVoteCandidates: vi.fn(),
   useDeleteVoteCandidate: vi.fn(),
 }));
 
+vi.mock("lucide-react", () => ({
+  Trash2: () => <span>삭제 아이콘</span>,
+}));
+
 vi.mock("@/components/data-table", () => ({
-  DataTable: ({ data }: { data: Array<{ user: { nameMasked: string } }> }) => (
+  DataTable: ({ data, columns }: { data: any[]; columns: any[] }) => (
     <div>
-      {data.map((row) => (
-        <div key={row.user.nameMasked}>{row.user.nameMasked}</div>
+      {data.map((row: any, i: number) => (
+        <div key={row.id || i}>
+          {columns.map((col: any) =>
+            col.render ? <span key={col.key}>{col.render(row)}</span> : null,
+          )}
+        </div>
       ))}
-      <button onClick={() => data[0] && data[0]}>noop</button>
     </div>
   ),
 }));
@@ -124,7 +131,8 @@ describe("vote candidates page", () => {
 
     render(<VoteCandidatesPage />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "삭제" })[0]);
+    fireEvent.click(screen.getByText("삭제 아이콘"));
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 
     await waitFor(() => {
       expect(deleteMock).toHaveBeenCalled();

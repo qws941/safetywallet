@@ -102,7 +102,7 @@ describe("statutory tab", () => {
     fireEvent.change(screen.getByPlaceholderText("교육명"), {
       target: { value: "정기 안전교육" },
     });
-    fireEvent.change(screen.getByDisplayValue(""), {
+    fireEvent.change(screen.getAllByDisplayValue("")[0], {
       target: { value: "2026-02-01" },
     });
 

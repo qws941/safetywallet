@@ -9,7 +9,7 @@ import {
   useUpdateAnnouncement,
 } from "@/hooks/use-api";
 
-const toastMock = vi.fn();
+const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
 const createMutateMock = vi.fn();
 const updateMutateMock = vi.fn();
 const deleteMutateMock = vi.fn();
@@ -242,7 +242,7 @@ describe("AnnouncementsPage", () => {
   });
 
   it("confirms delete and handles success/error toasts", async () => {
-    mockUseAdminAnnouncements.mockReturnValueOnce(
+    mockUseAdminAnnouncements.mockReturnValue(
       toAnnouncementsResult({
         isLoading: false,
         data: [
