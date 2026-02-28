@@ -179,15 +179,14 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  deploy-worker:
-    name: Deploy Worker
+  d1-migrate:
+    name: D1 Migrate
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    continue-on-error: true
+    environment: production
     permissions:
       contents: read
-      deployments: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -198,23 +197,9 @@ jobs:
 
       - run: npm ci
 
-      - name: Download worker-app build
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
-        with:
-          name: build-worker-app
-          path: apps/worker-app/out/
-
-      - name: Download admin-app build
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
-        with:
-          name: build-admin-app
-          path: apps/admin-app/out/
-
-      - name: Build static assets
-        run: npm run build:static
-
-      - name: Deploy to Cloudflare Workers
-        run: npx wrangler deploy
+      - name: Run D1 migrations
+        working-directory: apps/api-worker
+        run: npx wrangler d1 migrations apply safetywallet-db --remote --env="" --config wrangler.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -367,7 +352,7 @@ jobs:
         unit-test,
         security,
         build,
-        deploy-worker,
+        d1-migrate,
         e2e,
       ]
     if: always()
@@ -379,7 +364,7 @@ jobs:
              [[ "${{ needs.unit-test.result }}" != "success" ]] || \
              [[ "${{ needs.security.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]] || \
-             [[ "${{ needs.deploy-worker.result }}" != "success" && "${{ needs.deploy-worker.result }}" != "skipped" ]] || \
+             [[ "${{ needs.d1-migrate.result }}" != "success" && "${{ needs.d1-migrate.result }}" != "skipped" ]] || \
              [[ "${{ needs.e2e.result }}" != "success" && "${{ needs.e2e.result }}" != "skipped" ]]; then
             echo "::error::One or more required jobs failed"
             exit 1
