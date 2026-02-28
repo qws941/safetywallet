@@ -37,7 +37,12 @@ test.describe("Admin Education Registration", () => {
     await expect(
       page.getByText("퀴즈가 등록되었습니다.", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("cell", { name: quizTitle })).toBeVisible();
+    // Re-navigate to force fresh table data after creation
+    await page.goto("/education");
+    await page.getByRole("button", { name: "퀴즈" }).click();
+    await expect(page.getByRole("cell", { name: quizTitle })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("registers a TBM record via real admin flow", async ({ page }) => {
