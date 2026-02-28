@@ -17,9 +17,19 @@ import sitesRoute from "../sites";
 import type { Env, AuthContext } from "../../types";
 
 const mockGetQueue: unknown[] = [];
+const mockAllQueue: unknown[] = [];
+const mockInsertGetQueue: unknown[] = [];
 
 function dequeueGet() {
   return mockGetQueue.length > 0 ? mockGetQueue.shift() : null;
+}
+
+function dequeueAll() {
+  return mockAllQueue.length > 0 ? mockAllQueue.shift() : [];
+}
+
+function dequeueInsertGet() {
+  return mockInsertGetQueue.length > 0 ? mockInsertGetQueue.shift() : null;
 }
 
 function makeSelectChain() {
@@ -30,11 +40,15 @@ function makeSelectChain() {
   chain.offset = vi.fn(() => chain);
   chain.innerJoin = vi.fn(() => chain);
   chain.get = vi.fn(() => dequeueGet());
-  chain.all = vi.fn(() => []);
+  chain.all = vi.fn(() => dequeueAll());
   return chain;
 }
 
-const mockInsertValues = vi.fn().mockResolvedValue(undefined);
+const mockInsertValues = vi.fn(() => ({
+  returning: vi.fn(() => ({
+    get: vi.fn(() => dequeueInsertGet()),
+  })),
+}));
 const mockUpdateRun = vi.fn().mockResolvedValue({ success: true });
 
 const mockDb = {
@@ -103,6 +117,8 @@ describe("sites route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetQueue.length = 0;
+    mockAllQueue.length = 0;
+    mockInsertGetQueue.length = 0;
   });
 
   // ---------- GET / ----------
@@ -128,6 +144,103 @@ describe("sites route", () => {
       const { app, env } = createApp(makeAuth("ADMIN"));
       const res = await app.request("http://localhost/sites/site-1", {}, env);
       expect(res.status).toBe(404);
+    });
+
+    it("returns 403 when worker is not a site member", async () => {
+      mockGetQueue.push({ id: "site-1", name: "A" });
+      mockGetQueue.push(null);
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request("http://localhost/sites/site-1", {}, env);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns site details with memberCount for member", async () => {
+      mockGetQueue.push({ id: "site-1", name: "A", active: true });
+      mockGetQueue.push({ id: "m-1", role: "WORKER", status: "ACTIVE" });
+      mockGetQueue.push({ count: 7 });
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request("http://localhost/sites/site-1", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { site: { memberCount: number } };
+      };
+      expect(body.data.site.memberCount).toBe(7);
+    });
+  });
+
+  describe("GET /:id/members", () => {
+    it("returns 403 when requester is not member and not admin", async () => {
+      mockGetQueue.push(null);
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-1/members",
+        {},
+        env,
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 403 when worker membership tries to view members", async () => {
+      mockGetQueue.push({ role: "WORKER", status: "ACTIVE" });
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-1/members",
+        {},
+        env,
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns members list for site admin membership", async () => {
+      mockGetQueue.push({ role: "SITE_ADMIN", status: "ACTIVE" });
+      mockAllQueue.push([
+        {
+          id: "mem-1",
+          role: "WORKER",
+          status: "ACTIVE",
+          user: { id: "u1", name: "K**" },
+        },
+      ]);
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-1/members?limit=10&offset=1",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: { data: unknown[] } };
+      expect(body.data.data).toHaveLength(1);
+    });
+  });
+
+  describe("GET /:id/members/:memberId", () => {
+    it("returns 404 when member does not exist", async () => {
+      mockGetQueue.push({ role: "SITE_ADMIN", status: "ACTIVE" });
+      mockGetQueue.push(null);
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-1/members/member-1",
+        {},
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("returns member detail when found", async () => {
+      mockGetQueue.push({ role: "SITE_ADMIN", status: "ACTIVE" });
+      mockGetQueue.push({
+        id: "member-1",
+        role: "WORKER",
+        status: "ACTIVE",
+        user: { id: "u1", name: "K**" },
+      });
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-1/members/member-1",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
     });
   });
 
@@ -161,6 +274,25 @@ describe("sites route", () => {
       );
       expect(res.status).toBe(403);
     });
+
+    it("creates site for ADMIN", async () => {
+      mockInsertGetQueue.push({
+        id: "site-1",
+        name: "Test Site",
+        active: true,
+      });
+      const { app, env } = createApp(makeAuth("ADMIN"));
+      const res = await app.request(
+        "http://localhost/sites",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Test Site" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(201);
+    });
   });
 
   // ---------- PATCH /:id ----------
@@ -178,6 +310,50 @@ describe("sites route", () => {
         env,
       );
       expect(res.status).toBe(403);
+    });
+
+    it("updates site when user is SITE_ADMIN membership", async () => {
+      mockGetQueue.push({
+        id: "membership-1",
+        role: "SITE_ADMIN",
+        status: "ACTIVE",
+      });
+      mockGetQueue.push({ id: "site-1", name: "Updated", active: true });
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-1",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Updated",
+            active: true,
+            leaderboardEnabled: false,
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(200);
+    });
+
+    it("returns 404 when update target does not exist", async () => {
+      mockGetQueue.push({
+        id: "membership-1",
+        role: "SITE_ADMIN",
+        status: "ACTIVE",
+      });
+      mockGetQueue.push(null);
+      const { app, env } = createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "http://localhost/sites/site-404",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Updated" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(404);
     });
   });
 
@@ -245,6 +421,27 @@ describe("sites route", () => {
       expect(body.success).toBe(true);
       expect(body.data.message).toContain("탈퇴");
       expect(mockUpdateRun).toHaveBeenCalled();
+    });
+
+    it("allows leave without reason and writes default audit reason", async () => {
+      mockGetQueue.push({
+        id: "membership-3",
+        role: "WORKER",
+        status: "ACTIVE",
+      });
+      const { app, env } = createApp(makeAuth("WORKER"));
+
+      const res = await app.request(
+        "http://localhost/sites/site-1/leave",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
     });
   });
 });

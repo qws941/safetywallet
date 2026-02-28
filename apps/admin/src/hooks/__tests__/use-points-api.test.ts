@@ -3,9 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   useAwardPoints,
   useCreatePolicy,
+  useCreateSettlementSnapshot,
   useDeletePolicy,
+  useFinalizeSettlement,
   usePointsLedger,
   usePolicies,
+  useSettlementStatus,
   useUpdatePolicy,
 } from "@/hooks/use-points-api";
 import { createWrapper } from "@/hooks/__tests__/test-utils";
@@ -208,5 +211,91 @@ describe("use-points-api", () => {
     const withoutSite = renderHook(() => useDeletePolicy(), { wrapper });
     await withoutSite.result.current.mutateAsync("policy-2");
     expect(invalidateSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("builds settlement status from points history and disputes", async () => {
+    mockApiFetch
+      .mockResolvedValueOnce({
+        entries: [
+          {
+            id: "e1",
+            settleMonth: "2026-01",
+            amount: 100,
+            createdAt: "2026-01-10T01:00:00.000Z",
+          },
+          {
+            id: "e2",
+            amount: 50,
+            occurredAt: "2026-01-15T01:00:00.000Z",
+            createdAt: "2026-01-15T01:00:00.000Z",
+          },
+          {
+            id: "e3",
+            amount: 30,
+            occurredAt: "2025-12-31T23:00:00.000Z",
+            createdAt: "2025-12-31T23:00:00.000Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: "d1",
+            type: "POINTS",
+            status: "OPEN",
+            title: "분쟁",
+            createdAt: "2026-02-01T00:00:00.000Z",
+            userName: "홍길동",
+          },
+        ],
+      });
+
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useSettlementStatus("2026-01"), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.snapshotTaken).toBe(true);
+    expect(result.current.data?.disputeOpenCount).toBe(1);
+    expect(result.current.data?.history[0].month).toBe("2026-01");
+    expect(result.current.data?.history[0].totalAmount).toBe(150);
+  });
+
+  it("disables settlement status query without currentSiteId", () => {
+    currentSiteId = null;
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useSettlementStatus("2026-01"), {
+      wrapper,
+    });
+
+    expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("creates settlement snapshot and finalizes settlement with invalidation", async () => {
+    mockApiFetch.mockResolvedValue({ ok: true });
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const snapshot = renderHook(() => useCreateSettlementSnapshot(), {
+      wrapper,
+    });
+    const finalize = renderHook(() => useFinalizeSettlement(), { wrapper });
+
+    await snapshot.result.current.mutateAsync();
+    await finalize.result.current.mutateAsync();
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/admin/points/settlement/snapshot",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/admin/points/settlement/finalize",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["admin", "points", "settlement"],
+    });
   });
 });

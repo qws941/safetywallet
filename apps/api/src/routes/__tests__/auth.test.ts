@@ -1,6 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { verifyPassword } from "../../lib/crypto";
+import { checkRateLimit } from "../../lib/rate-limit";
+import {
+  checkDeviceRegistrationLimit,
+  recordDeviceRegistration,
+} from "../../lib/device-registrations";
+import {
+  fasSearchEmployeeByPhone,
+  fasCheckWorkerAttendance,
+} from "../../lib/fas-mariadb";
+import { syncSingleFasEmployee, socialNoToDob } from "../../lib/fas-sync";
+import { logAuditWithContext } from "../../lib/audit";
+import { signJwt } from "../../lib/jwt";
 
 type AppEnv = {
   Bindings: Record<string, unknown>;
@@ -115,8 +127,11 @@ vi.mock("../../db/schema", () => ({
     refreshToken: "refreshToken",
     refreshTokenExpiresAt: "refreshTokenExpiresAt",
     piiViewFull: "piiViewFull",
+    canAwardPoints: "canAwardPoints",
+    canManageUsers: "canManageUsers",
     externalSystem: "externalSystem",
     externalWorkerId: "externalWorkerId",
+    deletedAt: "deletedAt",
   },
   attendance: {
     id: "id",
@@ -133,6 +148,7 @@ vi.mock("../../db/schema", () => ({
   },
   auditLogs: { id: "id", action: "action", actorId: "actorId" },
   deviceRegistrations: { id: "id", userId: "userId", deviceId: "deviceId" },
+  sites: { id: "id", active: "active" },
 }));
 
 vi.mock("../../lib/crypto", () => ({
@@ -164,6 +180,7 @@ vi.mock("../../lib/logger", () => ({
 
 vi.mock("../../lib/fas-mariadb", () => ({
   fasSearchEmployeeByPhone: vi.fn(async () => null),
+  fasCheckWorkerAttendance: vi.fn(async () => ({ hasAttendance: false })),
   fasGetEmployeeInfo: vi.fn(async () => null),
 }));
 
@@ -307,6 +324,291 @@ describe("auth", () => {
       );
       expect(res.status).toBe(201);
     });
+
+    it("returns 429 when device registration limit is exceeded", async () => {
+      vi.mocked(checkDeviceRegistrationLimit).mockResolvedValueOnce({
+        allowed: false,
+        remaining: 0,
+        resetAt: 0,
+        recent: [],
+      } as any);
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "device-id": "dev-1",
+          },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(429);
+    });
+
+    it("backfills encrypted fields for existing user and returns conflict", async () => {
+      mockGet.mockResolvedValueOnce({
+        id: "existing-user",
+        phoneEncrypted: null,
+        dobEncrypted: null,
+      });
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(409);
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it("records device registration for new user when device id is present", async () => {
+      mockGet.mockResolvedValueOnce(null);
+      mockGet.mockResolvedValueOnce({ id: "new-user-id" });
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-id": "device-abc",
+            "User-Agent": "vitest-agent",
+          },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(201);
+      expect(recordDeviceRegistration).toHaveBeenCalled();
+    });
+  });
+
+  describe("POST /login", () => {
+    it("returns 429 when login IP rate limit is exceeded", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({
+        allowed: false,
+        remaining: 0,
+        resetAt: 0,
+        recent: [],
+      } as any);
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CF-Connecting-IP": "1.2.3.4",
+          },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(429);
+    });
+
+    it("returns 429 when account is currently locked", async () => {
+      const now = Date.now();
+      const { app, env } = await createApp(undefined, {
+        KV: {
+          get: vi
+            .fn()
+            .mockResolvedValueOnce(
+              JSON.stringify({ attempts: 5, lockedUntil: now + 60_000 }),
+            ),
+          put: vi.fn(),
+          delete: vi.fn(),
+        },
+      });
+
+      const res = await app.request(
+        "/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(429);
+    });
+
+    it("returns 401 for name mismatch", async () => {
+      mockLimit.mockReturnValueOnce([
+        {
+          id: "user-1",
+          name: "Park",
+          role: "WORKER",
+          piiViewFull: false,
+          phoneEncrypted: null,
+        },
+      ]);
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 403 when attendance is required and missing", async () => {
+      mockLimit
+        .mockReturnValueOnce([
+          {
+            id: "user-1",
+            name: "Kim",
+            role: "WORKER",
+            piiViewFull: false,
+            externalWorkerId: null,
+          },
+        ])
+        .mockReturnValueOnce([]);
+
+      const { app, env } = await createApp(undefined, {
+        REQUIRE_ATTENDANCE_FOR_LOGIN: "true",
+      });
+
+      const res = await app.request(
+        "/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(403);
+    });
+
+    it("logs in successfully and clears login attempt key", async () => {
+      mockLimit.mockReturnValueOnce([
+        {
+          id: "user-1",
+          name: "Kim",
+          nameMasked: "K**",
+          role: "WORKER",
+          piiViewFull: true,
+          phoneEncrypted: "enc-phone",
+          externalWorkerId: null,
+        },
+      ]);
+      const kvDelete = vi.fn();
+      const { app, env } = await createApp(undefined, {
+        KV: {
+          get: vi.fn().mockResolvedValueOnce(null),
+          put: vi.fn(),
+          delete: kvDelete,
+        },
+      });
+
+      const res = await app.request(
+        "/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-id": "login-device",
+          },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "19900101",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(signJwt).toHaveBeenCalled();
+      expect(kvDelete).toHaveBeenCalled();
+      expect(logAuditWithContext).toHaveBeenCalled();
+    });
+
+    it("uses FAS lookup when hyperdrive is available", async () => {
+      vi.mocked(fasSearchEmployeeByPhone).mockResolvedValueOnce({
+        socialNo: "7104101",
+      } as any);
+      vi.mocked(socialNoToDob).mockReturnValueOnce("19710410");
+      vi.mocked(syncSingleFasEmployee).mockResolvedValueOnce({
+        id: "user-1",
+        name: "Kim",
+        nameMasked: "K**",
+        role: "WORKER",
+        piiViewFull: false,
+      } as unknown);
+
+      const { app, env } = await createApp(undefined, {
+        FAS_HYPERDRIVE: {},
+      });
+      const res = await app.request(
+        "/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Kim",
+            phone: "010-1234-5678",
+            dob: "710410",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(fasCheckWorkerAttendance).not.toHaveBeenCalled();
+    });
   });
 
   describe("POST /refresh", () => {
@@ -337,6 +639,109 @@ describe("auth", () => {
         env,
       );
       expect(res.status).toBe(401);
+    });
+
+    it("returns 429 when refresh endpoint is rate limited", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({
+        allowed: false,
+        remaining: 0,
+        resetAt: 0,
+        recent: [],
+      } as any);
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/refresh",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: "token" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(429);
+    });
+
+    it("returns 401 and clears token when refresh token is expired", async () => {
+      mockLimit.mockReturnValueOnce([
+        {
+          id: "user-1",
+          role: "WORKER",
+          refreshTokenExpiresAt: new Date(Date.now() - 1_000).toISOString(),
+        },
+      ]);
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/refresh",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: "expired-token" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(401);
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it("returns 403 when worker refresh has no attendance", async () => {
+      mockLimit
+        .mockReturnValueOnce([
+          {
+            id: "user-1",
+            role: "WORKER",
+            refreshTokenExpiresAt: null,
+            externalWorkerId: null,
+            piiViewFull: false,
+            phoneEncrypted: null,
+          },
+        ])
+        .mockReturnValueOnce([]);
+
+      const { app, env } = await createApp(undefined, {
+        REQUIRE_ATTENDANCE_FOR_LOGIN: "true",
+      });
+
+      const res = await app.request(
+        "/refresh",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: "token" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(403);
+    });
+
+    it("refreshes token successfully", async () => {
+      mockLimit.mockReturnValueOnce([
+        {
+          id: "user-1",
+          role: "ADMIN",
+          refreshTokenExpiresAt: null,
+          piiViewFull: true,
+          phoneEncrypted: "encrypted-phone",
+        },
+      ]);
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/refresh",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: "good-token" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(signJwt).toHaveBeenCalled();
     });
   });
 
@@ -439,9 +844,58 @@ describe("auth", () => {
       expect(res.status).toBe(500);
       expect(verifyPassword).not.toHaveBeenCalled();
     });
+
+    it("returns 429 when admin login IP is rate limited", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValueOnce({
+        allowed: false,
+        remaining: 0,
+        resetAt: 0,
+        recent: [],
+      } as any);
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/admin/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: "admin", password: "password123" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(429);
+    });
+
+    it("creates admin user when no super admin exists", async () => {
+      vi.mocked(verifyPassword).mockResolvedValueOnce(true);
+      mockGet.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: "admin-created",
+        nameMasked: "관*자",
+        role: "SUPER_ADMIN",
+      });
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/admin/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: "admin", password: "password123" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
   });
 
   describe("GET /me", () => {
+    it("throws 401 when auth context is missing", async () => {
+      const { app, env } = await createApp();
+      const res = await app.request("/me", {}, env);
+      expect(res.status).toBe(401);
+    });
+
     it("returns current user info", async () => {
       mockLimit
         .mockReturnValueOnce([
@@ -460,6 +914,30 @@ describe("auth", () => {
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/me", {}, env);
       expect(res.status).toBe(200);
+    });
+
+    it("assigns fallback site when membership is missing", async () => {
+      mockLimit
+        .mockReturnValueOnce([
+          {
+            id: "user-1",
+            name: "Kim",
+            nameMasked: "K**",
+            role: "WORKER",
+            piiViewFull: false,
+            canAwardPoints: true,
+            canManageUsers: false,
+          },
+        ])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([{ id: "site-fallback" }])
+        .mockReturnValueOnce([]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/me", {}, env);
+
+      expect(res.status).toBe(200);
+      expect(mockDb.insert).toHaveBeenCalled();
     });
 
     it("throws 404 when user not found", async () => {

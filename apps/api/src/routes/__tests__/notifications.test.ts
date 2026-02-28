@@ -601,5 +601,180 @@ describe("routes/notifications", () => {
         }),
       );
     });
+
+    it("enqueues push and triggers SMS fallback for users without subscriptions", async () => {
+      const subs = [
+        {
+          id: "sub-1",
+          userId: "user-1",
+          endpoint: "https://push.example.com/sub/1",
+          p256dh: "key1",
+          auth: "auth1",
+          failCount: 0,
+        },
+      ];
+      mockAll
+        .mockResolvedValueOnce(subs)
+        .mockResolvedValueOnce([{ id: "user-2", phoneEncrypted: "enc-2" }]);
+      mockSmsSendBulk.mockResolvedValueOnce({
+        totalRequested: 1,
+        successCount: 1,
+        failureCount: 0,
+        results: [{ success: true }],
+      });
+
+      const mockQueue = { send: vi.fn().mockResolvedValue(undefined) };
+      const app = await createApp(makeAuth("ADMIN"));
+      const env = {
+        ...makeEnv(),
+        NOTIFICATION_QUEUE: mockQueue,
+      };
+      const res = await app.request(
+        "/notifications/send",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userIds: ["user-1", "user-2"],
+            message: { title: "Queued", body: "With fallback" },
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { queued: number; smsFallback: number; async: boolean };
+      };
+      expect(body.data.queued).toBe(1);
+      expect(body.data.smsFallback).toBe(1);
+      expect(body.data.async).toBe(true);
+    });
+
+    it("processes direct push results and removes invalid subscriptions", async () => {
+      const { sendPushBulk, shouldRemoveSubscription } =
+        await import("../../lib/web-push");
+
+      mockAll
+        .mockResolvedValueOnce([
+          {
+            id: "sub-1",
+            userId: "user-1",
+            endpoint: "https://push.example.com/sub/1",
+            p256dh: "key1",
+            auth: "auth1",
+            failCount: 0,
+          },
+          {
+            id: "sub-2",
+            userId: "user-2",
+            endpoint: "https://push.example.com/sub/2",
+            p256dh: "key2",
+            auth: "auth2",
+            failCount: 2,
+          },
+        ])
+        .mockResolvedValueOnce([
+          { id: "user-2", phoneEncrypted: "enc-2" },
+          { id: "user-3", phoneEncrypted: "enc-3" },
+        ]);
+
+      vi.mocked(sendPushBulk).mockResolvedValueOnce([
+        { success: true },
+        {
+          success: false,
+          endpoint: "https://fcm.googleapis.com/fcm/send/test",
+          statusCode: 410,
+        } as any,
+      ] as Array<{ success: boolean; statusCode?: number }>);
+      vi.mocked(shouldRemoveSubscription).mockImplementation(
+        (result: { success: boolean; statusCode?: number }) =>
+          !result.success && result.statusCode === 410,
+      );
+      mockSmsSendBulk.mockResolvedValueOnce({
+        totalRequested: 2,
+        successCount: 2,
+        failureCount: 0,
+        results: [{ success: true }, { success: true }],
+      });
+
+      const app = await createApp(makeAuth("ADMIN"));
+      const res = await app.request(
+        "/notifications/send",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userIds: ["user-1", "user-2", "user-3"],
+            message: { title: "Direct", body: "Bulk" },
+          }),
+        },
+        makeEnv(),
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          sent: number;
+          failed: number;
+          removed: number;
+          smsFallback: number;
+        };
+      };
+      expect(body.data.sent).toBe(1);
+      expect(body.data.failed).toBe(0);
+      expect(body.data.removed).toBe(1);
+      expect(body.data.smsFallback).toBe(2);
+      expect(mockDeleteWhere).toHaveBeenCalled();
+      expect(mockUpdateSet).toHaveBeenCalled();
+    });
+
+    it("increments failCount when push fails but subscription is retained", async () => {
+      const { sendPushBulk, shouldRemoveSubscription } =
+        await import("../../lib/web-push");
+
+      mockAll.mockResolvedValueOnce([
+        {
+          id: "sub-1",
+          userId: "user-1",
+          endpoint: "https://push.example.com/sub/1",
+          p256dh: "key1",
+          auth: "auth1",
+          failCount: 3,
+        },
+      ]);
+
+      vi.mocked(sendPushBulk).mockResolvedValueOnce([
+        {
+          success: false,
+          endpoint: "https://fcm.googleapis.com/fcm/send/test",
+          statusCode: 500,
+        } as any,
+      ] as Array<{ success: boolean; statusCode?: number }>);
+      vi.mocked(shouldRemoveSubscription).mockReturnValue(false);
+
+      const app = await createApp(makeAuth("ADMIN"));
+      const res = await app.request(
+        "/notifications/send",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userIds: ["user-1"],
+            message: { title: "Fail", body: "Keep subscription" },
+          }),
+        },
+        makeEnv(),
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { sent: number; failed: number; removed: number };
+      };
+      expect(body.data.sent).toBe(0);
+      expect(body.data.failed).toBe(1);
+      expect(body.data.removed).toBe(0);
+      expect(mockUpdateSet).toHaveBeenCalled();
+    });
   });
 });

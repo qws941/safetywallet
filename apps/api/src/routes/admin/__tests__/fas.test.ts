@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
+import {
+  fasGetAllEmployeesPaginated,
+  fasGetDailyAttendanceRawRows,
+  fasGetDailyAttendanceRawSummary,
+  fasSearchEmployeeByName,
+  fasSearchEmployeeByPhone,
+} from "../../../lib/fas-mariadb";
+import {
+  syncFasEmployeesToD1,
+  deactivateRetiredEmployees,
+} from "../../../lib/fas-sync";
 
 type AppEnv = {
   Bindings: Record<string, unknown>;
@@ -44,6 +55,7 @@ function makeSelectChain() {
   chain.leftJoin = vi.fn(self);
   chain.innerJoin = vi.fn(self);
   chain.orderBy = vi.fn(self);
+  chain.groupBy = vi.fn(self);
   chain.limit = vi.fn(self);
   chain.offset = vi.fn(self);
   chain.get = mockGet;
@@ -86,6 +98,9 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn(),
   or: vi.fn(),
   inArray: vi.fn(),
+  sql: vi.fn((s: string) => s),
+  desc: vi.fn(),
+  isNull: vi.fn(),
 }));
 
 vi.mock("../../../db/schema", () => ({
@@ -113,6 +128,7 @@ vi.mock("../../../db/schema", () => ({
     targetId: "targetId",
     reason: "reason",
   },
+  syncErrors: { status: "status" },
 }));
 
 vi.mock("../../../lib/crypto", () => ({
@@ -138,11 +154,44 @@ const DEFAULT_FAS_SOURCE = {
   workerIdPrefix: "",
 };
 
-vi.mock("../../../lib/fas-mariadb", () => ({
-  FAS_SOURCES: [DEFAULT_FAS_SOURCE],
-  resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
-  fasSearchEmployeeByPhone: vi.fn(async () => null),
-  fasSearchEmployeeByName: vi.fn(async () => []),
+vi.mock("../../../lib/fas-mariadb", () => {
+  const source = {
+    dbName: "mdidev",
+    siteCd: "10",
+    d1SiteName: "송도세브란스",
+    workerIdPrefix: "",
+  };
+  return {
+    FAS_SOURCES: [source],
+    resolveFasSource: vi.fn(() => source),
+    fasSearchEmployeeByPhone: vi.fn(async () => null),
+    fasSearchEmployeeByName: vi.fn(async () => []),
+    fasGetAllEmployeesPaginated: vi.fn(async () => ({
+      employees: [],
+      total: 0,
+    })),
+    fasGetDailyAttendanceRawRows: vi.fn(async () => ({
+      source: "none",
+      rows: [],
+    })),
+    fasGetDailyAttendanceRawSummary: vi.fn(async () => ({
+      source: "none",
+      totalRows: 0,
+      checkins: 0,
+      uniqueWorkers: 0,
+      workerIds: [],
+    })),
+  };
+});
+
+vi.mock("../../../lib/fas-sync", () => ({
+  syncFasEmployeesToD1: vi.fn(async () => ({
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+  })),
+  deactivateRetiredEmployees: vi.fn(async () => 0),
 }));
 
 interface AuthContext {
@@ -179,6 +228,7 @@ async function createApp(auth?: AuthContext) {
   app.route("/", route);
   const env = {
     DB: {},
+    KV: { get: vi.fn(async () => null) },
     HMAC_SECRET: "secret",
     ENCRYPTION_KEY: "enc-key",
     FAS_HYPERDRIVE: null,
@@ -257,6 +307,20 @@ describe("admin/fas", () => {
       );
       expect(res.status).toBe(403);
     });
+
+    it("returns 400 when payload is missing required fields", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/fas/sync-workers",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ siteId: "" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
   });
 
   describe("GET /fas/search-mariadb", () => {
@@ -274,6 +338,239 @@ describe("admin/fas", () => {
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error?: { code: string } };
       expect(body.error?.code).toBe("SERVICE_UNAVAILABLE");
+    });
+
+    it("searches by phone when hyperdrive is configured", async () => {
+      vi.mocked(fasSearchEmployeeByPhone).mockResolvedValueOnce({
+        emplCd: "E-1",
+      } as any);
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+
+      const res = await app.request(
+        "/fas/search-mariadb?phone=01012345678",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      expect(fasSearchEmployeeByPhone).toHaveBeenCalled();
+    });
+
+    it("searches by name and returns multiple rows", async () => {
+      vi.mocked(fasSearchEmployeeByName).mockResolvedValueOnce([
+        { emplCd: "E-1" } as any,
+      ]);
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+
+      const res = await app.request("/fas/search-mariadb?name=Kim", {}, env);
+      expect(res.status).toBe(200);
+      expect(fasSearchEmployeeByName).toHaveBeenCalled();
+    });
+
+    it("returns internal error when search fails", async () => {
+      vi.mocked(fasSearchEmployeeByName).mockRejectedValueOnce(
+        new Error("search failed"),
+      );
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+
+      const res = await app.request("/fas/search-mariadb?name=Kim", {}, env);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /fas/sync-status", () => {
+    it("returns validation error for invalid accsDay", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/fas/sync-status?accsDay=2026-02",
+        {},
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns status payload without integrity when no date requested", async () => {
+      mockGet.mockResolvedValueOnce({
+        total: 1,
+        fasLinked: 1,
+        missingPhone: 0,
+        deleted: 0,
+      });
+      mockAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/fas/sync-status", {}, env);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("returns service unavailable when integrity check requested without hyperdrive", async () => {
+      mockGet.mockResolvedValueOnce({
+        total: 0,
+        fasLinked: 0,
+        missingPhone: 0,
+        deleted: 0,
+      });
+      mockAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/fas/sync-status?accsDay=2026-02-06",
+        {},
+        env,
+      );
+      expect(res.status).toBe(503);
+    });
+
+    it("returns integrity details when hyperdrive is configured", async () => {
+      mockGet.mockResolvedValueOnce({
+        total: 5,
+        fasLinked: 4,
+        missingPhone: 0,
+        deleted: 0,
+      });
+      mockAll
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: "u1" }]);
+      vi.mocked(fasGetDailyAttendanceRawSummary).mockResolvedValueOnce({
+        source: "access_daily.raw",
+        totalRows: 3,
+        checkins: 3,
+        uniqueWorkers: 2,
+        workerIds: ["E-1", "E-2"],
+      });
+
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+      const res = await app.request(
+        "/fas/sync-status?accsDay=20260206",
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(fasGetDailyAttendanceRawSummary).toHaveBeenCalled();
+    });
+  });
+
+  describe("GET /fas/raw-attendance", () => {
+    it("returns validation error when accsDay is missing", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/fas/raw-attendance", {}, env);
+      expect(res.status).toBe(400);
+    });
+
+    it("returns service unavailable when hyperdrive is missing", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/fas/raw-attendance?accsDay=20260206",
+        {},
+        env,
+      );
+      expect(res.status).toBe(503);
+    });
+
+    it("returns raw rows with safe parsed limit", async () => {
+      vi.mocked(fasGetDailyAttendanceRawRows).mockResolvedValueOnce({
+        source: "access_daily.raw",
+        rows: [{ id: 1 }],
+      });
+
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+      const res = await app.request(
+        "/fas/raw-attendance?accsDay=2026-02-06&limit=not-a-number",
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(fasGetDailyAttendanceRawRows).toHaveBeenCalled();
+    });
+  });
+
+  describe("POST /fas/sync-hyperdrive", () => {
+    it("returns service unavailable when hyperdrive is missing", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/fas/sync-hyperdrive",
+        { method: "POST" },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns validation error for invalid accsDay", async () => {
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+      const res = await app.request(
+        "/fas/sync-hyperdrive",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accsDay: "bad-date" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(400);
+    });
+
+    it("syncs hyperdrive employees and deactivates retired workers", async () => {
+      vi.mocked(fasGetAllEmployeesPaginated).mockResolvedValueOnce({
+        employees: [
+          { emplCd: "E-1", stateFlag: "W" },
+          { emplCd: "E-2", stateFlag: "R" },
+        ] as any,
+        total: 2,
+      });
+      vi.mocked(syncFasEmployeesToD1).mockResolvedValueOnce({
+        created: 1,
+        updated: 0,
+        skipped: 0,
+        errors: [],
+      });
+      vi.mocked(deactivateRetiredEmployees).mockResolvedValueOnce(1);
+
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+      const res = await app.request(
+        "/fas/sync-hyperdrive",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ offset: 0, limit: 100 }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(fasGetAllEmployeesPaginated).toHaveBeenCalled();
+      expect(syncFasEmployeesToD1).toHaveBeenCalled();
+      expect(deactivateRetiredEmployees).toHaveBeenCalled();
+    });
+
+    it("returns internal error when sync throws", async () => {
+      vi.mocked(fasGetAllEmployeesPaginated).mockRejectedValueOnce(
+        new Error("sync failed"),
+      );
+
+      const { app, env } = await createApp(makeAuth());
+      env.FAS_HYPERDRIVE = {};
+      const res = await app.request(
+        "/fas/sync-hyperdrive",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(400);
     });
   });
 });

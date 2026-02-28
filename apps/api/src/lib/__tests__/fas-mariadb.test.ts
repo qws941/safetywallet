@@ -196,6 +196,31 @@ describe("fas-mariadb", () => {
     });
   });
 
+  describe("FAS source resolution", () => {
+    it("initializes and resolves source defaults", async () => {
+      const { initFasConfig, resolveFasSource, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      initFasConfig({
+        FAS_DB_NAME: "tenant_a",
+        FAS_SITE_CD: "20",
+        FAS_SITE_NAME: "테넌트A",
+      });
+
+      expect(resolveFasSource("tenant_a").dbName).toBe("tenant_a");
+      expect(resolveFasSource("unknown").dbName).toBe("tenant_a");
+      expect(resolveFasSource(null).dbName).toBe("tenant_a");
+    });
+
+    it("resolves worker id prefixes with fallback", async () => {
+      const { resolveFasSourceByWorkerId } = await import("../fas-mariadb");
+
+      const resolved = resolveFasSourceByWorkerId("EMP-001");
+      expect(resolved.rawEmplCd).toBe("EMP-001");
+      expect(resolved.source).toBeDefined();
+    });
+  });
+
   describe("fasGetDailyAttendance", () => {
     it("maps attendance rows correctly", async () => {
       const { fasGetDailyAttendance, DEFAULT_FAS_SOURCE } =
@@ -236,6 +261,281 @@ describe("fas-mariadb", () => {
       expect(queryStr).toContain("WHERE ad.accs_day = ?");
       expect(queryStr).toContain("ad.site_cd = ?");
       expect(params).toEqual(["20260206", DEFAULT_FAS_SOURCE.siteCd]);
+    });
+
+    it("falls back to access/access_history sources when access_daily is empty", async () => {
+      const { fasGetDailyAttendance, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockResolvedValueOnce([[]])
+        .mockResolvedValueOnce([
+          [sampleAttendanceRow({ in_time: "0900", out_time: "1800" })],
+        ])
+        .mockResolvedValueOnce([
+          [sampleAttendanceRow({ in_time: "0830", out_time: "1830" })],
+        ]);
+
+      const result = await fasGetDailyAttendance(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].inTime).toBe("0830");
+      expect(result[0].outTime).toBe("1830");
+    });
+
+    it("continues when fallback source query throws", async () => {
+      const { fasGetDailyAttendance, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockResolvedValueOnce([[]])
+        .mockRejectedValueOnce(new Error("access fail"))
+        .mockResolvedValueOnce([[sampleAttendanceRow({ in_time: "0910" })]]);
+
+      const result = await fasGetDailyAttendance(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0].inTime).toBe("0910");
+    });
+  });
+
+  describe("raw attendance helper APIs", () => {
+    it("returns merged raw summary across sources", async () => {
+      const { fasGetDailyAttendanceRawSummary, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockResolvedValueOnce([[{ empl_cd: "w1" }, { empl_cd: "w2" }]])
+        .mockResolvedValueOnce([[{ empl_cd: "w2" }, { empl_cd: "w3" }]])
+        .mockResolvedValueOnce([[{ empl_cd: "w1" }]]);
+
+      const result = await fasGetDailyAttendanceRawSummary(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+
+      expect(result.totalRows).toBe(5);
+      expect(result.uniqueWorkers).toBe(3);
+      expect(result.source).toContain("access_daily.raw");
+    });
+
+    it("returns none source when all raw summary queries fail", async () => {
+      const { fasGetDailyAttendanceRawSummary, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockRejectedValueOnce(new Error("s1"))
+        .mockRejectedValueOnce(new Error("s2"))
+        .mockRejectedValueOnce(new Error("s3"));
+
+      const result = await fasGetDailyAttendanceRawSummary(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+
+      expect(result.source).toBe("none");
+      expect(result.totalRows).toBe(0);
+    });
+
+    it("returns trimmed raw rows with safe limit", async () => {
+      const { fasGetDailyAttendanceRawRows, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockResolvedValueOnce([[{ id: 1 }, { id: 2 }]])
+        .mockResolvedValueOnce([[{ id: 3 }, { id: 4 }]])
+        .mockResolvedValueOnce([[{ id: 5 }]]);
+
+      const result = await fasGetDailyAttendanceRawRows(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+        3,
+      );
+
+      expect(result.rows).toHaveLength(3);
+      expect(result.source).toContain("access_daily.raw");
+    });
+
+    it("returns none source when all raw rows queries fail", async () => {
+      const { fasGetDailyAttendanceRawRows, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockRejectedValueOnce(new Error("rows1"))
+        .mockRejectedValueOnce(new Error("rows2"))
+        .mockRejectedValueOnce(new Error("rows3"));
+
+      const result = await fasGetDailyAttendanceRawRows(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+
+      expect(result.source).toBe("none");
+      expect(result.rows).toHaveLength(0);
+    });
+  });
+
+  describe("attendance analytics APIs", () => {
+    it("aggregates realtime stats and deduplicates checkins", async () => {
+      const { fasGetDailyAttendanceRealtimeStats, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockResolvedValueOnce([
+          [
+            { empl_cd: "w1", checkin_key: "202602060830" },
+            { empl_cd: "w1", checkin_key: "202602060830" },
+          ],
+        ])
+        .mockResolvedValueOnce([
+          [{ empl_cd: "w2", checkin_key: "202602060900" }],
+        ])
+        .mockResolvedValueOnce([
+          [{ empl_cd: "w3", checkin_key: "202602061000" }],
+        ]);
+
+      const stats = await fasGetDailyAttendanceRealtimeStats(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+
+      expect(stats.totalRows).toBe(4);
+      expect(stats.checkedInWorkers).toBe(3);
+      expect(stats.dedupCheckinEvents).toBe(3);
+    });
+
+    it("returns site counts sorted desc and clipped by limit", async () => {
+      const { fasGetDailyAttendanceSiteCounts, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery.mockResolvedValueOnce([
+        [
+          { site_cd: "11", cnt: 3 },
+          { site_cd: "10", cnt: 10 },
+          { site_cd: "", cnt: 50 },
+        ],
+      ]);
+
+      const result = await fasGetDailyAttendanceSiteCounts(
+        mockHyperdrive,
+        "20260206",
+        1,
+        DEFAULT_FAS_SOURCE,
+      );
+
+      expect(result.siteCounts).toHaveLength(1);
+      expect(result.siteCounts[0].siteCd).toBe("10");
+    });
+
+    it("returns attendance trend points", async () => {
+      const { fasGetAttendanceTrend, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery.mockResolvedValueOnce([
+        [
+          { accs_day: "20260205", cnt: 2 },
+          { accs_day: "20260206", cnt: 3 },
+        ],
+      ]);
+
+      const result = await fasGetAttendanceTrend(
+        mockHyperdrive,
+        "20260205",
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+      );
+
+      expect(result).toEqual([
+        { date: "20260205", count: 2 },
+        { date: "20260206", count: 3 },
+      ]);
+    });
+
+    it("returns paginated attendance list with total", async () => {
+      const { fasGetAttendanceList, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery.mockResolvedValueOnce([[{ cnt: 2 }]]).mockResolvedValueOnce([
+        [
+          {
+            empl_cd: "24000001",
+            empl_nm: "김우현",
+            part_cd: "P001",
+            part_nm: "제일건설",
+            in_time: "0830",
+            out_time: "1730",
+            accs_day: "20260206",
+          },
+        ],
+      ]);
+
+      const result = await fasGetAttendanceList(
+        mockHyperdrive,
+        "20260206",
+        DEFAULT_FAS_SOURCE.siteCd,
+        50,
+        0,
+      );
+
+      expect(result.total).toBe(2);
+      expect(result.records).toHaveLength(1);
+      expect(result.records[0].emplCd).toBe("24000001");
+    });
+  });
+
+  describe("fasCheckWorkerAttendance", () => {
+    it("returns hasAttendance=true with merged records", async () => {
+      const { fasCheckWorkerAttendance, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockResolvedValueOnce([[sampleAttendanceRow({ in_time: "0830" })]])
+        .mockResolvedValueOnce([[sampleAttendanceRow({ in_time: "0900" })]])
+        .mockResolvedValueOnce([[sampleAttendanceRow({ out_time: "1900" })]]);
+
+      const result = await fasCheckWorkerAttendance(
+        mockHyperdrive,
+        "24000001",
+        "20260206",
+        DEFAULT_FAS_SOURCE,
+      );
+
+      expect(result.hasAttendance).toBe(true);
+      expect(result.records).toHaveLength(1);
+      expect(result.records[0].inTime).toBe("0830");
+      expect(result.records[0].outTime).toBe("1900");
+    });
+
+    it("returns hasAttendance=false when all attendance source queries fail", async () => {
+      const { fasCheckWorkerAttendance, DEFAULT_FAS_SOURCE } =
+        await import("../fas-mariadb");
+
+      mockQuery
+        .mockRejectedValueOnce(new Error("f1"))
+        .mockRejectedValueOnce(new Error("f2"))
+        .mockRejectedValueOnce(new Error("f3"));
+
+      const result = await fasCheckWorkerAttendance(
+        mockHyperdrive,
+        "24000001",
+        "20260206",
+        DEFAULT_FAS_SOURCE,
+      );
+
+      expect(result.hasAttendance).toBe(false);
+      expect(result.records).toHaveLength(0);
     });
   });
 

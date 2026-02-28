@@ -47,6 +47,7 @@ vi.mock("../../lib/logger", () => ({
 
 const mockFasRealtimeStats = vi.fn();
 const mockFasCheckWorkerAttendance = vi.fn();
+const mockFasGetDailyAttendance = vi.fn();
 const DEFAULT_FAS_SOURCE = {
   dbName: "mdidev",
   siteCd: "10",
@@ -62,6 +63,8 @@ vi.mock("../../lib/fas-mariadb", () => ({
   })),
   fasGetDailyAttendanceRealtimeStats: (...args: unknown[]) =>
     mockFasRealtimeStats(...args),
+  fasGetDailyAttendance: (...args: unknown[]) =>
+    mockFasGetDailyAttendance(...args),
   fasCheckWorkerAttendance: (...args: unknown[]) =>
     mockFasCheckWorkerAttendance(...args),
 }));
@@ -156,6 +159,15 @@ vi.mock("../../db/schema", () => ({
   users: {
     id: "id",
     externalWorkerId: "externalWorkerId",
+    name: "name",
+    nameMasked: "nameMasked",
+    deletedAt: "deletedAt",
+  },
+  siteMemberships: {
+    userId: "userId",
+    siteId: "siteId",
+    role: "role",
+    status: "status",
   },
 }));
 
@@ -205,6 +217,7 @@ describe("routes/attendance", () => {
     mockAllQueue.length = 0;
     mockFasRealtimeStats.mockReset();
     mockFasCheckWorkerAttendance.mockReset();
+    mockFasGetDailyAttendance.mockReset();
   });
 
   describe("GET /attendance/today", () => {
@@ -259,9 +272,135 @@ describe("routes/attendance", () => {
       expect(body.data.hasAttendance).toBe(false);
       expect(body.data.records).toHaveLength(0);
     });
+
+    it("returns 503 when FAS_HYPERDRIVE is missing", async () => {
+      const { default: attendanceRoute } = await import("../attendance");
+      const app = new Hono<AppEnv>();
+      app.use("*", async (c, next) => {
+        c.set("auth", makeAuth());
+        await next();
+      });
+      app.route("/attendance", attendanceRoute);
+
+      const env = {
+        DB: {},
+        KV: { get: mockKvGet, put: mockKvPut },
+      } as Record<string, unknown>;
+
+      const res = await app.request("/attendance/today", {}, env);
+      expect(res.status).toBe(503);
+    });
+
+    it("returns empty result when FAS check throws", async () => {
+      mockGetQueue.push({ externalWorkerId: "FAS-001" });
+      mockFasCheckWorkerAttendance.mockRejectedValueOnce(new Error("fas down"));
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/attendance/today", {}, env);
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { hasAttendance: boolean; records: unknown[] };
+      };
+      expect(body.data.hasAttendance).toBe(false);
+      expect(body.data.records).toHaveLength(0);
+    });
+  });
+
+  describe("GET /attendance/site/:siteId/report", () => {
+    it("returns 403 when non-site-admin requests site report", async () => {
+      const { authMiddleware } = await import("../../middleware/auth");
+      vi.mocked(authMiddleware).mockImplementationOnce(async (c, next) => {
+        c.set("auth", makeAuth("WORKER", "worker-1"));
+        await next();
+      });
+
+      mockGetQueue.push(null);
+
+      const { app, env } = await createApp();
+      const res = await app.request("/attendance/site/site-1/report", {}, env);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 503 when FAS binding is unavailable", async () => {
+      const { authMiddleware } = await import("../../middleware/auth");
+      vi.mocked(authMiddleware).mockImplementationOnce(async (c, next) => {
+        c.set("auth", makeAuth("SUPER_ADMIN", "admin-1"));
+        await next();
+      });
+
+      const { app } = await createApp(makeAuth("SUPER_ADMIN", "admin-1"));
+      const res = await app.request("/attendance/site/site-1/report", {}, {
+        DB: {},
+        KV: { get: mockKvGet, put: mockKvPut },
+      } as Record<string, unknown>);
+      expect(res.status).toBe(503);
+    });
+
+    it("returns seven-day site report with linked users", async () => {
+      const { authMiddleware } = await import("../../middleware/auth");
+      vi.mocked(authMiddleware).mockImplementationOnce(async (c, next) => {
+        c.set("auth", makeAuth("SUPER_ADMIN", "admin-1"));
+        await next();
+      });
+
+      mockFasGetDailyAttendance.mockResolvedValue([
+        {
+          accsDay: "20250101",
+          emplCd: "E001",
+          inTime: "0830",
+          outTime: "1730",
+        },
+      ]);
+      mockAllQueue.push([
+        {
+          id: "user-1",
+          externalWorkerId: "E001",
+          name: "Kim",
+          nameMasked: "K**",
+        },
+      ]);
+
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN", "admin-1"));
+      const res = await app.request(
+        "/attendance/site/site-1/report?source=mdidev",
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: Array<{
+          date: string;
+          records: Array<{ userId: string | null }>;
+        }>;
+      };
+      expect(body.data).toHaveLength(7);
+      expect(body.data.some((day) => day.records.length > 0)).toBe(true);
+    });
   });
 
   describe("POST /attendance/sync", () => {
+    it("returns 403 for non-admin sync requests", async () => {
+      const { authMiddleware } = await import("../../middleware/auth");
+      vi.mocked(authMiddleware).mockImplementationOnce(async (c, next) => {
+        c.set("auth", makeAuth("WORKER", "worker-1"));
+        await next();
+      });
+
+      const { app, env } = await createApp();
+      const res = await app.request(
+        "/attendance/sync",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ events: [] }),
+        },
+        env,
+      );
+      expect(res.status).toBe(403);
+    });
+
     it("returns 400 for missing events array", async () => {
       const { app, env } = await createApp();
       const res = await app.request(
@@ -683,6 +822,61 @@ describe("routes/attendance", () => {
       expect(res.status).toBe(500);
       const body = (await res.json()) as { error: { code: string } };
       expect(body.error.code).toBe("FAS_QUERY_FAILED");
+    });
+  });
+
+  describe("formatting edge cases", () => {
+    it("returns null checkin/checkout for missing times", async () => {
+      mockGetQueue.push({ externalWorkerId: "FAS-001" });
+      mockFasCheckWorkerAttendance.mockResolvedValueOnce({
+        hasAttendance: true,
+        records: [
+          {
+            emplCd: "FAS-001",
+            accsDay: "20250101",
+            inTime: null,
+            outTime: null,
+          },
+        ],
+      });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/attendance/today", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          records: Array<{
+            checkinAt: string | null;
+            checkoutAt: string | null;
+          }>;
+        };
+      };
+      expect(body.data.records[0].checkinAt).toBeNull();
+      expect(body.data.records[0].checkoutAt).toBeNull();
+    });
+
+    it("ignores linked users missing externalWorkerId in report map", async () => {
+      const { authMiddleware } = await import("../../middleware/auth");
+      vi.mocked(authMiddleware).mockImplementationOnce(async (c, next) => {
+        c.set("auth", makeAuth("SUPER_ADMIN", "admin-1"));
+        await next();
+      });
+
+      mockFasGetDailyAttendance.mockResolvedValue([
+        {
+          accsDay: "20250101",
+          emplCd: "E001",
+          inTime: "0800",
+          outTime: "1700",
+        },
+      ]);
+      mockAllQueue.push([
+        { id: "u-1", externalWorkerId: null, name: "NoExt", nameMasked: "N**" },
+      ]);
+
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN", "admin-1"));
+      const res = await app.request("/attendance/site/site-1/report", {}, env);
+      expect(res.status).toBe(200);
     });
   });
 });

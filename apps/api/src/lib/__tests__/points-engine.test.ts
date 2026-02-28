@@ -94,6 +94,8 @@ vi.mock("../../db/schema", () => ({
 import {
   calculateApprovalPoints,
   calculateFalseReportPenalty,
+  awardApprovalPoints,
+  applyFalseReportPenalty,
 } from "../points-engine";
 
 const baseInput = {
@@ -209,6 +211,14 @@ describe("calculateApprovalPoints", () => {
     expect(result.riskBonus).toBe(0);
     expect(result.totalPoints).toBe(10);
   });
+
+  it("uses previous KST day before 05:00 cutoff", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T19:00:00.000Z"));
+    const result = await calculateApprovalPoints(mockDb as never, baseInput);
+    expect(result.blocked).toBe(false);
+    vi.useRealTimers();
+  });
 });
 
 describe("calculateFalseReportPenalty", () => {
@@ -238,5 +248,230 @@ describe("calculateFalseReportPenalty", () => {
       "post-1",
     );
     expect(result.penaltyAmount).toBe(-0);
+  });
+
+  it("returns zero penalty when original amount is zero", async () => {
+    falseReportResult = [{ amount: 0 }];
+    const result = await calculateFalseReportPenalty(
+      mockDb as never,
+      "user-1",
+      "site-1",
+      "post-1",
+    );
+    expect(result.penaltyAmount).toBe(-0);
+  });
+});
+
+describe("awardApprovalPoints", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDb.select.mockImplementation((selectArg: Record<string, unknown>) => {
+      if (selectArg && "postCount" in selectArg) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(dailyStatsResult),
+          }),
+        } as never;
+      }
+      if (selectArg && "defaultAmount" in selectArg) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue(sitePolicyResult),
+            }),
+          }),
+        } as never;
+      }
+      if (selectArg && "amount" in selectArg) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue(falseReportResult),
+            }),
+          }),
+        } as never;
+      }
+      return {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue(duplicateCheckResult),
+          }),
+        }),
+      } as never;
+    });
+    mockDb.insert.mockImplementation(() => ({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: "ledger-1" }]),
+      }),
+    }));
+    dailyStatsResult = [{ postCount: 0, totalPoints: 0 }];
+    sitePolicyResult = [];
+    duplicateCheckResult = [];
+    falseReportResult = [];
+  });
+
+  it("returns existing ledger without re-award", async () => {
+    const selectSpy = vi.spyOn(mockDb, "select");
+    selectSpy
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi
+              .fn()
+              .mockResolvedValue([
+                { id: "ledger-existing", amount: 12, reasonText: "already" },
+              ]),
+          }),
+        }),
+      } as never)
+      .mockImplementation((arg: Record<string, unknown>) => {
+        if (arg && "postCount" in arg) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue(dailyStatsResult),
+            }),
+          } as never;
+        }
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        } as never;
+      });
+
+    const result = await awardApprovalPoints(
+      mockDb as never,
+      baseInput,
+      "admin-1",
+    );
+    expect(result.awarded).toBe(true);
+    expect(result.ledgerId).toBe("ledger-existing");
+    expect(result.result.totalPoints).toBe(12);
+    selectSpy.mockRestore();
+  });
+
+  it("returns not-awarded when calculated points are blocked", async () => {
+    duplicateCheckResult = [{ id: "dup" }];
+    const result = await awardApprovalPoints(
+      mockDb as never,
+      baseInput,
+      "admin-1",
+    );
+    expect(result.awarded).toBe(false);
+    expect(result.result.blocked).toBe(true);
+  });
+
+  it("inserts ledger and returns generated id on success", async () => {
+    const result = await awardApprovalPoints(
+      mockDb as never,
+      baseInput,
+      "admin-1",
+    );
+    expect(result.awarded).toBe(true);
+    expect(result.ledgerId).toBe("ledger-1");
+  });
+
+  it("returns empty ledger id when insert returning is empty", async () => {
+    const insertMock = vi.spyOn(mockDb, "insert").mockReturnValueOnce({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([]),
+      }),
+    } as never);
+
+    const result = await awardApprovalPoints(
+      mockDb as never,
+      baseInput,
+      "admin-1",
+    );
+    expect(result.awarded).toBe(true);
+    expect(result.ledgerId).toBe("");
+    insertMock.mockRestore();
+  });
+});
+
+describe("applyFalseReportPenalty", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    falseReportResult = [{ amount: 10 }];
+  });
+
+  it("returns existing penalty ledger when present", async () => {
+    const selectSpy = vi.spyOn(mockDb, "select");
+    selectSpy
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi
+              .fn()
+              .mockResolvedValue([{ id: "penalty-1", amount: -20 }]),
+          }),
+        }),
+      } as never)
+      .mockImplementation((arg: Record<string, unknown>) => {
+        if (arg && "amount" in arg) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ amount: 10 }]),
+              }),
+            }),
+          } as never;
+        }
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        } as never;
+      });
+
+    const result = await applyFalseReportPenalty(
+      mockDb as never,
+      "user-1",
+      "site-1",
+      "post-1",
+      "admin-1",
+    );
+    expect(result.ledgerId).toBe("penalty-1");
+    expect(result.penaltyAmount).toBe(-20);
+    selectSpy.mockRestore();
+  });
+
+  it("creates penalty ledger when missing", async () => {
+    const selectSpy = vi.spyOn(mockDb, "select");
+    selectSpy
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as never)
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ amount: 10 }]),
+          }),
+        }),
+      } as never);
+
+    const randomUuidSpy = vi
+      .spyOn(crypto, "randomUUID")
+      .mockReturnValue("new-ledger-id");
+
+    const result = await applyFalseReportPenalty(
+      mockDb as never,
+      "user-1",
+      "site-1",
+      "post-1",
+      "admin-1",
+    );
+    expect(result.ledgerId).toBe("new-ledger-id");
+    expect(result.penaltyAmount).toBe(-20);
+    selectSpy.mockRestore();
+    randomUuidSpy.mockRestore();
   });
 });

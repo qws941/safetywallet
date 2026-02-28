@@ -13,9 +13,19 @@ const router = {
 };
 
 let pathname = "/";
+let searchParams = new URLSearchParams();
 
 export function setMockPathname(path: string) {
   pathname = path;
+}
+
+export function setMockSearchParams(
+  params: Record<string, string> | URLSearchParams,
+) {
+  searchParams =
+    params instanceof URLSearchParams
+      ? params
+      : new URLSearchParams(Object.entries(params));
 }
 
 export function getMockRouter() {
@@ -25,6 +35,7 @@ export function getMockRouter() {
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
   useRouter: () => router,
+  useSearchParams: () => searchParams,
 }));
 
 vi.mock("next/link", () => ({
@@ -39,8 +50,20 @@ vi.mock("next/link", () => ({
     createElement("a", { href, ...rest }, children),
 }));
 
+vi.mock("next/image", () => ({
+  default: ({
+    src,
+    alt,
+    ...rest
+  }: {
+    src: string;
+    alt: string;
+  } & Record<string, unknown>) => createElement("img", { src, alt, ...rest }),
+}));
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   pathname = "/";
+  searchParams = new URLSearchParams();
 });

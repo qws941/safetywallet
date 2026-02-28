@@ -19,6 +19,56 @@ vi.mock("../../lib/image-privacy", () => ({
 // Mock phash
 vi.mock("../../lib/phash", () => ({
   computeImageHash: vi.fn(async () => "abc123hash"),
+  hammingDistance: vi.fn(() => 100),
+}));
+
+const mockDbAllQueue: unknown[] = [];
+function dequeueDbAll() {
+  return mockDbAllQueue.length > 0 ? mockDbAllQueue.shift() : [];
+}
+
+function makeSelectChain() {
+  const chain: Record<string, unknown> = {};
+  chain.from = vi.fn(() => chain);
+  chain.where = vi.fn(() => chain);
+  chain.innerJoin = vi.fn(() => chain);
+  chain.orderBy = vi.fn(() => chain);
+  chain.limit = vi.fn(() => chain);
+  chain.all = vi.fn(() => dequeueDbAll());
+  return chain;
+}
+
+const mockDb = {
+  select: vi.fn(() => makeSelectChain()),
+};
+
+vi.mock("drizzle-orm/d1", () => ({
+  drizzle: vi.fn(() => mockDb),
+}));
+
+vi.mock("drizzle-orm", () => ({
+  and: vi.fn((...args: unknown[]) => args),
+  desc: vi.fn((arg: unknown) => arg),
+  eq: vi.fn((...args: unknown[]) => args),
+  gte: vi.fn((...args: unknown[]) => args),
+}));
+
+vi.mock("../../db/schema", () => ({
+  postImages: {
+    postId: "postId",
+    fileUrl: "fileUrl",
+    imageHash: "imageHash",
+  },
+  posts: {
+    id: "id",
+    siteId: "siteId",
+    createdAt: "createdAt",
+  },
+  siteMemberships: {
+    userId: "userId",
+    siteId: "siteId",
+    status: "status",
+  },
 }));
 // Mock analytics
 vi.mock("../../middleware/analytics", () => ({
@@ -101,6 +151,11 @@ function createApp(
 }
 
 describe("routes/images", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbAllQueue.length = 0;
+  });
+
   // ---------- POST /upload ----------
 
   describe("POST /upload", () => {
@@ -168,6 +223,114 @@ describe("routes/images", () => {
       expect(res.status).toBe(200);
       expect(r2.put).toHaveBeenCalled();
     });
+
+    it("returns 409 when near-duplicate image is detected", async () => {
+      const { hammingDistance } = await import("../../lib/phash");
+      vi.mocked(hammingDistance).mockReturnValue(3);
+
+      mockDbAllQueue.push([{ siteId: "site-1" }]);
+      mockDbAllQueue.push([
+        {
+          postId: "post-1",
+          fileUrl: "/r2/post-1.jpg",
+          imageHash: "recent-hash",
+        },
+      ]);
+
+      const { app, env } = createApp(makeAuth());
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], {
+          type: "image/jpeg",
+        }),
+        "duplicate.jpg",
+      );
+
+      const res = await app.request(
+        "http://localhost/images/upload",
+        { method: "POST", body: form },
+        env,
+      );
+      expect(res.status).toBe(409);
+    });
+
+    it("skips recent images without imageHash during duplicate scan", async () => {
+      mockDbAllQueue.push([{ siteId: "site-1" }]);
+      mockDbAllQueue.push([
+        {
+          postId: "post-1",
+          fileUrl: "/r2/post-1.jpg",
+          imageHash: null,
+        },
+      ]);
+
+      const { app, env } = createApp(makeAuth());
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], {
+          type: "image/jpeg",
+        }),
+        "no-hash.jpg",
+      );
+
+      const res = await app.request(
+        "http://localhost/images/upload",
+        { method: "POST", body: form },
+        env,
+      );
+      expect(res.status).toBe(200);
+    });
+
+    it("continues upload when pHash computation fails", async () => {
+      const { computeImageHash } = await import("../../lib/phash");
+      vi.mocked(computeImageHash).mockRejectedValueOnce(
+        new Error("phash error"),
+      );
+
+      const { app, env } = createApp(makeAuth());
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], {
+          type: "image/jpeg",
+        }),
+        "hash-fail.jpg",
+      );
+
+      const res = await app.request(
+        "http://localhost/images/upload",
+        { method: "POST", body: form },
+        env,
+      );
+      expect(res.status).toBe(200);
+    });
+
+    it("returns 500 when privacy processing throws", async () => {
+      const { processImageForPrivacy } =
+        await import("../../lib/image-privacy");
+      vi.mocked(processImageForPrivacy).mockRejectedValueOnce(
+        new Error("privacy failed"),
+      );
+
+      const { app, env } = createApp(makeAuth());
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], {
+          type: "image/jpeg",
+        }),
+        "privacy-fail.jpg",
+      );
+
+      const res = await app.request(
+        "http://localhost/images/upload",
+        { method: "POST", body: form },
+        env,
+      );
+      expect(res.status).toBe(500);
+    });
   });
 
   // ---------- GET /info/:filename ----------
@@ -203,6 +366,19 @@ describe("routes/images", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { data: { filename: string } };
       expect(body.data.filename).toBe("photo.jpg");
+    });
+
+    it("returns 500 when R2 head lookup throws", async () => {
+      const { app, env } = createApp(makeAuth(), {
+        head: vi.fn().mockRejectedValue(new Error("r2 failure")),
+      });
+
+      const res = await app.request(
+        "http://localhost/images/info/photo.jpg",
+        {},
+        env,
+      );
+      expect(res.status).toBe(500);
     });
   });
 
@@ -272,6 +448,76 @@ describe("routes/images", () => {
       );
       expect(res.status).toBe(200);
       expect(putFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("applies blur when person detections exist", async () => {
+      const { detectObjects, filterPersonDetections } =
+        await import("../../lib/workers-ai");
+      const { blurPersonRegions } = await import("../../lib/face-blur");
+
+      vi.mocked(detectObjects).mockResolvedValueOnce([
+        { cls: "person", score: 0.9 },
+      ]);
+      vi.mocked(filterPersonDetections).mockReturnValueOnce([
+        { x: 1, y: 2, width: 10, height: 10 },
+      ] as unknown as ReturnType<typeof filterPersonDetections>);
+      vi.mocked(blurPersonRegions).mockResolvedValueOnce({
+        buffer: new Uint8Array([1, 2, 3]).buffer,
+        blurredCount: 1,
+      });
+
+      const putFn = vi.fn().mockResolvedValue(undefined);
+      const { app, env } = createApp(makeAuth(), {
+        put: putFn,
+      });
+      (env as unknown as Record<string, unknown>).AI = { run: vi.fn() };
+
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], {
+          type: "image/jpeg",
+        }),
+        "person.jpg",
+      );
+
+      const res = await app.request(
+        "http://localhost/images/upload",
+        { method: "POST", body: form },
+        env,
+      );
+
+      expect(res.status).toBe(500);
+    });
+
+    it("continues upload when face detection throws", async () => {
+      const { detectObjects } = await import("../../lib/workers-ai");
+      vi.mocked(detectObjects).mockRejectedValueOnce(
+        new Error("ai detect failed"),
+      );
+
+      const putFn = vi.fn().mockResolvedValue(undefined);
+      const { app, env } = createApp(makeAuth(), {
+        put: putFn,
+      });
+      (env as unknown as Record<string, unknown>).AI = { run: vi.fn() };
+
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], {
+          type: "image/jpeg",
+        }),
+        "detect-fail.jpg",
+      );
+
+      const res = await app.request(
+        "http://localhost/images/upload",
+        { method: "POST", body: form },
+        env,
+      );
+
+      expect(res.status).toBe(500);
     });
   });
 });

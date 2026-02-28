@@ -206,6 +206,22 @@ describe("routes/points", () => {
       );
       expect(res.status).toBe(400);
     });
+
+    it("returns 400 when target user is not active site member", async () => {
+      mockGet.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/points/award",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(validBody),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
   });
 
   describe("GET /points/balance", () => {
@@ -286,6 +302,99 @@ describe("routes/points", () => {
       );
       expect(res.status).toBe(400);
     });
+
+    it("returns 403 when non-super-admin without admin membership views other user", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth("WORKER", "user-self"));
+      const res = await app.request(
+        `/points/history?userId=${USER_ID}&siteId=${SITE_ID}`,
+        {},
+        env,
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 403 when requester is not site member for filtered site history", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN", "admin-1"));
+      const res = await app.request(
+        `/points/history?siteId=${SITE_ID}`,
+        {},
+        env,
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns paginated history with explicit limit and offset", async () => {
+      mockGet.mockResolvedValueOnce({
+        userId: "user-1",
+        siteId: SITE_ID,
+        status: "ACTIVE",
+      });
+      mockAll.mockResolvedValueOnce([{ id: "entry-1", amount: 10 }]);
+      mockGet.mockResolvedValueOnce({ count: 1 });
+
+      const { app, env } = await createApp(makeAuth("WORKER", "user-1"));
+      const res = await app.request(
+        `/points/history?siteId=${SITE_ID}&limit=10&offset=5`,
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          entries: unknown[];
+          total: number;
+          limit: number;
+          offset: number;
+        };
+      };
+      expect(body.data.entries).toHaveLength(1);
+      expect(body.data.total).toBe(1);
+      expect(body.data.limit).toBe(10);
+      expect(body.data.offset).toBe(5);
+    });
+  });
+
+  describe("GET /points", () => {
+    it("returns 400 when siteId is missing", async () => {
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request("/points", {}, env);
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 403 when user is not active site member", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request(`/points?siteId=${SITE_ID}`, {}, env);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns balance and latest history", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          userId: "user-1",
+          siteId: SITE_ID,
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce({ total: 250 });
+      mockAll.mockResolvedValueOnce([
+        { id: "e1", amount: 100, reasonCode: "MANUAL_AWARD" },
+      ]);
+
+      const { app, env } = await createApp(makeAuth("WORKER", "user-1"));
+      const res = await app.request(`/points?siteId=${SITE_ID}`, {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { balance: number; history: unknown[] };
+      };
+      expect(body.data.balance).toBe(250);
+      expect(body.data.history).toHaveLength(1);
+    });
   });
 
   describe("GET /points/leaderboard/:siteId", () => {
@@ -323,6 +432,67 @@ describe("routes/points", () => {
       const { app, env } = await createApp(makeAuth("WORKER"));
       const res = await app.request(`/points/leaderboard/${SITE_ID}`, {}, env);
       expect(res.status).toBe(403);
+    });
+
+    it("returns 403 when leaderboard enabled but requester is not active member", async () => {
+      mockGet
+        .mockResolvedValueOnce({ leaderboardEnabled: true })
+        .mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth("WORKER", "user-1"));
+      const res = await app.request(`/points/leaderboard/${SITE_ID}`, {}, env);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns monthly leaderboard and computes myRank when current user is outside top list", async () => {
+      mockGet
+        .mockResolvedValueOnce({ leaderboardEnabled: true })
+        .mockResolvedValueOnce({
+          userId: "user-1",
+          siteId: SITE_ID,
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce({ total: 120 })
+        .mockResolvedValueOnce({ count: 3 });
+
+      mockAll
+        .mockResolvedValueOnce([
+          { userId: "user-2", total: 500 },
+          { userId: "user-3", total: 300 },
+        ])
+        .mockResolvedValueOnce([
+          { id: "user-2", nameMasked: "U2**" },
+          { id: "user-3", nameMasked: "U3**" },
+        ]);
+
+      const { app, env } = await createApp(makeAuth("WORKER", "user-1"));
+      const res = await app.request(
+        `/points/leaderboard/${SITE_ID}?type=monthly&limit=2`,
+        {},
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { leaderboard: Array<{ userId: string }>; myRank: number | null };
+      };
+      expect(body.data.leaderboard).toHaveLength(2);
+      expect(body.data.myRank).toBe(4);
+    });
+  });
+
+  describe("GET /points/ranking/:siteId", () => {
+    it("redirects to leaderboard endpoint with same query string", async () => {
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        `/points/ranking/${SITE_ID}?limit=5`,
+        {},
+        env,
+      );
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toContain(
+        `/api/points/leaderboard/${SITE_ID}?limit=5`,
+      );
     });
   });
 });

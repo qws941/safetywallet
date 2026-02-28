@@ -32,29 +32,39 @@ const mockGet = vi.fn();
 const mockAll = vi.fn();
 const mockInsertValues = vi.fn();
 
+function makeSelectChain() {
+  const chain = new Proxy<Record<string, unknown>>(
+    {},
+    {
+      get(_target, prop) {
+        if (prop === "then") {
+          return (resolve: (value: unknown) => void) => resolve(mockAll());
+        }
+        if (
+          prop === "from" ||
+          prop === "leftJoin" ||
+          prop === "innerJoin" ||
+          prop === "where" ||
+          prop === "groupBy" ||
+          prop === "orderBy"
+        ) {
+          return () => chain;
+        }
+        if (prop === "get") {
+          return mockGet;
+        }
+        if (prop === "all") {
+          return mockAll;
+        }
+        return undefined;
+      },
+    },
+  );
+  return chain;
+}
+
 const mockDb = {
-  select: vi.fn(() => ({
-    from: vi.fn(() => ({
-      leftJoin: vi.fn(() => ({
-        where: vi.fn(() => ({
-          all: mockAll,
-          get: mockGet,
-        })),
-      })),
-      innerJoin: vi.fn(() => ({
-        where: vi.fn(() => ({
-          orderBy: vi.fn().mockReturnValue(mockAll()),
-        })),
-      })),
-      where: vi.fn(() => ({
-        get: mockGet,
-        all: mockAll,
-        groupBy: vi.fn(() => ({
-          all: mockAll,
-        })),
-      })),
-    })),
-  })),
+  select: vi.fn(() => makeSelectChain()),
   insert: vi.fn(() => ({
     values: mockInsertValues.mockResolvedValue({ success: true }),
   })),
@@ -163,6 +173,37 @@ describe("routes/votes", () => {
       };
       expect(body.data.vote).toBeNull();
     });
+
+    it("returns current vote state with candidates and vote counts", async () => {
+      mockGet
+        .mockResolvedValueOnce({ siteId: SITE_ID, userId: "user-1" })
+        .mockResolvedValueOnce({ candidateId: CANDIDATE_ID });
+      mockAll
+        .mockResolvedValueOnce([
+          {
+            id: "cand-row-1",
+            userId: CANDIDATE_ID,
+            source: "AUTO",
+            userName: "홍길동",
+            userNameMasked: "홍*동",
+          },
+        ])
+        .mockResolvedValueOnce([{ candidateId: CANDIDATE_ID, count: 3 }]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/votes/current", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: {
+          hasVoted: boolean;
+          votedCandidateId: string | null;
+          vote: { candidates: Array<{ voteCount: number }> };
+        };
+      };
+      expect(body.data.hasVoted).toBe(true);
+      expect(body.data.votedCandidateId).toBe(CANDIDATE_ID);
+      expect(body.data.vote.candidates[0].voteCount).toBe(3);
+    });
   });
 
   describe("GET /votes/my", () => {
@@ -173,6 +214,25 @@ describe("routes/votes", () => {
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: { code: string } };
       expect(body.error.code).toBe("NO_ACTIVE_SITE");
+    });
+
+    it("returns vote history for active member", async () => {
+      mockGet.mockResolvedValueOnce({ siteId: SITE_ID, userId: "user-1" });
+      mockAll.mockResolvedValueOnce([
+        {
+          id: "vote-1",
+          month: "2025-01",
+          candidateId: CANDIDATE_ID,
+          candidateName: "홍*동",
+          votedAt: new Date().toISOString(),
+        },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/votes/my", {}, env);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: { votes: unknown[] } };
+      expect(body.data.votes).toHaveLength(1);
     });
   });
 
@@ -210,6 +270,174 @@ describe("routes/votes", () => {
         env,
       );
       expect(res.status).toBe(400);
+    });
+
+    it("returns 400 when active voting period is missing", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          siteId: SITE_ID,
+          userId: "user-1",
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/votes",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateId: CANDIDATE_ID,
+            siteId: SITE_ID,
+            month: "2025-01",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("VOTING_CLOSED");
+    });
+
+    it("returns 400 when candidate is not valid for period", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          siteId: SITE_ID,
+          userId: "user-1",
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce({ id: "period-1", month: "2025-01" })
+        .mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/votes",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateId: CANDIDATE_ID,
+            siteId: SITE_ID,
+            month: "2025-01",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("INVALID_CANDIDATE");
+    });
+
+    it("returns 400 when already voted in period", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          siteId: SITE_ID,
+          userId: "user-1",
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce({ id: "period-1", month: "2025-01" })
+        .mockResolvedValueOnce({ userId: CANDIDATE_ID })
+        .mockResolvedValueOnce({ id: "existing-vote" });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/votes",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateId: CANDIDATE_ID,
+            siteId: SITE_ID,
+            month: "2025-01",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("DUPLICATE_VOTE");
+    });
+
+    it("returns 400 when trying to vote for self", async () => {
+      const selfCandidateId = "00000000-0000-0000-0000-000000000003";
+      mockGet
+        .mockResolvedValueOnce({
+          siteId: SITE_ID,
+          userId: selfCandidateId,
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce({ id: "period-1", month: "2025-01" })
+        .mockResolvedValueOnce({ userId: selfCandidateId })
+        .mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth("WORKER", selfCandidateId));
+      const res = await app.request(
+        "/votes",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateId: selfCandidateId,
+            siteId: SITE_ID,
+            month: "2025-01",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("CANNOT_VOTE_SELF");
+    });
+
+    it("casts vote successfully", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          siteId: SITE_ID,
+          userId: "user-1",
+          status: "ACTIVE",
+        })
+        .mockResolvedValueOnce({ id: "period-1", month: "2025-01" })
+        .mockResolvedValueOnce({ userId: CANDIDATE_ID })
+        .mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/votes",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateId: CANDIDATE_ID,
+            siteId: SITE_ID,
+            month: "2025-01",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(200);
+      expect(mockInsertValues).toHaveBeenCalled();
+    });
+  });
+
+  describe("GET /votes/results/:siteId", () => {
+    it("returns monthly vote results", async () => {
+      mockAll.mockResolvedValueOnce([
+        { candidateId: CANDIDATE_ID, name: "홍*동", count: 4 },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        `/votes/results/${SITE_ID}?month=2025-01`,
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { month: string; results: unknown[] };
+      };
+      expect(body.data.month).toBe("2025-01");
+      expect(body.data.results).toHaveLength(1);
     });
   });
 });

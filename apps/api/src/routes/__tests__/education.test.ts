@@ -777,4 +777,402 @@ describe("education", () => {
       expect(res.status).toBe(200);
     });
   });
+
+  describe("GET /youtube-oembed", () => {
+    it("returns 400 when url query is missing", async () => {
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request("/youtube-oembed", {}, env);
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 400 for invalid youtube url", async () => {
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "/youtube-oembed?url=https://example.com/nope",
+        {},
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 502 when youtube responds non-ok", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(new Response(null, { status: 500 }));
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "/youtube-oembed?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        {},
+        env,
+      );
+      expect(res.status).toBe(502);
+      fetchSpy.mockRestore();
+    });
+
+    it("returns parsed oembed payload", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            title: "video-title",
+            author_name: "author",
+            html: "<iframe></iframe>",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request(
+        "/youtube-oembed?url=https://youtu.be/dQw4w9WgXcQ",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: { videoId: string } };
+      expect(body.data.videoId).toBe("dQw4w9WgXcQ");
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("extended quiz question validation", () => {
+    it("rejects invalid questionType", async () => {
+      mockGet.mockResolvedValueOnce({ id: "q1", siteId: "site-1" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "Q?",
+            questionType: "INVALID_TYPE",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("validates OX correctAnswer range", async () => {
+      mockGet.mockResolvedValueOnce({ id: "q1", siteId: "site-1" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "O/X?",
+            questionType: "OX",
+            correctAnswer: 2,
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("creates OX question", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
+        .mockResolvedValueOnce({ id: "qq-ox", questionType: "OX" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "O/X?",
+            questionType: "OX",
+            correctAnswer: 1,
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(201);
+    });
+
+    it("rejects invalid MULTI_CHOICE answer text", async () => {
+      mockGet.mockResolvedValueOnce({ id: "q1", siteId: "site-1" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "multi",
+            questionType: "MULTI_CHOICE",
+            options: ["a", "b"],
+            correctAnswerText: "not-json",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects SHORT_ANSWER without correctAnswerText", async () => {
+      mockGet.mockResolvedValueOnce({ id: "q1", siteId: "site-1" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "short",
+            questionType: "SHORT_ANSWER",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("PUT /quizzes/:quizId/questions/:questionId", () => {
+    it("returns 404 when question missing", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
+        .mockResolvedValueOnce(undefined);
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions/qq1",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: "updated" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("updates question successfully", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: "qq1",
+          quizId: "q1",
+          questionType: "SINGLE_CHOICE",
+          options: ["A", "B"],
+          correctAnswer: 0,
+          correctAnswerText: null,
+        })
+        .mockResolvedValueOnce({ id: "qq1", question: "updated" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions/qq1",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: "updated", correctAnswer: 1 }),
+        },
+        env,
+      );
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("DELETE /quizzes/:quizId/questions/:questionId", () => {
+    it("deletes existing question", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "qq1", quizId: "q1" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions/qq1",
+        { method: "DELETE" },
+        env,
+      );
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("additional quiz attempt branches", () => {
+    it("returns 400 when quiz has no questions", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          id: "q1",
+          siteId: "site-1",
+          status: "PUBLISHED",
+          passingScore: 70,
+          pointsReward: 10,
+          createdById: "admin-1",
+        })
+        .mockResolvedValueOnce({ role: "WORKER" });
+      mockAll.mockResolvedValueOnce([]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/quizzes/q1/attempt",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: [0] }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 409 when user already completed", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          id: "q1",
+          siteId: "site-1",
+          status: "PUBLISHED",
+          passingScore: 70,
+          pointsReward: 10,
+          createdById: "admin-1",
+        })
+        .mockResolvedValueOnce({ role: "WORKER" })
+        .mockResolvedValueOnce({ id: "existing", passed: true });
+      mockAll.mockResolvedValueOnce([
+        { id: "qq1", correctAnswer: 0, orderIndex: 0 },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/quizzes/q1/attempt",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: [0] }),
+        },
+        env,
+      );
+      expect(res.status).toBe(409);
+    });
+
+    it("returns 409 when already submitted but failed", async () => {
+      mockGet
+        .mockResolvedValueOnce({
+          id: "q1",
+          siteId: "site-1",
+          status: "PUBLISHED",
+          passingScore: 70,
+          pointsReward: 10,
+          createdById: "admin-1",
+        })
+        .mockResolvedValueOnce({ role: "WORKER" })
+        .mockResolvedValueOnce({ id: "existing", passed: false });
+      mockAll.mockResolvedValueOnce([
+        { id: "qq1", correctAnswer: 0, orderIndex: 0 },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/quizzes/q1/attempt",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: [0] }),
+        },
+        env,
+      );
+      expect(res.status).toBe(409);
+    });
+  });
+
+  describe("GET /quizzes/:quizId/my-attempts", () => {
+    it("returns 404 when quiz is missing", async () => {
+      mockGet.mockResolvedValueOnce(undefined);
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/quizzes/q404/my-attempts", {}, env);
+      expect(res.status).toBe(404);
+    });
+
+    it("returns attempts for authorized member", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
+        .mockResolvedValueOnce({ role: "WORKER" });
+      mockAll.mockResolvedValueOnce([{ id: "attempt-1" }]);
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/quizzes/q1/my-attempts", {}, env);
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("more statutory/tbm branches", () => {
+    it("rejects invalid statutory trainingType", async () => {
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/statutory",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siteId: "site-1",
+            userId: "u1",
+            trainingType: "BAD",
+            trainingName: "bad",
+            trainingDate: "2025-01-01",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects invalid statutory status", async () => {
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/statutory",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siteId: "site-1",
+            userId: "u1",
+            trainingType: "NEW_WORKER",
+            trainingName: "name",
+            trainingDate: "2025-01-01",
+            status: "BAD",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects TBM create when leader is not active member", async () => {
+      mockGet.mockResolvedValueOnce(null);
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/tbm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siteId: "site-1",
+            date: "2025-01-01",
+            topic: "topic",
+            leaderId: "leader-1",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 403 for non-member on TBM list", async () => {
+      mockGet.mockResolvedValueOnce(null);
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request("/tbm?siteId=site-1", {}, env);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 403 for non-member on attendees", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "tbm-1", siteId: "site-1" })
+        .mockResolvedValueOnce(null);
+      const { app, env } = await createApp(makeAuth("WORKER"));
+      const res = await app.request("/tbm/tbm-1/attendees", {}, env);
+      expect(res.status).toBe(403);
+    });
+  });
 });

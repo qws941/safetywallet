@@ -276,6 +276,277 @@ describe("admin/users", () => {
       );
       expect(res.status).toBe(400);
     });
+
+    it("resets durable object limiter when RATE_LIMITER is configured", async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValue(new Response(null, { status: 200 }));
+      const mockLimiter = {
+        idFromName: vi.fn().mockReturnValue("limiter-id"),
+        get: vi.fn().mockReturnValue({ fetch: mockFetch }),
+      };
+
+      const { app, env } = await createApp(makeAuth());
+      (env as Record<string, unknown>).RATE_LIMITER = mockLimiter;
+
+      const res = await app.request(
+        "/unlock-user-by-phone",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: "010-9999-0000" }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      expect(mockLimiter.idFromName).toHaveBeenCalled();
+      expect(mockLimiter.get).toHaveBeenCalledWith("limiter-id");
+      expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
+  describe("GET /users", () => {
+    it("returns redacted pii when admin cannot view full pii", async () => {
+      mockGet
+        .mockResolvedValueOnce({ piiViewFull: false })
+        .mockResolvedValueOnce({ count: 1 });
+      mockAll.mockResolvedValueOnce([
+        {
+          id: "u-1",
+          name: "Kim",
+          nameMasked: "K**",
+          phoneEncrypted: "enc-phone",
+          dobEncrypted: "enc-dob",
+          role: "WORKER",
+          falseReportCount: 0,
+          restrictedUntil: null,
+          createdAt: new Date("2025-01-01T00:00:00Z"),
+        },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/users?limit=10&offset=0", {}, env);
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { users: Array<{ phone: string | null; dob: string | null }> };
+      };
+      expect(body.data.users[0].phone).toBeNull();
+      expect(body.data.users[0].dob).toBeNull();
+    });
+
+    it("returns decrypted pii and logs audit when piiViewFull enabled", async () => {
+      const { decrypt } = await import("../../../lib/crypto");
+      const { logAuditWithContext } = await import("../../../lib/audit");
+
+      vi.mocked(decrypt)
+        .mockResolvedValueOnce("01012345678")
+        .mockResolvedValueOnce("19900101");
+      mockGet
+        .mockResolvedValueOnce({ piiViewFull: true })
+        .mockResolvedValueOnce({ count: 1 });
+      mockAll.mockResolvedValueOnce([
+        {
+          id: "u-1",
+          name: "Kim",
+          nameMasked: "K**",
+          phoneEncrypted: "enc-phone",
+          dobEncrypted: "enc-dob",
+          role: "WORKER",
+          falseReportCount: 0,
+          restrictedUntil: null,
+          createdAt: new Date("2025-01-01T00:00:00Z"),
+        },
+      ]);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/users", {}, env);
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { users: Array<{ phone: string | null; dob: string | null }> };
+      };
+      expect(body.data.users[0].phone).toBe("01012345678");
+      expect(body.data.users[0].dob).toBe("19900101");
+      expect(logAuditWithContext).toHaveBeenCalled();
+    });
+  });
+
+  describe("GET /users/restrictions", () => {
+    it("returns restriction list", async () => {
+      mockAll.mockResolvedValueOnce([
+        { id: "u-1", restrictedUntil: new Date() },
+      ]);
+      mockGet.mockResolvedValueOnce({ count: 1 });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/restrictions?activeOnly=true",
+        {},
+        env,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        data: { users: unknown[]; total: number };
+      };
+      expect(body.data.users).toHaveLength(1);
+      expect(body.data.total).toBe(1);
+    });
+  });
+
+  describe("POST /users/:id/restriction/clear", () => {
+    it("clears restriction and false-report count", async () => {
+      mockGet.mockResolvedValueOnce({ id: "u-1", restrictedUntil: null });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/u-1/restriction/clear",
+        { method: "POST" },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: { user: { id: string } } };
+      expect(body.data.user.id).toBe("u-1");
+    });
+
+    it("returns 404 when user does not exist", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/missing/restriction/clear",
+        { method: "POST" },
+        env,
+      );
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("PATCH /users/:id/role", () => {
+    it("returns 400 for invalid role", async () => {
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/u-1/role",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "NOPE" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 404 when target user is not found before update", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/u-missing/role",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "WORKER" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 404 when update returns null", async () => {
+      mockGet
+        .mockResolvedValueOnce({ role: "WORKER" })
+        .mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/u-1/role",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "SITE_ADMIN" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("updates role successfully", async () => {
+      const { logAuditWithContext } = await import("../../../lib/audit");
+      mockGet
+        .mockResolvedValueOnce({ role: "WORKER" })
+        .mockResolvedValueOnce({ id: "u-1", role: "SITE_ADMIN" });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/u-1/role",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "SITE_ADMIN" }),
+        },
+        env,
+      );
+      expect(res.status).toBe(200);
+      expect(logAuditWithContext).toHaveBeenCalled();
+    });
+  });
+
+  describe("POST /users/:id/lock", () => {
+    it("locks user", async () => {
+      mockGet.mockResolvedValueOnce({ id: "u-1" });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request("/users/u-1/lock", { method: "POST" }, env);
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: { locked: boolean } };
+      expect(body.data.locked).toBe(true);
+    });
+
+    it("returns 404 when lock target is missing", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/missing/lock",
+        { method: "POST" },
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("POST /users/:id/unlock", () => {
+    it("unlocks user", async () => {
+      mockGet.mockResolvedValueOnce({ id: "u-1" });
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/u-1/unlock",
+        { method: "POST" },
+        env,
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { data: { locked: boolean } };
+      expect(body.data.locked).toBe(false);
+    });
+
+    it("returns 404 when unlock target is missing", async () => {
+      mockGet.mockResolvedValueOnce(null);
+
+      const { app, env } = await createApp(makeAuth());
+      const res = await app.request(
+        "/users/missing/unlock",
+        { method: "POST" },
+        env,
+      );
+      expect(res.status).toBe(404);
+    });
   });
 
   describe("DELETE /users/:id/emergency-purge", () => {
@@ -442,6 +713,43 @@ describe("admin/users", () => {
       );
 
       expect(res.status).toBe(410);
+    });
+
+    it("continues purge when R2 image delete throws", async () => {
+      mockGet.mockResolvedValueOnce({
+        id: "u-err",
+        name: "Park",
+        deletedAt: null,
+      });
+      mockAll
+        .mockResolvedValueOnce([{ id: "p1" }])
+        .mockResolvedValueOnce([{ fileUrl: "broken.jpg" }]);
+
+      mockDb.delete.mockImplementation(() => {
+        const chain = makeDeleteChain();
+        chain.returning = vi.fn().mockReturnValue([{ id: "m1" }]);
+        return chain;
+      });
+
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      (
+        env.R2 as { delete: ReturnType<typeof vi.fn> }
+      ).delete.mockRejectedValueOnce(new Error("r2 failure"));
+
+      const res = await app.request(
+        "/users/u-err/emergency-purge",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason: "Emergency legal compliance cleanup",
+            confirmUserId: "u-err",
+          }),
+        },
+        env,
+      );
+
+      expect(res.status).toBe(200);
     });
   });
 });
