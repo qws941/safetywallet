@@ -41,7 +41,7 @@ export default defineConfig({
     },
     {
       name: "admin-setup",
-      testDir: "./e2e/admin-app",
+      testDir: "./e2e/admin",
       testMatch: /admin\.setup\.ts/,
       use: {
         ...devices["Desktop Chrome"],
@@ -49,22 +49,22 @@ export default defineConfig({
       },
     },
     {
-      name: "worker-app",
-      testDir: "./e2e/worker-app",
+      name: "worker",
+      testDir: "./e2e/worker",
       use: {
         ...devices["Desktop Chrome"],
         baseURL: WORKER_APP_URL,
       },
     },
     {
-      name: "admin-app",
-      testDir: "./e2e/admin-app",
+      name: "admin",
+      testDir: "./e2e/admin",
       testIgnore: /admin\.setup\.ts/,
       dependencies: ["admin-setup"],
       use: {
         ...devices["Desktop Chrome"],
         baseURL: ADMIN_APP_URL,
-        storageState: "e2e/admin-app/.auth/admin.json",
+        storageState: "e2e/admin/.auth/admin.json",
       },
     },
     {

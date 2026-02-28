@@ -15,9 +15,9 @@ function kebabCase(value) {
 
 function getWorkspacePackageFiles() {
   return [
-    path.join(repoRoot, "apps", "api-worker", "package.json"),
-    path.join(repoRoot, "apps", "admin-app", "package.json"),
-    path.join(repoRoot, "apps", "worker-app", "package.json"),
+    path.join(repoRoot, "apps", "api", "package.json"),
+    path.join(repoRoot, "apps", "admin", "package.json"),
+    path.join(repoRoot, "apps", "worker", "package.json"),
     path.join(repoRoot, "packages", "types", "package.json"),
     path.join(repoRoot, "packages", "ui", "package.json"),
   ];

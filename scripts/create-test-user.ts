@@ -105,12 +105,12 @@ console.log(`✅ SQL generated: ${outputPath}`);
 console.log("");
 console.log("To apply locally:");
 console.log(
-  "  npx wrangler d1 execute safework2-db --local --file=./scripts/create-test-user.sql",
+  "  npx wrangler d1 execute safetywallet-db --local --file=./scripts/create-test-user.sql",
 );
 console.log("");
 console.log("To apply to production:");
 console.log(
-  "  npx wrangler d1 execute safework2-db --remote --file=./scripts/create-test-user.sql",
+  "  npx wrangler d1 execute safetywallet-db --remote --file=./scripts/create-test-user.sql",
 );
 console.log("");
 console.log("Login credentials:");

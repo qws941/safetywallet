@@ -260,7 +260,7 @@ describe("scheduled helpers", () => {
       await emitSyncFailureToElk(
         {
           ELASTICSEARCH_URL: "https://elastic.example",
-          ELASTICSEARCH_INDEX_PREFIX: "safework2-logs",
+          ELASTICSEARCH_INDEX_PREFIX: "safetywallet-logs",
         } as Env,
         {
           timestamp: "2026-02-20T02:03:04.567Z",
@@ -275,7 +275,7 @@ describe("scheduled helpers", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       const [url] = fetchSpy.mock.calls[0];
       expect(String(url)).toBe(
-        "https://elastic.example/safework2-logs-2026.02.20/_doc/FAS_WORKER-corr-123",
+        "https://elastic.example/safetywallet-logs-2026.02.20/_doc/FAS_WORKER-corr-123",
       );
     });
 

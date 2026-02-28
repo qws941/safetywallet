@@ -21,7 +21,20 @@ export interface QueuedRequest {
   retryCount: number;
 }
 
-const QUEUE_KEY = "safework2_offline_queue";
+const QUEUE_KEY = "safetywallet_offline_queue";
+
+// Migrate legacy key on first access
+if (typeof window !== "undefined") {
+  try {
+    const legacy = localStorage.getItem("safework2_offline_queue");
+    if (legacy) {
+      localStorage.setItem(QUEUE_KEY, legacy);
+      localStorage.removeItem("safework2_offline_queue");
+    }
+  } catch {
+    // ignore
+  }
+}
 
 function getQueue(): QueuedRequest[] {
   try {

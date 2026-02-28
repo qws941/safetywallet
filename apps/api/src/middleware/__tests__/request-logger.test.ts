@@ -35,7 +35,7 @@ function makeEnv(): Env {
     REQUIRE_ATTENDANCE_FOR_LOGIN: "false",
     ENVIRONMENT: "test",
     ELASTICSEARCH_URL: "http://localhost:9200",
-    ELASTICSEARCH_INDEX_PREFIX: "safework2-logs",
+    ELASTICSEARCH_INDEX_PREFIX: "safetywallet-logs",
   } as unknown as Env;
 }
 

@@ -79,14 +79,14 @@ describe("createLogger", () => {
       .mockResolvedValue(new Response(null, { status: 201 }));
     const logger = createLogger("unit-test", {
       elasticsearchUrl: "https://elastic.example",
-      elasticsearchIndexPrefix: "safework2-logs",
+      elasticsearchIndexPrefix: "safetywallet-logs",
     });
 
     logger.warn("index-me-override");
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     const [url] = fetchSpy.mock.calls[0];
-    expect(String(url)).toContain("https://elastic.example/safework2-logs-");
+    expect(String(url)).toContain("https://elastic.example/safetywallet-logs-");
   });
 
   it("handles Elasticsearch fetch rejection gracefully", async () => {

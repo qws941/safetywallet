@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI Guard: Ensure root wrangler.toml and apps/api-worker/wrangler.toml
+ * CI Guard: Ensure root wrangler.toml and apps/api/wrangler.toml
  * share the same binding IDs (database_id, hyperdrive id, kv id, crons).
  *
  * Resource names (bucket_name, queue, database_name) are allowed to differ
@@ -11,13 +11,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..", "wrangler.toml");
-const APP = path.resolve(
-  __dirname,
-  "..",
-  "apps",
-  "api-worker",
-  "wrangler.toml",
-);
+const APP = path.resolve(__dirname, "..", "apps", "api", "wrangler.toml");
 
 function readToml(filePath) {
   if (!fs.existsSync(filePath)) {

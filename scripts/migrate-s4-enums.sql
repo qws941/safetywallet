@@ -1,6 +1,6 @@
 -- Migration: S4 Post State Machine Enum Values
 -- Purpose: Update existing D1 data from old enum values to new ones
--- Run via: wrangler d1 execute safework2-db --file=scripts/migrate-s4-enums.sql
+-- Run via: wrangler d1 execute safetywallet-db --file=scripts/migrate-s4-enums.sql
 -- Date: 2026-02-11
 
 -- ReviewStatus migrations (posts table)

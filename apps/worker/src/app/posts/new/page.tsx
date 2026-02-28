@@ -39,7 +39,21 @@ export default function NewPostPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
 
-  const DRAFT_KEY = `safework2_post_draft_${currentSiteId || "default"}`;
+  const DRAFT_KEY = `safetywallet_post_draft_${currentSiteId || "default"}`;
+  const LEGACY_DRAFT_KEY = `safework2_post_draft_${currentSiteId || "default"}`;
+
+  // Migrate legacy draft key on first render
+  useEffect(() => {
+    try {
+      const legacy = localStorage.getItem(LEGACY_DRAFT_KEY);
+      if (legacy) {
+        localStorage.setItem(DRAFT_KEY, legacy);
+        localStorage.removeItem(LEGACY_DRAFT_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [DRAFT_KEY, LEGACY_DRAFT_KEY]);
 
   const categoryOptions = [
     { value: Category.HAZARD, label: "posts.category.hazard", icon: "⚠️" },

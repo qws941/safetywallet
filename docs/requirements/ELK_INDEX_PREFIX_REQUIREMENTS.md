@@ -10,7 +10,8 @@
 
 Current operations observed index-name drift between runtime and code:
 
-- Runtime ELK index: `safework2-logs-*`
+Runtime ELK index: `safetywallet-logs-*`
+
 - Current code default index: `safewallet-logs-*`
 
 This mismatch causes query confusion, dashboard inconsistency, and delayed incident response.
@@ -93,9 +94,10 @@ The same prefix rule MUST be applied to:
 
 ### AC-1. Prefix Override Works
 
-- Given `ELASTICSEARCH_INDEX_PREFIX=safework2-logs`,
+Given `ELASTICSEARCH_INDEX_PREFIX=safetywallet-logs`,
+
 - When warn/error logs are emitted,
-- Then write target includes `/safework2-logs-YYYY.MM.DD/_doc`.
+  Then write target includes `/safetywallet-logs-YYYY.MM.DD/_doc`.
 
 ### AC-2. Default Fallback Works
 
@@ -148,5 +150,6 @@ The same prefix rule MUST be applied to:
 
 ## 10. Operational Notes
 
-- If production still writes to `safework2-logs-*`, set `ELASTICSEARCH_INDEX_PREFIX=safework2-logs` until full cutover.
+If production still writes to `safetywallet-logs-*`, set `ELASTICSEARCH_INDEX_PREFIX=safetywallet-logs` until full cutover.
+
 - For final rename to `safewallet-logs-*`, switch only this variable and verify fresh index creation for the current date.

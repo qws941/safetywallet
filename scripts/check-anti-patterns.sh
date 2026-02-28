@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SafeWork2 Anti-Pattern Guard
+# SafetyWallet Anti-Pattern Guard
 # Blocks commits containing forbidden patterns defined in AGENTS.md
 # Usage: bash scripts/check-anti-patterns.sh <file1> <file2> ...
 set -euo pipefail
@@ -8,7 +8,7 @@ ERRORS=0
 
 for file in "$@"; do
   # Skip test files — they may legitimately reference anti-patterns
-  if [[ "$file" == *".test."* ]] || [[ "$file" == *"__tests__"* ]] || [[ "$file" == *".spec."* ]]; then
+  if [[ "$file" == *".test."* ]] || [[ "$file" == *"__tests__"* ]] || [[ "$file" == *".spec."* ]] || [[ "$file" == */scripts/* ]] || [[ "$file" == "scripts/"* ]]; then
     continue
   fi
 

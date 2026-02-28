@@ -39,14 +39,14 @@ Production workflow uses fallback resolution per target:
 
 ### Cloudflare Resources
 
-- D1 databases: `safework2-db` (prod), `safework2-db-dev` (dev)
-- R2 buckets: `safework2-images`, `safework2-static`
-- KV namespace: `safework2-cache` (optional)
+D1 databases: `safetywallet-db` (prod), `safetywallet-db-dev` (dev)
+R2 buckets: `safetywallet-images`, `safetywallet-static`
+KV namespace: `safetywallet-cache` (optional)
 
 Naming policy:
 
 - Runtime worker identity and hosts use `safewallet` / `safewallet-dev` only.
-- `safework2-*` resource names are legacy infrastructure identifiers and stay unchanged in this phase.
+  `safetywallet-*` resource names are legacy infrastructure identifiers and stay unchanged in this phase.
 
 The authoritative runtime binding config is `apps/api-worker/wrangler.toml`.
 
@@ -96,7 +96,7 @@ npm --prefix apps/api-worker run db:migrate:prod
 Always snapshot before risky schema changes.
 
 ```bash
-npx wrangler d1 export safework2-db --output=backup-$(date +%Y%m%d).sql
+npx wrangler d1 export safetywallet-db --output=backup-$(date +%Y%m%d).sql
 ```
 
 ## Rollback
@@ -117,7 +117,7 @@ Rollback path is worker only.
 If backup exists:
 
 ```bash
-npx wrangler d1 execute safework2-db --file=backup.sql --config apps/api-worker/wrangler.toml
+npx wrangler d1 execute safetywallet-db --file=backup.sql --config apps/api-worker/wrangler.toml
 ```
 
 If no backup exists, use Cloudflare point-in-time recovery options for the configured database.

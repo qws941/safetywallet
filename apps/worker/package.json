@@ -1,5 +1,5 @@
 {
-  "name": "@safetywallet/worker-app",
+  "name": "@safetywallet/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",

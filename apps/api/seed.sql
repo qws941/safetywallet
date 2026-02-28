@@ -1,6 +1,6 @@
 -- SafetyWallet D1 Seed Data
 -- Generated for test accounts
--- Usage: npx wrangler d1 execute safework2-db --file=./seed.sql
+-- Usage: npx wrangler d1 execute safetywallet-db --file=./seed.sql
 
 -- ============================================
 -- Test Users

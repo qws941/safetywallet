@@ -16,11 +16,11 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "build:api-worker": "npm run build --workspace=packages/types && npm run build --workspace=apps/api-worker",
-    "build:static": "rm -rf dist && mkdir -p dist/admin && cp -r apps/worker-app/out/* dist/ && cp -r apps/admin-app/out/* dist/admin/",
-    "build:one-worker": "npm run build:api-worker",
+    "build:api": "npm run build --workspace=packages/types && npm run build --workspace=apps/api",
+    "build:static": "rm -rf dist && mkdir -p dist/admin && cp -r apps/worker/out/* dist/ && cp -r apps/admin/out/* dist/admin/",
+    "build:one-worker": "npm run build:api",
     "dev": "turbo run dev",
-    "deploy:api-worker": "node -e \"console.error('Manual deploy is disabled. Deploy is Git-ref driven via CI on master.'); process.exit(1)\"",
+    "deploy:api": "node -e \"console.error('Manual deploy is disabled. Deploy is Git-ref driven via CI on master.'); process.exit(1)\"",
     "lint": "turbo run lint",
     "lint:naming": "node scripts/lint-naming.js",
     "test": "turbo run test",
@@ -35,7 +35,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo run clean && rm -rf node_modules",
-    "db:generate": "npm run db:generate --workspace=apps/api-worker",
+    "db:generate": "npm run db:generate --workspace=apps/api",
     "prepare": "husky"
   },
   "lint-staged": {
