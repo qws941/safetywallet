@@ -10,7 +10,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, isAdmin, _hasHydrated } = useAuthStore();
 
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname === "/login" || pathname === "/login/";
 
   useEffect(() => {
     if (isLoginPage || !_hasHydrated) return;
