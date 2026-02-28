@@ -312,12 +312,25 @@ attendanceRoute.get("/today", authMiddleware, async (c) => {
   const { source, rawEmplCd } = resolveFasSourceByWorkerId(
     user.externalWorkerId,
   );
-  const attendanceResult = await fasCheckWorkerAttendance(
-    hyperdrive,
-    rawEmplCd,
-    todayAccsDay,
-    source,
-  );
+  let attendanceResult;
+  try {
+    attendanceResult = await fasCheckWorkerAttendance(
+      hyperdrive,
+      rawEmplCd,
+      todayAccsDay,
+      source,
+    );
+  } catch (err) {
+    const log = c.var.log;
+    log?.warn("FAS attendance query failed, returning empty", {
+      error: {
+        name: err instanceof Error ? err.name : "UnknownError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      endpoint: "/attendance/today",
+    });
+    return success(c, { hasAttendance: false, records: [] });
+  }
 
   return success(c, {
     hasAttendance: attendanceResult.hasAttendance,

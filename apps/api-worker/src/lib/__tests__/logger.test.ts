@@ -22,7 +22,7 @@ describe("createLogger", () => {
       level: "info",
       module: "unit-test",
       message: "hello",
-      service: "safewallet",
+      service: "safetywallet",
       userId: "u-1",
       action: "test_action",
     });
@@ -62,7 +62,7 @@ describe("createLogger", () => {
     expect(waitUntil).toHaveBeenCalledOnce();
 
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(String(url)).toContain("https://elastic.example/safewallet-logs-");
+    expect(String(url)).toContain("https://elastic.example/safetywallet-logs-");
     expect(init?.method).toBe("POST");
 
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;

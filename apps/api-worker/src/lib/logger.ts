@@ -46,8 +46,8 @@ interface LogEntry {
   metadata?: Record<string, unknown>;
 }
 
-const SERVICE_NAME = "safewallet";
-const DEFAULT_ELASTICSEARCH_INDEX_PREFIX = "safewallet-logs";
+const SERVICE_NAME = "safetywallet";
+const DEFAULT_ELASTICSEARCH_INDEX_PREFIX = "safetywallet-logs";
 
 function buildEntry(
   level: LogLevel,

@@ -191,6 +191,7 @@ interface PooledConnection {
 
 const connectionCache = new Map<string, PooledConnection>();
 const CACHE_TIMEOUT_MS = 30 * 1000; // 30 seconds TTL for cached connections
+const FAS_QUERY_TIMEOUT_MS = 10 * 1000; // 10 seconds max per FAS query
 
 /**
  * Get or create a pooled connection with TTL-based caching.
@@ -209,7 +210,12 @@ async function getConnection(
   if (cached && now - cached.lastUsed < CACHE_TIMEOUT_MS) {
     try {
       // Verify connection is still alive with ping
-      await cached.connection.ping();
+      await Promise.race([
+        cached.connection.ping(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("FAS ping timeout")), 5000),
+        ),
+      ]);
       cached.lastUsed = now;
       return cached.connection;
     } catch (err) {
@@ -267,6 +273,27 @@ export function cleanupExpiredConnections(): void {
   }
 }
 
+/**
+ * Execute a query with timeout protection to prevent worker hangs.
+ * Rejects with a timeout error if the query exceeds FAS_QUERY_TIMEOUT_MS.
+ */
+async function queryWithTimeout(
+  conn: MysqlConnection,
+  query: string,
+  params: unknown[],
+  timeoutMs: number = FAS_QUERY_TIMEOUT_MS,
+): Promise<[unknown[], unknown]> {
+  return Promise.race([
+    conn.query(query, params) as Promise<[unknown[], unknown]>,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`FAS query timeout after ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    ),
+  ]);
+}
+
 function employeeSelect(): string {
   return `e.empl_cd, e.empl_nm, e.part_cd, e.tel_no, e.social_no,
   e.state_flag, e.entr_day, e.retr_day, e.update_dt,
@@ -290,10 +317,11 @@ export async function fasGetEmployeeInfo(
 ): Promise<FasEmployee | null> {
   const conn = await getConnection(hyperdrive);
   try {
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ${employeeSelect()} ${employeeFrom(source)}
-       WHERE e.site_cd = ? AND e.empl_cd = ?
-       LIMIT 1`,
+     WHERE e.site_cd = ? AND e.empl_cd = ?
+     LIMIT 1`,
       [source.siteCd, emplCd],
     );
     const results = rows as Array<Record<string, unknown>>;
@@ -322,9 +350,10 @@ export async function fasGetEmployeesBatch(
   const conn = await getConnection(hyperdrive);
   try {
     const placeholders = emplCds.map(() => "?").join(",");
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ${employeeSelect()} ${employeeFrom(source)}
-       WHERE e.site_cd = ? AND e.empl_cd IN (${placeholders})`,
+     WHERE e.site_cd = ? AND e.empl_cd IN (${placeholders})`,
       [source.siteCd, ...emplCds],
     );
     const results = rows as Array<Record<string, unknown>>;
@@ -368,7 +397,7 @@ export async function fasGetUpdatedEmployees(
 
     query += ` ORDER BY e.update_dt ASC`;
 
-    const [rows] = await conn.query(query, params);
+    const [rows] = await queryWithTimeout(conn, query, params);
     const results = rows as Array<Record<string, unknown>>;
     return results.map(mapToFasEmployee);
   } finally {
@@ -387,18 +416,20 @@ export async function fasGetAllEmployeesPaginated(
 ): Promise<{ employees: FasEmployee[]; total: number }> {
   const conn = await getConnection(hyperdrive);
   try {
-    const [countRows] = await conn.query(
+    const [countRows] = await queryWithTimeout(
+      conn,
       `SELECT COUNT(*) as cnt ${employeeFrom(source)} WHERE e.site_cd = ?`,
       [source.siteCd],
     );
     const total = (countRows as Array<Record<string, unknown>>)[0]
       .cnt as number;
 
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ${employeeSelect()} ${employeeFrom(source)}
-       WHERE e.site_cd = ?
-       ORDER BY e.empl_cd ASC
-       LIMIT ? OFFSET ?`,
+     WHERE e.site_cd = ?
+     ORDER BY e.empl_cd ASC
+     LIMIT ? OFFSET ?`,
       [source.siteCd, limit, offset],
     );
     const results = rows as Array<Record<string, unknown>>;
@@ -423,14 +454,15 @@ export async function fasGetDailyAttendance(
       siteCd === undefined || siteCd === null ? null : siteCd;
     const dateWithDash = `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}`;
 
-    const [accessDailyRows] = await conn.query(
+    const [accessDailyRows] = await queryWithTimeout(
+      conn,
       `SELECT ad.empl_cd, ad.accs_day, ad.in_time, ad.out_time,
-              ad.state, ad.part_cd
-         FROM ${tbl(source, "access_daily")} ad
-        WHERE ad.accs_day = ?
-          AND ad.in_time IS NOT NULL
-          AND ad.in_time != '0000'
-          AND ad.in_time != ''${normalizedSiteCd ? " AND ad.site_cd = ?" : ""}`,
+            ad.state, ad.part_cd
+       FROM ${tbl(source, "access_daily")} ad
+      WHERE ad.accs_day = ?
+        AND ad.in_time IS NOT NULL
+        AND ad.in_time != '0000'
+        AND ad.in_time != ''${normalizedSiteCd ? " AND ad.site_cd = ?" : ""}`,
       normalizedSiteCd ? [accsDay, normalizedSiteCd] : [accsDay],
     );
     const accessDailyMapped = (
@@ -517,7 +549,11 @@ export async function fasGetDailyAttendance(
 
     for (const candidate of candidates) {
       try {
-        const [rows] = await conn.query(candidate.query, candidate.params);
+        const [rows] = await queryWithTimeout(
+          conn,
+          candidate.query,
+          candidate.params,
+        );
         const mapped = (rows as Array<Record<string, unknown>>).map(
           mapToFasAttendance,
         );
@@ -595,7 +631,11 @@ export async function fasGetDailyAttendanceRawSummary(
 
     for (const candidate of candidates) {
       try {
-        const [rows] = await conn.query(candidate.query, candidate.params);
+        const [rows] = await queryWithTimeout(
+          conn,
+          candidate.query,
+          candidate.params,
+        );
         const mapped = rows as Array<Record<string, unknown>>;
         totalRows += mapped.length;
         for (const row of mapped) {
@@ -689,7 +729,11 @@ export async function fasGetDailyAttendanceRawRows(
 
     for (const candidate of candidates) {
       try {
-        const [rows] = await conn.query(candidate.query, candidate.params);
+        const [rows] = await queryWithTimeout(
+          conn,
+          candidate.query,
+          candidate.params,
+        );
         const mapped = rows as Array<Record<string, unknown>>;
         mergedRows.push(...mapped);
         successfulSources.push(candidate.source);
@@ -769,7 +813,11 @@ export async function fasGetDailyAttendanceRealtimeStats(
 
     for (const candidate of candidates) {
       try {
-        const [rows] = await conn.query(candidate.query, candidate.params);
+        const [rows] = await queryWithTimeout(
+          conn,
+          candidate.query,
+          candidate.params,
+        );
         const mapped = rows as Array<Record<string, unknown>>;
         totalRows += mapped.length;
         for (const row of mapped) {
@@ -814,11 +862,12 @@ export async function fasGetDailyAttendanceSiteCounts(
   const safeLimit = Math.min(50, Math.max(1, Math.trunc(limit)));
 
   try {
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ad.site_cd AS site_cd, COUNT(*) AS cnt
-         FROM ${tbl(source, "access_daily")} ad
-        WHERE ad.accs_day = ?
-        GROUP BY ad.site_cd`,
+       FROM ${tbl(source, "access_daily")} ad
+      WHERE ad.accs_day = ?
+      GROUP BY ad.site_cd`,
       [accsDay],
     );
 
@@ -858,16 +907,17 @@ export async function fasGetAttendanceTrend(
   }
 
   try {
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ad.accs_day AS accs_day,
-              COUNT(DISTINCT ad.empl_cd) AS cnt
-         FROM ${tbl(source, "access_daily")} ad
-        WHERE ad.accs_day BETWEEN ? AND ?
-          AND ad.in_time IS NOT NULL
-          AND ad.in_time != '0000'
-          AND ad.in_time != ''${siteClause}
-     GROUP BY ad.accs_day
-     ORDER BY ad.accs_day ASC`,
+            COUNT(DISTINCT ad.empl_cd) AS cnt
+       FROM ${tbl(source, "access_daily")} ad
+      WHERE ad.accs_day BETWEEN ? AND ?
+        AND ad.in_time IS NOT NULL
+        AND ad.in_time != '0000'
+        AND ad.in_time != ''${siteClause}
+         GROUP BY ad.accs_day
+         ORDER BY ad.accs_day ASC`,
       params,
     );
 
@@ -901,37 +951,39 @@ export async function fasGetAttendanceList(
   }
 
   try {
-    const [countRows] = await conn.query(
+    const [countRows] = await queryWithTimeout(
+      conn,
       `SELECT COUNT(*) AS cnt
-         FROM ${tbl(source, "access_daily")} ad
-        WHERE ad.accs_day = ?
-          AND ad.in_time IS NOT NULL
-          AND ad.in_time != '0000'
-          AND ad.in_time != ''${siteClause}`,
+       FROM ${tbl(source, "access_daily")} ad
+      WHERE ad.accs_day = ?
+        AND ad.in_time IS NOT NULL
+        AND ad.in_time != '0000'
+        AND ad.in_time != ''${siteClause}`,
       baseParams,
     );
 
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ad.empl_cd AS empl_cd,
-              COALESCE(e.empl_nm, '') AS empl_nm,
-              COALESCE(e.part_cd, ad.part_cd, '') AS part_cd,
-              COALESCE(p.part_nm, '') AS part_nm,
-              ad.in_time AS in_time,
-              ad.out_time AS out_time,
-              ad.accs_day AS accs_day
-         FROM ${tbl(source, "access_daily")} ad
-         LEFT JOIN ${tbl(source, "employee")} e
-           ON ad.site_cd = e.site_cd
-          AND ad.empl_cd = e.empl_cd
-         LEFT JOIN ${tbl(source, "partner")} p
-           ON e.site_cd = p.site_cd
-          AND e.part_cd = p.part_cd
-        WHERE ad.accs_day = ?
-          AND ad.in_time IS NOT NULL
-          AND ad.in_time != '0000'
-          AND ad.in_time != ''${siteClause}
-        ORDER BY ad.in_time DESC, ad.empl_cd ASC
-        LIMIT ? OFFSET ?`,
+            COALESCE(e.empl_nm, '') AS empl_nm,
+            COALESCE(e.part_cd, ad.part_cd, '') AS part_cd,
+            COALESCE(p.part_nm, '') AS part_nm,
+            ad.in_time AS in_time,
+            ad.out_time AS out_time,
+            ad.accs_day AS accs_day
+       FROM ${tbl(source, "access_daily")} ad
+       LEFT JOIN ${tbl(source, "employee")} e
+         ON ad.site_cd = e.site_cd
+        AND ad.empl_cd = e.empl_cd
+       LEFT JOIN ${tbl(source, "partner")} p
+         ON e.site_cd = p.site_cd
+        AND e.part_cd = p.part_cd
+      WHERE ad.accs_day = ?
+        AND ad.in_time IS NOT NULL
+        AND ad.in_time != '0000'
+        AND ad.in_time != ''${siteClause}
+      ORDER BY ad.in_time DESC, ad.empl_cd ASC
+      LIMIT ? OFFSET ?`,
       [...baseParams, safeLimit, safeOffset],
     );
 
@@ -1040,7 +1092,11 @@ export async function fasCheckWorkerAttendance(
   try {
     for (const candidate of candidates) {
       try {
-        const [rows] = await conn.query(candidate.query, candidate.params);
+        const [rows] = await queryWithTimeout(
+          conn,
+          candidate.query,
+          candidate.params,
+        );
         const mapped = (rows as Array<Record<string, unknown>>).map(
           mapToFasAttendance,
         );
@@ -1082,10 +1138,11 @@ export async function fasSearchEmployeeByPhone(
   const conn = await getConnection(hyperdrive);
   try {
     const normalizedPhone = phone.replace(/-/g, "");
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ${employeeSelect()} ${employeeFrom(source)}
-       WHERE e.site_cd = ? AND REPLACE(e.tel_no, '-', '') = ?
-       LIMIT 1`,
+     WHERE e.site_cd = ? AND REPLACE(e.tel_no, '-', '') = ?
+     LIMIT 1`,
       [source.siteCd, normalizedPhone],
     );
     const results = rows as Array<Record<string, unknown>>;
@@ -1106,9 +1163,10 @@ export async function fasSearchEmployeeByName(
 ): Promise<FasEmployee[]> {
   const conn = await getConnection(hyperdrive);
   try {
-    const [rows] = await conn.query(
+    const [rows] = await queryWithTimeout(
+      conn,
       `SELECT ${employeeSelect()} ${employeeFrom(source)}
-       WHERE e.site_cd = ? AND e.empl_nm LIKE ?`,
+     WHERE e.site_cd = ? AND e.empl_nm LIKE ?`,
       [source.siteCd, `%${name}%`],
     );
     return (rows as Array<Record<string, unknown>>).map(mapToFasEmployee);
@@ -1161,7 +1219,12 @@ export async function testConnection(
 ): Promise<boolean> {
   try {
     const conn = await getConnection(hyperdrive);
-    await conn.ping();
+    await Promise.race([
+      conn.ping(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("FAS ping timeout")), 5000),
+      ),
+    ]);
     await conn.end();
     return true;
   } catch (err) {
