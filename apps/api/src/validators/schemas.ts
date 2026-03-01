@@ -420,9 +420,14 @@ export const CreateStatutoryTrainingSchema = z.object({
 });
 
 export const UpdateStatutoryTrainingSchema = z.object({
-  status: z.enum(TrainingCompletionStatus).optional(),
-  completedDate: isoDateStr.optional(),
+  trainingType: z.enum(StatutoryTrainingType).optional(),
+  trainingName: nonEmptyStr.optional(),
+  trainingDate: isoDateStr.optional(),
+  expirationDate: isoDateStr.optional(),
+  provider: z.string().optional(),
   certificateUrl: z.string().optional(),
+  hoursCompleted: z.number().nonnegative().optional(),
+  status: z.enum(TrainingCompletionStatus).optional(),
   notes: z.string().optional(),
 });
 
