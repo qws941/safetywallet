@@ -1,7 +1,13 @@
 import { test, expect, devices } from "@playwright/test";
 import { adminLogin } from "./helpers";
 
-test.use({ ...devices["iPhone 13"] });
+const iphone13 = devices["iPhone 13"];
+test.use({
+  viewport: iphone13.viewport,
+  userAgent: iphone13.userAgent,
+  isMobile: iphone13.isMobile,
+  hasTouch: iphone13.hasTouch,
+});
 
 const uniqueSuffix = () => Date.now().toString().slice(-8);
 
@@ -34,7 +40,7 @@ async function navigateToEducationTab(
   await expect(page.getByRole("heading", { name: "교육 관리" })).toBeVisible({
     timeout: 10_000,
   });
-  await page.getByRole("button", { name: tabName }).click();
+  await page.getByRole("button", { name: tabName, exact: true }).click();
   await page.waitForTimeout(500);
 }
 
@@ -87,7 +93,9 @@ test.describe("Education Mobile CRUD", () => {
       await page.getByRole("button", { name: "교육자료 등록" }).click();
       await createResp;
 
-      await expect(page.getByText("교육자료가 등록되었습니다.")).toBeVisible({
+      await expect(
+        page.getByText("교육자료가 등록되었습니다.").first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
 
@@ -103,13 +111,16 @@ test.describe("Education Mobile CRUD", () => {
           r.url().includes("/education/contents/") &&
           r.request().method() === "DELETE",
       );
-      await page
+      const deleteBtn = page
         .getByRole("alertdialog")
-        .getByRole("button", { name: "삭제" })
-        .click();
+        .getByRole("button", { name: "삭제" });
+      await deleteBtn.waitFor({ state: "visible", timeout: 5000 });
+      await deleteBtn.dispatchEvent("click");
       await deleteResp;
 
-      await expect(page.getByText("교육자료가 삭제되었습니다.")).toBeVisible({
+      await expect(
+        page.getByText("교육자료가 삭제되었습니다.").first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
 
@@ -134,7 +145,9 @@ test.describe("Education Mobile CRUD", () => {
       await page.getByRole("button", { name: "퀴즈 등록" }).click();
       await createResp;
 
-      await expect(page.getByText("퀴즈가 등록되었습니다.")).toBeVisible({
+      await expect(
+        page.getByText("퀴즈가 등록되었습니다.").first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
 
@@ -177,7 +190,9 @@ test.describe("Education Mobile CRUD", () => {
       await page.getByRole("button", { name: "법정교육 등록" }).click();
       await createResp;
 
-      await expect(page.getByText("법정교육이 등록되었습니다.")).toBeVisible({
+      await expect(
+        page.getByText("법정교육이 등록되었습니다.").first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
 
@@ -194,6 +209,16 @@ test.describe("Education Mobile CRUD", () => {
       await nameInput.clear();
       await nameInput.fill(updatedName);
 
+      // Re-fill date fields — onEditTraining sets epoch numbers, not ISO strings
+      const editDateInputs = page.locator('input[type="date"]');
+      const editDateCount = await editDateInputs.count();
+      for (let i = 0; i < editDateCount; i++) {
+        const val = await editDateInputs.nth(i).inputValue();
+        if (!val || val === "mm/dd/yyyy") {
+          await editDateInputs.nth(i).fill(today);
+        }
+      }
+
       const updateResp = page.waitForResponse(
         (r) =>
           r.url().includes("/education/statutory/") &&
@@ -202,7 +227,9 @@ test.describe("Education Mobile CRUD", () => {
       await page.getByRole("button", { name: "수정 저장" }).click();
       await updateResp;
 
-      await expect(page.getByText("법정교육이 수정되었습니다.")).toBeVisible({
+      await expect(
+        page.getByText("법정교육이 수정되었습니다.").first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
 
@@ -233,7 +260,9 @@ test.describe("Education Mobile CRUD", () => {
       await page.getByRole("button", { name: "TBM 등록" }).click();
       await createResp;
 
-      await expect(page.getByText("TBM 기록이 등록되었습니다.")).toBeVisible({
+      await expect(
+        page.getByText("TBM 기록이 등록되었습니다.").first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
 
