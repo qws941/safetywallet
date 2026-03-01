@@ -105,14 +105,23 @@ export function StatutoryTab() {
     }
   };
 
+  const toDateInputValue = (v: string | number | null | undefined): string => {
+    if (!v) return "";
+    if (typeof v === "number" || /^\d{5,}$/.test(String(v))) {
+      return new Date(Number(v) * 1000).toISOString().split("T")[0];
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(String(v))) return String(v).slice(0, 10);
+    return "";
+  };
+
   const onEditTraining = (item: TrainingItem) => {
     setEditingTrainingId(item.training.id);
     setTrainingForm({
       userId: item.training.userId,
       trainingType: item.training.trainingType,
       trainingName: item.training.trainingName,
-      trainingDate: item.training.trainingDate,
-      expirationDate: item.training.expirationDate || "",
+      trainingDate: toDateInputValue(item.training.trainingDate),
+      expirationDate: toDateInputValue(item.training.expirationDate),
       provider: item.training.provider || "",
       hoursCompleted: String(item.training.hoursCompleted ?? 0),
       status: item.training.status,
