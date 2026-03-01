@@ -8,7 +8,7 @@ const DEFAULT_FAS_SOURCE = {
   d1SiteName: "송도세브란스",
   workerIdPrefix: "",
 };
-vi.mock("../../../lib/fas-mariadb", () => ({
+vi.mock("../../../lib/fas", () => ({
   resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
   fasGetAttendanceTrend: (...args: unknown[]) =>
     mockFasGetAttendanceTrend(...args),

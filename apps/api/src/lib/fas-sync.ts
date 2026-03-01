@@ -16,7 +16,7 @@ import { users } from "../db/schema";
 import { dbBatchChunked } from "../db/helpers";
 import { hmac, encrypt } from "./crypto";
 import { createLogger } from "./logger";
-import type { FasEmployee } from "./fas-mariadb";
+import type { FasEmployee } from "./fas";
 
 // ─── Types ───────────────────────────────────────────────────────
 

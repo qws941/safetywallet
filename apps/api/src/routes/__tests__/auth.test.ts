@@ -9,7 +9,7 @@ import {
 import {
   fasSearchEmployeeByPhone,
   fasCheckWorkerAttendance,
-} from "../../lib/fas-mariadb";
+} from "../../lib/fas";
 import { syncSingleFasEmployee, socialNoToDob } from "../../lib/fas-sync";
 import { logAuditWithContext } from "../../lib/audit";
 import { signJwt } from "../../lib/jwt";
@@ -178,7 +178,7 @@ vi.mock("../../lib/logger", () => ({
   createLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }));
 
-vi.mock("../../lib/fas-mariadb", () => ({
+vi.mock("../../lib/fas", () => ({
   fasSearchEmployeeByPhone: vi.fn(async () => null),
   fasCheckWorkerAttendance: vi.fn(async () => ({ hasAttendance: false })),
   fasGetEmployeeInfo: vi.fn(async () => null),

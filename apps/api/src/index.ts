@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 import { drizzle } from "drizzle-orm/d1";
-import { fasGetAllEmployeesPaginated, initFasConfig } from "./lib/fas-mariadb";
+import { fasGetAllEmployeesPaginated, initFasConfig } from "./lib/fas";
 import {
   syncFasEmployeesToD1,
   deactivateRetiredEmployees,

@@ -54,7 +54,7 @@ const DEFAULT_FAS_SOURCE = {
   d1SiteName: "송도세브란스",
   workerIdPrefix: "",
 };
-vi.mock("../../lib/fas-mariadb", () => ({
+vi.mock("../../lib/fas", () => ({
   DEFAULT_FAS_SOURCE,
   resolveFasSource: vi.fn(() => DEFAULT_FAS_SOURCE),
   resolveFasSourceByWorkerId: vi.fn((externalWorkerId: string) => ({

@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
-import type { Env, AuthContext } from "../../types";
+import type { Env, AuthContext } from "../../../types";
 import {
   users,
   auditLogs,
@@ -13,25 +13,26 @@ import {
   reviews,
   pointsLedger,
   siteMemberships,
-} from "../../db/schema";
-import { decrypt, hmac } from "../../lib/crypto";
-import { success, error } from "../../lib/response";
-import { logAuditWithContext } from "../../lib/audit";
+} from "../../../db/schema";
+import { decrypt, hmac } from "../../../lib/crypto";
+import { success, error } from "../../../lib/response";
+import { logAuditWithContext } from "../../../lib/audit";
 import {
   AdminChangeRoleSchema,
   AdminEmergencyUserPurgeSchema,
-} from "../../validators/schemas";
-import { requireAdmin } from "./helpers";
-import { createLogger } from "../../lib/logger";
+} from "../../../validators/schemas";
+import { requireAdmin } from "../helpers";
+import { createLogger } from "../../../lib/logger";
 
-const logger = createLogger("admin/users");
+const logger = createLogger("admin/users/routes");
 
-const app = new Hono<{
+export const router = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
 
-app.get("/unlock-user/:phoneHash", requireAdmin, async (c) => {
+// GET /unlock-user/:phoneHash
+router.get("/unlock-user/:phoneHash", requireAdmin, async (c) => {
   const phoneHash = c.req.param("phoneHash");
   if (!phoneHash) {
     return error(c, "PHONE_HASH_REQUIRED", "phoneHash is required", 400);
@@ -54,7 +55,8 @@ app.get("/unlock-user/:phoneHash", requireAdmin, async (c) => {
   return success(c, { unlocked: true });
 });
 
-app.post(
+// POST /unlock-user-by-phone
+router.post(
   "/unlock-user-by-phone",
   requireAdmin,
   zValidator(
@@ -93,7 +95,8 @@ app.post(
   },
 );
 
-app.get("/users", requireAdmin, async (c) => {
+// GET /users
+router.get("/users", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
@@ -183,7 +186,8 @@ app.get("/users", requireAdmin, async (c) => {
   });
 });
 
-app.get("/users/restrictions", requireAdmin, async (c) => {
+// GET /users/restrictions
+router.get("/users/restrictions", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
   const offset = parseInt(c.req.query("offset") || "0");
@@ -224,7 +228,8 @@ app.get("/users/restrictions", requireAdmin, async (c) => {
   });
 });
 
-app.post("/users/:id/restriction/clear", requireAdmin, async (c) => {
+// POST /users/:id/restriction/clear
+router.post("/users/:id/restriction/clear", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const userId = c.req.param("id");
@@ -251,7 +256,8 @@ app.post("/users/:id/restriction/clear", requireAdmin, async (c) => {
   return success(c, { user: updated });
 });
 
-app.patch(
+// PATCH /users/:id/role
+router.patch(
   "/users/:id/role",
   requireAdmin,
   zValidator("json", AdminChangeRoleSchema as never),
@@ -325,8 +331,8 @@ app.patch(
   },
 );
 
-// ─── Emergency PII Purge ─────────────────────────────────────────────────────
-app.delete(
+// DELETE /users/:id/emergency-purge
+router.delete(
   "/users/:id/emergency-purge",
   zValidator("json", AdminEmergencyUserPurgeSchema),
   async (c) => {
@@ -462,15 +468,12 @@ app.delete(
   },
 );
 
-export default app;
-
-app.post("/users/:id/lock", requireAdmin, async (c) => {
+// POST /users/:id/lock
+router.post("/users/:id/lock", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const userId = c.req.param("id");
 
-  // In this schema, "locking" is represented by setting a far-future restrictedUntil date
-  // or we can use a convention.
   const lockedUntil = new Date("2099-12-31T23:59:59Z");
 
   const updated = await db
@@ -498,7 +501,8 @@ app.post("/users/:id/lock", requireAdmin, async (c) => {
   return success(c, { userId, locked: true });
 });
 
-app.post("/users/:id/unlock", requireAdmin, async (c) => {
+// POST /users/:id/unlock
+router.post("/users/:id/unlock", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const userId = c.req.param("id");

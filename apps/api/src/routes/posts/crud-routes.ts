@@ -1,0 +1,455 @@
+import { z } from "zod";
+import { drizzle } from "drizzle-orm/d1";
+import { eq, and, desc, lt, sql } from "drizzle-orm";
+import { attendanceMiddleware } from "../../middleware/attendance";
+import { rateLimitMiddleware } from "../../middleware/rate-limit";
+import { success, error } from "../../lib/response";
+import { logAuditWithContext } from "../../lib/audit";
+import { createLogger } from "../../lib/logger";
+import { hammingDistance, DUPLICATE_THRESHOLD } from "../../lib/phash";
+import { CreatePostSchema } from "../../validators/schemas";
+import {
+  posts,
+  postImages,
+  siteMemberships,
+  users,
+  reviews,
+} from "../../db/schema";
+import {
+  validateJson,
+  validCategories,
+  type CategoryType,
+  type PostsRouteApp,
+} from "./helpers";
+
+const logger = createLogger("posts");
+
+const postRateLimit = rateLimitMiddleware({
+  maxRequests: 10,
+  windowMs: 60_000,
+});
+
+export const registerCrudRoutes = (app: PostsRouteApp): void => {
+  app.post(
+    "/",
+    postRateLimit,
+    validateJson("json", CreatePostSchema),
+    async (c) => {
+      const db = drizzle(c.env.DB);
+      const { user } = c.get("auth");
+
+      const data = c.req.valid("json" as never) as z.infer<
+        typeof CreatePostSchema
+      >;
+
+      if (!data.siteId || !data.content) {
+        return error(
+          c,
+          "MISSING_FIELDS",
+          "siteId and content are required",
+          400,
+        );
+      }
+
+      await attendanceMiddleware(c, async () => {}, data.siteId);
+
+      data.category = data.category || "HAZARD";
+      data.visibility = data.visibility || "WORKER_PUBLIC";
+      data.isAnonymous = data.isAnonymous ?? false;
+
+      try {
+        const userRecord = await db
+          .select({ restrictedUntil: users.restrictedUntil })
+          .from(users)
+          .where(eq(users.id, user.id))
+          .get();
+
+        if (
+          userRecord?.restrictedUntil &&
+          userRecord.restrictedUntil > new Date()
+        ) {
+          return error(
+            c,
+            "USER_RESTRICTED",
+            `Posting restricted until ${userRecord.restrictedUntil.toISOString()}`,
+            403,
+          );
+        }
+
+        const membership = await db
+          .select()
+          .from(siteMemberships)
+          .where(
+            and(
+              eq(siteMemberships.userId, user.id),
+              eq(siteMemberships.siteId, data.siteId),
+              eq(siteMemberships.status, "ACTIVE"),
+            ),
+          )
+          .get();
+
+        if (!membership) {
+          return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
+        }
+
+        const postId = crypto.randomUUID();
+        const cutoff = Math.floor(Date.now() / 1000) - 86400;
+
+        const canCheckDuplicate = Boolean(
+          data.locationFloor && data.locationZone,
+        );
+        const duplicateConditions = [
+          sql`${posts.siteId} = ${data.siteId}`,
+          sql`${posts.locationFloor} = ${data.locationFloor ?? ""}`,
+          sql`${posts.locationZone} = ${data.locationZone ?? ""}`,
+          sql`${posts.createdAt} >= ${cutoff}`,
+        ];
+
+        if (data.hazardType) {
+          duplicateConditions.push(
+            sql`${posts.hazardType} = ${data.hazardType}`,
+          );
+        }
+
+        const duplicateWhereSql = sql.join(duplicateConditions, sql` and `);
+
+        let contentSimilar = false;
+        if (data.content && data.content.length >= 10) {
+          const keywords = data.content
+            .replace(/[^\p{L}\p{N}\s]/gu, "")
+            .split(/\s+/)
+            .filter((w: string) => w.length >= 2)
+            .slice(0, 5);
+
+          if (keywords.length >= 2) {
+            const likeConditions = keywords.map(
+              (kw: string) => sql`${posts.content} LIKE ${"%" + kw + "%"}`,
+            );
+            const recentSimilar = await db
+              .select({ id: posts.id })
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.siteId, data.siteId),
+                  sql`${posts.createdAt} >= ${cutoff}`,
+                  sql`(${sql.join(likeConditions, sql` OR `)})`,
+                ),
+              )
+              .limit(1)
+              .all();
+            contentSimilar = recentSimilar.length > 0;
+          }
+        }
+
+        let duplicateOfPostId: string | null = null;
+        if (canCheckDuplicate) {
+          const dupResult = await db
+            .select({ id: posts.id })
+            .from(posts)
+            .where(duplicateWhereSql)
+            .orderBy(desc(posts.createdAt))
+            .limit(1)
+            .get();
+          if (dupResult) {
+            duplicateOfPostId = dupResult.id;
+          }
+        }
+
+        const isPotentialDuplicate =
+          canCheckDuplicate || contentSimilar
+            ? canCheckDuplicate
+              ? !!duplicateOfPostId
+              : true
+            : false;
+
+        let imageDuplicate = false;
+        const hashes = Array.isArray(data.imageHashes) ? data.imageHashes : [];
+        if (hashes.some((h: string | null) => h)) {
+          const recentImages = await db
+            .select({
+              imageHash: postImages.imageHash,
+              postId: postImages.postId,
+            })
+            .from(postImages)
+            .innerJoin(posts, eq(posts.id, postImages.postId))
+            .where(
+              and(
+                eq(posts.siteId, data.siteId),
+                sql`${posts.createdAt} >= ${cutoff}`,
+                sql`${postImages.imageHash} IS NOT NULL`,
+              ),
+            )
+            .all();
+
+          for (const hash of hashes) {
+            if (!hash) continue;
+            for (const recent of recentImages) {
+              if (
+                recent.imageHash &&
+                hammingDistance(hash, recent.imageHash) <= DUPLICATE_THRESHOLD
+              ) {
+                imageDuplicate = true;
+                break;
+              }
+            }
+            if (imageDuplicate) break;
+          }
+        }
+
+        const finalIsPotentialDuplicate =
+          isPotentialDuplicate || imageDuplicate;
+
+        const insertPostQuery = db.insert(posts).values({
+          id: postId,
+          userId: user.id,
+          siteId: data.siteId,
+          content: data.content,
+          category: data.category,
+          hazardType: data.hazardType,
+          riskLevel: data.riskLevel,
+          visibility: data.visibility,
+          locationFloor: data.locationFloor,
+          locationZone: data.locationZone,
+          locationDetail: data.locationDetail,
+          isAnonymous: data.isAnonymous,
+          metadata: data.metadata,
+          isPotentialDuplicate: finalIsPotentialDuplicate,
+          duplicateOfPostId,
+        });
+
+        const imageInsertQueries = Array.isArray(data.imageUrls)
+          ? data.imageUrls
+              .filter((fileUrl: string) => Boolean(fileUrl))
+              .map((fileUrl: string, idx: number) =>
+                db.insert(postImages).values({
+                  postId,
+                  fileUrl,
+                  thumbnailUrl: null,
+                  imageHash: hashes[idx] ?? null,
+                }),
+              )
+          : [];
+
+        await db.batch([insertPostQuery, ...imageInsertQueries]);
+
+        const newPost = await db
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .get();
+
+        if (!newPost) {
+          return error(c, "POST_CREATION_FAILED", "Failed to create post", 500);
+        }
+
+        return success(c, { post: newPost }, 201);
+      } catch (e) {
+        logger.error("Failed to create post", e);
+        return error(c, "INTERNAL_ERROR", "Failed to create post", 500);
+      }
+    },
+  );
+
+  app.get("/", async (c) => {
+    const db = drizzle(c.env.DB);
+
+    const siteId = c.req.query("siteId");
+    await attendanceMiddleware(c, async () => {}, siteId);
+    const categoryParam = c.req.query("category") as CategoryType | undefined;
+    const category =
+      categoryParam && validCategories.includes(categoryParam)
+        ? categoryParam
+        : undefined;
+    const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
+    const offset = parseInt(c.req.query("offset") || "0");
+
+    const query = db
+      .select({
+        post: posts,
+        author: {
+          id: users.id,
+          name: users.name,
+          nameMasked: users.nameMasked,
+        },
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.userId, users.id))
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const conditions = [];
+    if (siteId) {
+      conditions.push(eq(posts.siteId, siteId));
+    }
+    if (category) {
+      conditions.push(eq(posts.category, category));
+    }
+
+    const result =
+      conditions.length > 0
+        ? await query.where(and(...conditions)).all()
+        : await query.all();
+
+    const postsWithAuthor = result.map((row) => ({
+      ...row.post,
+      author: row.post.isAnonymous
+        ? null
+        : {
+            id: row.author?.id,
+            name: row.author?.nameMasked,
+          },
+    }));
+
+    return success(c, { posts: postsWithAuthor });
+  });
+
+  app.get("/me", async (c) => {
+    await attendanceMiddleware(c, async () => {});
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+
+    const siteId = c.req.query("siteId");
+    const reviewStatus = c.req.query("reviewStatus");
+    const cursor = c.req.query("cursor");
+    const limit = Math.min(Number(c.req.query("limit")) || 20, 50);
+
+    const conditions = [eq(posts.userId, user.id)];
+    if (siteId) conditions.push(eq(posts.siteId, siteId));
+    if (reviewStatus)
+      conditions.push(sql`${posts.reviewStatus} = ${reviewStatus}`);
+    if (cursor) conditions.push(lt(posts.createdAt, new Date(Number(cursor))));
+
+    const imageCountSq = db
+      .select({
+        postId: postImages.postId,
+        count: sql<number>`count(*)`.as("count"),
+      })
+      .from(postImages)
+      .groupBy(postImages.postId)
+      .as("img_count");
+
+    const results = await db
+      .select({
+        id: posts.id,
+        category: posts.category,
+        content: posts.content,
+        reviewStatus: posts.reviewStatus,
+        actionStatus: posts.actionStatus,
+        isUrgent: posts.isUrgent,
+        createdAt: posts.createdAt,
+        imageCount: sql<number>`coalesce(${imageCountSq.count}, 0)`,
+      })
+      .from(posts)
+      .leftJoin(imageCountSq, eq(posts.id, imageCountSq.postId))
+      .where(and(...conditions))
+      .orderBy(desc(posts.createdAt))
+      .limit(limit + 1)
+      .all();
+
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, limit) : results;
+    const nextCursor = hasMore
+      ? String(items[items.length - 1].createdAt)
+      : undefined;
+
+    return success(c, { items, nextCursor });
+  });
+
+  app.get("/:id", async (c) => {
+    await attendanceMiddleware(c, async () => {});
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const postId = c.req.param("id");
+
+    const post = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .get();
+
+    if (!post) {
+      return error(c, "POST_NOT_FOUND", "Post not found", 404);
+    }
+
+    const [author, images, postReviews] = await Promise.all([
+      db.select().from(users).where(eq(users.id, post.userId)).get(),
+      db
+        .select()
+        .from(postImages)
+        .where(eq(postImages.postId, postId))
+        .orderBy(desc(postImages.createdAt))
+        .all(),
+      db.select().from(reviews).where(eq(reviews.postId, postId)).all(),
+    ]);
+
+    if (images.length > 0) {
+      await logAuditWithContext(
+        c,
+        db,
+        "IMAGE_DOWNLOAD",
+        user.id,
+        "IMAGE",
+        postId,
+        {
+          imageIds: images.map((img) => img.id),
+          postId,
+        },
+      );
+    }
+
+    return success(c, {
+      post: {
+        ...post,
+        author: post.isAnonymous
+          ? null
+          : {
+              id: author?.id,
+              name: author?.nameMasked,
+            },
+        images,
+        reviews: postReviews,
+      },
+    });
+  });
+
+  app.delete("/:id", async (c) => {
+    await attendanceMiddleware(c, async () => {});
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const postId = c.req.param("id");
+
+    const post = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .get();
+
+    if (!post) {
+      return error(c, "POST_NOT_FOUND", "Post not found", 404);
+    }
+
+    if (post.userId !== user.id && user.role !== "ADMIN") {
+      return error(
+        c,
+        "UNAUTHORIZED",
+        "Not authorized to delete this post",
+        403,
+      );
+    }
+
+    const images = await db
+      .select()
+      .from(postImages)
+      .where(eq(postImages.postId, postId))
+      .all();
+
+    for (const image of images) {
+      await c.env.R2.delete(image.fileUrl);
+    }
+
+    await db.delete(posts).where(eq(posts.id, postId));
+
+    return success(c, null);
+  });
+};

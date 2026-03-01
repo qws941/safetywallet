@@ -6,7 +6,7 @@ import type { Env, AuthContext } from "../../types";
 import { pointsLedger, posts } from "../../db/schema";
 import { error, success } from "../../lib/response";
 import { DAY_CUTOFF_HOUR, parseDateParam, requireAdmin } from "./helpers";
-import { fasGetAttendanceTrend, resolveFasSource } from "../../lib/fas-mariadb";
+import { fasGetAttendanceTrend, resolveFasSource } from "../../lib/fas";
 
 const app = new Hono<{
   Bindings: Env;

@@ -7,7 +7,7 @@ import {
   getKSTDate,
   getMonthRange,
   withRetry,
-} from "../index";
+} from "../helpers";
 import type { Env } from "../../types";
 
 describe("scheduled helpers", () => {
@@ -452,7 +452,7 @@ describe("scheduled orchestrators", () => {
     as: (_alias: string) => ({ strings, values }),
   });
 
-  vi.doMock("../../lib/fas-mariadb", () => ({
+  vi.doMock("../../lib/fas", () => ({
     fasGetUpdatedEmployees: (...args: unknown[]) =>
       mockFasGetUpdatedEmployees(...args),
     fasGetEmployeesBatch: (...args: unknown[]) =>
@@ -659,7 +659,7 @@ describe("scheduled orchestrators", () => {
 
   it("runFasFullSync processes active/retired workers and ensures memberships", async () => {
     const { runFasFullSync: runFasFullSyncWithMocks } =
-      await import("../index");
+      await import("../sync-jobs");
     state.selectPlans.push(
       { get: { id: "system" } },
       { all: [{ id: "user-1" }, { id: "user-2" }] },
@@ -703,7 +703,7 @@ describe("scheduled orchestrators", () => {
 
   it("runFasFullSync skips when lock is not acquired", async () => {
     const { runFasFullSync: runFasFullSyncWithMocks } =
-      await import("../index");
+      await import("../sync-jobs");
     mockAcquireSyncLock.mockResolvedValue({ acquired: false });
     const env = buildEnv({
       FAS_HYPERDRIVE: {
@@ -724,7 +724,7 @@ describe("scheduled orchestrators", () => {
 
   it("runFasFullSync throws sync error and releases lock", async () => {
     const { runFasFullSync: runFasFullSyncWithMocks } =
-      await import("../index");
+      await import("../sync-jobs");
     state.selectPlans.push({ get: { id: "system" } });
     mockFasGetUpdatedEmployees.mockRejectedValue(new Error("fas down"));
     const env = buildEnv({

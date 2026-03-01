@@ -1,116 +1,25 @@
 import { z } from "zod";
-
-// ─── Shared Enum Values (must match Drizzle schema enums) ────────────────────
-
-const UserRole = ["WORKER", "SITE_ADMIN", "SUPER_ADMIN", "SYSTEM"] as const;
-const Category = [
-  "HAZARD",
-  "UNSAFE_BEHAVIOR",
-  "INCONVENIENCE",
-  "SUGGESTION",
-  "BEST_PRACTICE",
-] as const;
-const RiskLevel = ["HIGH", "MEDIUM", "LOW"] as const;
-const Visibility = ["WORKER_PUBLIC", "ADMIN_ONLY"] as const;
-const ReviewAction = [
-  "APPROVE",
-  "REJECT",
-  "REQUEST_MORE",
-  "MARK_URGENT",
-  "ASSIGN",
-  "CLOSE",
-] as const;
-const RejectReason = [
-  "DUPLICATE",
-  "UNCLEAR_PHOTO",
-  "INSUFFICIENT",
-  "FALSE",
-  "IRRELEVANT",
-  "OTHER",
-] as const;
-const TaskStatus = ["OPEN", "IN_PROGRESS", "DONE"] as const; // @deprecated
-const ActionStatusUpdate = ["ASSIGNED", "IN_PROGRESS", "COMPLETED"] as const;
-const ApprovalStatus = ["PENDING", "APPROVED", "REJECTED"] as const;
-const MembershipStatus = ["PENDING", "ACTIVE", "LEFT", "REMOVED"] as const;
-const EducationContentType = ["VIDEO", "IMAGE", "TEXT", "DOCUMENT"] as const;
-const QuizStatus = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
-const StatutoryTrainingType = [
-  "NEW_WORKER",
-  "SPECIAL",
-  "REGULAR",
-  "CHANGE_OF_WORK",
-] as const;
-const TrainingCompletionStatus = ["SCHEDULED", "COMPLETED", "EXPIRED"] as const;
-
-// Schema-only enums (not in packages/types)
-const DisputeType = [
-  "REVIEW_APPEAL",
-  "POINT_DISPUTE",
-  "ATTENDANCE_DISPUTE",
-  "OTHER",
-] as const;
-const DisputeStatus = ["OPEN", "IN_REVIEW", "RESOLVED", "REJECTED"] as const;
-const VoteCandidateSource = ["ADMIN", "AUTO"] as const;
-
-// ─── Reusable Primitives ─────────────────────────────────────────────────────
-
-const uuid = z.string().min(1).max(100);
-const monthPattern = z
-  .string()
-  .regex(/^\d{4}-\d{2}$/, "Must be YYYY-MM format");
-const isoDateStr = z.string().min(1);
-const nonEmptyStr = z.string().min(1).max(5000);
-
-// ─── Auth Schemas ────────────────────────────────────────────────────────────
-
-export const RegisterSchema = z.object({
-  name: nonEmptyStr,
-  phone: z
-    .string()
-    .transform((val) => val.replace(/[^0-9]/g, ""))
-    .refine((val) => val.length === 11, "Phone number must be 11 digits"),
-  dob: z
-    .string()
-    .transform((val) => val.replace(/[^0-9]/g, ""))
-    .refine(
-      (val) => val.length === 6 || val.length === 8,
-      "DOB must be 6 or 8 digits",
-    ),
-  deviceId: z.string().optional(),
-});
-
-export const LoginSchema = z.object({
-  name: nonEmptyStr,
-  phone: z.string().min(1),
-  dob: z.string().min(1),
-});
-
-export const AcetimeLoginSchema = z.object({
-  employeeCode: z
-    .string()
-    .min(1, "Employee code is required")
-    .max(50, "Employee code too long")
-    .transform((val) => val.trim()),
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(100, "Name too long")
-    .transform((val) => val.trim()),
-});
-
-export const RefreshTokenSchema = z.object({
-  refreshToken: z.string().min(1),
-});
-
-export const AdminLoginSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
-});
-
-// admin-create-otp reuses OtpRequestDto shape
-export const OtpRequestSchema = z.object({
-  phone: z.string().min(1),
-});
+import {
+  Category,
+  RiskLevel,
+  Visibility,
+  ReviewAction,
+  RejectReason,
+  ActionStatusUpdate,
+  MembershipStatus,
+  DisputeType,
+  DisputeStatus,
+  VoteCandidateSource,
+  EducationContentType,
+  QuizStatus,
+  StatutoryTrainingType,
+  TrainingCompletionStatus,
+  UserRole,
+  uuid,
+  monthPattern,
+  isoDateStr,
+  nonEmptyStr,
+} from "./shared.js";
 
 // ─── Posts Schemas ───────────────────────────────────────────────────────────
 

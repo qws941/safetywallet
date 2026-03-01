@@ -6,7 +6,7 @@ import {
   fasGetDailyAttendanceRawSummary,
   fasSearchEmployeeByName,
   fasSearchEmployeeByPhone,
-} from "../../../lib/fas-mariadb";
+} from "../../../lib/fas";
 import {
   syncFasEmployeesToD1,
   deactivateRetiredEmployees,
@@ -154,7 +154,7 @@ const DEFAULT_FAS_SOURCE = {
   workerIdPrefix: "",
 };
 
-vi.mock("../../../lib/fas-mariadb", () => {
+vi.mock("../../../lib/fas", () => {
   const source = {
     dbName: "mdidev",
     siteCd: "10",

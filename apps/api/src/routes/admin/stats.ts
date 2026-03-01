@@ -5,10 +5,7 @@ import type { Env, AuthContext } from "../../types";
 import { users, sites, posts, siteMemberships } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { requireAdmin, getTodayRange } from "./helpers";
-import {
-  FAS_SOURCES,
-  fasGetDailyAttendanceRealtimeStats,
-} from "../../lib/fas-mariadb";
+import { FAS_SOURCES, fasGetDailyAttendanceRealtimeStats } from "../../lib/fas";
 
 const app = new Hono<{
   Bindings: Env;

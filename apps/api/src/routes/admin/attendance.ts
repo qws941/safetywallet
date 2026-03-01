@@ -9,7 +9,7 @@ import {
   type FasAttendance,
   type FasAttendanceListRecord,
   resolveFasSource,
-} from "../../lib/fas-mariadb";
+} from "../../lib/fas";
 import { success, error } from "../../lib/response";
 import { requireManagerOrAdmin, getTodayRange } from "./helpers";
 
