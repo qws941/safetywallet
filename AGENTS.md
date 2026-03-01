@@ -16,9 +16,9 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ```text
 ./
 ├── apps/
-│   ├── api-worker/          # Hono + Drizzle + D1 — CF Worker (REST API)
-│   ├── worker-app/           # Next.js 14 PWA — field worker UI (port 3000)
-│   └── admin-app/            # Next.js 14 dashboard — admin UI (port 3001)
+│   ├── api/                 # Hono + Drizzle + D1 — CF Worker (REST API)
+│   ├── worker/              # Next.js 14 PWA — field worker UI (port 3000)
+│   └── admin/               # Next.js 14 dashboard — admin UI (port 3001)
 ├── packages/
 │   ├── types/                # @safetywallet/types — shared TS types, DTOs, i18n
 │   └── ui/                   # Shared UI components
@@ -29,30 +29,30 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ├── .github/workflows/        # 14 GitHub Actions workflows
 ├── turbo.json                # Pipeline: build/dev/lint/typecheck/test/test:e2e/clean
 ├── vitest.config.ts          # Workspace vitest: 5 project configs
-├── playwright.config.ts      # 5 projects: api, admin-setup, worker-app, admin-app, cross-app
+├── playwright.config.ts      # 5 projects: api, admin-setup, worker, admin, cross-app
 ├── wrangler.toml             # CF Worker config — 10 bindings, dev/prod envs
 └── package.json              # Workspaces: apps/*, packages/*
 ```
 
 ## WHERE TO LOOK
 
-| Task                   | Location                                  | Notes                                              |
-| ---------------------- | ----------------------------------------- | -------------------------------------------------- |
-| API routes             | `apps/api-worker/src/routes/`             | 18 route modules + admin subtree                   |
-| API middleware         | `apps/api-worker/src/middleware/`         | Auth, CORS, logging, analytics, security headers   |
-| Database schema        | `apps/api-worker/src/db/schema.ts`        | 32 Drizzle tables on Cloudflare D1                 |
-| DB migrations          | `apps/api-worker/migrations/`             | Sequential SQL migrations                          |
-| Durable Objects        | `apps/api-worker/src/durable-objects/`    | RateLimiter DO                                     |
-| Scheduled tasks (cron) | `apps/api-worker/src/scheduled/`          | \*/5min, monthly, weekly Sun 3am, daily 9pm        |
-| Validators             | `apps/api-worker/src/validators/`         | Zod schemas for request validation                 |
-| Worker PWA pages       | `apps/worker-app/src/app/`                | Next.js App Router pages                           |
-| Admin dashboard pages  | `apps/admin-app/src/app/`                 | attendance, posts, votes, education sections       |
-| Shared types/DTOs      | `packages/types/src/`                     | dto/ and i18n/ subdirectories                      |
-| Shared UI components   | `packages/ui/src/components/`             | Cross-app reusable components                      |
-| E2E tests              | `e2e/`                                    | api/, admin-app/, worker-app/, cross-app/, shared/ |
-| CI/CD                  | `.github/workflows/`                      | ci.yml + deploy-monitoring.yml (CF Git deploys)    |
-| Deploy monitoring      | `.github/workflows/deploy-monitoring.yml` | Post-deploy health + Slack notify                  |
-| Requirement specs      | `docs/requirements/`                      | PRD, implementation plan, feature checklist        |
+| Task                   | Location                                  | Notes                                            |
+| ---------------------- | ----------------------------------------- | ------------------------------------------------ |
+| API routes             | `apps/api/src/routes/`                    | 18 route modules + admin subtree                 |
+| API middleware         | `apps/api/src/middleware/`                | Auth, CORS, logging, analytics, security headers |
+| Database schema        | `apps/api/src/db/schema.ts`               | 32 Drizzle tables on Cloudflare D1               |
+| DB migrations          | `apps/api/migrations/`                    | Sequential SQL migrations                        |
+| Durable Objects        | `apps/api/src/durable-objects/`           | RateLimiter DO                                   |
+| Scheduled tasks (cron) | `apps/api/src/scheduled/`                 | \*/5min, monthly, weekly Sun 3am, daily 9pm      |
+| Validators             | `apps/api/src/validators/`                | Zod schemas for request validation               |
+| Worker PWA pages       | `apps/worker/src/app/`                    | Next.js App Router pages                         |
+| Admin dashboard pages  | `apps/admin/src/app/`                     | attendance, posts, votes, education sections     |
+| Shared types/DTOs      | `packages/types/src/`                     | dto/ and i18n/ subdirectories                    |
+| Shared UI components   | `packages/ui/src/components/`             | Cross-app reusable components                    |
+| E2E tests              | `e2e/`                                    | api/, admin/, worker/, cross-app/, shared/       |
+| CI/CD                  | `.github/workflows/`                      | ci.yml + deploy-monitoring.yml (CF Git deploys)  |
+| Deploy monitoring      | `.github/workflows/deploy-monitoring.yml` | Post-deploy health + Slack notify                |
+| Requirement specs      | `docs/requirements/`                      | PRD, implementation plan, feature checklist      |
 
 ## CONVENTIONS
 
@@ -106,8 +106,8 @@ RateLimiter Durable Object exported from `src/durable-objects/RateLimiter.ts`.
 
 ### Testing
 
-- Vitest workspace config at root with 5 project configs (api-worker, admin-app, worker-app, types, ui)
-- Playwright 5 projects: `api` (API tests), `admin-setup` (auth fixture), `worker-app`, `admin-app`, `cross-app`
+- Vitest workspace config at root with 5 project configs (api, admin, worker, types, ui)
+- Playwright 5 projects: `api` (API tests), `admin-setup` (auth fixture), `worker`, `admin`, `cross-app`
 - ~1554 tests across 147 files
 - Run: `npm test` (unit via Turbo), `npm run test:e2e` (Playwright)
 
