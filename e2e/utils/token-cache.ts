@@ -37,6 +37,33 @@ export function setCachedToken(key: string, token: string) {
 }
 
 // Simple file-based lock to prevent race conditions during parallel worker startup
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function tryCleanStaleLock(): boolean {
+  try {
+    const content = fs.readFileSync(LOCK_PATH, "utf8");
+    const pid = parseInt(content, 10);
+    if (!Number.isNaN(pid) && !isProcessAlive(pid)) {
+      try {
+        fs.unlinkSync(LOCK_PATH);
+      } catch {
+        // another process beat us to it
+      }
+      return true;
+    }
+  } catch {
+    // lock file disappeared between check and read — that's fine
+  }
+  return false;
+}
+
 export async function acquireLock(): Promise<void> {
   let attempts = 0;
   while (attempts < 50) {
@@ -46,6 +73,10 @@ export async function acquireLock(): Promise<void> {
       return;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+        // On first collision, try to clean stale locks from crashed processes
+        if (attempts === 0 && tryCleanStaleLock()) {
+          continue;
+        }
         attempts++;
         await new Promise((r) => setTimeout(r, 100));
       } else {
@@ -53,15 +84,16 @@ export async function acquireLock(): Promise<void> {
       }
     }
   }
-  console.warn("[token-cache] Failed to acquire lock, proceeding anyway...");
+  throw new Error(
+    "[token-cache] Failed to acquire lock after 5s — another process may be stuck",
+  );
 }
-
 export function releaseLock() {
   try {
-    if (fs.existsSync(LOCK_PATH)) {
-      fs.unlinkSync(LOCK_PATH);
-    }
+    fs.unlinkSync(LOCK_PATH);
   } catch (e) {
-    console.warn("[token-cache] releaseLock failed:", (e as Error).message);
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.warn("[token-cache] releaseLock failed:", (e as Error).message);
+    }
   }
 }
