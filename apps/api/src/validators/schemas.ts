@@ -471,7 +471,7 @@ export const CreateStatutoryTrainingInputSchema = z.object({
   expirationDate: isoDateStr.optional(),
   provider: z.string().optional(),
   certificateUrl: z.string().optional(),
-  hoursCompleted: z.number().positive().optional(),
+  hoursCompleted: z.number().nonnegative().optional(),
   status: z.enum(TrainingCompletionStatus).optional(),
   notes: z.string().optional(),
 });
