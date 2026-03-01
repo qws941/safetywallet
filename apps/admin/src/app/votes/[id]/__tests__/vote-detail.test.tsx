@@ -13,7 +13,7 @@ const useMutationMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
-  useParams: () => ({ id: "2026-02" }),
+  useParams: () => ({ id: "2099-12" }),
 }));
 
 vi.mock("@/stores/auth", () => ({
@@ -156,7 +156,7 @@ describe("vote detail page", () => {
   it("renders details and handles navigation and csv export", () => {
     render(<VoteDetailPage />);
 
-    expect(screen.getByText("2026-02 투표 현황")).toBeInTheDocument();
+    expect(screen.getByText("2099-12 투표 현황")).toBeInTheDocument();
     expect(screen.getByText("총 5명 참여")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button")[0]);
@@ -168,7 +168,7 @@ describe("vote detail page", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "후보 등록" }));
-    expect(pushMock).toHaveBeenCalledWith("/votes/2026-02/candidates/new");
+    expect(pushMock).toHaveBeenCalledWith("/votes/2099-12/candidates/new");
   });
 
   it("deletes candidate and invalidates query", async () => {
@@ -181,7 +181,7 @@ describe("vote detail page", () => {
     });
     expect(invalidateQueriesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ["votes", "results", "site-1", "2026-02"],
+        queryKey: ["votes", "results", "site-1", "2099-12"],
       }),
     );
   });
