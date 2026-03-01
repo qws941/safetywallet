@@ -39,6 +39,8 @@ test-results/
 blob-report/
 playwright/.cache/
 e2e/**/.auth/
+e2e/.auth-cache.json
+e2e/.auth-cache.lock
 
 # Database
 *.db

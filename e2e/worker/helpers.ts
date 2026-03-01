@@ -1,3 +1,9 @@
+import {
+  getCachedToken,
+  setCachedToken,
+  acquireLock,
+  releaseLock,
+} from "../utils/token-cache";
 import type { Page } from "@playwright/test";
 import {
   computeRateLimitWaitMs,
@@ -27,77 +33,91 @@ const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME ?? "admin";
 const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "admin123";
 
 let lastWorkerUnlockAt = 0;
-let cachedAdminToken: string | null = null;
+let cachedAdminToken: string | null =
+  getCachedToken("adminAccessToken") || null;
 
 async function tryAdminLoginToken(): Promise<string | null> {
   if (cachedAdminToken) {
     return cachedAdminToken;
   }
-
-  const deadline = Date.now() + 180_000;
-  for (let attempt = 0; attempt < 6; attempt++) {
-    let loginRes: Response;
-    try {
-      loginRes = await fetch(`${API_URL}/auth/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: ADMIN_USERNAME,
-          password: ADMIN_PASSWORD,
-        }),
-      });
-    } catch {
-      // Network error (DNS, connection refused) — wait and retry
-      await new Promise((resolve) => setTimeout(resolve, 5_000));
-      continue;
+  await acquireLock();
+  try {
+    const cachedAdmin = getCachedToken("adminAccessToken");
+    if (cachedAdmin) {
+      cachedAdminToken = cachedAdmin;
+      return cachedAdmin;
     }
 
-    if (loginRes.status === 429) {
-      const retryAfter = parseRetryAfterSeconds(
-        loginRes.headers.get("retry-after"),
-      );
-      const resetEpoch = parseResetEpochSeconds(
-        loginRes.headers.get("x-ratelimit-reset"),
-      );
-      const resetWaitMs = computeRateLimitWaitMs(
-        retryAfter,
-        resetEpoch,
-        20_000,
-      );
-      const remaining = Math.max(0, deadline - Date.now());
-      if (remaining === 0) {
-        break;
+    const deadline = Date.now() + 180_000;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      let loginRes: Response;
+      try {
+        loginRes = await fetch(`${API_URL}/auth/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: ADMIN_USERNAME,
+            password: ADMIN_PASSWORD,
+          }),
+        });
+      } catch {
+        // Network error (DNS, connection refused) — wait and retry
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        continue;
       }
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.min(Math.max(resetWaitMs, 15_000), remaining)),
-      );
-      continue;
-    }
 
-    if (!loginRes.ok) {
-      throw new Error(
-        `admin login failed for worker setup: ${loginRes.status}`,
-      );
-    }
+      if (loginRes.status === 429) {
+        const retryAfter = parseRetryAfterSeconds(
+          loginRes.headers.get("retry-after"),
+        );
+        const resetEpoch = parseResetEpochSeconds(
+          loginRes.headers.get("x-ratelimit-reset"),
+        );
+        const resetWaitMs = computeRateLimitWaitMs(
+          retryAfter,
+          resetEpoch,
+          20_000,
+        );
+        const remaining = Math.max(0, deadline - Date.now());
+        if (remaining === 0) {
+          break;
+        }
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.min(Math.max(resetWaitMs, 15_000), remaining),
+          ),
+        );
+        continue;
+      }
 
-    const loginBody = (await loginRes.json()) as {
-      data?: {
-        tokens?: { accessToken?: string };
-        accessToken?: string;
+      if (!loginRes.ok) {
+        throw new Error(
+          `admin login failed for worker setup: ${loginRes.status}`,
+        );
+      }
+
+      const loginBody = (await loginRes.json()) as {
+        data?: {
+          tokens?: { accessToken?: string };
+          accessToken?: string;
+        };
       };
-    };
 
-    const token =
-      loginBody.data?.tokens?.accessToken ??
-      loginBody.data?.accessToken ??
-      null;
-    if (token) {
-      cachedAdminToken = token;
+      const token =
+        loginBody.data?.tokens?.accessToken ??
+        loginBody.data?.accessToken ??
+        null;
+      if (token) {
+        cachedAdminToken = token;
+        setCachedToken("adminAccessToken", token);
+      }
+      return token;
     }
-    return token;
+    return null;
+  } finally {
+    releaseLock();
   }
-
-  return null;
 }
 
 async function syncWorkerMembershipFromAdmin(page: Page): Promise<boolean> {

@@ -10,15 +10,15 @@ Child folders own feature-level test behavior.
 Source of truth: `playwright.config.ts`.
 
 - `api` -> `e2e/api`
-- `admin-setup` -> `e2e/admin-app/admin.setup.ts`
-- `worker-app` -> `e2e/worker-app`
-- `admin-app` -> `e2e/admin-app` (depends on `admin-setup`)
+- `admin-setup` -> `e2e/admin/admin.setup.ts`
+- `worker` -> `e2e/worker`
+- `admin` -> `e2e/admin` (depends on `admin-setup`)
 - `cross-app` -> `e2e/cross-app`
 
 ## CURRENT TREE (ROOT VIEW)
 
-- `e2e/admin-app/` admin dashboard browser suites
-- `e2e/worker-app/` worker PWA browser suites
+- `e2e/admin/` admin dashboard browser suites
+- `e2e/worker/` worker PWA browser suites
 - `e2e/api/` request-context API suites
 - `e2e/cross-app/` multi-surface health/cors suite
 - `e2e/shared/elk.ts` shared ELK helper
@@ -36,15 +36,15 @@ Source of truth: `playwright.config.ts`.
 ## ROOT RULES
 
 - Keep cross-project wiring in config, not duplicated in specs.
-- Keep setup-state contract stable: `e2e/admin-app/.auth/admin.json`.
+- Keep setup-state contract stable: `e2e/admin/.auth/admin.json`.
 - Prefer env override path (`API_URL`, `WORKER_APP_URL`, `ADMIN_APP_URL`).
 - Preserve project boundaries; no feature spill across folders.
 
 ## SUBMODULE DOCS
 
-- `e2e/admin-app/AGENTS.md`
+- `e2e/admin/AGENTS.md`
 - `e2e/api/AGENTS.md`
-- `e2e/worker-app/AGENTS.md`
+- `e2e/worker/AGENTS.md`
 - `e2e/cross-app/AGENTS.md`
 
 ## QUICK RUN

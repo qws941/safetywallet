@@ -1,3 +1,9 @@
+import {
+  getCachedToken,
+  setCachedToken,
+  acquireLock,
+  releaseLock,
+} from "../utils/token-cache";
 import { expect, type APIRequestContext } from "@playwright/test";
 
 export const WORKER_LOGIN_DATA = {
@@ -66,13 +72,24 @@ export async function getAdminToken(
   request: APIRequestContext,
 ): Promise<string | undefined> {
   if (adminAccessToken) return adminAccessToken;
-  const response = await loginWithRetry(
-    request,
-    "./auth/admin/login",
-    ADMIN_LOGIN_DATA,
-  );
-  if (response.status() !== 200) return undefined;
-  const body = await response.json();
-  adminAccessToken = body.data?.accessToken ?? body.data?.token;
-  return adminAccessToken;
+  await acquireLock();
+  try {
+    const cachedAdmin = getCachedToken("adminAccessToken");
+    if (cachedAdmin) {
+      adminAccessToken = cachedAdmin;
+      return cachedAdmin;
+    }
+    const response = await loginWithRetry(
+      request,
+      "./auth/admin/login",
+      ADMIN_LOGIN_DATA,
+    );
+    if (response.status() !== 200) return undefined;
+    const body = await response.json();
+    adminAccessToken = body.data?.accessToken ?? body.data?.token;
+    if (adminAccessToken) setCachedToken("adminAccessToken", adminAccessToken);
+    return adminAccessToken;
+  } finally {
+    releaseLock();
+  }
 }
