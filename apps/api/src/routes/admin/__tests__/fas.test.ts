@@ -335,7 +335,7 @@ describe("admin/fas", () => {
     it("returns error when FAS_HYPERDRIVE not configured", async () => {
       const { app, env } = await createApp(makeAuth());
       const res = await app.request("/fas/search-mariadb?name=Kim", {}, env);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(503);
       const body = (await res.json()) as { error?: { code: string } };
       expect(body.error?.code).toBe("SERVICE_UNAVAILABLE");
     });
@@ -376,7 +376,7 @@ describe("admin/fas", () => {
       env.FAS_HYPERDRIVE = {};
 
       const res = await app.request("/fas/search-mariadb?name=Kim", {}, env);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(500);
     });
   });
 
@@ -500,7 +500,7 @@ describe("admin/fas", () => {
         { method: "POST" },
         env,
       );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(503);
     });
 
     it("returns validation error for invalid accsDay", async () => {
@@ -570,7 +570,7 @@ describe("admin/fas", () => {
         env,
       );
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(500);
     });
   });
 });

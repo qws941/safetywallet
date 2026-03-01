@@ -295,7 +295,7 @@ describe("routes/votes", () => {
         },
         env,
       );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(409);
       const body = (await res.json()) as { error: { code: string } };
       expect(body.error.code).toBe("VOTING_CLOSED");
     });
@@ -354,7 +354,7 @@ describe("routes/votes", () => {
         },
         env,
       );
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(409);
       const body = (await res.json()) as { error: { code: string } };
       expect(body.error.code).toBe("DUPLICATE_VOTE");
     });

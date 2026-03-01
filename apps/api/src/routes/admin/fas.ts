@@ -373,7 +373,12 @@ app.get("/fas/search-mariadb", requireAdmin, async (c) => {
 
   const hd = c.env.FAS_HYPERDRIVE;
   if (!hd) {
-    return error(c, "SERVICE_UNAVAILABLE", "FAS_HYPERDRIVE not configured");
+    return error(
+      c,
+      "SERVICE_UNAVAILABLE",
+      "FAS_HYPERDRIVE not configured",
+      503,
+    );
   }
 
   try {
@@ -394,7 +399,7 @@ app.get("/fas/search-mariadb", requireAdmin, async (c) => {
       results,
     });
   } catch (err) {
-    return error(c, "INTERNAL_ERROR", String(err));
+    return error(c, "INTERNAL_ERROR", String(err), 500);
   }
 });
 
@@ -606,7 +611,12 @@ app.get("/fas/raw-attendance", requireAdmin, async (c) => {
 
 app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
   if (!c.env.FAS_HYPERDRIVE) {
-    return error(c, "SERVICE_UNAVAILABLE", "FAS_HYPERDRIVE not configured");
+    return error(
+      c,
+      "SERVICE_UNAVAILABLE",
+      "FAS_HYPERDRIVE not configured",
+      503,
+    );
   }
 
   try {
@@ -745,7 +755,7 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
         },
       });
     }
-    return error(c, "INTERNAL_ERROR", String(err));
+    return error(c, "INTERNAL_ERROR", String(err), 500);
   }
 });
 

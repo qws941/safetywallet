@@ -78,7 +78,7 @@ app.post("/alerting/test", requireAdmin, async (c: AppContext) => {
   const webhookUrl = config.webhookUrl || c.env.ALERT_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    return error(c, "NO_WEBHOOK_URL", "No webhook URL configured");
+    return error(c, "NO_WEBHOOK_URL", "No webhook URL configured", 500);
   }
 
   const testPayload = {

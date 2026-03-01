@@ -218,7 +218,7 @@ votesRoute.post(
       .get();
 
     if (!activePeriod) {
-      return error(c, "VOTING_CLOSED", "No active voting period");
+      return error(c, "VOTING_CLOSED", "No active voting period", 409);
     }
 
     const activePeriodMonth = activePeriod.month;
@@ -252,7 +252,7 @@ votesRoute.post(
       .get();
 
     if (existingVote) {
-      return error(c, "DUPLICATE_VOTE", "Already voted in this period");
+      return error(c, "DUPLICATE_VOTE", "Already voted in this period", 409);
     }
 
     if (candidateId === user.id) {
