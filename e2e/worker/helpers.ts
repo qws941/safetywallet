@@ -222,23 +222,27 @@ async function unlockWorkerLoginLockout() {
       continue;
     }
 
-    const unlockRes = await fetch(`${API_URL}/admin/unlock-user-by-phone`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${adminAccessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ phone: WORKER_E2E_USER.phone }),
-    });
+    try {
+      const unlockRes = await fetch(`${API_URL}/admin/unlock-user-by-phone`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminAccessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone: WORKER_E2E_USER.phone }),
+      });
 
-    if (!unlockRes.ok) {
-      throw new Error(`worker unlock failed: ${unlockRes.status}`);
+      if (!unlockRes.ok) {
+        throw new Error(`worker unlock failed: ${unlockRes.status}`);
+      }
+
+      lastWorkerUnlockAt = now;
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      // Network or HTTP error — retry next attempt
     }
-
-    lastWorkerUnlockAt = now;
-    return;
   }
-
   throw new WorkerRateLimitError(
     "admin rate limit blocked worker unlock reset",
   );
