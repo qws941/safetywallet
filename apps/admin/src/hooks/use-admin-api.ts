@@ -151,7 +151,12 @@ export function useAdminAnnouncements() {
 
   return useQuery({
     queryKey: ["admin", "announcements", siteId],
-    queryFn: () => apiFetch<Announcement[]>(`/announcements${params}`),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: Announcement[]; pagination: unknown }>(
+        `/announcements${params}`,
+      );
+      return res.data;
+    },
   });
 }
 

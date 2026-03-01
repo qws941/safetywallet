@@ -118,7 +118,10 @@ describe("use-admin-api hooks", () => {
     const { wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    mockApiFetch.mockResolvedValueOnce([{ id: "a1" }]);
+    mockApiFetch.mockResolvedValueOnce({
+      data: [{ id: "a1" }],
+      pagination: {},
+    });
     const announcements = renderHook(() => useAdminAnnouncements(), {
       wrapper,
     });
