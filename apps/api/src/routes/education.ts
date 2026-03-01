@@ -1472,7 +1472,7 @@ app.get("/statutory", async (c) => {
 
 app.put(
   "/statutory/:id",
-  zValidator("json", CreateTbmRecordSchema),
+  zValidator("json", UpdateStatutoryTrainingSchema),
   async (c) => {
     const db = drizzle(c.env.DB);
     const { user } = c.get("auth");
