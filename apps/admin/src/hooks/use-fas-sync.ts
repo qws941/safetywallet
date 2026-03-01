@@ -128,8 +128,7 @@ export function useRealtimeAttendanceView(params: {
 }) {
   const trimmedSiteCd = params.siteCd?.trim() || "";
   const searchParams = new URLSearchParams();
-  searchParams.set("accsDay", params.accsDay);
-  if (trimmedSiteCd) searchParams.set("siteCd", trimmedSiteCd);
+  searchParams.set("date", params.accsDay);
   const qs = searchParams.toString();
 
   return useQuery({
@@ -139,7 +138,7 @@ export function useRealtimeAttendanceView(params: {
       params.accsDay,
       trimmedSiteCd || "all",
     ],
-    queryFn: () => apiFetch(`/debug/fas-counts?${qs}`),
+    queryFn: () => apiFetch(`/attendance/realtime?${qs}`),
     enabled: /^\d{8}$/.test(params.accsDay),
     refetchInterval: 15_000,
   });

@@ -207,7 +207,7 @@ describe("use-fas-sync", () => {
       deferred.resolve({ accsDay: "20260222" });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(mockApiFetch).toHaveBeenCalledWith(
-        "/debug/fas-counts?accsDay=20260222&siteCd=S001",
+        "/attendance/realtime?date=20260222",
       );
     });
 
