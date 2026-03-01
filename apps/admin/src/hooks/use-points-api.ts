@@ -286,7 +286,7 @@ export function useCreateSettlementSnapshot() {
 
   return useMutation({
     mutationFn: () =>
-      apiFetch("/admin/points/settlement/snapshot", {
+      apiFetch("/admin/settlements/snapshot", {
         method: "POST",
       }),
     onSuccess: () => {
@@ -302,7 +302,7 @@ export function useFinalizeSettlement() {
 
   return useMutation({
     mutationFn: () =>
-      apiFetch("/admin/points/settlement/finalize", {
+      apiFetch("/admin/settlements/finalize", {
         method: "POST",
       }),
     onSuccess: () => {

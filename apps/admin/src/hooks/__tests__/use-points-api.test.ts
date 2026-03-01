@@ -287,11 +287,11 @@ describe("use-points-api", () => {
     await finalize.result.current.mutateAsync();
 
     expect(mockApiFetch).toHaveBeenCalledWith(
-      "/admin/points/settlement/snapshot",
+      "/admin/settlements/snapshot",
       expect.objectContaining({ method: "POST" }),
     );
     expect(mockApiFetch).toHaveBeenCalledWith(
-      "/admin/points/settlement/finalize",
+      "/admin/settlements/finalize",
       expect.objectContaining({ method: "POST" }),
     );
     expect(invalidateSpy).toHaveBeenCalledWith({
