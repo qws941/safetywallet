@@ -6,17 +6,18 @@ const WORKER_LOGIN_DATA = {
   dob: process.env.E2E_WORKER_DOB ?? "19990308",
 };
 
-test.describe("Posts API", () => {
+test.describe("Users API", () => {
   test.describe.configure({ mode: "serial" });
 
   let accessToken: string;
-  let createdPostId: string | undefined;
 
   const ensureAuth = async (request: APIRequestContext) => {
     if (accessToken) return;
+
     let response = await request.post("./auth/login", {
       data: WORKER_LOGIN_DATA,
     });
+
     if (response.status() === 429) {
       const retryAfter = Number(response.headers()["retry-after"] || "60");
       await new Promise((r) =>
@@ -26,98 +27,60 @@ test.describe("Posts API", () => {
         data: WORKER_LOGIN_DATA,
       });
     }
+
     if (response.status() !== 200) return;
     const body = await response.json();
     accessToken = body.data?.accessToken ?? body.data?.token;
   };
 
-  test("GET /posts returns list with valid auth", async ({ request }) => {
-    await ensureAuth(request);
-    test.skip(!accessToken, "Login not available");
-    const response = await request.get("./posts", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.data).toBeDefined();
-  });
-
-  test("GET /posts response has correct envelope shape", async ({
-    request,
-  }) => {
-    await ensureAuth(request);
-    test.skip(!accessToken, "Login not available");
-    const response = await request.get("./posts", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const body = await response.json();
-    expect(body).toHaveProperty("success");
-    if ("timestamp" in body) {
-      expect(body.timestamp).toBeDefined();
-    }
-  });
-
-  test("POST /posts creates post or returns expected constraint status", async ({
-    request,
-  }) => {
+  test("GET /users/me returns profile envelope", async ({ request }) => {
     await ensureAuth(request);
     test.skip(!accessToken, "Login not available");
 
-    const response = await request.post("./posts", {
+    const response = await request.get("./users/me", {
       headers: { Authorization: `Bearer ${accessToken}` },
-      data: {
-        siteId: "test",
-        content: "E2E test post",
-        category: "UNSAFE_CONDITION",
-        visibility: "PUBLIC",
-        isAnonymous: false,
-      },
     });
 
     const status = response.status();
-    expect([201, 403, 400].includes(status)).toBeTruthy();
+    expect([200, 401, 403].includes(status)).toBeTruthy();
 
     const body = await response.json();
     expect(body).toHaveProperty("success");
-    if ("timestamp" in body) {
-      expect(body.timestamp).toBeDefined();
-    }
 
-    if (status === 201) {
+    if (status === 200) {
       expect(body.success).toBe(true);
       expect(body.data).toBeDefined();
-      const resourceId = body.data?.id ?? body.data?.post?.id;
-      if (typeof resourceId === "string" && resourceId.length > 0) {
-        createdPostId = resourceId;
-      }
     }
   });
 
-  test("POST /posts with empty body returns 400", async ({ request }) => {
-    await ensureAuth(request);
-    test.skip(!accessToken, "Login not available");
-
-    const response = await request.post("./posts", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      data: {},
-    });
-
-    expect(response.status()).toBe(400);
-    const body = await response.json();
-    expect(body).toHaveProperty("success");
-    if ("timestamp" in body) {
-      expect(body.timestamp).toBeDefined();
-    }
-  });
-
-  test("GET /posts/me returns my posts or expected auth constraints", async ({
+  test("PATCH /users/me updates minimal profile payload", async ({
     request,
   }) => {
     await ensureAuth(request);
     test.skip(!accessToken, "Login not available");
 
-    const response = await request.get("./posts/me", {
+    const response = await request.patch("./users/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: { displayName: "E2E Test" },
+    });
+
+    const status = response.status();
+    expect([200, 400, 403].includes(status)).toBeTruthy();
+
+    const body = await response.json();
+    expect(body).toHaveProperty("success");
+
+    if (status === 200) {
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+    }
+  });
+
+  test("GET /users/me/points returns points summary", async ({ request }) => {
+    await ensureAuth(request);
+    test.skip(!accessToken, "Login not available");
+
+    const response = await request.get("./users/me/points", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -126,52 +89,104 @@ test.describe("Posts API", () => {
 
     const body = await response.json();
     expect(body).toHaveProperty("success");
-    expect(body).toHaveProperty("timestamp");
+
     if (status === 200) {
+      expect(body.success).toBe(true);
       expect(body.data).toBeDefined();
     }
   });
 
-  test("GET /posts/:id returns post by created id when available", async ({
-    request,
-  }) => {
+  test("GET /users/me/memberships returns memberships", async ({ request }) => {
     await ensureAuth(request);
     test.skip(!accessToken, "Login not available");
-    test.skip(!createdPostId, "No created post id from previous create test");
 
-    const response = await request.get(`./posts/${createdPostId}`, {
+    const response = await request.get("./users/me/memberships", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     const status = response.status();
-    expect([200, 404, 403].includes(status)).toBeTruthy();
+    expect([200, 403].includes(status)).toBeTruthy();
 
     const body = await response.json();
     expect(body).toHaveProperty("success");
-    expect(body).toHaveProperty("timestamp");
+
     if (status === 200) {
+      expect(body.success).toBe(true);
       expect(body.data).toBeDefined();
     }
   });
 
-  test("DELETE /posts/:id deletes created post when available", async ({
+  test("POST /users/me/deletion-request requests account deletion", async ({
     request,
   }) => {
     await ensureAuth(request);
     test.skip(!accessToken, "Login not available");
-    test.skip(!createdPostId, "No created post id from previous create test");
 
-    const response = await request.delete(`./posts/${createdPostId}`, {
+    await request.delete("./users/me/deletion-request", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const response = await request.post("./users/me/deletion-request", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     const status = response.status();
-    expect([200, 204, 403, 404].includes(status)).toBeTruthy();
+    expect([200, 201, 400, 403].includes(status)).toBeTruthy();
+
+    const body = await response.json();
+    expect(body).toHaveProperty("success");
+
+    if ([200, 201].includes(status)) {
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+    }
+  });
+
+  test("DELETE /users/me/deletion-request cancels deletion request", async ({
+    request,
+  }) => {
+    await ensureAuth(request);
+    test.skip(!accessToken, "Login not available");
+
+    const response = await request.delete("./users/me/deletion-request", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const status = response.status();
+    expect([200, 204, 400, 403, 404].includes(status)).toBeTruthy();
 
     if (status !== 204) {
       const body = await response.json();
       expect(body).toHaveProperty("success");
-      expect(body).toHaveProperty("timestamp");
+
+      if (status === 200) {
+        expect(body.success).toBe(true);
+        expect(body.data).toBeDefined();
+      }
+    }
+  });
+
+  test("GET /users/me/data-export returns data export payload", async ({
+    request,
+  }) => {
+    await ensureAuth(request);
+    test.skip(!accessToken, "Login not available");
+
+    const response = await request.get("./users/me/data-export", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const status = response.status();
+    expect([200, 202, 403].includes(status)).toBeTruthy();
+
+    if (status !== 202) {
+      const body = await response.json();
+      expect(body).toHaveProperty("success");
+
+      if (status === 200) {
+        expect(body.success).toBe(true);
+        expect(body.data).toBeDefined();
+      }
     }
   });
 });

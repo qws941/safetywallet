@@ -24,7 +24,6 @@ setup("authenticate as admin", async ({ page }) => {
         ),
         page.getByRole("button", { name: "로그인" }).click(),
       ]);
-
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
       await page.context().storageState({ path: authFile });
       return;

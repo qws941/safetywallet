@@ -25,8 +25,10 @@ test.describe("Admin Education Management", () => {
       .first();
     const emptyText = page.getByText("데이터가 없습니다");
     const siteMsg = page.getByText("현장을 선택해주세요");
-    await expect(content.or(emptyText).or(siteMsg)).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(content.or(emptyText).first().or(siteMsg).first()).toBeVisible(
+      {
+        timeout: 10000,
+      },
+    );
   });
 });

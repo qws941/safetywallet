@@ -8,14 +8,14 @@ test.describe("Admin Sync Errors", () => {
   test("should display sync errors page content", async ({ page }) => {
     const heading = page.getByRole("heading").first();
     const syncText = page.getByText("동기화 오류");
-    await expect(heading.or(syncText)).toBeVisible({ timeout: 10000 });
+    await expect(heading.or(syncText).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should display data table or empty state", async ({ page }) => {
     const table = page.locator("table").first();
     const emptyText = page.getByText("데이터가 없습니다");
     const noErrors = page.getByText("오류가 없습니다");
-    await expect(table.or(emptyText).or(noErrors)).toBeVisible({
+    await expect(table.or(emptyText).first().or(noErrors).first()).toBeVisible({
       timeout: 10000,
     });
   });

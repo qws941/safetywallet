@@ -5,7 +5,7 @@ import { ImageLightbox } from "@/components/image-lightbox";
 
 vi.mock("next/image", () => ({
   default: ({ src, alt }: { src: string; alt: string }) => (
-    // eslint-disable-next-line jsx-a11y/alt-text
+    // eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element
     <img src={src} alt={alt} />
   ),
 }));

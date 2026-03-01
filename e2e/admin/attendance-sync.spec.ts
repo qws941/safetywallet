@@ -15,7 +15,7 @@ test.describe("Admin Attendance Sync", () => {
     const table = page.locator("table").first();
     const card = page.locator(".rounded-lg.border, [class*='card']").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(table.or(card).or(emptyText)).toBeVisible({
+    await expect(table.or(card).first().or(emptyText).first()).toBeVisible({
       timeout: 10000,
     });
   });

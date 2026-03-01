@@ -14,7 +14,7 @@ test.describe("Admin Votes Management", () => {
   test("should display data table or empty state", async ({ page }) => {
     const table = page.locator("table").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(table.or(emptyText)).toBeVisible({ timeout: 10000 });
+    await expect(table.or(emptyText).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should have create vote button", async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe("Admin Vote Creation", () => {
 
     const form = page.locator("form").first();
     const heading = page.getByRole("heading").first();
-    await expect(form.or(heading)).toBeVisible({ timeout: 10000 });
+    await expect(form.or(heading).first()).toBeVisible({ timeout: 10000 });
   });
 });
 

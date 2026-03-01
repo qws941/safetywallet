@@ -42,6 +42,8 @@ test.describe("Admin Navigation", () => {
     await page.waitForLoadState("domcontentloaded");
     const settingsHeading = page.getByRole("heading", { name: "설정" });
     const errorMsg = page.getByText("현장 정보를 불러올 수 없습니다");
-    await expect(settingsHeading.or(errorMsg)).toBeVisible({ timeout: 10000 });
+    await expect(settingsHeading.or(errorMsg).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 });

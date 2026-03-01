@@ -10,7 +10,7 @@ test.describe("Admin Settings", () => {
   }) => {
     const heading = page.getByRole("heading", { name: "설정" });
     const errorMsg = page.getByText("현장 정보를 불러올 수 없습니다");
-    await expect(heading.or(errorMsg)).toBeVisible({ timeout: 10000 });
+    await expect(heading.or(errorMsg).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should display site info or error message", async ({ page }) => {

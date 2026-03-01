@@ -60,7 +60,7 @@ test.describe("A) Login Page Deep Tests", () => {
       page
         .locator(".text-destructive")
         .first()
-        .or(page.getByRole("button", { name: "로그인" })),
+        .or(page.getByRole("button", { name: "로그인" }).first()),
     ).toBeVisible({ timeout: 10_000 });
   });
 });

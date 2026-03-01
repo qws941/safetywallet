@@ -16,7 +16,7 @@ test.describe("Admin Announcements", () => {
   test("should show empty state or announcement list", async ({ page }) => {
     const emptyText = page.getByText("공지사항이 없습니다");
     const card = page.locator("[class*='card']").first();
-    await expect(emptyText.or(card)).toBeVisible({ timeout: 10000 });
+    await expect(emptyText.or(card).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should open create form when clicking new button", async ({ page }) => {

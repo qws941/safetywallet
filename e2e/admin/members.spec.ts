@@ -14,7 +14,7 @@ test.describe("Admin Members Management", () => {
   test("should display data table or empty state", async ({ page }) => {
     const table = page.locator("table").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(table.or(emptyText)).toBeVisible({ timeout: 10000 });
+    await expect(table.or(emptyText).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should have search input", async ({ page }) => {

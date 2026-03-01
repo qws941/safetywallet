@@ -13,8 +13,11 @@ test.describe("Admin Attendance Unmatched", () => {
 
   test("should display data table or empty state", async ({ page }) => {
     const table = page.locator("table").first();
-    const emptyText = page.getByText("데이터가 없습니다");
-    await expect(table.or(emptyText)).toBeVisible({ timeout: 10000 });
+    const emptyText1 = page.getByText("데이터가 없습니다").first();
+    const emptyText2 = page.getByText("미매칭 기록이 없습니다").first();
+    await expect(table.or(emptyText1).or(emptyText2).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test("should have filter controls", async ({ page }) => {

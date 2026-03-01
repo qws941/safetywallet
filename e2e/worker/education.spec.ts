@@ -39,32 +39,35 @@ test.describe("Worker Education", () => {
     page,
   }) => {
     await page.goto("/education");
-    const content = page
-      .locator(
-        "[data-testid='education-card'], .card, text=/없습니다|empty|교육/i",
-      )
-      .first();
-    await expect(content).toBeVisible({ timeout: 10_000 });
+    // Education cards use shadcn Card with h3 titles (no data-testid, no .card class)
+    // Empty state shows 📭 emoji with i18n key string "education.noMaterials"
+    const cards = page.locator("h3, a[href*='/education/view']");
+    const emptyState = page.locator(
+      "text=/📭|education\\.noMaterials|교육 자료가 없습니다|없습니다/",
+    );
+    await expect(cards.or(emptyState).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("quizzes tab shows quiz list", async ({ page }) => {
     await page.goto("/education");
     const quizTab = page
       .locator("button, [role='tab']")
-      .filter({ hasText: /퀴즈|quiz/i })
+      .filter({ hasText: /퀴즈|quiz|quizzes/i })
       .first();
     await quizTab.click();
-    const quizContent = page
-      .locator("[data-testid='quiz-card'], .card, text=/퀴즈|quiz|없습니다/i")
-      .first();
-    await expect(quizContent).toBeVisible({ timeout: 10_000 });
+    // Quiz cards use shadcn Card with h3 titles or empty state with 📭 emoji
+    const quizCards = page.locator("h3, a[href*='/education/quiz']");
+    const emptyState = page.locator(
+      "text=/📭|education\\.noQuizzes|퀴즈가 없습니다|없습니다/",
+    );
+    await expect(quizCards.or(emptyState).first()).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test("education detail page loads with query param", async ({ page }) => {
     await page.goto("/education");
-    const card = page
-      .locator("a[href*='/education/view'], [data-testid='education-card'] a")
-      .first();
+    const card = page.locator("a[href*='/education/view']").first();
     const hasContent = await card
       .isVisible({ timeout: 5_000 })
       .catch(() => false);

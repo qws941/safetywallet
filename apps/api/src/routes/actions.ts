@@ -8,6 +8,7 @@ import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { success, error } from "../lib/response";
 import { logAuditWithContext } from "../lib/audit";
+import { createLogger } from "../lib/logger";
 
 import {
   CreateActionSchema,
@@ -22,6 +23,7 @@ import {
   users,
 } from "../db/schema";
 
+const logger = createLogger("actions");
 type ActionStatus =
   | "NONE"
   | "ASSIGNED"
@@ -114,7 +116,7 @@ app.post("/", validateJson("json", CreateActionSchema), async (c) => {
 
     return success(c, { action: newAction }, 201);
   } catch (e) {
-    console.error("Failed to create action:", e);
+    logger.error("Failed to create action", e);
     return error(c, "INTERNAL_ERROR", "Failed to create action", 500);
   }
 });

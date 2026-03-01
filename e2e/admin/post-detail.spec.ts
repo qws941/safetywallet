@@ -20,7 +20,7 @@ test.describe("Admin Post Detail", () => {
           const detail = page.locator(
             '[data-testid="post-detail"], .post-detail, article',
           );
-          await expect(heading.or(detail).first()).toBeVisible({
+          await expect(heading.or(detail).first().first()).toBeVisible({
             timeout: 10000,
           });
         }

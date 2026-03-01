@@ -19,7 +19,7 @@ test.describe("Admin Member Detail", () => {
           const detail = page.locator(
             '[data-testid="member-detail"], .member-detail, article',
           );
-          await expect(heading.or(detail).first()).toBeVisible({
+          await expect(heading.or(detail).first().first()).toBeVisible({
             timeout: 10000,
           });
         }

@@ -9,6 +9,7 @@ import { attendanceMiddleware } from "../middleware/attendance";
 import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { success, error } from "../lib/response";
 import { logAuditWithContext } from "../lib/audit";
+import { createLogger } from "../lib/logger";
 import { hammingDistance, DUPLICATE_THRESHOLD } from "../lib/phash";
 import { canResubmit } from "../lib/state-machine";
 import { CreatePostSchema, ResubmitPostSchema } from "../validators/schemas";
@@ -21,6 +22,7 @@ import {
   pointsLedger,
 } from "../db/schema";
 
+const logger = createLogger("posts");
 const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
@@ -263,7 +265,7 @@ app.post(
 
       return success(c, { post: newPost }, 201);
     } catch (e) {
-      console.error("Failed to create post:", e);
+      logger.error("Failed to create post", e);
       return error(c, "INTERNAL_ERROR", "Failed to create post", 500);
     }
   },

@@ -14,7 +14,7 @@ test.describe("Admin Dashboard Recommendations", () => {
   test("should display stats cards or empty state", async ({ page }) => {
     const card = page.locator(".rounded-lg.border, [class*='card']").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(card.or(emptyText)).toBeVisible({ timeout: 10000 });
+    await expect(card.or(emptyText).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should display charts or data visualization", async ({ page }) => {
@@ -23,7 +23,9 @@ test.describe("Admin Dashboard Recommendations", () => {
     );
     const table = page.locator("table").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(chart.first().or(table).or(emptyText)).toBeVisible({
+    await expect(
+      chart.first().or(table).first().or(emptyText).first(),
+    ).toBeVisible({
       timeout: 10000,
     });
   });

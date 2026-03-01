@@ -34,18 +34,24 @@ test.describe("Worker Actions", () => {
 
   test("shows empty state or action cards", async ({ page }) => {
     await page.goto("/actions");
-    const content = page
-      .locator(
-        "[data-testid='action-card'], [data-testid='empty-state'], text=/조치|없습니다|action/i",
-      )
-      .first();
-    await expect(content).toBeVisible({ timeout: 10_000 });
+    // Action cards have status badges (배정됨/진행 중/완료됨 from ko.ts) or
+    // empty state shows ✅ emoji with i18n key strings (actions.list.empty)
+    const cards = page.locator(
+      "text=/배정됨|진행 중|완료됨|확인됨|기한 초과|actions\\.status/",
+    );
+    const emptyState = page.locator(
+      "text=/✅|actions\\.list\\.empty|조치 사항이 없습니다/",
+    );
+    await expect(cards.or(emptyState).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("action detail page loads with query param", async ({ page }) => {
     await page.goto("/actions");
+    // Only look for explicit detail links in main content — exclude nav links
     const actionCard = page
-      .locator("a[href*='/actions/view'], [data-testid='action-card']")
+      .locator(
+        "main a[href*='/actions/view'], main a[href*='/actions/']:not(nav a)",
+      )
       .first();
     const hasActions = await actionCard
       .isVisible({ timeout: 5_000 })

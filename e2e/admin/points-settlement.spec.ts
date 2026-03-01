@@ -8,14 +8,14 @@ test.describe("Admin Points Settlement", () => {
   test("should display settlement page content", async ({ page }) => {
     const heading = page.getByRole("heading").first();
     const card = page.locator(".rounded-lg.border, [class*='card']").first();
-    await expect(heading.or(card)).toBeVisible({ timeout: 10000 });
+    await expect(heading.or(card).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should display settlement status or empty state", async ({ page }) => {
     const table = page.locator("table").first();
     const card = page.locator(".rounded-lg.border, [class*='card']").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(table.or(card).or(emptyText)).toBeVisible({
+    await expect(table.or(card).first().or(emptyText).first()).toBeVisible({
       timeout: 10000,
     });
   });

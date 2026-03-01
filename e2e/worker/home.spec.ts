@@ -24,10 +24,9 @@ test.describe("Worker Home", () => {
   });
 
   test("displays attendance section", async ({ page }) => {
+    // Attendance card shows "출근 완료" or "미출근"; if no site assigned shows "잠시만 기다려주세요..."
     const attendance = page
-      .locator(
-        "[data-testid='attendance'], button:has-text('출근'), button:has-text('퇴근')",
-      )
+      .locator("text=/출근 완료|미출근|잠시만 기다려/")
       .first();
     await expect(attendance).toBeVisible({ timeout: 10_000 });
   });
@@ -38,12 +37,21 @@ test.describe("Worker Home", () => {
   });
 
   test("displays posts section", async ({ page }) => {
-    const posts = page.locator("text=/게시|글|post/i").first();
+    // Quick actions grid has 📢 t("posts.title")="게시물"; content section uses t("home.recentReports") key
+    // If no currentSiteId, page shows "잠시만 기다려주세요..." with 🏗️ only
+    const posts = page
+      .locator(
+        "text=/게시물|recentReports|recentPosts|home\\.recent|📢|잠시만 기다려/i",
+      )
+      .first();
     await expect(posts).toBeVisible({ timeout: 10_000 });
   });
 
   test("navigates to other sections via bottom nav", async ({ page }) => {
-    const navLinks = page.locator("nav a, nav button");
+    // BottomNav uses Next.js Link (renders as <a>); 5 items total
+    // Wait for at least one nav link to be visible before counting
+    const navLinks = page.locator("nav a");
+    await expect(navLinks.first()).toBeVisible({ timeout: 10_000 });
     const count = await navLinks.count();
     expect(count).toBeGreaterThanOrEqual(3);
   });

@@ -8,13 +8,13 @@ test.describe("Admin Points Policies", () => {
   test("should display policies page content", async ({ page }) => {
     const heading = page.getByRole("heading").first();
     const table = page.locator("table").first();
-    await expect(heading.or(table)).toBeVisible({ timeout: 10000 });
+    await expect(heading.or(table).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should display policy table or empty state", async ({ page }) => {
     const table = page.locator("table").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(table.or(emptyText)).toBeVisible({ timeout: 10000 });
+    await expect(table.or(emptyText).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should have create policy button", async ({ page }) => {

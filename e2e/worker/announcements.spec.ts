@@ -28,28 +28,27 @@ test.describe("Worker Announcements", () => {
 
   test("displays announcement cards or empty state", async ({ page }) => {
     await page.goto("/announcements");
-    const content = page
-      .locator(
-        "[data-testid='announcement-card'], .card, text=/없습니다|empty/i",
-      )
-      .first();
-    await expect(content).toBeVisible({ timeout: 10_000 });
+    // Announcement cards use shadcn Card (no .card class, no data-testid)
+    // Empty state shows 📭 emoji with i18n key string "announcements.empty"
+    const cards = page.locator("h3");
+    const emptyState = page.locator(
+      "text=/📭|announcements\\.empty|공지사항이 없습니다|없습니다/",
+    );
+    await expect(cards.or(emptyState).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("announcement cards show type badges", async ({ page }) => {
     await page.goto("/announcements");
-    const card = page
-      .locator("[data-testid='announcement-card'], .card")
-      .first();
+    // Cards use shadcn Card components — look for card-like structure
+    const card = page.locator("h3").first();
     const hasCards = await card
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
     if (hasCards) {
+      // Type badges render as shadcn Badge with announcement type text
       const badge = page
-        .locator(
-          "[data-testid='type-badge'], .badge, text=/RANKING|BEST_PRACTICE|우수|순위/i",
-        )
+        .locator("text=/RANKING|BEST_PRACTICE|우수|순위|안전|일반|중요/i")
         .first();
       await expect(badge).toBeVisible({ timeout: 5_000 });
     } else {
@@ -59,9 +58,7 @@ test.describe("Worker Announcements", () => {
 
   test("announcement cards are expandable", async ({ page }) => {
     await page.goto("/announcements");
-    const card = page
-      .locator("[data-testid='announcement-card'], .card")
-      .first();
+    const card = page.locator("h3").first();
     const hasCards = await card
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
@@ -69,7 +66,7 @@ test.describe("Worker Announcements", () => {
     if (hasCards) {
       await card.click();
       const expanded = page
-        .locator("[data-state='open'], .expanded, text=/내용|content/i")
+        .locator("[data-state='open'], text=/내용|content/i")
         .first();
       await expect(expanded).toBeVisible({ timeout: 5_000 });
     } else {

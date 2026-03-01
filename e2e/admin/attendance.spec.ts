@@ -14,7 +14,7 @@ test.describe("Admin Attendance", () => {
   test("should display stat cards", async ({ page }) => {
     const card = page.locator(".rounded-lg.border.bg-card").first();
     const emptyText = page.getByText("데이터가 없습니다");
-    await expect(card.or(emptyText)).toBeVisible({ timeout: 10000 });
+    await expect(card.or(emptyText).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("should have tab navigation", async ({ page }) => {
