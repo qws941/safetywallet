@@ -15,7 +15,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "turbo run build",
+    "build": "turbo run build && npm run build:static",
     "build:api": "npm run build --workspace=packages/types && npm run build --workspace=apps/api",
     "build:static": "rm -rf dist && mkdir -p dist/admin && cp -r apps/worker/out/* dist/ && cp -r apps/admin/out/* dist/admin/",
     "build:one-worker": "npm run build:api",
