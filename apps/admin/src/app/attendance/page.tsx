@@ -30,7 +30,26 @@ export default function AttendancePage() {
   const { data: unmatchedData, isLoading: isUnmatchedLoading } =
     useUnmatchedRecords();
 
-  const allLogs = useMemo(() => logsResponse?.logs ?? [], [logsResponse?.logs]);
+  const allLogs = useMemo(() => {
+    const logs = logsResponse?.logs ?? [];
+    const seen = new Map<string, (typeof logs)[0]>();
+    for (const log of logs) {
+      const key = log.externalWorkerId ?? `__nokey_${seen.size}`;
+      if (!seen.has(key)) {
+        seen.set(key, log);
+      } else {
+        const existing = seen.get(key)!;
+        if (
+          log.checkinAt &&
+          existing.checkinAt &&
+          log.checkinAt < existing.checkinAt
+        ) {
+          seen.set(key, log);
+        }
+      }
+    }
+    return [...seen.values()];
+  }, [logsResponse?.logs]);
 
   const stats = useMemo(
     () => ({
@@ -42,18 +61,11 @@ export default function AttendancePage() {
   );
 
   const anomalyCount = useMemo(() => {
-    const nameCounts = new Map<string, number>();
-    for (const l of allLogs) {
-      if (l.userName) {
-        nameCounts.set(l.userName, (nameCounts.get(l.userName) || 0) + 1);
-      }
-    }
     return allLogs.filter((log) => {
       if (log.checkinAt) {
         const hour = getKSTHour(log.checkinAt);
         if (hour < 5 || hour >= 12) return true;
       }
-      if (log.userName && (nameCounts.get(log.userName) || 0) > 1) return true;
       return false;
     }).length;
   }, [allLogs]);

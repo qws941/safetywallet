@@ -72,13 +72,6 @@ export function AttendanceLogsTab({
     }
     // Company filter disabled — backend does not return companyName
 
-    const nameCounts = new Map<string, number>();
-    for (const l of logs) {
-      if (l.userName) {
-        nameCounts.set(l.userName, (nameCounts.get(l.userName) || 0) + 1);
-      }
-    }
-
     const withAnomalies = logs.map((log, i) => {
       const anomalies: AnomalyType[] = [];
 
@@ -89,10 +82,6 @@ export function AttendanceLogsTab({
       }
 
       // checkOutTime not available from backend
-
-      if (log.userName && (nameCounts.get(log.userName) || 0) > 1) {
-        anomalies.push("DUPLICATE");
-      }
 
       return { ...log, index: i + 1, anomalies };
     });

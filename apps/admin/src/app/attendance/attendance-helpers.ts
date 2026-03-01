@@ -1,17 +1,15 @@
-export type AnomalyType = "EARLY" | "LATE" | "NO_CHECKOUT" | "DUPLICATE";
+export type AnomalyType = "EARLY" | "LATE" | "NO_CHECKOUT";
 
 export const ANOMALY_LABELS: Record<AnomalyType, string> = {
   EARLY: "이른출근",
   LATE: "늦은출근",
   NO_CHECKOUT: "미퇴근",
-  DUPLICATE: "중복",
 };
 
 export const ANOMALY_COLORS: Record<AnomalyType, string> = {
   EARLY: "bg-blue-100 text-blue-800",
   LATE: "bg-orange-100 text-orange-800",
   NO_CHECKOUT: "bg-yellow-100 text-yellow-800",
-  DUPLICATE: "bg-red-100 text-red-800",
 };
 
 export const FAS_SOURCES = [
