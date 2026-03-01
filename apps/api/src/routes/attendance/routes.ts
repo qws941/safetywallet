@@ -50,7 +50,7 @@ export async function handleSync(c: AppContext) {
     }
   }
 
-  const validatedBody = c.req.valid("json") as
+  const validatedBody = (await c.req.json()) as
     | { events?: AttendanceSyncEvent[] }
     | undefined;
   const body =
