@@ -31,8 +31,8 @@ export function mapToFasAttendance(
   return {
     emplCd: String(row["empl_cd"] || ""),
     accsDay: String(row["accs_day"] || ""),
-    inTime: inTime ? String(inTime) : null,
-    outTime: outTime ? String(outTime) : null,
+    inTime: inTime ? String(inTime).padStart(4, "0") : null,
+    outTime: outTime ? String(outTime).padStart(4, "0") : null,
     state: Number(row["state"] || 0),
     partCd: String(row["part_cd"] || ""),
   };

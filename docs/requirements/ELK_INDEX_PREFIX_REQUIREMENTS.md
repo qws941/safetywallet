@@ -128,7 +128,7 @@ Given `ELASTICSEARCH_INDEX_PREFIX=safetywallet-logs`,
   - pass `c.env.ELASTICSEARCH_INDEX_PREFIX` to logger
 - `apps/api-worker/src/index.ts`
   - pass `c.env.ELASTICSEARCH_INDEX_PREFIX` in `onError` logger
-- `apps/api-worker/src/scheduled/index.ts`
+- `apps/api/src/jobs/registry.ts`
   - apply prefix override for scheduled ELK endpoint
 - `apps/api-worker/src/types.ts`
   - add `ELASTICSEARCH_INDEX_PREFIX?: string`
@@ -141,7 +141,7 @@ Given `ELASTICSEARCH_INDEX_PREFIX=safetywallet-logs`,
 
 - `src/lib/__tests__/logger.test.ts`
   - MUST verify override prefix target URL
-- `src/scheduled/__tests__/index.test.ts`
+- `src/jobs/__tests__/registry.test.ts`
   - MUST verify override prefix endpoint
 - `src/middleware/__tests__/request-logger.test.ts`
   - MUST verify middleware passes prefix to `createLogger`

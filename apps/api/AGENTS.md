@@ -7,11 +7,11 @@ Child AGENTS files own module detail; this file only integration map.
 
 ## KEY FILES
 
-| File            | Role                | Current Facts                                                                                                |
-| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `src/index.ts`  | Runtime composition | 377 lines. Builds `app` + `/api` sub-app. Exports `{ app }`, `RateLimiter`, default `fetch/scheduled/queue`. |
-| `src/types.ts`  | Binding contract    | `Env` includes D1, R2/STATIC, KV, optional DO/Hyperdrive/Analytics/AI/Queue bindings.                        |
-| `wrangler.toml` | Deployment bindings | Source of truth for runtime binding names consumed by `Env`.                                                 |
+| File            | Role                | Current Facts                                                                                                                |
+| --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `src/index.ts`  | Runtime composition | 412 lines. Builds `app` + `/api` sub-app. Exports `{ app }`, `RateLimiter`, `JobScheduler`, default `fetch/scheduled/queue`. |
+| `src/types.ts`  | Binding contract    | `Env` includes D1, R2/STATIC, KV, optional DO/Hyperdrive/Analytics/AI/Queue bindings.                                        |
+| `wrangler.toml` | Deployment bindings | Source of truth for runtime binding names consumed by `Env`.                                                                 |
 
 ## ROUTE REGISTRATION SNAPSHOT
 
@@ -27,7 +27,7 @@ Child AGENTS files own module detail; this file only integration map.
 
 ## RUNTIME FLOWS
 
-- **Scheduled:** `scheduled(controller, env, ctx)` delegates to `ctx.waitUntil(runScheduled(...))`.
+- **Scheduled:** `scheduled(controller, env, ctx)` delegates to `JobScheduler` DO via `src/jobs/registry.ts`.
 - **Queue:** `processNotificationBatch(batch, env)` handles `NOTIFICATION_QUEUE` messages.
 - **Static fallback:** hostname switch (`admin.*` => `admin/` prefix). Missing asset falls back to index HTML from `STATIC` bucket.
 

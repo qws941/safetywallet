@@ -60,8 +60,9 @@ export function formatAccsDayTime(
   if (!time || !/^\d{8}$/.test(accsDay)) {
     return null;
   }
-  const hh = time.slice(0, 2).padStart(2, "0");
-  const mm = time.slice(2, 4).padStart(2, "0");
+  const padded = time.padStart(4, "0");
+  const hh = padded.slice(0, 2).padStart(2, "0");
+  const mm = padded.slice(2, 4).padStart(2, "0");
   return `${accsDay.slice(0, 4)}-${accsDay.slice(4, 6)}-${accsDay.slice(6, 8)}T${hh}:${mm}:00+09:00`;
 }
 

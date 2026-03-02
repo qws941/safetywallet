@@ -29,6 +29,7 @@ export interface Env {
   REQUIRE_ATTENDANCE_FOR_POST: string;
   ENVIRONMENT: string;
   RATE_LIMITER?: DurableObjectNamespace;
+  JOB_SCHEDULER?: DurableObjectNamespace;
   SMS_API_KEY?: string;
   SMS_API_SECRET?: string;
   SMS_SENDER?: string;

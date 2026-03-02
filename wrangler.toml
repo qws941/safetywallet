@@ -82,8 +82,15 @@ head_sampling_rate = 1
 
 # Durable Objects for rate limiting
 [durable_objects]
-bindings = [{ name = "RATE_LIMITER", class_name = "RateLimiter" }]
+bindings = [
+  { name = "RATE_LIMITER", class_name = "RateLimiter" },
+  { name = "JOB_SCHEDULER", class_name = "JobScheduler" },
+]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["RateLimiter"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["JobScheduler"]

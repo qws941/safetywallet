@@ -20,6 +20,7 @@ export const FAS_SOURCES = [
 
 export const getKSTHour = (dateStr: string): number => {
   const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return NaN;
   const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
   return kst.getUTCHours();
 };

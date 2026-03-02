@@ -2,15 +2,17 @@
 
 ## PURPOSE
 
-Stateful coordination runtime for rate limiting.
-Current scope: single Durable Object class `RateLimiter`.
+Stateful coordination runtime for rate limiting and job scheduling.
+Current scope: two Durable Object classes — `RateLimiter` and `JobScheduler`.
 
 ## KEY FILES
 
-| File                            | Role                               | Current Facts                                                                                       |
-| ------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `RateLimiter.ts`                | DO request handler + state machine | Supports actions: `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`. |
-| `__tests__/RateLimiter.test.ts` | behavior verification              | Covers generic limiter windows plus OTP hourly/daily limit behavior.                                |
+| File                             | Role                               | Current Facts                                                                                       |
+| -------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `RateLimiter.ts`                 | DO request handler + state machine | Supports actions: `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`. |
+| `__tests__/RateLimiter.test.ts`  | behavior verification              | Covers generic limiter windows plus OTP hourly/daily limit behavior.                                |
+| `JobScheduler.ts`                | DO scheduled job runner            | Executes daily/monthly/sync jobs via alarm-based scheduling. Delegates to `src/jobs/` registry.     |
+| `__tests__/JobScheduler.test.ts` | behavior verification              | Covers job execution, alarm scheduling, error handling.                                             |
 
 ## RUNTIME SNAPSHOT
 

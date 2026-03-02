@@ -31,7 +31,7 @@ test.describe("Education CRUD Operations", () => {
   test("contents edit", async ({ page }) => {
     await adminLogin(page);
     await page.goto("/education");
-    await page.getByRole("tab", { name: "교육자료" }).click();
+    await page.getByRole("button", { name: "교육자료" }).click();
 
     const title = `E2E 콘텐츠 ${uniqueSuffix()}`;
     const updatedTitle = `${title} 수정`;
@@ -57,7 +57,7 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "교육자료" }).click();
+    await page.getByRole("button", { name: "교육자료" }).click();
 
     const contentRow = page.getByRole("row").filter({ hasText: title });
     await expect(contentRow).toBeVisible();
@@ -80,14 +80,14 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "교육자료" }).click();
+    await page.getByRole("button", { name: "교육자료" }).click();
     await expect(page.getByRole("cell", { name: updatedTitle })).toBeVisible();
   });
 
   test("quiz edit", async ({ page }) => {
     await adminLogin(page);
     await page.goto("/education");
-    await page.getByRole("tab", { name: "퀴즈" }).click();
+    await page.getByRole("button", { name: "퀴즈" }).click();
 
     const quizTitle = `E2E 퀴즈 ${uniqueSuffix()}`;
     const updatedQuizTitle = `${quizTitle} 수정`;
@@ -109,7 +109,7 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "퀴즈" }).click();
+    await page.getByRole("button", { name: "퀴즈" }).click();
 
     const quizRow = page.getByRole("row").filter({ hasText: quizTitle });
     await expect(quizRow).toBeVisible();
@@ -135,7 +135,7 @@ test.describe("Education CRUD Operations", () => {
   test("quiz delete", async ({ page }) => {
     await adminLogin(page);
     await page.goto("/education");
-    await page.getByRole("tab", { name: "퀴즈" }).click();
+    await page.getByRole("button", { name: "퀴즈" }).click();
 
     const quizTitle = `E2E 삭제 퀴즈 ${uniqueSuffix()}`;
 
@@ -156,7 +156,7 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "퀴즈" }).click();
+    await page.getByRole("button", { name: "퀴즈" }).click();
 
     const quizRow = page.getByRole("row").filter({ hasText: quizTitle });
     await expect(quizRow).toBeVisible();
@@ -188,7 +188,7 @@ test.describe("Education CRUD Operations", () => {
   test("statutory delete", async ({ page }) => {
     await adminLogin(page);
     await page.goto("/education");
-    await page.getByRole("tab", { name: "법정교육" }).click();
+    await page.getByRole("button", { name: "법정교육" }).click();
 
     const userId = await getCurrentUserId(page);
     test.skip(!userId, "Cannot determine user ID for statutory training test");
@@ -218,7 +218,7 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "법정교육" }).click();
+    await page.getByRole("button", { name: "법정교육" }).click();
 
     const statutoryRow = page
       .getByRole("row")
@@ -249,7 +249,7 @@ test.describe("Education CRUD Operations", () => {
   test("tbm edit", async ({ page }) => {
     await adminLogin(page);
     await page.goto("/education");
-    await page.getByRole("tab", { name: "TBM" }).click();
+    await page.getByRole("button", { name: "TBM" }).click();
 
     const topic = `E2E TBM ${uniqueSuffix()}`;
     const updatedTopic = `${topic} 수정`;
@@ -272,7 +272,7 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "TBM" }).click();
+    await page.getByRole("button", { name: "TBM" }).click();
 
     const tbmRow = page.getByRole("row").filter({ hasText: topic });
     await expect(tbmRow).toBeVisible();
@@ -298,7 +298,7 @@ test.describe("Education CRUD Operations", () => {
   test("tbm delete", async ({ page }) => {
     await adminLogin(page);
     await page.goto("/education");
-    await page.getByRole("tab", { name: "TBM" }).click();
+    await page.getByRole("button", { name: "TBM" }).click();
 
     const topic = `E2E TBM 삭제 ${uniqueSuffix()}`;
     const today = new Date().toISOString().split("T")[0];
@@ -320,7 +320,7 @@ test.describe("Education CRUD Operations", () => {
     ).toBeVisible();
 
     await page.goto("/education");
-    await page.getByRole("tab", { name: "TBM" }).click();
+    await page.getByRole("button", { name: "TBM" }).click();
 
     const tbmRow = page.getByRole("row").filter({ hasText: topic });
     await expect(tbmRow).toBeVisible();

@@ -9,7 +9,7 @@
 
 ## OVERVIEW
 
-SafetyWallet — industrial safety compliance platform. Turborepo monorepo with Hono API worker, Next.js 14 PWA for field workers, and Next.js 14 admin dashboard. All deployed on Cloudflare (Workers + Pages). Korean-language UI with i18n support.
+SafetyWallet — industrial safety compliance platform. Turborepo monorepo with Hono API worker, Next.js 15 PWA for field workers, and Next.js 15 admin dashboard. All deployed on Cloudflare (Workers + Pages). Korean-language UI with i18n support.
 
 ## STRUCTURE
 
@@ -17,8 +17,8 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ./
 ├── apps/
 │   ├── api/                 # Hono + Drizzle + D1 — CF Worker (REST API)
-│   ├── worker/              # Next.js 14 PWA — field worker UI (port 3000)
-│   └── admin/               # Next.js 14 dashboard — admin UI (port 3001)
+│   ├── worker/              # Next.js 15 PWA — field worker UI (port 3000)
+│   └── admin/               # Next.js 15 dashboard — admin UI (port 3001)
 ├── packages/
 │   ├── types/                # @safetywallet/types — shared TS types, DTOs, i18n
 │   └── ui/                   # Shared UI components
@@ -30,29 +30,28 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ├── turbo.json                # Pipeline: build/dev/lint/typecheck/test/test:e2e/clean
 ├── vitest.config.ts          # Workspace vitest: 5 project configs
 ├── playwright.config.ts      # 5 projects: api, admin-setup, worker, admin, cross-app
-├── wrangler.toml             # CF Worker config — 10 bindings, dev/prod envs
+├── wrangler.toml             # CF Worker config — 11 bindings, dev/prod envs
 └── package.json              # Workspaces: apps/*, packages/*
 ```
 
 ## WHERE TO LOOK
 
-| Task                   | Location                                  | Notes                                            |
-| ---------------------- | ----------------------------------------- | ------------------------------------------------ |
-| API routes             | `apps/api/src/routes/`                    | 18 route modules + admin subtree                 |
-| API middleware         | `apps/api/src/middleware/`                | Auth, CORS, logging, analytics, security headers |
-| Database schema        | `apps/api/src/db/schema.ts`               | 32 Drizzle tables on Cloudflare D1               |
-| DB migrations          | `apps/api/migrations/`                    | Sequential SQL migrations                        |
-| Durable Objects        | `apps/api/src/durable-objects/`           | RateLimiter DO                                   |
-| Scheduled tasks (cron) | `apps/api/src/scheduled/`                 | \*/5min, monthly, weekly Sun 3am, daily 9pm      |
-| Validators             | `apps/api/src/validators/`                | Zod schemas for request validation               |
-| Worker PWA pages       | `apps/worker/src/app/`                    | Next.js App Router pages                         |
-| Admin dashboard pages  | `apps/admin/src/app/`                     | attendance, posts, votes, education sections     |
-| Shared types/DTOs      | `packages/types/src/`                     | dto/ and i18n/ subdirectories                    |
-| Shared UI components   | `packages/ui/src/components/`             | Cross-app reusable components                    |
-| E2E tests              | `e2e/`                                    | api/, admin/, worker/, cross-app/, shared/       |
-| CI/CD                  | `.github/workflows/`                      | ci.yml + deploy-monitoring.yml (CF Git deploys)  |
-| Deploy monitoring      | `.github/workflows/deploy-monitoring.yml` | Post-deploy health + Slack notify                |
-| Requirement specs      | `docs/requirements/`                      | PRD, implementation plan, feature checklist      |
+| Task                  | Location                        | Notes                                            |
+| --------------------- | ------------------------------- | ------------------------------------------------ |
+| API routes            | `apps/api/src/routes/`          | 18 route modules + admin subtree                 |
+| API middleware        | `apps/api/src/middleware/`      | Auth, CORS, logging, analytics, security headers |
+| Database schema       | `apps/api/src/db/schema.ts`     | 32 Drizzle tables on Cloudflare D1               |
+| DB migrations         | `apps/api/migrations/`          | Sequential SQL migrations                        |
+| Durable Objects       | `apps/api/src/durable-objects/` | RateLimiter + JobScheduler DOs                   |
+| Scheduled jobs (cron) | `apps/api/src/jobs/`            | Daily, monthly, sync — via JobScheduler DO       |
+| Validators            | `apps/api/src/validators/`      | Zod schemas for request validation               |
+| Worker PWA pages      | `apps/worker/src/app/`          | Next.js App Router pages                         |
+| Admin dashboard pages | `apps/admin/src/app/`           | attendance, posts, votes, education sections     |
+| Shared types/DTOs     | `packages/types/src/`           | dto/ and i18n/ subdirectories                    |
+| Shared UI components  | `packages/ui/src/components/`   | Cross-app reusable components                    |
+| E2E tests             | `e2e/`                          | api/, admin/, worker/, cross-app/, shared/       |
+| CI/CD                 | `.github/workflows/`            | ci.yml + deploy-monitoring.yml (health + Slack)  |
+| Requirement specs     | `docs/requirements/`            | PRD, implementation plan, feature checklist      |
 
 ## CONVENTIONS
 
@@ -60,26 +59,25 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 
 - **Runtime**: Node 20, TypeScript strict, Turborepo
 - **API**: Hono framework on Cloudflare Workers, Drizzle ORM on D1 (SQLite)
-- **Frontend**: Next.js 14 App Router, React 18, Zustand stores, TanStack Query
+- **Frontend**: Next.js 15 App Router, React 18, Zustand stores, TanStack Query
 - **Testing**: Vitest (unit, 5 workspace configs), Playwright (E2E, 5 projects)
 - **Formatting**: Prettier, 2-space indent, Husky + lint-staged pre-commit
 
-### Cloudflare Bindings (10)
+### Cloudflare Bindings (11)
 
-| Binding              | Type             | Purpose                             |
-| -------------------- | ---------------- | ----------------------------------- |
-| `DB`                 | D1               | Primary database (32 tables)        |
-| `IMAGES_BUCKET`      | R2               | User-uploaded images                |
-| `BACKUP_BUCKET`      | R2               | Database backups                    |
-| `ASSETS_BUCKET`      | R2               | Static assets / admin SPA           |
-| `FAS_DB`             | Hyperdrive       | External FAS MariaDB connection     |
-| `CACHE`              | KV               | Key-value cache                     |
-| `ANALYTICS`          | Analytics Engine | Request/event analytics             |
-| `NOTIFICATION_QUEUE` | Queue            | Async notification processing       |
-| `NOTIFICATION_DLQ`   | Queue (DLQ)      | Dead letter queue for failed notifs |
-| `AI`                 | Workers AI       | AI inference                        |
-
-RateLimiter Durable Object exported from `src/durable-objects/RateLimiter.ts`.
+| Binding              | Type             | Purpose                         |
+| -------------------- | ---------------- | ------------------------------- |
+| `DB`                 | D1               | Primary database (32 tables)    |
+| `ASSETS`             | R2 (assets)      | Static assets / admin SPA       |
+| `R2`                 | R2 (bucket)      | User-uploaded images            |
+| `ACETIME_BUCKET`     | R2 (bucket)      | Attendance records storage      |
+| `FAS_HYPERDRIVE`     | Hyperdrive       | External FAS MariaDB connection |
+| `KV`                 | KV               | Key-value cache                 |
+| `ANALYTICS`          | Analytics Engine | Request/event analytics         |
+| `NOTIFICATION_QUEUE` | Queue            | Async notification processing   |
+| `AI`                 | Workers AI       | AI inference                    |
+| `RATE_LIMITER`       | Durable Object   | Request rate limiting           |
+| `JOB_SCHEDULER`      | Durable Object   | Scheduled job execution         |
 
 ### API Middleware Chain (order matters)
 
@@ -106,10 +104,8 @@ RateLimiter Durable Object exported from `src/durable-objects/RateLimiter.ts`.
 
 ### Testing
 
-- Vitest workspace config at root with 5 project configs (api, admin, worker, types, ui)
-- Playwright 5 projects: `api` (API tests), `admin-setup` (auth fixture), `worker`, `admin`, `cross-app`
-- ~1554 tests across 147 files
-- Run: `npm test` (unit via Turbo), `npm run test:e2e` (Playwright)
+- Vitest (5 workspace configs: api, admin, worker, types, ui) + Playwright (5 projects: api, admin-setup, worker, admin, cross-app)
+- ~1554 tests across 147 files. Run: `npm test` (unit), `npm run test:e2e` (E2E)
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -127,28 +123,21 @@ RateLimiter Durable Object exported from `src/durable-objects/RateLimiter.ts`.
 - Dual database: D1 (primary, SQLite) + Hyperdrive (external FAS MariaDB)
 - Admin SPA served as static files from R2 via catch-all route in api-worker
 - Notification queue with dead-letter queue pattern for reliable delivery
-- RateLimiter implemented as Cloudflare Durable Object
+- RateLimiter + JobScheduler implemented as Cloudflare Durable Objects
 - Offline-first PWA with local queue sync in worker-app
 
 ## COMMANDS
 
 ```bash
-# Development
 npm run dev                    # Start all apps via Turbo
 npm run build                  # Build all workspaces
 npm run typecheck              # TypeScript check all workspaces
 npm run lint                   # Lint all workspaces
 npm run format:check           # Prettier check
-
-# Testing
 npm test                       # Vitest unit tests (all workspaces)
 npm run test:e2e               # Playwright E2E tests
 npm run test:e2e:smoke         # Smoke tests only
-
-# Database
 npm run db:generate            # Generate Drizzle migrations
-
-# Verification
 npm run verify                 # Full verification script
 npm run git:preflight          # Pre-push checks
 npm run check:wrangler-sync    # Verify wrangler.toml consistency
@@ -157,8 +146,5 @@ npm run lint:naming            # Validate file/dir naming conventions
 
 ## NOTES
 
-- This AGENTS.md is a sync target from `qws941/.github` — it may be overwritten by the upstream sync workflow. To keep safetywallet-specific content, remove `AGENTS.md` from the sync target list in the `.github` repo's `sync.yml`.
 - Node version pinned to 20 via `.nvmrc`.
-- `wrangler.toml` contains both dev and production environment configs.
 - 45 subdirectory AGENTS.md files exist across the monorepo providing module-level context.
-- Deployment flow: push → CI → CF Git Integration → R2 sync → D1 migrate → smoke test → Slack notify.

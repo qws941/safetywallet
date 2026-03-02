@@ -72,8 +72,10 @@ export async function fasGetAttendanceList(
       name: String(row["empl_nm"] || ""),
       partCd: String(row["part_cd"] || ""),
       companyName: String(row["part_nm"] || ""),
-      inTime: row["in_time"] ? String(row["in_time"]) : null,
-      outTime: row["out_time"] ? String(row["out_time"]) : null,
+      inTime: row["in_time"] ? String(row["in_time"]).padStart(4, "0") : null,
+      outTime: row["out_time"]
+        ? String(row["out_time"]).padStart(4, "0")
+        : null,
       accsDay: String(row["accs_day"] || ""),
     }));
 

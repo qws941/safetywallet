@@ -35,6 +35,7 @@ import { analyticsMiddleware } from "./middleware/analytics";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 
 import { createLogger } from "./lib/logger";
+import { authMiddleware } from "./middleware/auth";
 
 const logger = createLogger("index");
 const app = new Hono<{ Bindings: Env }>();
@@ -73,6 +74,7 @@ app.use("*", async (c, next) => {
 });
 
 const api = new Hono<{ Bindings: Env }>();
+const schedulerAdmin = new Hono<{ Bindings: Env }>();
 
 api.get("/health", (c) => {
   return success(c, { status: "healthy" });
@@ -190,6 +192,33 @@ api.post("/fas-sync", async (c) => {
     return c.json({ error: e.message }, 500);
   }
 });
+
+schedulerAdmin.use("*", authMiddleware);
+schedulerAdmin.post("/", async (c) => {
+  const schedulerBinding = c.env.JOB_SCHEDULER;
+  if (!schedulerBinding) {
+    return c.json(
+      { success: false, error: "JOB_SCHEDULER not configured" },
+      503,
+    );
+  }
+
+  const id = schedulerBinding.idFromName("global");
+  const stub = schedulerBinding.get(id);
+  const rawBody = await c.req.text();
+  const response = await stub.fetch("https://job-scheduler/admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: rawBody.length > 0 ? rawBody : JSON.stringify({ action: "status" }),
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: response.headers,
+  });
+});
+
+api.route("/admin/scheduler", schedulerAdmin);
 
 api.route("/auth", auth);
 api.route("/attendance", attendanceRoute);
@@ -368,6 +397,7 @@ import {
 } from "./lib/notification-queue";
 
 export { RateLimiter } from "./durable-objects/RateLimiter";
+export { JobScheduler } from "./durable-objects/JobScheduler";
 export { app };
 
 export default {

@@ -9,7 +9,7 @@ Only two runtime files: schema catalog + D1 batching helper.
 
 | File         | Role                | Current Facts                                                                    |
 | ------------ | ------------------- | -------------------------------------------------------------------------------- |
-| `schema.ts`  | Full Drizzle schema | 1558 lines. 32 `sqliteTable(...)` exports. Enums + relations colocated.          |
+| `schema.ts`  | Full Drizzle schema | 1565 lines. 32 `sqliteTable(...)` exports. Enums + relations colocated.          |
 | `helpers.ts` | D1 batch helpers    | `dbBatch<T>()`, `dbBatchChunked()`; chunk limit constant `D1_BATCH_LIMIT = 100`. |
 
 ## TABLE GROUPS (32)
