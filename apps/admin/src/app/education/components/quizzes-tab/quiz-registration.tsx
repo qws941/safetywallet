@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import {
   Button,
@@ -194,5 +194,3 @@ export function QuizRegistration({ editingQuiz, onCancelEdit }: Props = {}) {
     </Card>
   );
 }
-
-import { useEffect } from "react";
