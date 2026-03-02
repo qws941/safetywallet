@@ -16,34 +16,78 @@ import {
   SelectValue,
   useToast,
 } from "@safetywallet/ui";
-import { useCreateQuiz, type CreateQuizInput } from "@/hooks/use-api";
+import {
+  useCreateQuiz,
+  useUpdateQuiz,
+  type CreateQuizInput,
+} from "@/hooks/use-api";
 import { useAuthStore } from "@/stores/auth";
 import { getErrorMessage } from "../../education-helpers";
-import type { QuizFormState } from "../education-types";
+import type { QuizFormState, QuizItem } from "../education-types";
 import { INITIAL_QUIZ_FORM } from "./constants";
 
-export function QuizRegistration() {
+interface Props {
+  editingQuiz?: QuizItem | null;
+  onCancelEdit?: () => void;
+}
+
+export function QuizRegistration({ editingQuiz, onCancelEdit }: Props = {}) {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
   const { toast } = useToast();
   const [quizForm, setQuizForm] = useState<QuizFormState>(INITIAL_QUIZ_FORM);
   const createQuizMutation = useCreateQuiz();
+  const updateQuizMutation = useUpdateQuiz();
 
-  const onCreateQuiz = async () => {
+  useEffect(() => {
+    if (editingQuiz) {
+      setQuizForm({
+        title: editingQuiz.title,
+        description: editingQuiz.description || "",
+        status: editingQuiz.status,
+        pointsReward: String(editingQuiz.pointsReward || 0),
+        passingScore: String(editingQuiz.passingScore || 70),
+        timeLimitMinutes: editingQuiz.timeLimitMinutes
+          ? String(editingQuiz.timeLimitMinutes)
+          : "",
+      });
+    } else {
+      setQuizForm(INITIAL_QUIZ_FORM);
+    }
+  }, [editingQuiz]);
+  const onSubmitQuiz = async () => {
     if (!currentSiteId || !quizForm.title) return;
     try {
-      await createQuizMutation.mutateAsync({
-        siteId: currentSiteId,
-        title: quizForm.title,
-        description: quizForm.description || undefined,
-        status: quizForm.status,
-        pointsReward: Number(quizForm.pointsReward || 0),
-        passingScore: Number(quizForm.passingScore || 70),
-        timeLimitMinutes: quizForm.timeLimitMinutes
-          ? Number(quizForm.timeLimitMinutes)
-          : undefined,
-      });
-      toast({ description: "퀴즈가 등록되었습니다." });
-      setQuizForm(INITIAL_QUIZ_FORM);
+      if (editingQuiz) {
+        await updateQuizMutation.mutateAsync({
+          id: editingQuiz.id,
+          data: {
+            title: quizForm.title,
+            description: quizForm.description || undefined,
+            status: quizForm.status,
+            pointsReward: Number(quizForm.pointsReward || 0),
+            passingScore: Number(quizForm.passingScore || 70),
+            timeLimitMinutes: quizForm.timeLimitMinutes
+              ? Number(quizForm.timeLimitMinutes)
+              : undefined,
+          },
+        });
+        toast({ description: "퀴즈가 수정되었습니다." });
+        onCancelEdit?.();
+      } else {
+        await createQuizMutation.mutateAsync({
+          siteId: currentSiteId,
+          title: quizForm.title,
+          description: quizForm.description || undefined,
+          status: quizForm.status,
+          pointsReward: Number(quizForm.pointsReward || 0),
+          passingScore: Number(quizForm.passingScore || 70),
+          timeLimitMinutes: quizForm.timeLimitMinutes
+            ? Number(quizForm.timeLimitMinutes)
+            : undefined,
+        });
+        toast({ description: "퀴즈가 등록되었습니다." });
+        setQuizForm(INITIAL_QUIZ_FORM);
+      }
     } catch (error) {
       toast({ variant: "destructive", description: getErrorMessage(error) });
     }
@@ -52,7 +96,7 @@ export function QuizRegistration() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>퀴즈 등록</CardTitle>
+        <CardTitle>{editingQuiz ? "퀴즈 수정" : "퀴즈 등록"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <Input
@@ -126,17 +170,29 @@ export function QuizRegistration() {
             }
           />
         </div>
-        <Button
-          type="button"
-          onClick={onCreateQuiz}
-          disabled={
-            !currentSiteId || !quizForm.title || createQuizMutation.isPending
-          }
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          퀴즈 등록
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={onSubmitQuiz}
+            disabled={
+              !currentSiteId ||
+              !quizForm.title ||
+              createQuizMutation.isPending ||
+              updateQuizMutation.isPending
+            }
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {editingQuiz ? "퀴즈 수정" : "퀴즈 등록"}
+          </Button>
+          {editingQuiz && (
+            <Button type="button" variant="outline" onClick={onCancelEdit}>
+              취소
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
+
+import { useEffect } from "react";

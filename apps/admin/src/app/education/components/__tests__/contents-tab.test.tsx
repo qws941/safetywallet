@@ -5,6 +5,7 @@ import { ContentsTab } from "../contents-tab";
 import {
   useCreateEducationContent,
   useDeleteEducationContent,
+  useUpdateEducationContent,
   useEducationContents,
   useYouTubeOembed,
 } from "@/hooks/use-api";
@@ -12,6 +13,7 @@ import {
 const toastMock = vi.fn();
 const createAsyncMock = vi.fn();
 const deleteAsyncMock = vi.fn();
+const updateAsyncMock = vi.fn();
 const oembedAsyncMock = vi.fn();
 
 vi.mock("next/image", () => ({
@@ -29,6 +31,7 @@ vi.mock("@/stores/auth", () => ({
 vi.mock("@/hooks/use-api", () => ({
   useCreateEducationContent: vi.fn(),
   useDeleteEducationContent: vi.fn(),
+  useUpdateEducationContent: vi.fn(),
   useEducationContents: vi.fn(),
   useYouTubeOembed: vi.fn(),
 }));
@@ -94,6 +97,7 @@ vi.mock("@safetywallet/ui", () => ({
 const mockUseEducationContents = vi.mocked(useEducationContents);
 const mockUseCreateEducationContent = vi.mocked(useCreateEducationContent);
 const mockUseDeleteEducationContent = vi.mocked(useDeleteEducationContent);
+const mockUseUpdateEducationContent = vi.mocked(useUpdateEducationContent);
 const mockUseYouTubeOembed = vi.mocked(useYouTubeOembed);
 
 describe("contents tab", () => {
@@ -101,6 +105,7 @@ describe("contents tab", () => {
     toastMock.mockReset();
     createAsyncMock.mockReset();
     deleteAsyncMock.mockReset();
+    updateAsyncMock.mockReset();
     oembedAsyncMock.mockReset();
 
     mockUseEducationContents.mockReturnValue({
@@ -129,6 +134,10 @@ describe("contents tab", () => {
     } as never);
     mockUseYouTubeOembed.mockReturnValue({
       mutateAsync: oembedAsyncMock,
+      isPending: false,
+    } as never);
+    mockUseUpdateEducationContent.mockReturnValue({
+      mutateAsync: updateAsyncMock,
       isPending: false,
     } as never);
   });

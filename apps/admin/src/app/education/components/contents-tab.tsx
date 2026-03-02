@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,7 @@ import {
 import {
   useCreateEducationContent,
   useDeleteEducationContent,
+  useUpdateEducationContent,
   useEducationContents,
   useYouTubeOembed,
   type CreateEducationContentInput,
@@ -59,10 +60,12 @@ export function ContentsTab() {
     "LOCAL",
   );
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [editingContentId, setEditingContentId] = useState<string | null>(null);
   const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
 
   const { data: contentsData, isLoading } = useEducationContents();
   const createMutation = useCreateEducationContent();
+  const updateMutation = useUpdateEducationContent();
   const deleteMutation = useDeleteEducationContent();
   const ytOembed = useYouTubeOembed();
 
@@ -108,31 +111,83 @@ export function ContentsTab() {
     }
   };
 
+  const onEditContent = (content: EducationContentItem) => {
+    setEditingContentId(content.id);
+    const source = content.externalSource || "LOCAL";
+    setSourceMode(source);
+    if (source === "YOUTUBE") {
+      setYoutubeUrl(content.contentUrl || "");
+    } else {
+      setYoutubeUrl("");
+    }
+
+    setContentForm({
+      title: content.title,
+      contentType: content.contentType,
+      description: content.description || "",
+      contentUrl: content.contentUrl || "",
+      thumbnailUrl: content.thumbnailUrl || "",
+      durationMinutes: content.durationMinutes
+        ? String(content.durationMinutes)
+        : "",
+      externalSource: source,
+      externalId: content.externalId || "",
+      sourceUrl: content.sourceUrl || "",
+    });
+  };
+
   const onCreateContent = async () => {
     if (!currentSiteId || !contentForm.title) return;
     try {
-      await createMutation.mutateAsync({
-        siteId: currentSiteId,
-        title: contentForm.title,
-        contentType: contentForm.contentType,
-        description: contentForm.description || undefined,
-        contentUrl: contentForm.contentUrl || undefined,
-        thumbnailUrl: contentForm.thumbnailUrl || undefined,
-        durationMinutes: contentForm.durationMinutes
-          ? Number(contentForm.durationMinutes)
-          : undefined,
-        externalSource: sourceMode,
-        externalId:
-          sourceMode === "YOUTUBE"
-            ? contentForm.externalId || undefined
+      if (editingContentId) {
+        await updateMutation.mutateAsync({
+          id: editingContentId,
+          data: {
+            title: contentForm.title,
+            contentType: contentForm.contentType,
+            description: contentForm.description || undefined,
+            contentUrl: contentForm.contentUrl || undefined,
+            thumbnailUrl: contentForm.thumbnailUrl || undefined,
+            durationMinutes: contentForm.durationMinutes
+              ? Number(contentForm.durationMinutes)
+              : undefined,
+            externalSource: sourceMode,
+            externalId:
+              sourceMode === "YOUTUBE"
+                ? contentForm.externalId || undefined
+                : undefined,
+            sourceUrl:
+              sourceMode === "LOCAL"
+                ? undefined
+                : contentForm.sourceUrl || undefined,
+          },
+        });
+        toast({ description: "교육 콘텐츠가 수정되었습니다." });
+      } else {
+        await createMutation.mutateAsync({
+          siteId: currentSiteId,
+          title: contentForm.title,
+          contentType: contentForm.contentType,
+          description: contentForm.description || undefined,
+          contentUrl: contentForm.contentUrl || undefined,
+          thumbnailUrl: contentForm.thumbnailUrl || undefined,
+          durationMinutes: contentForm.durationMinutes
+            ? Number(contentForm.durationMinutes)
             : undefined,
-        sourceUrl:
-          sourceMode === "LOCAL"
-            ? undefined
-            : contentForm.sourceUrl || undefined,
-      });
-      toast({ description: "교육자료가 등록되었습니다." });
+          externalSource: sourceMode,
+          externalId:
+            sourceMode === "YOUTUBE"
+              ? contentForm.externalId || undefined
+              : undefined,
+          sourceUrl:
+            sourceMode === "LOCAL"
+              ? undefined
+              : contentForm.sourceUrl || undefined,
+        });
+        toast({ description: "교육자료가 등록되었습니다." });
+      }
       setContentForm(INITIAL_FORM);
+      setEditingContentId(null);
       setSourceMode("LOCAL");
       setYoutubeUrl("");
     } catch (error) {
@@ -155,7 +210,9 @@ export function ContentsTab() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>교육자료 등록</CardTitle>
+          <CardTitle>
+            {editingContentId ? "교육 콘텐츠 수정" : "교육 콘텐츠 등록"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -163,6 +220,9 @@ export function ContentsTab() {
               type="button"
               variant={sourceMode === "LOCAL" ? "default" : "outline"}
               onClick={() => setMode("LOCAL")}
+              disabled={
+                !!editingContentId && contentForm.externalSource !== "LOCAL"
+              }
             >
               📝 직접 입력
             </Button>
@@ -170,6 +230,9 @@ export function ContentsTab() {
               type="button"
               variant={sourceMode === "YOUTUBE" ? "default" : "outline"}
               onClick={() => setMode("YOUTUBE")}
+              disabled={
+                !!editingContentId && contentForm.externalSource !== "YOUTUBE"
+              }
             >
               ▶️ YouTube
             </Button>
@@ -177,6 +240,9 @@ export function ContentsTab() {
               type="button"
               variant={sourceMode === "KOSHA" ? "default" : "outline"}
               onClick={() => setMode("KOSHA")}
+              disabled={
+                !!editingContentId && contentForm.externalSource !== "KOSHA"
+              }
             >
               🏛️ KOSHA
             </Button>
@@ -314,16 +380,35 @@ export function ContentsTab() {
               }
             />
           </div>
-          <Button
-            type="button"
-            onClick={onCreateContent}
-            disabled={
-              !currentSiteId || !contentForm.title || createMutation.isPending
-            }
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            교육자료 등록
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={onCreateContent}
+              disabled={
+                !currentSiteId ||
+                !contentForm.title ||
+                createMutation.isPending ||
+                updateMutation.isPending
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {editingContentId ? "교육 콘텐츠 수정" : "교육자료 등록"}
+            </Button>
+            {editingContentId && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditingContentId(null);
+                  setContentForm(INITIAL_FORM);
+                  setSourceMode("LOCAL");
+                  setYoutubeUrl("");
+                }}
+              >
+                취소
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -383,14 +468,24 @@ export function ContentsTab() {
                         {new Date(item.createdAt).toLocaleDateString("ko-KR")}
                       </td>
                       <td className="px-2 py-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteContentId(item.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEditContent(item)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteContentId(item.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

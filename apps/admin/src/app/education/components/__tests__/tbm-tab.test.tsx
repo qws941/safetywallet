@@ -4,12 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TbmTab } from "../tbm-tab";
 import {
   useCreateTbmRecord,
+  useDeleteTbmRecord,
+  useUpdateTbmRecord,
   useTbmRecord,
   useTbmRecords,
 } from "@/hooks/use-api";
 
 const toastMock = vi.fn();
 const createAsyncMock = vi.fn();
+const deleteAsyncMock = vi.fn();
+const updateAsyncMock = vi.fn();
 
 vi.mock("@/stores/auth", () => ({
   useAuthStore: (selector: (s: { currentSiteId: string }) => string) =>
@@ -18,11 +22,40 @@ vi.mock("@/stores/auth", () => ({
 
 vi.mock("@/hooks/use-api", () => ({
   useCreateTbmRecord: vi.fn(),
+  useDeleteTbmRecord: vi.fn(),
+  useUpdateTbmRecord: vi.fn(),
   useTbmRecord: vi.fn(),
   useTbmRecords: vi.fn(),
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogCancel: ({ children }: { children: ReactNode }) => (
+    <button>{children}</button>
+  ),
+  AlertDialogAction: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
   Button: ({
     children,
     ...props
@@ -38,17 +71,24 @@ vi.mock("@safetywallet/ui", () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input {...props} />
   ),
+  Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+    <textarea {...props} />
+  ),
   useToast: () => ({ toast: toastMock }),
 }));
 
 const mockUseTbmRecords = vi.mocked(useTbmRecords);
 const mockUseTbmRecord = vi.mocked(useTbmRecord);
 const mockUseCreateTbmRecord = vi.mocked(useCreateTbmRecord);
+const mockUseDeleteTbmRecord = vi.mocked(useDeleteTbmRecord);
+const mockUseUpdateTbmRecord = vi.mocked(useUpdateTbmRecord);
 
 describe("tbm tab", () => {
   beforeEach(() => {
     toastMock.mockReset();
     createAsyncMock.mockReset();
+    deleteAsyncMock.mockReset();
+    updateAsyncMock.mockReset();
 
     mockUseTbmRecords.mockReturnValue({
       data: {
@@ -79,6 +119,14 @@ describe("tbm tab", () => {
     } as never);
     mockUseCreateTbmRecord.mockReturnValue({
       mutateAsync: createAsyncMock,
+    } as never);
+    mockUseDeleteTbmRecord.mockReturnValue({
+      mutateAsync: deleteAsyncMock,
+      isPending: false,
+    } as never);
+    mockUseUpdateTbmRecord.mockReturnValue({
+      mutateAsync: updateAsyncMock,
+      isPending: false,
     } as never);
   });
 

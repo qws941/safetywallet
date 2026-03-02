@@ -221,3 +221,32 @@ export interface CreateTbmRecordInput {
   weatherCondition?: string;
   specialNotes?: string;
 }
+
+export interface UpdateEducationContentInput {
+  title?: string;
+  description?: string;
+  contentType?: string;
+  contentUrl?: string;
+  thumbnailUrl?: string;
+  durationMinutes?: number;
+  externalSource?: string;
+  externalId?: string;
+  sourceUrl?: string;
+}
+
+export interface UpdateQuizInput {
+  title?: string;
+  description?: string;
+  status?: string;
+  pointsReward?: number;
+  passingScore?: number;
+  timeLimitMinutes?: number;
+}
+
+export interface UpdateTbmRecordInput {
+  date?: string;
+  topic?: string;
+  content?: string;
+  weatherCondition?: string;
+  specialNotes?: string;
+}

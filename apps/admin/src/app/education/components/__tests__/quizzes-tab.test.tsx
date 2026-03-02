@@ -5,9 +5,11 @@ import { QuizzesTab } from "../quizzes-tab";
 import {
   useCreateQuiz,
   useCreateQuizQuestion,
+  useDeleteQuiz,
   useDeleteQuizQuestion,
   useQuiz,
   useQuizzes,
+  useUpdateQuiz,
   useUpdateQuizQuestion,
 } from "@/hooks/use-api";
 
@@ -16,6 +18,8 @@ const createQuizAsyncMock = vi.fn();
 const createQuestionAsyncMock = vi.fn();
 const updateQuestionAsyncMock = vi.fn();
 const deleteQuestionAsyncMock = vi.fn();
+const deleteQuizAsyncMock = vi.fn();
+const updateQuizAsyncMock = vi.fn();
 
 vi.mock("@/stores/auth", () => ({
   useAuthStore: (selector: (s: { currentSiteId: string }) => string) =>
@@ -25,13 +29,42 @@ vi.mock("@/stores/auth", () => ({
 vi.mock("@/hooks/use-api", () => ({
   useCreateQuiz: vi.fn(),
   useCreateQuizQuestion: vi.fn(),
+  useDeleteQuiz: vi.fn(),
   useDeleteQuizQuestion: vi.fn(),
   useQuiz: vi.fn(),
   useQuizzes: vi.fn(),
+  useUpdateQuiz: vi.fn(),
   useUpdateQuizQuestion: vi.fn(),
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogCancel: ({ children }: { children: ReactNode }) => (
+    <button>{children}</button>
+  ),
+  AlertDialogAction: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   Button: ({
     children,
@@ -59,12 +92,17 @@ vi.mock("@safetywallet/ui", () => ({
     <div>{children}</div>
   ),
   SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+    <textarea {...props} />
+  ),
   useToast: () => ({ toast: toastMock }),
 }));
 
 const mockUseQuizzes = vi.mocked(useQuizzes);
 const mockUseQuiz = vi.mocked(useQuiz);
 const mockUseCreateQuiz = vi.mocked(useCreateQuiz);
+const mockUseDeleteQuiz = vi.mocked(useDeleteQuiz);
+const mockUseUpdateQuiz = vi.mocked(useUpdateQuiz);
 const mockUseCreateQuizQuestion = vi.mocked(useCreateQuizQuestion);
 const mockUseUpdateQuizQuestion = vi.mocked(useUpdateQuizQuestion);
 const mockUseDeleteQuizQuestion = vi.mocked(useDeleteQuizQuestion);
@@ -76,6 +114,8 @@ describe("quizzes tab", () => {
     createQuestionAsyncMock.mockReset();
     updateQuestionAsyncMock.mockReset();
     deleteQuestionAsyncMock.mockReset();
+    deleteQuizAsyncMock.mockReset();
+    updateQuizAsyncMock.mockReset();
 
     mockUseQuizzes.mockReturnValue({
       data: {
@@ -110,6 +150,14 @@ describe("quizzes tab", () => {
     } as never);
     mockUseDeleteQuizQuestion.mockReturnValue({
       mutateAsync: deleteQuestionAsyncMock,
+    } as never);
+    mockUseDeleteQuiz.mockReturnValue({
+      mutateAsync: deleteQuizAsyncMock,
+      isPending: false,
+    } as never);
+    mockUseUpdateQuiz.mockReturnValue({
+      mutateAsync: updateQuizAsyncMock,
+      isPending: false,
     } as never);
   });
 

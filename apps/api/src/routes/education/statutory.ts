@@ -320,4 +320,67 @@ app.put(
   },
 );
 
+app.delete("/:id", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const existing = await db
+    .select()
+    .from(statutoryTrainings)
+    .where(eq(statutoryTrainings.id, id))
+    .get();
+
+  if (!existing) {
+    return error(
+      c,
+      "STATUTORY_TRAINING_NOT_FOUND",
+      "Statutory training not found",
+      404,
+    );
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, existing.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  await db
+    .delete(statutoryTrainings)
+    .where(
+      and(
+        eq(statutoryTrainings.id, id),
+        eq(statutoryTrainings.siteId, existing.siteId),
+      ),
+    );
+
+  await logAuditWithContext(
+    c,
+    db,
+    "STATUTORY_TRAINING_DELETED",
+    user.id,
+    "STATUTORY_TRAINING",
+    id,
+    {
+      action: "DELETED",
+      siteId: existing.siteId,
+      targetUserId: existing.userId,
+      trainingType: existing.trainingType,
+    },
+  );
+
+  return success(c, { deleted: true });
+});
+
 export default app;

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StatutoryTab } from "../statutory-tab";
 import {
   useCreateStatutoryTraining,
+  useDeleteStatutoryTraining,
   useStatutoryTrainings,
   useUpdateStatutoryTraining,
 } from "@/hooks/use-api";
@@ -11,6 +12,7 @@ import {
 const toastMock = vi.fn();
 const createAsyncMock = vi.fn();
 const updateAsyncMock = vi.fn();
+const deleteAsyncMock = vi.fn();
 
 vi.mock("@/stores/auth", () => ({
   useAuthStore: (selector: (s: { currentSiteId: string }) => string) =>
@@ -19,11 +21,39 @@ vi.mock("@/stores/auth", () => ({
 
 vi.mock("@/hooks/use-api", () => ({
   useCreateStatutoryTraining: vi.fn(),
+  useDeleteStatutoryTraining: vi.fn(),
   useStatutoryTrainings: vi.fn(),
   useUpdateStatutoryTraining: vi.fn(),
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogCancel: ({ children }: { children: ReactNode }) => (
+    <button>{children}</button>
+  ),
+  AlertDialogAction: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   Button: ({
     children,
@@ -51,18 +81,23 @@ vi.mock("@safetywallet/ui", () => ({
     <div>{children}</div>
   ),
   SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Textarea: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+    <textarea {...props} />
+  ),
   useToast: () => ({ toast: toastMock }),
 }));
 
 const mockUseStatutoryTrainings = vi.mocked(useStatutoryTrainings);
 const mockUseCreateStatutoryTraining = vi.mocked(useCreateStatutoryTraining);
 const mockUseUpdateStatutoryTraining = vi.mocked(useUpdateStatutoryTraining);
+const mockUseDeleteStatutoryTraining = vi.mocked(useDeleteStatutoryTraining);
 
 describe("statutory tab", () => {
   beforeEach(() => {
     toastMock.mockReset();
     createAsyncMock.mockReset();
     updateAsyncMock.mockReset();
+    deleteAsyncMock.mockReset();
 
     mockUseStatutoryTrainings.mockReturnValue({
       data: {
@@ -91,6 +126,10 @@ describe("statutory tab", () => {
     } as never);
     mockUseUpdateStatutoryTraining.mockReturnValue({
       mutateAsync: updateAsyncMock,
+    } as never);
+    mockUseDeleteStatutoryTraining.mockReturnValue({
+      mutateAsync: deleteAsyncMock,
+      isPending: false,
     } as never);
   });
 

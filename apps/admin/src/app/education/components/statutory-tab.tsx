@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -20,6 +28,7 @@ import {
   useCreateStatutoryTraining,
   useStatutoryTrainings,
   useUpdateStatutoryTraining,
+  useDeleteStatutoryTraining,
   type CreateStatutoryTrainingInput,
   type UpdateStatutoryTrainingInput,
 } from "@/hooks/use-api";
@@ -52,10 +61,12 @@ export function StatutoryTab() {
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(
     null,
   );
+  const [deleteTrainingId, setDeleteTrainingId] = useState<string | null>(null);
 
   const { data: trainingsData, isLoading } = useStatutoryTrainings();
   const createMutation = useCreateStatutoryTraining();
   const updateMutation = useUpdateStatutoryTraining();
+  const deleteMutation = useDeleteStatutoryTraining();
 
   const trainings: TrainingItem[] = trainingsData?.trainings ?? [];
 
@@ -127,6 +138,17 @@ export function StatutoryTab() {
       status: item.training.status,
       notes: item.training.notes || "",
     });
+  };
+
+  const onDeleteTraining = async () => {
+    if (!deleteTrainingId) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTrainingId);
+      toast({ description: "법정교육이 삭제되었습니다." });
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+    setDeleteTrainingId(null);
   };
 
   return (
@@ -326,14 +348,27 @@ export function StatutoryTab() {
                         {item.training.expirationDate || "-"}
                       </td>
                       <td className="px-2 py-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onEditTraining(item)}
-                        >
-                          수정
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onEditTraining(item)}
+                          >
+                            수정
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() =>
+                              setDeleteTrainingId(item.training.id)
+                            }
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -343,6 +378,28 @@ export function StatutoryTab() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!deleteTrainingId}
+        onOpenChange={(open) => !open && setDeleteTrainingId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>법정교육 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              법정교육 기록을 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={onDeleteTraining}>
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+import { Trash2 } from "lucide-react";

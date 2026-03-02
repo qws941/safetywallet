@@ -65,7 +65,11 @@ export type EducationContentItem = {
   title: string;
   contentType: CreateEducationContentInput["contentType"];
   description?: string | null;
+  contentUrl?: string | null;
+  thumbnailUrl?: string | null;
+  durationMinutes?: number | null;
   externalSource?: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId?: string | null;
   sourceUrl?: string | null;
   createdAt: string;
 };
@@ -73,7 +77,9 @@ export type EducationContentItem = {
 export type QuizItem = {
   id: string;
   title: string;
+  description?: string | null;
   status: CreateQuizInput["status"];
+  pointsReward?: number | null;
   passingScore: number;
   timeLimitMinutes?: number | null;
   createdAt: string;

@@ -55,7 +55,7 @@ describe("use-education-api", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockApiFetch).toHaveBeenCalledWith(
-      "/education/contents?siteId=site-1&limit=10&offset=0",
+      "/education/contents?siteId=site-1&includeInactive=true&limit=10&offset=0",
     );
   });
 
@@ -294,7 +294,7 @@ describe("use-education-api", () => {
 
     await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
     expect(mockApiFetch).toHaveBeenCalledWith(
-      "/education/contents?siteId=site-1",
+      "/education/contents?siteId=site-1&includeInactive=true",
     );
   });
 

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { z } from "zod";
 import {
   CreateTbmInputSchema,
   AttendTbmSchema,
@@ -17,6 +18,18 @@ import { logAuditWithContext } from "../../lib/audit";
 import type { AppType, CreateTbmBody } from "./helpers";
 
 const app = new Hono<AppType>();
+
+const UpdateTbmInputSchema = z
+  .object({
+    date: z.string().datetime().optional(),
+    topic: z.string().min(1).optional(),
+    content: z.string().optional(),
+    weatherCondition: z.string().optional(),
+    specialNotes: z.string().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field is required",
+  });
 
 app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
   const db = drizzle(c.env.DB);
@@ -215,6 +228,73 @@ app.get("/:id", async (c) => {
   });
 });
 
+app.put("/:id", zValidator("json", UpdateTbmInputSchema), async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+  const body = c.req.valid("json");
+
+  const existing = await db
+    .select()
+    .from(tbmRecords)
+    .where(eq(tbmRecords.id, id))
+    .get();
+
+  if (!existing) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, existing.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  const changedFields = Object.keys(body);
+
+  const updated = await db
+    .update(tbmRecords)
+    .set({
+      ...(body.date !== undefined && {
+        date: Math.floor(new Date(body.date).getTime() / 1000),
+      }),
+      ...(body.topic !== undefined && { topic: body.topic }),
+      ...(body.content !== undefined && { content: body.content }),
+      ...(body.weatherCondition !== undefined && {
+        weatherCondition: body.weatherCondition,
+      }),
+      ...(body.specialNotes !== undefined && {
+        specialNotes: body.specialNotes,
+      }),
+      updatedAt: new Date(new Date().toISOString()),
+    })
+    .where(and(eq(tbmRecords.id, id), eq(tbmRecords.siteId, existing.siteId)))
+    .returning()
+    .get();
+
+  if (!updated) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  await logAuditWithContext(c, db, "TBM_UPDATED", user.id, "TBM_RECORD", id, {
+    action: "UPDATED",
+    siteId: existing.siteId,
+    changedFields,
+  });
+
+  return success(c, updated);
+});
+
 app.post("/:tbmId/attend", zValidator("json", AttendTbmSchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
@@ -318,6 +398,52 @@ app.get("/:tbmId/attendees", async (c) => {
     .all();
 
   return success(c, { attendees });
+});
+
+app.delete("/:id", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const existing = await db
+    .select()
+    .from(tbmRecords)
+    .where(eq(tbmRecords.id, id))
+    .get();
+
+  if (!existing) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, existing.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  await db.delete(tbmAttendees).where(eq(tbmAttendees.tbmRecordId, id));
+
+  await db
+    .delete(tbmRecords)
+    .where(and(eq(tbmRecords.id, id), eq(tbmRecords.siteId, existing.siteId)));
+
+  await logAuditWithContext(c, db, "TBM_DELETED", user.id, "TBM_RECORD", id, {
+    action: "DELETED",
+    siteId: existing.siteId,
+    topic: existing.topic,
+  });
+
+  return success(c, { deleted: true });
 });
 
 export default app;

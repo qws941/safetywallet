@@ -17,6 +17,7 @@ export function useEducationContents(filters?: {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (siteId) params.set("siteId", siteId);
+      params.set("includeInactive", "true");
       if (filters?.limit !== undefined) {
         params.set("limit", String(filters.limit));
       }
@@ -69,12 +70,10 @@ export function useCreateEducationContent() {
 
 export function useYouTubeOembed() {
   return useMutation({
-    mutationFn: async (url: string) => {
-      const response = await apiFetch<{
-        data: import("./use-education-api-types").YouTubeOembedResponse;
-      }>(`/education/youtube-oembed?url=${encodeURIComponent(url)}`);
-      return response.data;
-    },
+    mutationFn: (url: string) =>
+      apiFetch<import("./use-education-api-types").YouTubeOembedResponse>(
+        `/education/youtube-oembed?url=${encodeURIComponent(url)}`,
+      ),
   });
 }
 
@@ -365,6 +364,128 @@ export function useCreateTbmRecord() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "tbm-records"] });
+    },
+  });
+}
+
+export function useUpdateEducationContent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: import("./use-education-api-types").UpdateEducationContentInput;
+    }) =>
+      apiFetch<import("./use-education-api-types").EducationContent>(
+        `/education/contents/${id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "education-contents"],
+      });
+    },
+  });
+}
+
+export function useUpdateQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: import("./use-education-api-types").UpdateQuizInput;
+    }) =>
+      apiFetch<import("./use-education-api-types").Quiz>(
+        `/education/quizzes/${id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "quizzes"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "quiz"] });
+    },
+  });
+}
+
+export function useDeleteQuiz() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: boolean }>(`/education/quizzes/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "quizzes"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "quiz"] });
+    },
+  });
+}
+
+export function useDeleteStatutoryTraining() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: boolean }>(`/education/statutory/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "statutory-trainings"],
+      });
+    },
+  });
+}
+
+export function useUpdateTbmRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: import("./use-education-api-types").UpdateTbmRecordInput;
+    }) =>
+      apiFetch<import("./use-education-api-types").TbmRecord>(
+        `/education/tbm/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(data),
+        },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "tbm-records"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "tbm-record"] });
+    },
+  });
+}
+
+export function useDeleteTbmRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ deleted: boolean }>(`/education/tbm/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "tbm-records"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "tbm-record"] });
     },
   });
 }

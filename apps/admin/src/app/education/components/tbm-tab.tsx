@@ -1,18 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import {
-  Button,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Input,
+  Button,
   useToast,
 } from "@safetywallet/ui";
 import {
   useCreateTbmRecord,
+  useUpdateTbmRecord,
+  useDeleteTbmRecord,
   useTbmRecord,
   useTbmRecords,
   type CreateTbmRecordInput,
@@ -35,13 +45,28 @@ export function TbmTab() {
 
   const [tbmForm, setTbmForm] = useState<TbmFormState>(INITIAL_FORM);
   const [expandedTbmId, setExpandedTbmId] = useState<string | null>(null);
+  const [editingTbmId, setEditingTbmId] = useState<string | null>(null);
+  const [deleteTbmId, setDeleteTbmId] = useState<string | null>(null);
 
   const { data: tbmData, isLoading } = useTbmRecords();
   const { data: tbmDetail } = useTbmRecord(expandedTbmId || "");
   const createMutation = useCreateTbmRecord();
+  const updateMutation = useUpdateTbmRecord();
+  const deleteMutation = useDeleteTbmRecord();
 
   const tbmRecords: TbmRecordItem[] = tbmData?.records ?? [];
   const typedTbmDetail: TbmDetail | undefined = tbmDetail;
+
+  const onEditTbm = (item: TbmRecordItem) => {
+    setEditingTbmId(item.tbm.id);
+    setTbmForm({
+      date: item.tbm.date,
+      topic: item.tbm.topic,
+      content: "",
+      weatherCondition: item.tbm.weatherCondition || "",
+      specialNotes: "",
+    });
+  };
 
   const onCreateTbm = async () => {
     if (!currentSiteId || !tbmForm.date || !tbmForm.topic) return;
@@ -56,19 +81,48 @@ export function TbmTab() {
     };
 
     try {
-      await createMutation.mutateAsync(payload);
-      toast({ description: "TBM 기록이 등록되었습니다." });
+      if (editingTbmId) {
+        await updateMutation.mutateAsync({
+          id: editingTbmId,
+          data: {
+            date: payload.date,
+            topic: payload.topic,
+            content: payload.content,
+            weatherCondition: payload.weatherCondition,
+            specialNotes: payload.specialNotes,
+          },
+        });
+        toast({ description: "TBM 기록이 수정되었습니다." });
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast({ description: "TBM 기록이 등록되었습니다." });
+      }
+      setEditingTbmId(null);
       setTbmForm(INITIAL_FORM);
     } catch (error) {
       toast({ variant: "destructive", description: getErrorMessage(error) });
     }
   };
 
+  const onDeleteTbm = async () => {
+    if (!deleteTbmId) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTbmId);
+      toast({ description: "TBM 기록이 삭제되었습니다." });
+      if (expandedTbmId === deleteTbmId) {
+        setExpandedTbmId(null);
+      }
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    }
+    setDeleteTbmId(null);
+  };
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>TBM 등록</CardTitle>
+          <CardTitle>{editingTbmId ? "TBM 기록 수정" : "TBM 등록"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
@@ -117,14 +171,34 @@ export function TbmTab() {
               }
             />
           </div>
-          <Button
-            type="button"
-            onClick={onCreateTbm}
-            disabled={!currentSiteId || !tbmForm.date || !tbmForm.topic}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            TBM 등록
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={onCreateTbm}
+              disabled={
+                !currentSiteId ||
+                !tbmForm.date ||
+                !tbmForm.topic ||
+                createMutation.isPending ||
+                updateMutation.isPending
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {editingTbmId ? "TBM 수정" : "TBM 등록"}
+            </Button>
+            {editingTbmId && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditingTbmId(null);
+                  setTbmForm(INITIAL_FORM);
+                }}
+              >
+                취소
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -170,18 +244,37 @@ export function TbmTab() {
                             {item.tbm.weatherCondition || "-"}
                           </td>
                           <td className="px-2 py-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setExpandedTbmId(
-                                  isExpanded ? null : item.tbm.id,
-                                )
-                              }
-                            >
-                              {isExpanded ? "접기" : "참석자 보기"}
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setExpandedTbmId(
+                                    isExpanded ? null : item.tbm.id,
+                                  )
+                                }
+                              >
+                                {isExpanded ? "접기" : "참석자 보기"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onEditTbm(item)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteTbmId(item.tbm.id)}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -226,6 +319,24 @@ export function TbmTab() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!deleteTbmId}
+        onOpenChange={(open) => !open && setDeleteTbmId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>TBM 기록 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              TBM 기록을 삭제하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={onDeleteTbm}>삭제</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
