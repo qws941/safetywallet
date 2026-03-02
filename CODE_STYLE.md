@@ -10,7 +10,7 @@
 - Apps live under `apps/` with App Router pages under `src/app/` (`apps/admin/src/app/`, `apps/worker/src/app/`).
 - Shared packages under `packages/` (`packages/types/src`, `packages/ui/src`).
 - E2E tests live under `e2e/` with per-surface folders (`e2e/api`, `e2e/admin`, `e2e/worker`, `e2e/cross-app`).
-- Repo tooling and verification scripts live under `scripts/` (`scripts/verify.sh`, `scripts/lint-naming.js`).
+- Repo tooling and verification scripts live under `scripts/` (`scripts/verify.go`, `scripts/lint-naming.js`).
 
 ## Import Style
 

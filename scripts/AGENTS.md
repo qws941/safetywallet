@@ -6,15 +6,15 @@ Repository utility scripts in `scripts/` only.
 
 ## CURRENT FILE SET
 
-- `check-anti-patterns.sh`
+- `build-static.go`
+- `check-anti-patterns.go`
 - `check-wrangler-sync.js`
-- `create-cf-token.sh`
+- `create-cf-token.go`
 - `create-test-user.ts`
-- `git-preflight.sh`
+- `git-preflight.go`
 - `hash-admin-password.ts`
 - `lint-naming.js`
-- `sync-r2.sh`
-- `verify.sh`
+- `verify.go`
 
 ## FILE INTENT SNAPSHOT
 
@@ -25,7 +25,7 @@ Repository utility scripts in `scripts/` only.
 - Git remote/auth/push preflight checker.
 - Admin password PBKDF2 hash generator.
 - Workspace package naming linter.
-- R2 static asset sync uploader.
+- Static export build+copy helper (legacy).
 - Full project verification (build, lint, typecheck, tests).
 
 ## MODULE RULES
@@ -34,7 +34,7 @@ Repository utility scripts in `scripts/` only.
 - Keep scripts idempotent where practical.
 - Keep CI-called scripts non-interactive and deterministic.
 - Keep output paths explicit when scripts generate artifacts.
-- Keep shell scripts POSIX-safe enough for Ubuntu runners.
+- Keep Go scripts standalone (`//go:build ignore`, no go.mod).
 
 ## ANTI-DRIFT
 

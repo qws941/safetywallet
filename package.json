@@ -30,8 +30,8 @@
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "turbo run typecheck",
     "check:wrangler-sync": "node scripts/check-wrangler-sync.js",
-    "git:preflight": "bash scripts/git-preflight.sh",
-    "verify": "bash scripts/verify.sh",
+    "git:preflight": "go run scripts/git-preflight.go",
+    "verify": "go run scripts/verify.go",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo run clean && rm -rf node_modules",
@@ -40,7 +40,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "bash scripts/check-anti-patterns.sh",
+      "go run scripts/check-anti-patterns.go",
       "prettier --write"
     ],
     "*.{js,jsx,json,md}": [
