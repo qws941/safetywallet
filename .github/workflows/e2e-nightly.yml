@@ -1,0 +1,192 @@
+name: E2E Nightly
+
+on:
+  schedule:
+    - cron: "0 17 * * *" # 2 AM KST daily
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "Playwright project (blank = all)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: e2e-nightly
+  cancel-in-progress: false
+
+jobs:
+  e2e-full:
+    name: Full E2E Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_URL: https://safetywallet.jclee.me/api/
+      WORKER_APP_URL: https://safetywallet.jclee.me
+      ADMIN_APP_URL: https://admin.safetywallet.jclee.me
+      E2E_ADMIN_USERNAME: ${{ secrets.E2E_ADMIN_USERNAME }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_WORKER_NAME: ${{ secrets.E2E_WORKER_NAME }}
+      E2E_WORKER_PHONE: ${{ secrets.E2E_WORKER_PHONE }}
+      E2E_WORKER_DOB: ${{ secrets.E2E_WORKER_DOB }}
+      E2E_WORKER_SITE_ID: ${{ secrets.E2E_WORKER_SITE_ID }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache node_modules
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Probe production endpoints
+        run: |
+          for url in "${API_URL}health" "$WORKER_APP_URL" "$ADMIN_APP_URL"; do
+            echo "Probing $url ..."
+            for i in 1 2 3; do
+              if curl -sSf --max-time 10 "$url" > /dev/null 2>&1; then
+                echo "  ✓ reachable"
+                break
+              fi
+              if [ "$i" -lt 3 ]; then sleep 5; fi
+            done
+          done
+
+      - name: Run full E2E suite
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.project }}" ]; then
+            ARGS="--project=${{ inputs.project }}"
+          fi
+          npx playwright test $ARGS --reporter=html
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: e2e-nightly-report-${{ github.run_number }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: e2e-nightly-results-${{ github.run_number }}
+          path: test-results/
+          retention-days: 7
+
+  notify:
+    name: Notify
+    needs: e2e-full
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Create or update GitHub issue on failure
+        if: needs.e2e-full.result == 'failure'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const title = `[E2E Nightly] Test failures — ${new Date().toISOString().slice(0, 10)}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `## E2E Nightly Failure`,
+              ``,
+              `| Field | Value |`,
+              `|-------|-------|`,
+              `| **Run** | [#${context.runNumber}](${runUrl}) |`,
+              `| **Date** | ${new Date().toISOString()} |`,
+              `| **Trigger** | \`${context.eventName}\` |`,
+              `| **Commit** | \`${context.sha.slice(0, 7)}\` |`,
+              ``,
+              `### Reproduction`,
+              `\`\`\`bash`,
+              `npm run test:e2e`,
+              `\`\`\``,
+              ``,
+              `### Report`,
+              `Download the \`e2e-nightly-report-${context.runNumber}\` artifact from the [workflow run](${runUrl}).`,
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: 'open',
+              labels: 'e2e-failure',
+            });
+            const existing = issues.find(i => i.title.startsWith('[E2E Nightly]'));
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info(`Commented on existing issue #${existing.number}`);
+            } else {
+              const { data: issue } = await github.rest.issues.create({
+                ...context.repo,
+                title,
+                body,
+                labels: ['e2e-failure', 'type:bug', 'priority:high'],
+              });
+              core.info(`Created issue #${issue.number}`);
+            }
+
+      - name: Auto-close nightly issue on success
+        if: needs.e2e-full.result == 'success'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: 'open',
+              labels: 'e2e-failure',
+            });
+            const existing = issues.find(i => i.title.startsWith('[E2E Nightly]'));
+            if (existing) {
+              const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: existing.number,
+                body: `✅ E2E Nightly passed — auto-closing.\n\nRun: [#${context.runNumber}](${runUrl})`,
+              });
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+              core.info(`Closed issue #${existing.number}`);
+            }
+
+      - name: Slack notification
+        if: needs.e2e-full.result == 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not set — skipping"
+            exit 0
+          fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sSf -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\":\"🔴 E2E Nightly FAILED — <${RUN_URL}|Run #${{ github.run_number }}>\"}" \
+            || echo "Slack notify failed (non-fatal)"

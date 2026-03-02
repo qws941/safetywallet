@@ -21,6 +21,8 @@ Parent `.github/AGENTS.md` covers top-level config ownership.
 - `ssl-fix.yml` (`name: SSL Diagnostic & Fix`)
 - `codex-auto-issue.yml` (`name: Codex Auto-Issue`)
 - `codex-triage.yml` (`name: Codex Triage`)
+- `e2e-auto-issue.yml` (`name: E2E Auto-Issue`)
+- `e2e-nightly.yml` (`name: E2E Nightly`)
 
 ## FLOW LINKS
 
