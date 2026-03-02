@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -401,5 +402,3 @@ export function StatutoryTab() {
     </div>
   );
 }
-
-import { Trash2 } from "lucide-react";

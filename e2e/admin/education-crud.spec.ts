@@ -47,7 +47,7 @@ test.describe("Education CRUD Operations", () => {
       (resp) =>
         resp.url().includes("/education/contents") &&
         resp.request().method() === "POST" &&
-        resp.status() === 200,
+        resp.status() === 201,
     );
 
     await page.getByRole("button", { name: "교육자료 등록" }).click();
@@ -99,7 +99,7 @@ test.describe("Education CRUD Operations", () => {
         resp.url().includes("/education/quizzes") &&
         !resp.url().includes("/questions") &&
         resp.request().method() === "POST" &&
-        resp.status() === 200,
+        resp.status() === 201,
     );
 
     await page.getByRole("button", { name: "퀴즈 등록" }).click();
@@ -146,7 +146,7 @@ test.describe("Education CRUD Operations", () => {
         resp.url().includes("/education/quizzes") &&
         !resp.url().includes("/questions") &&
         resp.request().method() === "POST" &&
-        resp.status() === 200,
+        resp.status() === 201,
     );
 
     await page.getByRole("button", { name: "퀴즈 등록" }).click();
@@ -208,7 +208,7 @@ test.describe("Education CRUD Operations", () => {
       (resp) =>
         resp.url().includes("/education/statutory") &&
         resp.request().method() === "POST" &&
-        resp.status() === 200,
+        resp.status() === 201,
     );
 
     await page.getByRole("button", { name: "법정교육 등록" }).click();
@@ -262,7 +262,7 @@ test.describe("Education CRUD Operations", () => {
       (resp) =>
         resp.url().includes("/education/tbm") &&
         resp.request().method() === "POST" &&
-        resp.status() === 200,
+        resp.status() === 201,
     );
 
     await page.getByRole("button", { name: "TBM 등록" }).click();
@@ -310,7 +310,7 @@ test.describe("Education CRUD Operations", () => {
       (resp) =>
         resp.url().includes("/education/tbm") &&
         resp.request().method() === "POST" &&
-        resp.status() === 200,
+        resp.status() === 201,
     );
 
     await page.getByRole("button", { name: "TBM 등록" }).click();
