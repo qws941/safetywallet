@@ -232,6 +232,13 @@ async function unlockWorkerLoginLockout() {
         body: JSON.stringify({ phone: WORKER_E2E_USER.phone }),
       });
 
+      if (unlockRes.status === 401) {
+        // Token expired — clear cache and retry with fresh token
+        cachedAdminToken = null;
+        setCachedToken("adminAccessToken", "");
+        continue;
+      }
+
       if (!unlockRes.ok) {
         throw new Error(`worker unlock failed: ${unlockRes.status}`);
       }
