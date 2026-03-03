@@ -175,7 +175,7 @@ app.post(
   },
 );
 
-app.delete("/workers/:externalWorkerId", async (c) => {
+app.delete("/workers/:externalWorkerId", authMiddleware, async (c) => {
   const db = drizzle(c.env.DB);
   const externalWorkerId = c.req.param("externalWorkerId");
 
