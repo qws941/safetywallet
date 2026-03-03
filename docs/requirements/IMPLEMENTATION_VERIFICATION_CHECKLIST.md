@@ -445,16 +445,9 @@
 | 9.1.5 | UI 테스트            | `packages/ui/`    | [ ]  | 컴포넌트 렌더링                  |
 | 9.1.6 | `npm test` 전체 통과 | —                 | [ ]  |                                  |
 
-### 9.2 Playwright E2E 테스트 (75 스펙, 5 프로젝트)
+### 9.2 E2E 테스트 (제거됨)
 
-| #     | 검증 항목                    | 프로젝트                  | 스펙 수 | 상태 |
-| ----- | ---------------------------- | ------------------------- | ------- | ---- |
-| 9.2.1 | API E2E                      | `e2e/api/`                | ~24     | [ ]  |
-| 9.2.2 | Admin E2E                    | `e2e/admin/`              | ~35     | [ ]  |
-| 9.2.3 | Worker E2E                   | `e2e/worker/`             | ~15     | [ ]  |
-| 9.2.4 | Cross-app E2E                | `e2e/cross-app/`          | 1       | [ ]  |
-| 9.2.5 | Smoke 테스트                 | 각 프로젝트 smoke.spec.ts | —       | [ ]  |
-| 9.2.6 | `npm run test:e2e` 전체 통과 | —                         | —       | [ ]  |
+E2E 테스트는 PR #68에서 전체 제거됨. Playwright 의존성, CI 워크플로, e2e/ 디렉토리 모두 삭제.
 
 ### 9.3 밸리데이터 (Zod 스키마, 50+)
 
@@ -470,7 +463,7 @@
 
 ## 10. CI/CD 파이프라인
 
-### 10.1 GitHub Actions (16 워크플로)
+### 10.1 GitHub Actions (14 워크플로)
 
 | #       | 워크플로                    | 검증 항목                                    | 상태 | 비고                 |
 | ------- | --------------------------- | -------------------------------------------- | ---- | -------------------- |
@@ -479,8 +472,8 @@
 | 10.1.3  | `commitlint.yml`            | 커밋 메시지 검증                             | [ ]  | Conventional Commits |
 | 10.1.4  | `auto-merge.yml`            | 자동 머지                                    | [ ]  |                      |
 | 10.1.5  | `auto-merge-dependabot.yml` | Dependabot 자동 머지                         | [ ]  |                      |
-| 10.1.6  | `e2e-nightly.yml`           | 야간 E2E 테스트                              | [ ]  |                      |
-| 10.1.7  | `e2e-auto-issue.yml`        | E2E 실패 시 이슈 생성                        | [ ]  |                      |
+| 10.1.6  | ~~`e2e-nightly.yml`~~       | ~~야간 E2E 테스트~~ (제거됨)                 | [x]  | PR #68에서 삭제      |
+| 10.1.7  | ~~`e2e-auto-issue.yml`~~    | ~~E2E 실패 시 이슈 생성~~ (제거됨)           | [x]  | PR #68에서 삭제      |
 | 10.1.8  | `welcome.yml`               | 신규 기여자 환영                             | [ ]  |                      |
 | 10.1.9  | `lock-threads.yml`          | 오래된 이슈/PR 잠금                          | [ ]  |                      |
 | 10.1.10 | `stale.yml`                 | 비활성 이슈 관리                             | [ ]  |                      |
@@ -536,8 +529,8 @@
 | 12.5  | 모니터링 대시보드                      | [ ]  | Admin `/monitoring`     |
 | 12.6  | 배포 모니터링 + Slack 알림             | [ ]  | `deploy-monitoring.yml` |
 | 12.7  | 일일/월간/동기화 크론 작업             | [ ]  | JobScheduler DO         |
-| 12.8  | E2E 야간 테스트                        | [ ]  | `e2e-nightly.yml`       |
-| 12.9  | E2E 실패 자동 이슈 생성                | [ ]  | `e2e-auto-issue.yml`    |
+| 12.8  | ~~E2E 야간 테스트~~                    | [x]  | 제거됨 (PR #68)         |
+| 12.9  | ~~E2E 실패 자동 이슈 생성~~            | [x]  | 제거됨 (PR #68)         |
 | 12.10 | Stale 이슈/PR 관리                     | [ ]  | `stale.yml`             |
 
 ---
@@ -588,8 +581,6 @@ npm run typecheck           # TypeScript 타입 체크
 npm run lint                # ESLint
 npm run format:check        # Prettier 포맷 체크
 npm test                    # Vitest 단위 테스트 (5 워크스페이스)
-npm run test:e2e            # Playwright E2E 테스트 (5 프로젝트)
-npm run test:e2e:smoke      # 스모크 테스트만
 npm run build               # 전체 빌드
 npm run check:wrangler-sync # wrangler.toml 일관성 검사
 npm run lint:naming         # 파일/디렉토리 네이밍 규칙 검사

@@ -22,14 +22,12 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ├── packages/
 │   ├── types/                # @safetywallet/types — shared TS types, DTOs, i18n
 │   └── ui/                   # Shared UI components
-├── e2e/                      # Playwright E2E tests (5 projects)
 ├── scripts/                  # Operational scripts (lint, verify, migrate, sync)
 ├── docs/                     # PRD, implementation plans, feature checklists
 │   └── requirements/         # Detailed requirement specs
-├── .github/workflows/        # 16 GitHub Actions workflows
-├── turbo.json                # Pipeline: build/dev/lint/typecheck/test/test:e2e/clean
+├── .github/workflows/        # 14 GitHub Actions workflows
+├── turbo.json                # Pipeline: build/dev/lint/typecheck/test/clean
 ├── vitest.config.ts          # Workspace vitest: 5 project configs
-├── playwright.config.ts      # 5 projects: api, admin-setup, worker, admin, cross-app
 ├── wrangler.toml             # CF Worker config — 11 bindings, dev/prod envs
 └── package.json              # Workspaces: apps/*, packages/*
 ```
@@ -49,7 +47,6 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 | Admin dashboard pages | `apps/admin/src/app/`           | attendance, posts, votes, education sections     |
 | Shared types/DTOs     | `packages/types/src/`           | dto/ and i18n/ subdirectories                    |
 | Shared UI components  | `packages/ui/src/components/`   | Cross-app reusable components                    |
-| E2E tests             | `e2e/`                          | api/, admin/, worker/, cross-app/, shared/       |
 | CI/CD                 | `.github/workflows/`            | ci.yml + deploy-monitoring.yml (health + Slack)  |
 | Requirement specs     | `docs/requirements/`            | PRD, implementation plan, feature checklist      |
 
@@ -60,7 +57,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 - **Runtime**: Node 20, TypeScript strict, Turborepo
 - **API**: Hono framework on Cloudflare Workers, Drizzle ORM on D1 (SQLite)
 - **Frontend**: Next.js 15 App Router, React 18, Zustand stores, TanStack Query
-- **Testing**: Vitest (unit, 5 workspace configs), Playwright (E2E, 5 projects)
+- **Testing**: Vitest (unit, 5 workspace configs)
 - **Formatting**: Prettier, 2-space indent, Husky + lint-staged pre-commit
 
 ### Cloudflare Bindings (11)
@@ -104,8 +101,8 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 
 ### Testing
 
-- Vitest (5 workspace configs: api, admin, worker, types, ui) + Playwright (5 projects: api, admin-setup, worker, admin, cross-app)
-- 294 Vitest test files + 64 Playwright E2E specs. Run: `npm test` (unit), `npm run test:e2e` (E2E)
+- Vitest (5 workspace configs: api, admin, worker, types, ui)
+- 219 Vitest test files. Run: `npm test` (unit)
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -135,8 +132,6 @@ npm run typecheck              # TypeScript check all workspaces
 npm run lint                   # Lint all workspaces
 npm run format:check           # Prettier check
 npm test                       # Vitest unit tests (all workspaces)
-npm run test:e2e               # Playwright E2E tests
-npm run test:e2e:smoke         # Smoke tests only
 npm run db:generate            # Generate Drizzle migrations
 npm run verify                 # Full verification script
 npm run git:preflight          # Pre-push checks
@@ -147,4 +142,4 @@ npm run lint:naming            # Validate file/dir naming conventions
 ## NOTES
 
 - Node version pinned to 20 via `.nvmrc`.
-- 46 subdirectory AGENTS.md files exist across the monorepo providing module-level context.
+- 41 subdirectory AGENTS.md files exist across the monorepo providing module-level context.
