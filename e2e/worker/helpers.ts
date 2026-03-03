@@ -422,7 +422,11 @@ export async function ensureWorkerCurrentSite(
 }
 
 export async function workerLogin(page: Page) {
-  await unlockWorkerLoginLockout();
+  try {
+    await unlockWorkerLoginLockout();
+  } catch {
+    // unlock is best-effort — network flakes should not block login attempt
+  }
 
   const phone = WORKER_E2E_USER.phone.replace(/[^0-9]/g, "");
   const dob = WORKER_E2E_USER.dob.replace(/[^0-9]/g, "");

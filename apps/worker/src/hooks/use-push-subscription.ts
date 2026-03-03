@@ -43,7 +43,7 @@ export function usePushSubscription() {
       const subscription = await registration.pushManager.getSubscription();
       setState((prev) => ({ ...prev, isSubscribed: !!subscription }));
     } catch (err) {
-      console.warn("Failed to check push subscription", err);
+      // Silent - push subscription failures expected on unsupported browsers
     }
   }, []);
 

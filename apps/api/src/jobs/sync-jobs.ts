@@ -186,7 +186,9 @@ export async function runFasSyncIncremental(env: Env): Promise<void> {
       if (env.KV) {
         try {
           await env.KV.delete("fas-status");
-        } catch {}
+        } catch (e) {
+          console.error("[sync] Failed to delete fas-status from KV:", e);
+        }
       }
       return;
     }

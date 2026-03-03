@@ -336,13 +336,23 @@ app.get("/post/:postId", async (c) => {
 // GET / - List recent reviews for a site
 app.get("/", async (c) => {
   const db = drizzle(c.env.DB);
-  const siteId = c.req.query("siteId");
-  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
-  const offset = parseInt(c.req.query("offset") || "0");
 
-  if (!siteId) {
-    return error(c, "MISSING_PARAMS", "siteId는 필수입니다.", 400);
+  const querySchema = z.object({
+    siteId: z.string().uuid(),
+    limit: z.coerce.number().min(0).max(100).default(50),
+    offset: z.coerce.number().min(0).default(0),
+  });
+
+  const parsed = querySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: { code: "INVALID_QUERY_PARAMS", message: parsed.error.message },
+      },
+      400,
+    );
   }
+  const { siteId, limit, offset } = parsed.data;
 
   const records = await db
     .select({

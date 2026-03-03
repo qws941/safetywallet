@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
@@ -249,19 +250,30 @@ app.get("/history", async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
-  const query: QueryPointsParams = {
-    siteId: c.req.query("siteId"),
-    userId: c.req.query("userId"),
-    limit: c.req.query("limit"),
-    offset: c.req.query("offset"),
-  };
+  const querySchema = z.object({
+    siteId: z.string().uuid().optional(),
+    userId: z.string().uuid().optional(),
+    limit: z.coerce.number().min(0).max(100).default(50),
+    offset: z.coerce.number().min(0).default(0),
+  });
+
+  const parsed = querySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: { code: "INVALID_QUERY_PARAMS", message: parsed.error.message },
+      },
+      400,
+    );
+  }
+  const query = parsed.data;
 
   if (query.siteId) {
     await attendanceMiddleware(c, async () => {}, query.siteId);
   }
 
-  const limit = Math.min(parseInt(query.limit || "20"), 100);
-  const offset = parseInt(query.offset || "0");
+  const limit = Math.min(query.limit, 100);
+  const offset = query.offset;
 
   const targetUserId = query.userId || user.id;
   if (targetUserId !== user.id) {
