@@ -1,49 +1,49 @@
 # AGENTS: HOOKS
 
-## PURPOSE
+## SCOPE
 
-Admin data-access hooks. Scope: query/mutation wrappers, barrel boundary, site-aware gating.
+- Admin data-access hook layer (`src/hooks`).
+- Query/mutation orchestration, query keys, invalidation boundaries.
 
-## KEY FILES
+## CURRENT INVENTORY
 
-| File                            | Domain                  | Notes                                          |
-| ------------------------------- | ----------------------- | ---------------------------------------------- |
-| `use-admin-api.ts`              | dashboard/admin common  | members, announcements, approvals, memberships |
-| `use-posts-api.ts`              | posts review            | list/detail/review mutations                   |
-| `use-actions-api.ts`            | actions                 | action item CRUD                               |
-| `use-attendance.ts`             | attendance              | logs + unmatched endpoints                     |
-| `use-points-api.ts`             | points/policies         | ledger and policy mutations                    |
-| `use-education-api.ts`          | education               | contents/quizzes/questions/statutory/TBM       |
-| `use-sites-api.ts`              | site profile            | site read/update                               |
-| `use-monitoring-api.ts`         | operations metrics      | summary/metrics/top-errors + 60s polling       |
-| `use-rewards.ts`                | reward rankings/history | revoke and ranking reads                       |
-| `use-fas-sync.ts`               | FAS integration ops     | status/search/sync/debug views                 |
-| `use-sync-errors.ts`            | sync error review       | error list/update                              |
-| `use-votes.ts`                  | vote domain             | period/candidate/results + CSV export helper   |
-| `use-recommendations.ts`        | recommendations         | recommendation workflows                       |
-| `use-trends.ts`, `use-stats.ts` | analytics helpers       | trend and stat retrieval                       |
-| `use-api.ts`                    | barrel exports          | compatibility export set                       |
-| `use-api-base.ts`               | `apiFetch` re-export    | shared import boundary                         |
+- Hook module count: `31` (`use-*.ts`, excludes tests/AGENTS).
+- Core barrel files: `use-api.ts`, `use-api-base.ts`.
+
+## HOOK GROUPS
+
+- Admin split modules: `use-admin-dashboard-api.ts`, `use-admin-members-api.ts`, `use-admin-announcements-api.ts`, `use-admin-approvals-api.ts`, `use-admin-audit-api.ts`, `use-admin-sites-api.ts`.
+- Aggregated admin entry: `use-admin-api.ts`.
+- Posts/actions: `use-posts-api.ts`, `use-actions-api.ts`.
+- Attendance/sync: `use-attendance.ts`, `use-fas-sync.ts`, `use-sync-errors.ts`.
+- Votes/recommendations/rewards: `use-votes.ts`, `use-recommendations.ts`, `use-rewards.ts`.
+- Monitoring/analytics: `use-monitoring-api.ts`, `use-trends.ts`, `use-stats.ts`.
+- Points split: `use-points-api.ts`, `use-points-ledger-api.ts`, `use-points-policies-api.ts`, `use-points-settlement-api.ts`.
+- Education split: `use-education-api.ts`, `use-education-api-types.ts`, `use-education-contents-api.ts`, `use-education-quizzes-api.ts`, `use-education-statutory-api.ts`, `use-education-tbm-api.ts`.
+- Site profile: `use-sites-api.ts`.
 
 ## PATTERNS
 
-| Pattern                     | Applied in     | Notes                                    |
-| --------------------------- | -------------- | ---------------------------------------- |
-| Site-aware `enabled` guards | most hooks     | wait for `currentSiteId` before querying |
-| Mutation invalidation       | mutation hooks | invalidate targeted admin query roots    |
-| Typed response unwrapping   | domain hooks   | normalize API payload shapes for pages   |
+- Site-aware query `enabled` guards avoid requests before `currentSiteId` hydration.
+- Mutation hooks invalidate narrow query key scopes (domain-first keys).
+- API transport centralized through `apiFetch` from `src/lib/api.ts`.
+- Split-domain modules reduce monolithic hook growth while preserving aggregated compatibility exports.
 
-## GOTCHAS
+## BARREL BOUNDARY
 
-- `use-api.ts` barrel exports 12 modules; it omits `use-votes.ts`, `use-recommendations.ts`, `use-trends.ts`, `use-stats.ts`.
-- `use-monitoring-api.ts` query keys are `monitoring/*` (no `admin` prefix), unlike most hooks.
-- `use-votes.ts` includes direct `fetch` in CSV export helper for blob download; keep this edge path isolated.
+- `use-api.ts` re-exports selected compatibility modules only.
+- Not re-exported (direct import required):
+  - `use-votes.ts`
+  - `use-recommendations.ts`
+  - `use-trends.ts`
+  - `use-stats.ts`
 
-## TEST DOC LINK
+## KNOWN CONSTRAINTS
 
-- `__tests__/AGENTS.md` documents hook test harness, mocks, and invalidation assertions.
+- `use-monitoring-api.ts` uses `monitoring/*` query-key namespace; intentionally differs from many `admin/*` keys.
+- `use-votes.ts` includes CSV export `fetch` path for blob download; this edge behavior remains localized.
+- Keep API path constants and auth refresh handling in `src/lib/api.ts`; do not replicate per hook.
 
-## PARENT DELTA
+## TEST LINK
 
-- Parent admin doc only names hooks area.
-- This file defines actual module inventory and barrel/non-barrel boundaries.
+- `__tests__/AGENTS.md` defines hook test harness, mocking strategy, and invalidation assertions.

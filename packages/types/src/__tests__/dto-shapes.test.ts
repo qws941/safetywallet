@@ -450,8 +450,6 @@ describe("DTO and envelope shapes", () => {
       description: "기본 교육",
       contentType: EducationContentType.VIDEO,
       contentUrl: "https://example.com/education.mp4",
-      contentBody: "본문",
-      sortOrder: 1,
     } satisfies CreateEducationContentDto;
     const content = {
       id: "ec1",
@@ -461,8 +459,10 @@ describe("DTO and envelope shapes", () => {
       contentType: EducationContentType.TEXT,
       contentUrl: null,
       sourceUrl: null,
-      contentBody: "본문",
-      sortOrder: 1,
+      thumbnailUrl: null,
+      durationMinutes: null,
+      externalSource: "LOCAL" as const,
+      externalId: null,
       isActive: true,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -480,18 +480,9 @@ describe("DTO and envelope shapes", () => {
       contentId: "ec1",
       title: "안전 퀴즈",
       description: "기본",
-      passScore: 80,
+      passingScore: 80,
       pointsReward: 10,
-      timeLimitSec: 300,
-      questions: [
-        {
-          questionText: "보호구 착용은?",
-          options: ["필수", "선택"],
-          correctIndex: 0,
-          explanation: "필수입니다",
-          sortOrder: 1,
-        },
-      ],
+      timeLimitMinutes: 5,
     } satisfies CreateQuizDto;
     const question = {
       id: "q1",
@@ -558,9 +549,9 @@ describe("DTO and envelope shapes", () => {
       userId: "u1",
       trainingType: StatutoryTrainingType.NEW_WORKER,
       trainingName: "신규자 교육",
-      trainingHours: 8,
-      scheduledDate: "2026-01-10",
-      expiryDate: "2027-01-10",
+      hoursCompleted: 8,
+      trainingDate: "2026-01-10",
+      expirationDate: "2027-01-10",
       provider: "안전기관",
       notes: "메모",
     } satisfies CreateStatutoryTrainingDto;
@@ -601,13 +592,12 @@ describe("DTO and envelope shapes", () => {
 
     const createTbm = {
       siteId: "s1",
-      tbmDate: "2026-01-02",
-      location: "A동",
+      date: "2026-01-02",
       topic: "작업 전 점검",
       content: "내용",
-      weatherInfo: "맑음",
-      safetyIssues: "없음",
-      attendeeIds: ["u1", "u2"],
+      leaderId: "u1",
+      weatherCondition: "맑음",
+      specialNotes: "없음",
     } satisfies CreateTbmRecordDto;
     const attendee = {
       id: "ta1",
@@ -618,25 +608,23 @@ describe("DTO and envelope shapes", () => {
     const tbmRecord = {
       id: "tbm1",
       siteId: "s1",
-      conductorId: "u9",
-      tbmDate: "2026-01-02",
-      location: "A동",
+      leaderId: "u9",
+      date: "2026-01-02",
       topic: "작업 전 점검",
       content: "내용",
-      weatherInfo: "맑음",
-      safetyIssues: "없음",
+      weatherCondition: "맑음",
+      specialNotes: "없음",
       attendeeCount: 1,
       attendees: [attendee],
-      conductorName: "반장",
+      leaderName: "반장",
       createdAt: "2026-01-02T08:00:00.000Z",
       updatedAt: "2026-01-02T08:00:00.000Z",
     } satisfies TbmRecordDto;
     const tbmList = {
       id: "tbm1",
-      tbmDate: "2026-01-02",
+      date: "2026-01-02",
       topic: "작업 전 점검",
-      location: "A동",
-      conductorName: "반장",
+      leaderName: "반장",
       attendeeCount: 1,
       createdAt: "2026-01-02T08:00:00.000Z",
     } satisfies TbmRecordListDto;
@@ -644,7 +632,7 @@ describe("DTO and envelope shapes", () => {
       siteId: "s1",
       fromDate: "2026-01-01",
       toDate: "2026-01-31",
-      conductorId: "u9",
+      leaderId: "u9",
       page: 1,
       limit: 20,
     } satisfies TbmRecordFilterDto;
@@ -668,7 +656,7 @@ describe("DTO and envelope shapes", () => {
     expect(createContent.contentType).toBe(EducationContentType.VIDEO);
     expect(content.isActive).toBe(true);
     expect(contentList.quizCount).toBe(2);
-    expect(createQuiz.questions).toHaveLength(1);
+    expect(createQuiz.passingScore).toBe(80);
     expect(quiz.status).toBe(QuizStatus.PUBLISHED);
     expect(quizList.status).toBe(QuizStatus.DRAFT);
     expect(submitAttempt.answers[0]).toBe(0);
@@ -678,7 +666,7 @@ describe("DTO and envelope shapes", () => {
     expect(updateTraining.status).toBe(TrainingCompletionStatus.COMPLETED);
     expect(training.status).toBe(TrainingCompletionStatus.SCHEDULED);
     expect(trainingFilter.status).toBe(TrainingCompletionStatus.EXPIRED);
-    expect(createTbm.attendeeIds).toContain("u1");
+    expect(createTbm.leaderId).toBe("u1");
     expect(tbmRecord.attendees[0]?.id).toBe("ta1");
     expect(tbmList.attendeeCount).toBe(1);
     expect(tbmFilter.page).toBe(1);

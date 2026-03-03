@@ -14,6 +14,14 @@ import {
   DialogTitle,
   DialogFooter,
   Badge,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import { useAuthStore } from "@/stores/auth";
@@ -33,6 +41,7 @@ export function CriteriaTab() {
   const deletePolicy = useDeletePolicy();
 
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     reasonCode: "",
@@ -111,12 +120,16 @@ export function CriteriaTab() {
     setShowCreate(true);
   }, []);
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      deletePolicy.mutate(id);
-    },
-    [deletePolicy],
-  );
+  const handleDelete = useCallback((id: string) => {
+    setDeleteTarget(id);
+  }, []);
+
+  const confirmDelete = useCallback(() => {
+    if (!deleteTarget) return;
+    deletePolicy.mutate(deleteTarget, {
+      onSettled: () => setDeleteTarget(null),
+    });
+  }, [deleteTarget, deletePolicy]);
 
   const columns: Column<PointPolicy>[] = useMemo(
     () => [
@@ -295,6 +308,29 @@ export function CriteriaTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>포상 기준 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 포상 기준을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deletePolicy.isPending}
+            >
+              {deletePolicy.isPending ? "삭제 중..." : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

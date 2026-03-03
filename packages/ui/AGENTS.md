@@ -2,56 +2,49 @@
 
 ## SCOPE DELTA
 
-- Owns package-level export surface and theme primitives.
-- `src/components/AGENTS.md` owns component-file specifics.
+- Owns package export surface + theme primitives only.
+- Component-level file details live in `src/components/AGENTS.md`.
 
-## SOURCE INVENTORY
+## INVENTORY (CURRENT)
 
 ```text
 src/
 ├── index.ts
 ├── globals.css
-├── lib/
-│   └── utils.ts
-└── components/
-    ├── alert-dialog.tsx
-    ├── avatar.tsx
-    ├── badge.tsx
-    ├── button.tsx
-    ├── card.tsx
-    ├── dialog.tsx
-    ├── input.tsx
-    ├── select.tsx
-    ├── sheet.tsx
-    ├── skeleton.tsx
-    ├── switch.tsx
-    ├── toast.tsx
-    ├── toaster.tsx
-    └── use-toast.tsx
+├── lib/utils.ts
+├── components/ (14 files)
+└── __tests__/ (8 files)
 ```
 
-## BARREL EXPORTS (CURRENT)
+## COMPONENT SET (14)
+
+- `alert-dialog`, `avatar`, `badge`, `button`, `card`, `dialog`, `input`.
+- `select`, `sheet`, `skeleton`, `switch`, `toast`, `toaster`, `use-toast`.
+
+## PUBLIC BARREL (`src/index.ts`)
 
 - Utility: `cn`.
-- Core controls: `Button`, `buttonVariants`, `Card*`, `Input`, `Badge`, `badgeVariants`, `Skeleton`, `Avatar*`.
-- Toast stack: `ToastProvider`, `ToastViewport`, `Toast`, `ToastTitle`, `ToastDescription`, `ToastClose`, `ToastAction`, `useToast`, `toast`, `Toaster`.
-- Modal stack: `AlertDialog*`, `Dialog*`, `Sheet*`.
-- Select stack: `Select`, `SelectGroup`, `SelectValue`, `SelectTrigger`, `SelectContent`, `SelectLabel`, `SelectItem`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`.
+- Core: `Button`, `Card*`, `Input`, `Badge`, `Skeleton`, `Avatar*`.
+- Overlay stack: `AlertDialog*`, `Dialog*`, `Sheet*`.
+- Select stack: `Select*` including scroll buttons.
+- Toast stack: `Toast*`, `useToast`, `toast`, `Toaster`.
 - Toggle: `Switch`.
 
-## THEME TOKENS (`globals.css`)
+## THEME CONTRACT (`globals.css`)
 
-- Defines light/dark HSL variables for: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `success`, `warning`, `border`, `input`, `ring`, `radius`.
-- Base layer applies `border-border` globally and `bg-background text-foreground` to `body`.
+- HSL token system for background/foreground/surface/action/status colors.
+- Includes `success` + `warning` custom tokens in addition to shadcn defaults.
+- Base layer applies global `border-border` and body background/foreground classes.
 
-## PACKAGE RULES
+## MODULE RULES
 
-- Keep `src/index.ts` as canonical public surface.
-- Add/remove component export in same change as file add/remove.
-- Keep `cn()` in `lib/utils.ts` only (`clsx` + `twMerge` composition).
+- Add/remove component file: update `src/index.ts` same commit.
+- Keep helper composition centralized in `lib/utils.ts` (`clsx` + `twMerge`).
+- Token rename/removal requires consuming app migration.
+- Keep component package free of app-specific business strings.
 
 ## ANTI-DRIFT
 
-- No token renames in CSS without consuming-app migration.
-- No duplicate helper utilities outside `lib/utils.ts`.
-- No undocumented public exports from component files.
+- No undocumented public export.
+- No duplicate `cn` helpers.
+- No stale component/test counts in this file.

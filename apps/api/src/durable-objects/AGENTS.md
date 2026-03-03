@@ -1,35 +1,40 @@
-# AGENTS: DURABLE-OBJECTS
+# AGENTS: DURABLE OBJECTS
 
 ## PURPOSE
 
-Stateful coordination runtime for rate limiting and job scheduling.
-Current scope: two Durable Object classes — `RateLimiter` and `JobScheduler`.
+Stateful worker components for rate limiting and scheduled job orchestration.
+This directory contains only Durable Object classes and their direct tests.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File                             | Role                               | Current Facts                                                                                       |
-| -------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `RateLimiter.ts`                 | DO request handler + state machine | Supports actions: `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`. |
-| `__tests__/RateLimiter.test.ts`  | behavior verification              | Covers generic limiter windows plus OTP hourly/daily limit behavior.                                |
-| `JobScheduler.ts`                | DO scheduled job runner            | Executes daily/monthly/sync jobs via alarm-based scheduling. Delegates to `src/jobs/` registry.     |
-| `__tests__/JobScheduler.test.ts` | behavior verification              | Covers job execution, alarm scheduling, error handling.                                             |
+- Runtime DO files: 2
+  - `RateLimiter.ts`
+  - `JobScheduler.ts`
+- Tests currently present: `__tests__/RateLimiter.test.ts`
 
-## RUNTIME SNAPSHOT
+## CURRENT FACTS
 
-- Generic limiter state: `{ count, resetAt }` keyed by caller key.
-- Failure lock state: `{ failures, lockedUntil }` for OTP login lock window.
-- OTP limiter state: hourly + daily counters with separate reset timestamps.
-- Cleanup alarm runs every 7 days; prunes stale storage entries.
+- `RateLimiter.ts` supports request actions:
+  - `checkLimit`
+  - `recordFailure`
+  - `resetFailures`
+  - `checkOtpLimit`
+  - `resetOtpLimit`
+- OTP limits in `RateLimiter.ts`: hourly `5`, daily `10`, lock duration `15m`.
+- `RateLimiter` persists OTP keys with `otp:{key}` prefix and schedules cleanup alarms every 7 days.
+- `JobScheduler.ts` supports actions: `status`, `list`, `trigger`, `enable`, `disable`.
+- `JobScheduler` ticks every 60 seconds and dispatches due jobs from `src/jobs/registry.ts`.
 
-## PATTERNS
+## CONVENTIONS
 
-- Action dispatch in `fetch()` uses strict POST JSON payload with discriminated `action`.
-- Response payloads stay minimal/stable for middleware compatibility.
-- OTP limits: hourly 5, daily 10, lock duration 15 minutes.
-- Unknown action and invalid payload return 400, not silent no-op.
+- Keep `fetch()` payload handling strict and reject unknown actions with `400`.
+- Keep response payloads stable because middleware/admin callers parse them directly.
+- Keep DO storage key format unchanged (`job:*`, `otp:*`, limiter keys) to avoid orphaned state.
+- Keep alarm bootstrap in constructors via `blockConcurrencyWhile` so fresh instances self-schedule.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- Changing action names requires matching updates in middleware DO client code.
-- Storage keys include `otp:{key}` namespace for OTP counters; preserve format.
-- `constructor` schedules cleanup alarm on first access via `blockConcurrencyWhile`.
+- Do not rename action strings without coordinated updates in all callers.
+- Do not silently swallow invalid JSON/action payloads.
+- Do not add cross-domain business logic here; dispatch to `src/jobs`/`src/lib` modules.
+- Do not assume a `JobScheduler` unit test exists in this directory today; only `RateLimiter` test file is present.

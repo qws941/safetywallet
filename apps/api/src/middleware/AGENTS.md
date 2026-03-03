@@ -2,35 +2,39 @@
 
 ## PURPOSE
 
-Request guard layer shared by route modules.
-Owns auth context hydration, permission checks, attendance gates, throttling, metrics.
+Cross-route request guards and observability hooks.
+Scope: auth context, permission checks, attendance gate, rate limit, security headers, request metrics/logging.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File            | Primary Role             | Current Facts                                                                                                                     |
-| --------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `auth.ts`       | JWT auth + user context  | Verifies token, enforces same-day `loginDate`, hydrates `c.var.auth`; KV session cache first, D1 fallback.                        |
-| `permission.ts` | RBAC + field permissions | Exports `requireRole`, `requireSiteAdmin`, `requirePermission`, plus inline check helpers.                                        |
-| `attendance.ts` | Check-in gate            | Site membership check, same-day attendance window, manual approval fallback; bypasses when KV `fas-status=down`.                  |
-| `rate-limit.ts` | DO-backed throttling     | Talks to `RATE_LIMITER` DO via `checkLimit`; returns 503 on limiter error; `authRateLimitMiddleware()` sets stricter auth limits. |
-| `analytics.ts`  | API metrics capture      | Dual-write: Analytics Engine + D1 `apiMetrics` upsert; non-blocking `waitUntil` write.                                            |
-| `fas-auth.ts`   | FAS ingress auth         | Validates `X-FAS-API-Key` against `FAS_API_KEY` or `FAS_SYNC_SECRET`.                                                             |
+- Runtime middleware files: 7
+  - `analytics.ts`
+  - `attendance.ts`
+  - `auth.ts`
+  - `permission.ts`
+  - `rate-limit.ts`
+  - `request-logger.ts`
+  - `security-headers.ts`
+- Tests in `__tests__/`: analytics, attendance, auth, permission, rate-limit, request-logger, security-headers, plus CORS behavior coverage.
 
-## MODULE SNAPSHOT
+## CURRENT FACTS
 
-- Runtime middleware files: 8 (`*.ts`, excluding `__tests__/`).
-- Tests present for each middleware contract under `middleware/__tests__/`.
-- `cors` behavior test exists, but CORS implementation lives in `src/index.ts` chain.
+- `auth.ts` validates bearer JWT, enforces same-day `loginDate`, hydrates `c.set("auth", ...)`, uses KV session cache then D1 fallback.
+- `attendance.ts` bypasses for admin roles and `KV["fas-status"] === "down"`; enforces check-in or manual approval by site/day.
+- `permission.ts` exposes `requireRole`, `requireSiteAdmin`, `requirePermission`, plus `checkSiteAdmin` and `checkPermission` helpers.
+- `rate-limit.ts` calls `RATE_LIMITER` DO action `checkLimit`; hard-fails with 503 on limiter error.
+- `analytics.ts` updates request metrics (`apiMetrics`) and should remain non-blocking.
 
-## PATTERNS
+## CONVENTIONS
 
-- Auth-first for protected handlers; permission checks run after `c.var.auth` exists.
-- Use response helpers for guard failures (`error(...)`), not raw thrown strings.
-- Keep limiter key derivation stable (`user:{id}` or `ip:{addr}`) to preserve rate history.
-- Metrics write paths must never block response lifecycle.
+- Run auth middleware before permission/attendance checks in route modules.
+- Keep auth failures as `HTTPException(401)` where auth context is mandatory.
+- Keep rate-limit key shape stable (`user:*`, `ip:*`, `auth:*`) to preserve bucket history.
+- Keep attendance window logic bound to `getTodayRange()` to match KST day semantics.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- `rate-limit.ts` fails closed on DO call errors (503), not permissive pass-through.
-- `attendance.ts` behavior changes with `REQUIRE_ATTENDANCE_FOR_POST` and per-site `accessPolicies.requireCheckin`.
-- `auth.ts` session validity depends on same-day rule, not long-lived JWT expiry.
+- Do not document or reference `fas-auth.ts`; it is not present in this directory.
+- Do not bypass limiter errors with permissive fallthrough.
+- Do not mutate `c.var.auth` shape without updating all routes and tests using auth context.
+- Do not move CORS implementation into this folder; it is composed in `src/index.ts`.

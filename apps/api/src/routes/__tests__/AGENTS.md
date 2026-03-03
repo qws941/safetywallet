@@ -1,35 +1,32 @@
-# AGENTS: ROUTES/TESTS
+# AGENTS: ROUTE TESTS
 
 ## PURPOSE
 
-Vitest suites for core route handler behavior.
-Focus: validation, authorization, response contracts, route-level branching.
+Vitest coverage for non-admin API route behavior.
+Focuses on request validation, auth/permission outcomes, and response contracts.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File                    | Focus                     | Current Facts                                                             |
-| ----------------------- | ------------------------- | ------------------------------------------------------------------------- |
-| `auth.test.ts`          | login/session behavior    | Heavy mocked DB and middleware chains; local `createApp` factory pattern. |
-| `posts.test.ts`         | report lifecycle          | Covers CRUD/list pagination/error branches with mocked auth context.      |
-| `notifications.test.ts` | push endpoints            | Subscription + send endpoint contract checks.                             |
-| `attendance.test.ts`    | attendance route behavior | FAS event and attendance record cases.                                    |
-| `system-status.test.ts` | outage banner contract    | Rebuilds `/api/system/status` response shape using KV mock.               |
+- Test files in this directory: 19
+  - `actions.test.ts`, `announcements.test.ts`, `approvals.test.ts`, `attendance.test.ts`, `auth.test.ts`, `disputes.test.ts`, `education.test.ts`, `fas.test.ts`, `images.test.ts`, `notifications.test.ts`, `points.test.ts`, `policies.test.ts`, `posts.test.ts`, `recommendations.test.ts`, `reviews.test.ts`, `sites.test.ts`, `system-status.test.ts`, `users.test.ts`, `votes.test.ts`
+- Admin route tests are separate in `src/routes/admin/__tests__/`.
 
-## MODULE SNAPSHOT
+## CURRENT FACTS
 
-- 19 test files (`src/routes/__tests__/*.test.ts`).
-- This subtree targets core routes only; admin tests live in `routes/admin/__tests__/`.
-- Most suites build per-file Hono test app factories (`createApp` or `buildApp`).
+- `system-status.test.ts` validates endpoint behavior implemented in `src/index.ts`, not in route module files.
+- Most suites construct small Hono app fixtures and mock DB/bindings per test file.
+- Route tests assert status and JSON envelope together, not status-only.
 
-## PATTERNS
+## CONVENTIONS
 
-- Mock middleware and external adapters at import boundary (`vi.mock`).
-- Keep request/response assertions explicit: status + body contract together.
-- Validate both happy path and rejection path (auth/permission/validation).
-- Use deterministic env fixture objects for DB/KV/queue bindings.
+- Keep one domain-focused test file per route module.
+- Mock external boundaries (`drizzle`, queue, KV, middleware) with explicit fixture wiring.
+- Cover rejection paths for auth, validation, and permission checks in each suite where applicable.
+- Keep request payloads deterministic to avoid flaky timestamp or UUID comparisons.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- No `manual-approval.test.ts` in this directory; stale references removed.
-- `system-status.test.ts` intentionally mirrors endpoint logic from `src/index.ts`.
-- Avoid sharing mock state between suites; each file resets with `beforeEach`.
+- Do not place admin route assertions in this directory.
+- Do not weaken response-body contract checks to only assert HTTP code.
+- Do not share mutable global mocks across route suites.
+- Do not add tests for endpoints that live outside route modules without naming that explicitly (as done for `system-status`).

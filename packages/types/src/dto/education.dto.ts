@@ -13,8 +13,11 @@ export interface CreateEducationContentDto {
   description?: string;
   contentType: EducationContentType;
   contentUrl?: string;
-  contentBody?: string;
-  sortOrder?: number;
+  thumbnailUrl?: string;
+  durationMinutes?: number;
+  externalSource?: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId?: string;
+  sourceUrl?: string;
 }
 
 export interface EducationContentDto {
@@ -25,8 +28,10 @@ export interface EducationContentDto {
   contentType: EducationContentType;
   contentUrl: string | null;
   sourceUrl: string | null;
-  contentBody: string | null;
-  sortOrder: number;
+  thumbnailUrl: string | null;
+  durationMinutes: number | null;
+  externalSource: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -48,20 +53,11 @@ export interface CreateQuizDto {
   contentId?: string;
   title: string;
   description?: string;
-  passScore?: number;
+  status?: QuizStatus;
   pointsReward?: number;
-  timeLimitSec?: number;
-  questions: CreateQuizQuestionDto[];
+  passingScore?: number;
+  timeLimitMinutes?: number;
 }
-
-export interface CreateQuizQuestionDto {
-  questionText: string;
-  options: string[];
-  correctIndex: number;
-  explanation?: string;
-  sortOrder?: number;
-}
-
 export interface QuizDto {
   id: string;
   siteId: string;
@@ -102,7 +98,7 @@ export interface QuizListDto {
 export interface SubmitQuizAttemptDto {
   quizId: string;
   siteId: string;
-  answers: number[];
+  answers: (number | number[] | string)[];
   startedAt: string;
 }
 
@@ -113,7 +109,7 @@ export interface QuizAttemptDto {
   siteId: string;
   score: number;
   passed: boolean;
-  answers: number[];
+  answers: (number | number[] | string)[];
   startedAt: string;
   completedAt: string;
   quizTitle?: string;
@@ -136,10 +132,12 @@ export interface CreateStatutoryTrainingDto {
   userId: string;
   trainingType: StatutoryTrainingType;
   trainingName: string;
-  trainingHours: number;
-  scheduledDate: string;
-  expiryDate?: string;
+  trainingDate: string;
+  expirationDate?: string;
   provider?: string;
+  certificateUrl?: string;
+  hoursCompleted?: number;
+  status?: TrainingCompletionStatus;
   notes?: string;
 }
 
@@ -184,28 +182,26 @@ export interface StatutoryTrainingFilterDto {
 
 export interface CreateTbmRecordDto {
   siteId: string;
-  tbmDate: string;
-  location?: string;
+  date: string;
   topic: string;
   content?: string;
-  weatherInfo?: string;
-  safetyIssues?: string;
-  attendeeIds: string[];
+  leaderId?: string;
+  weatherCondition?: string;
+  specialNotes?: string;
 }
 
 export interface TbmRecordDto {
   id: string;
   siteId: string;
-  conductorId: string;
-  tbmDate: string;
-  location: string | null;
+  leaderId: string;
+  date: string;
   topic: string;
   content: string | null;
-  weatherInfo: string | null;
-  safetyIssues: string | null;
+  weatherCondition: string | null;
+  specialNotes: string | null;
   attendeeCount: number;
   attendees: TbmAttendeeDto[];
-  conductorName?: string;
+  leaderName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -219,10 +215,9 @@ export interface TbmAttendeeDto {
 
 export interface TbmRecordListDto {
   id: string;
-  tbmDate: string;
+  date: string;
   topic: string;
-  location: string | null;
-  conductorName: string | null;
+  leaderName: string | null;
   attendeeCount: number;
   createdAt: string;
 }
@@ -231,7 +226,7 @@ export interface TbmRecordFilterDto {
   siteId: string;
   fromDate?: string;
   toDate?: string;
-  conductorId?: string;
+  leaderId?: string;
   page?: number;
   limit?: number;
 }

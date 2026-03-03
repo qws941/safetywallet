@@ -1,35 +1,45 @@
 # AGENTS: EDUCATION
 
-## PURPOSE
+## SCOPE
 
-Education admin hub. Scope: tabbed management for content, quizzes, statutory training, TBM.
+- Education admin hub under one route: `education/page.tsx`.
+- Covers tabbed UI for contents, quizzes, statutory training, TBM.
 
-## KEY FILES
+## FILE MAP
 
-| File                            | Role                         | Notes                               |
-| ------------------------------- | ---------------------------- | ----------------------------------- |
-| `page.tsx`                      | single hub page              | tab state + tab button strip        |
-| `education-helpers.ts`          | tab metadata                 | `tabItems`, `TabId` contract        |
-| `components/contents-tab.tsx`   | content/material workflows   | creation/edit/list actions          |
-| `components/quizzes-tab.tsx`    | quiz workflows               | quiz/question CRUD surfaces         |
-| `components/statutory-tab.tsx`  | statutory training workflows | legal training records              |
-| `components/tbm-tab.tsx`        | TBM workflows                | toolbox meeting content/records     |
-| `components/education-types.ts` | local UI/domain types        | shared tab component type contracts |
+- `page.tsx` - tab shell and section switching.
+- `education-helpers.ts` - tab metadata (`tabItems`) + `TabId` typing.
+- `components/contents-tab.tsx` - content/material management tab.
+- `components/quizzes-tab.tsx` - quiz/question management tab.
+- `components/statutory-tab.tsx` - statutory education management tab.
+- `components/tbm-tab.tsx` - toolbox meeting management tab.
+- `components/education-types.ts` - local tab/domain UI types.
 
-## PATTERNS
+## ARCHITECTURE
 
-| Pattern                       | Applied in             | Notes                                               |
-| ----------------------------- | ---------------------- | --------------------------------------------------- |
-| Single-route tab architecture | `page.tsx`             | avoids deep route branching for each education mode |
-| Strong tab typing             | helpers + page         | `TabId` union keeps tab switch exhaustive           |
-| Domain split by tab component | `components/*-tab.tsx` | each tab owns its own query/mutation flow           |
+- Single-route, multi-tab design (no per-tab route trees).
+- Tab switch state lives in page shell; each tab component owns its own UI data lifecycle.
+- Strongly typed tab IDs keep render switch exhaustive and predictable.
 
-## GOTCHAS
+## TAB RESPONSIBILITIES
 
-- Older docs mentioning `materials/page.tsx` or `quizzes/[id]/page.tsx` are stale; current module is tab-driven inside one page.
-- `use-education-api.ts` is large and multi-domain; keep tab components narrow to avoid broad state coupling.
+- Contents tab: material listing/create/update/delete flows.
+- Quizzes tab: quiz catalog + question CRUD flows.
+- Statutory tab: legal training templates/records management.
+- TBM tab: toolbox meeting content and schedule/record handling.
 
-## PARENT DELTA
+## CONSTRAINTS
 
-- Parent app doc only points to `education/page.tsx`.
-- This file adds tab inventory and component ownership boundaries.
+- Do not split into nested routes unless export strategy changes; current static export favors one tabbed page.
+- Keep tab components domain-focused; avoid cross-tab shared mutable state.
+- Older route references like `materials/page.tsx` or quiz detail routes are obsolete in current structure.
+
+## TEST SURFACE
+
+- `education/__tests__/*` covers helpers and tab behavior.
+- Hook/API behaviors validated in `src/hooks/use-education-*.ts` tests.
+
+## BOUNDARY NOTES
+
+- This doc is route/component scoped.
+- API orchestration is in hooks (`use-education-api.ts` and split modules).

@@ -13,10 +13,11 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  useToast,
 } from "@safetywallet/ui";
 import { useDeleteEducationContent } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table";
-import { getContentTypeLabel } from "../../education-helpers";
+import { getContentTypeLabel, getErrorMessage } from "../../education-helpers";
 import type { EducationContentItem } from "../education-types";
 
 interface Props {
@@ -34,16 +35,17 @@ export function ContentList({
 }: Props) {
   const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
   const deleteMutation = useDeleteEducationContent();
-
+  const { toast } = useToast();
   const handleDeleteContent = async () => {
     if (!deleteContentId) return;
     try {
       await deleteMutation.mutateAsync(deleteContentId);
       onDeleteContent();
-    } catch {
-      // Error handling done in parent or via toast
+    } catch (error) {
+      toast({ variant: "destructive", description: getErrorMessage(error) });
+    } finally {
+      setDeleteContentId(null);
     }
-    setDeleteContentId(null);
   };
 
   const columns: Column<EducationContentItem>[] = [

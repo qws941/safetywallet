@@ -2,38 +2,40 @@
 
 ## PURPOSE
 
-Domain utility layer for route handlers and scheduled jobs.
-Owns crypto, external adapters, queue processing, shared domain logic.
+Shared domain/service utilities used by routes, middleware, durable objects, and jobs.
+Contains business helpers, adapter clients, and cross-cutting utilities.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File                    | Role                         | Current Facts                                                                                                          |
-| ----------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `crypto.ts`             | PII and password primitives  | `hmac`, AES-GCM `encrypt/decrypt`, PBKDF2 `hashPassword/verifyPassword`. Versioned cipher format `v{N}:...` supported. |
-| `fas-sync.ts`           | FAS->D1 sync engine          | Exports `syncSingleFasEmployee`, `syncFasEmployeesToD1`, `deactivateRetiredEmployees`, `socialNoToDob`.                |
-| `web-push.ts`           | Push protocol implementation | VAPID JWT, RFC8291 payload encryption, bulk send helpers, retry/removal classifiers.                                   |
-| `notification-queue.ts` | Queue consumer               | Exports `enqueueNotification`, `processNotificationBatch`; handles ack/retry and stale subscription deletion.          |
-| `points-engine.ts`      | Point calculation policy     | Duplicate window 24h, daily post limit 3, daily point limit 30, false-report multiplier 2x.                            |
-| `rate-limit.ts`         | DO client + fallback limiter | Uses `RATE_LIMITER` DO; in-memory fallback with 5-minute cleanup when DO unavailable.                                  |
-| `state-machine.ts`      | Review/action transitions    | Transition validators return `{ valid, newReviewStatus?, newActionStatus?, error? }`.                                  |
-| `response.ts`           | JSON envelope helpers        | Canonical `success(c,data,status)` and `error(c,code,message,status)`.                                                 |
+- Top-level runtime `.ts` files: 22.
+- Local type shims: `piexifjs.d.ts`, `sql-js.d.ts`.
+- Subdirectories:
+  - `fas/` - FAS adapter functions/config.
+  - `fas-mariadb/` - MariaDB connector internals.
+  - `__tests__/` - per-module unit tests.
+- High-impact modules:
+  - `fas-sync.ts` - FAS -> D1 sync, PII hash/encrypt flow, collision-safe upsert logic.
+  - `notification-queue.ts` - queue enqueue + batch processor.
+  - `web-push.ts` - push encryption and delivery primitives.
+  - `response.ts` - canonical JSON envelope helpers.
 
-## MODULE SNAPSHOT
+## CURRENT FACTS
 
-- Directory has 24 runtime `.ts` files + 2 local `.d.ts` shims + `__tests__/`.
-- Heavy adapters: `fas-mariadb.ts`, `web-push.ts`, `alerting.ts`.
-- Shared infra helpers: `logger.ts`, `session-cache.ts`, `sync-lock.ts`, `observability.ts`.
+- `notification-queue.ts` exports `enqueueNotification` and `processNotificationBatch`.
+- `fas-sync.ts` exports `socialNoToDob`, `syncSingleFasEmployee`, `syncFasEmployeesToD1`, `deactivateRetiredEmployees`.
+- `rate-limit.ts` here is library-side helper logic (distinct from middleware wrapper file).
+- `logger.ts` and `observability.ts` are the shared logging/telemetry surface consumed by multiple modules.
 
-## PATTERNS
+## CONVENTIONS
 
-- PII write path: normalize -> `hmac` hash -> `encrypt` ciphertext -> store hash + encrypted value.
-- FAS sync path: upsert by external key, protect against PII-hash collision, batch mutating ops via `dbBatchChunked`.
-- Push path: classify per-subscription result (`success`, retryable, remove) then update `pushSubscriptions` fail counters.
-- Rate-limit path: prefer DO RPC; degrade to bounded in-memory counters instead of hard failure.
+- Keep side-effect-free helpers separated from binding-dependent adapter code.
+- PII transforms remain ordered: normalize -> `hmac` -> `encrypt` -> persist hash/ciphertext pair.
+- Keep response helper schema stable for route tests and client parsers.
+- Keep queue processing idempotent per message and classify failures as retry/remove/increment-failcount.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- `response.ts` envelope must remain stable; tests assert exact shape.
-- `rate-limit.ts` fallback state is process-local only; not cross-instance.
-- `fas-sync.ts` intentionally preserves app-side role/permission fields while syncing FAS fields.
-- `web-push.ts` handles cryptography directly; avoid casual refactors without full test rerun.
+- Do not move route-specific validation or auth logic into this directory.
+- Do not alter `fas-sync.ts` to overwrite app-managed user role/permission fields.
+- Do not change `notification-queue.ts` message shape without updating producer and consumer call sites.
+- Do not introduce circular imports from `src/lib` back into route module internals.

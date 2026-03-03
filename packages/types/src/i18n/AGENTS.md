@@ -2,41 +2,41 @@
 
 ## SCOPE DELTA
 
-- Folder owns concrete key map + typed locale exports.
-- Parent covers package-wide type constraints; this file tracks key topology.
+- Folder owns typed locale catalog contracts.
+- Parent owns package-level policy.
 
-## FILES
+## FILE INVENTORY (2)
 
-- `ko.ts`: flat `as const` dictionary; key format `section.key`.
-- `index.ts`: exports `ko`, `Ko`, `i18n`, `I18n`.
+- `ko.ts` - Korean catalog (`as const`, dot-notated keys).
+- `index.ts` - locale registry + exported types.
 
-## KEY STRUCTURE (CURRENT)
+## KEY TOPOLOGY
 
-- Non-nested object; all keys dot-notated string literals.
-- Current prefix groups (27):
+- Flat object; no nested locale objects.
+- Key format: `section.key`.
+- Active section groups (27):
   `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`,
   `points`, `votes`, `actions`, `actionsCreate`, `actionsView`,
   `announcements`, `education`, `educationQuizTake`, `educationView`,
   `profile`, `nav`, `common`, `unsafeWarning`, `authGuard`, `attendanceGuard`,
   `layout`, `providers`, `header`, `pointsCard`, `postCard`, `rankingCard`.
-- `common.*` is the largest shared bucket; avoid dumping domain copy into it.
 
 ## TYPING CONTRACT
 
-- Keep `ko` exported with `as const`.
-- Keep `export type Ko = typeof ko` in `ko.ts`.
-- Keep `i18n = { ko }` object literal in `index.ts`.
-- `I18n` must remain `typeof i18n`.
+- `ko.ts` must keep `export const ko = { ... } as const`.
+- `ko.ts` must keep `export type Ko = typeof ko`.
+- `index.ts` must keep `const i18n = { ko }`.
+- `index.ts` must export `I18n = typeof i18n`.
 
-## EDIT RULES (MODULE-SPECIFIC)
+## MODULE RULES
 
-- New keys: add in semantically matching prefix block.
-- Prefix rename: treated as breaking API for translation consumers.
-- Keep comments as section delimiters only; no runtime helpers.
-- Keep values production-ready Korean strings (no placeholders/test copy).
+- New key: place under existing semantic section when possible.
+- New section prefix: treat as contract change; update consumers/tests.
+- Keep strings production-grade Korean copy.
+- Keep only section-divider comments; no runtime helper logic in this folder.
 
 ## ANTI-DRIFT
 
-- Do not introduce nested objects; keeps `keyof` ergonomics stable.
-- Do not create locale aliases that diverge from `ko` keyset.
-- Do not split catalog unless multi-locale architecture is introduced intentionally.
+- No nested key hierarchy.
+- No alias locale objects with divergent keys.
+- No stale section list/count in this file.

@@ -1,32 +1,51 @@
-# AGENTS: API
+# AGENTS: E2E/API
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-API project (`request` fixture) only.
-No browser UI assertions here.
+- API request-context tests only (`request` fixture).
+- No browser UI assertions in this folder.
 
-## CURRENT FILE SET
+## SPEC INVENTORY (20)
 
-- `smoke.spec.ts` health/auth/CORS/basic 404 smoke
-- `endpoints.spec.ts` deep auth/protected/admin/CORS/error/format matrix
+- `actions.spec.ts`
+- `admin-endpoints.spec.ts`
+- `announcements.spec.ts`
+- `approvals.spec.ts`
+- `attendance.spec.ts`
+- `disputes.spec.ts`
+- `endpoints.spec.ts`
+- `fas.spec.ts`
+- `images.spec.ts`
+- `notifications.spec.ts`
+- `points.spec.ts`
+- `policies.spec.ts`
+- `posts.spec.ts`
+- `protected-endpoints.spec.ts`
+- `reviews.spec.ts`
+- `sites.spec.ts`
+- `smoke.spec.ts`
+- `users.spec.ts`
+- `validation-edge-cases.spec.ts`
+- `votes.spec.ts`
 
 ## MODULE RULES
 
-- Keep auth lifecycle checks serial where token state is reused.
-- Accept documented variability (`400|401|403|404|429`) per endpoint intent.
-- Keep 429 handling explicit for login-heavy sequences.
-- Assert both transport and envelope (`status` + `success/data/error/timestamp`).
-- Keep admin-origin CORS validation (`ADMIN_APP_URL` origin).
+- Keep auth lifecycle/token reuse steps serial where state is shared.
+- Keep 429/rate-limit handling explicit on login-heavy sequences.
+- Validate both HTTP status and response envelope shape.
+- Keep CORS checks for worker + admin origins.
+- Use env-based credentials/URLs; no hardcoded secrets.
 
-## DATA INPUTS
+## ENV INPUTS
 
-- Worker login fixture values from env fallbacks:
+- Worker credential fallbacks:
   - `E2E_WORKER_NAME`
   - `E2E_WORKER_PHONE`
   - `E2E_WORKER_DOB`
+- URL fallbacks controlled by Playwright config (`API_URL`, app URLs).
 
 ## ANTI-DRIFT
 
-- Do not store static bearer tokens in repo.
-- Do not silently pass on response-body regressions.
-- Do not collapse endpoint coverage into smoke-only checks.
+- No static bearer token fixtures in repo.
+- No response-body regression masking.
+- No stale two-file inventory text.

@@ -2,57 +2,46 @@
 
 ## PURPOSE
 
-Scheduled job definitions and execution logic. Dispatched by `JobScheduler` DO.
-Daily retention/compliance, monthly snapshots/rewards, FAS sync runners + shared helpers/telemetry.
+Scheduled job definitions and execution logic invoked by `JobScheduler` Durable Object.
+Contains the schedule registry plus daily/monthly/sync job implementations.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File              | LOC | Responsibility                                                                         |
-| ----------------- | --- | -------------------------------------------------------------------------------------- |
-| `registry.ts`     | 209 | `JobDefinition` interface, `JOB_REGISTRY` (10 entries), `runScheduledJobs(env)` entry  |
-| `daily-jobs.ts`   | 364 | Data retention, overdue action check, PII cleanup, announcement publish, metrics alert |
-| `monthly-jobs.ts` | 464 | Month-end points snapshot, auto-nomination, vote reward distribution                   |
-| `sync-jobs.ts`    | 287 | FAS full sync + incremental sync via Hyperdrive                                        |
-| `helpers.ts`      | 330 | `log`, `withRetry`, `persistSyncFailure`, ELK telemetry utilities                      |
+- Runtime job files: 5
+  - `registry.ts`
+  - `daily-jobs.ts`
+  - `monthly-jobs.ts`
+  - `sync-jobs.ts`
+  - `helpers.ts`
+- Test files in `__tests__/`: `helpers.test.ts`, `orchestrator.test.ts`, `registry.test.ts`
 
-## JOB INVENTORY (10)
+## CURRENT FACTS
 
-### Daily (5)
+- `registry.ts` defines `JobDefinition` and returns 10 scheduled jobs.
+- Jobs currently registered:
+  - `fas-sync`
+  - `publish-scheduled-announcements`
+  - `metrics-alert-check`
+  - `fas-full-sync-daily`
+  - `overdue-action-check`
+  - `pii-lifecycle-cleanup`
+  - `vote-reward-distribution`
+  - `data-retention`
+  - `month-end-snapshot`
+  - `auto-nomination`
+- `sync-jobs.ts` executes full/incremental FAS sync and clears/sets `KV["fas-status"]` depending on outcome.
+- `helpers.ts` logger namespace is `scheduled` and includes ELK sync-failure emission helpers.
 
-- `runDataRetention` — prune expired audit/metric records.
-- `runOverdueActionCheck` — flag overdue action items.
-- `runPiiLifecycleCleanup` — remove PII past retention window.
-- `publishScheduledAnnouncements` — activate time-gated announcements.
-- `runMetricsAlertCheck` — evaluate API metrics thresholds and fire alerts.
+## CONVENTIONS
 
-### Monthly (3)
+- Keep schedules expressed via `intervalMs` + optional `kstHour/dayOfWeek/dayOfMonth` in registry.
+- Keep long-running or conflict-prone jobs protected with sync locks.
+- Keep retry behavior explicit via `withRetry` arguments at call sites.
+- Keep failure persistence centralized through `persistSyncFailure` for consistent telemetry and admin triage.
 
-- `runMonthEndSnapshot` — points ledger period snapshot with sync lock.
-- `runAutoNomination` — auto-generate vote candidates from eligible members.
-- `runVoteRewardDistribution` — distribute points for vote period winners.
+## ANTI-PATTERNS
 
-### Sync (2)
-
-- `runFasFullSync` — full employee sync from FAS MariaDB via Hyperdrive.
-- `runFasSyncIncremental` — delta sync of recently updated FAS employees.
-
-## PATTERNS
-
-- `JobDefinition` struct: `name`, `fn(env)`, `intervalMs`, `kstHour`, `dayOfWeek`, `dayOfMonth`, `retryAttempts`, `retryBaseDelayMs`.
-- `withRetry(fn, attempts, baseDelay)` — exponential backoff wrapper for job execution.
-- Sync jobs use `acquireSyncLock`/`releaseSyncLock` from `src/lib/sync-lock` for mutual exclusion.
-- Monthly jobs use D1 transactions + sync lock for idempotent execution.
-- FAS sync connects via `FAS_HYPERDRIVE` binding to external MariaDB.
-- `persistSyncFailure` writes telemetry to Elasticsearch (index prefix `safetywallet-logs`).
-
-## GOTCHAS
-
-- `helpers.ts` logger tag is `"scheduled"` (legacy name), not `"jobs"`.
-- `monthly-jobs.ts` is 464 LOC — largest file; near modularization threshold.
-- FAS sync jobs fail gracefully with `fireAlert`/`buildFasDownAlert` from `src/lib/alerting` when Hyperdrive unavailable.
-- `__tests__/` subdirectory contains job-level unit tests.
-
-## PARENT DELTA
-
-- Parent `apps/api/AGENTS.md` references scheduled flow → `JobScheduler` DO → `src/jobs/registry.ts`.
-- This file documents job inventory, scheduling model, and per-file ownership.
+- Do not add ad-hoc scheduler logic outside `registry.ts` + `JobScheduler` contract.
+- Do not mutate sync-lock names casually; lock keys gate job mutual exclusion.
+- Do not bypass `persistSyncFailure` on FAS sync failure paths.
+- Do not duplicate alert firing logic across files when helper functions already encapsulate it.

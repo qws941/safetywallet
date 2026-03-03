@@ -180,13 +180,7 @@ test.describe("Login - Auth Redirect", () => {
 });
 
 test.describe("Login - Protected Routes", () => {
-  const protectedRoutes = [
-    "/posts",
-    "/education",
-    "/profile",
-    "/home",
-    "/votes",
-  ];
+  const protectedRoutes = ["/posts", "/profile", "/home", "/votes"];
 
   for (const route of protectedRoutes) {
     test(`${route} loads without crash when unauthenticated @smoke`, async ({

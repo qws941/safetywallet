@@ -1,13 +1,11 @@
 # AGENTS: E2E
 
-## SCOPE
+## SCOPE DELTA
 
-Playwright E2E suite root. Project wiring only.
-Child folders own feature-level test behavior.
+- Playwright project wiring + root inventory only.
+- Feature assertions belong to child folders.
 
-## ACTIVE PROJECT MAP
-
-Source of truth: `playwright.config.ts`.
+## PROJECT MAP (`playwright.config.ts`)
 
 - `api` -> `e2e/api`
 - `admin-setup` -> `e2e/admin/admin.setup.ts`
@@ -15,30 +13,30 @@ Source of truth: `playwright.config.ts`.
 - `admin` -> `e2e/admin` (depends on `admin-setup`)
 - `cross-app` -> `e2e/cross-app`
 
-## CURRENT TREE (ROOT VIEW)
+## CURRENT COUNTS
 
-- `e2e/admin/` admin dashboard browser suites
-- `e2e/worker/` worker PWA browser suites
-- `e2e/api/` request-context API suites
-- `e2e/cross-app/` multi-surface health/cors suite
-- `e2e/shared/elk.ts` shared ELK helper
-- `e2e/utils/rate-limit.ts` retry/reset parsing helper
+- Total E2E specs: 64.
+- `e2e/admin`: 30 specs (+ `admin.setup.ts`, `helpers.ts`).
+- `e2e/api`: 20 specs.
+- `e2e/worker`: 13 specs.
+- `e2e/cross-app`: 1 spec.
+- Shared utilities: `e2e/shared/elk.ts`, `e2e/utils/rate-limit.ts`, `e2e/utils/token-cache.ts`.
 
 ## BASELINES
 
-- Production-first defaults from config:
-  - Worker: `https://safetywallet.jclee.me`
-  - Admin: `https://admin.safetywallet.jclee.me`
-  - API: `https://safetywallet.jclee.me/api`
-- CI retries enabled; local retries disabled.
-- `@smoke` tag drives deploy verification selection.
+- Default worker URL: `https://safetywallet.jclee.me`.
+- Default admin URL: `https://admin.safetywallet.jclee.me`.
+- Default API URL: `https://safetywallet.jclee.me/api`.
+- CI retries: enabled (`2`), local retries: `0`.
+- `@smoke` tagging drives smoke slices.
 
 ## ROOT RULES
 
-- Keep cross-project wiring in config, not duplicated in specs.
-- Keep setup-state contract stable: `e2e/admin/.auth/admin.json`.
-- Prefer env override path (`API_URL`, `WORKER_APP_URL`, `ADMIN_APP_URL`).
-- Preserve project boundaries; no feature spill across folders.
+- Keep cross-project wiring in config, not duplicated per spec.
+- Keep admin auth state path stable: `e2e/admin/.auth/admin.json`.
+- Use env overrides (`API_URL`, `WORKER_APP_URL`, `ADMIN_APP_URL`) instead of hardcoded test hosts.
+- Preserve project boundaries; avoid folder spillover assertions.
+- Keep total-testing context in mind: 294 Vitest files + 64 Playwright specs.
 
 ## SUBMODULE DOCS
 
@@ -46,9 +44,3 @@ Source of truth: `playwright.config.ts`.
 - `e2e/api/AGENTS.md`
 - `e2e/worker/AGENTS.md`
 - `e2e/cross-app/AGENTS.md`
-
-## QUICK RUN
-
-- All: `npx playwright test`
-- Smoke slice: `npx playwright test --grep @smoke`
-- Project slice: `npx playwright test --project=api`

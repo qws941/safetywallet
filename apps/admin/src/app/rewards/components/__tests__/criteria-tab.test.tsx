@@ -72,6 +72,39 @@ vi.mock("@safetywallet/ui", () => ({
     <div>{children}</div>
   ),
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  AlertDialog: ({ children, open }: { children: ReactNode; open: boolean }) =>
+    open ? <div data-testid="alert-dialog">{children}</div> : null,
+  AlertDialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: ReactNode }) => (
+    <h4>{children}</h4>
+  ),
+  AlertDialogDescription: ({ children }: { children: ReactNode }) => (
+    <p>{children}</p>
+  ),
+  AlertDialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogCancel: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
+  AlertDialogAction: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
 }));
 
 const mockUsePolicies = vi.mocked(usePolicies);
@@ -138,6 +171,14 @@ describe("criteria tab", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    expect(deleteMutateMock).toHaveBeenCalledWith("p1");
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeTruthy();
+    });
+    const deleteButtons = screen.getAllByRole("button", { name: "삭제" });
+    fireEvent.click(deleteButtons[deleteButtons.length - 1]);
+    expect(deleteMutateMock).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({}),
+    );
   });
 });

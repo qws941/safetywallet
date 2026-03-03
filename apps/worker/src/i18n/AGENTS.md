@@ -1,33 +1,34 @@
-# AGENTS: I18N
+# AGENTS: WORKER I18N
 
 ## PURPOSE
 
-Client locale runtime for worker app.
-Owns locale config, async message loading, translation key resolution/interpolation.
+- Client-side localization runtime for worker app.
+- Loads locale JSON bundles and exposes translation helpers.
+- Supports Korean-primary UX with English fallback path.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File                | Symbol                                              | Responsibility                            |
-| ------------------- | --------------------------------------------------- | ----------------------------------------- |
-| `i18n/config.ts`    | `locales`, `defaultLocale`, `localeNames`           | Locale enum and display labels            |
-| `i18n/loader.ts`    | `getLocale(locale?)`                                | Dynamic JSON import + fallback chain      |
-| `i18n/context.tsx`  | `I18nProvider`, `useI18n`                           | Locale/messages context and loading state |
-| `i18n/translate.ts` | `createTranslator`, `getNestedValue`, `interpolate` | Dot-path lookup + `{var}` interpolation   |
-| `i18n/index.ts`     | barrel exports                                      | Public i18n API surface                   |
+- `config.ts`: locale source of truth (`locales`, `defaultLocale`, `localeNames`).
+- `loader.ts`: lazy locale bundle loader with default fallback.
+- `context.tsx`: `I18nProvider` + `useI18n` state/context boundary.
+- `translate.ts`: nested key resolver + `{var}` interpolation + translator factory.
+- `index.ts`: public i18n exports.
+- Tests under `i18n/__tests__/` for config/loader/context/translate/index.
 
-## PATTERNS
+## CONVENTIONS
 
-- Locale storage key: `i18n-locale` in localStorage.
-- Context value shape: `{ locale, setLocale, messages, isLoading }`.
-- Translation call style: `t('namespace.key')`, optional vars object.
-- Missing key behavior: returns key string unchanged.
-- Interpolation format: `{name}` placeholders replaced by stringified vars.
-- Locale files present in `src/locales`: `ko.json`, `en.json`, `vi.json`, `zh.json`.
+- Active locales currently defined in code: `ko`, `en`.
+- Default locale: `ko`.
+- Locale persistence key: `i18n-locale`.
+- Context contract: `{ locale, setLocale, messages, isLoading }`.
+- Translation call shape: `t("namespace.key", vars?)`.
+- Missing key behavior: returns the key string unchanged.
+- Placeholder interpolation syntax: `{name}`.
+- Provider required for both `useI18n` and downstream adapter hooks (`useLocale`, `useTranslation`).
 
-## GOTCHAS
+## ANTI-PATTERNS
 
-- `config.ts` declares `ko/en/vi/zh`; `loader.ts` currently loads only `ko/en`.
-- `context.tsx` may call `console.error/console.warn` in non-production on load failures.
-- `setLocale` is async via loader; UI should tolerate transient `isLoading=true`.
-- `useI18n` and `useLocale` throw outside provider boundary.
-- Keys heavily nested (`auth.error.*`, `posts.pageList.*`, `components.*`); avoid flat-key assumptions.
+- Do not assume `vi/zh` are active locales; they are not in current `config.ts`.
+- Do not bypass `loader.ts` in components/pages for locale bundle fetches.
+- Do not flatten nested translation keys; existing dictionaries are deeply nested.
+- Do not suppress provider-boundary errors; they catch invalid hook usage early.

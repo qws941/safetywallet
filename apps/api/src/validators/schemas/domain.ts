@@ -164,9 +164,8 @@ export const UpdateAnnouncementSchema = z.object({
 // ─── Votes Schemas ───────────────────────────────────────────────────────────
 
 export const CastVoteSchema = z.object({
-  siteId: uuid,
+  siteId: uuid.optional(),
   candidateId: uuid,
-  month: monthPattern,
 });
 
 // ─── Admin Schemas ───────────────────────────────────────────────────────────
@@ -269,42 +268,6 @@ export const CreateCourseSchema = z.object({
   externalSource: z.enum(["LOCAL", "YOUTUBE", "KOSHA"] as const).optional(),
   externalId: z.string().optional(),
   sourceUrl: z.string().optional(),
-  contentBody: z.string().optional(),
-  sortOrder: z.number().int().optional(),
-});
-
-export const UpdateCourseSchema = z.object({
-  title: nonEmptyStr.optional(),
-  description: z.string().optional(),
-  contentType: z.enum(EducationContentType).optional(),
-  contentUrl: z.string().optional(),
-  contentBody: z.string().optional(),
-  sortOrder: z.number().int().optional(),
-});
-
-export const CreateQuizSchema = z.object({
-  siteId: uuid,
-  contentId: uuid.optional(),
-  title: nonEmptyStr,
-  description: z.string().optional(),
-  passScore: z.number().int().optional(),
-  pointsReward: z.number().int().optional(),
-  timeLimitSec: z.number().int().optional(),
-  questions: z
-    .array(
-      z.object({
-        questionText: nonEmptyStr,
-        questionType: z
-          .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER"])
-          .default("SINGLE_CHOICE"),
-        options: z.array(z.string().min(1)).min(2),
-        correctIndex: z.number().int().min(0),
-        correctAnswerText: z.string().optional(),
-        explanation: z.string().optional(),
-        sortOrder: z.number().int().optional(),
-      }),
-    )
-    .min(1),
 });
 
 export const SubmitQuizSchema = z.object({
@@ -314,18 +277,6 @@ export const SubmitQuizSchema = z.object({
     z.union([z.number().int(), z.array(z.number().int()), z.string()]),
   ),
   startedAt: isoDateStr,
-});
-
-export const CreateStatutoryTrainingSchema = z.object({
-  siteId: uuid,
-  userId: uuid,
-  trainingType: z.enum(StatutoryTrainingType),
-  trainingName: nonEmptyStr,
-  trainingHours: z.number().positive(),
-  scheduledDate: isoDateStr,
-  expiryDate: isoDateStr.optional(),
-  provider: z.string().optional(),
-  notes: z.string().optional(),
 });
 
 export const UpdateStatutoryTrainingSchema = z.object({
@@ -338,25 +289,6 @@ export const UpdateStatutoryTrainingSchema = z.object({
   hoursCompleted: z.number().nonnegative().optional(),
   status: z.enum(TrainingCompletionStatus).optional(),
   notes: z.string().optional(),
-});
-
-export const CreateTbmRecordSchema = z.object({
-  siteId: uuid,
-  tbmDate: isoDateStr,
-  location: z.string().optional(),
-  topic: nonEmptyStr,
-  content: z.string().optional(),
-  weatherInfo: z.string().optional(),
-  safetyIssues: z.string().optional(),
-  attendeeIds: z.array(uuid).min(1),
-});
-
-export const UpdateTbmRecordSchema = z.object({
-  location: z.string().optional(),
-  topic: nonEmptyStr.optional(),
-  content: z.string().optional(),
-  weatherInfo: z.string().optional(),
-  safetyIssues: z.string().optional(),
 });
 
 export const AttendTbmSchema = z.object({
@@ -405,7 +337,6 @@ export const CreateTbmInputSchema = z.object({
 export const ManualCheckinSchema = z.object({
   siteId: uuid,
   userId: uuid.optional(),
-  note: z.string().optional(),
 });
 
 // ─── Users Schemas ───────────────────────────────────────────────────────────

@@ -48,3 +48,15 @@ export interface PointsHistoryFilterDto {
   page?: number;
   limit?: number;
 }
+
+export interface CreatePolicyDto {
+  siteId: string;
+  reasonCode: string;
+  name: string;
+  description?: string;
+  defaultAmount: number;
+  minAmount?: number;
+  maxAmount?: number;
+  dailyLimit?: number;
+  monthlyLimit?: number;
+}

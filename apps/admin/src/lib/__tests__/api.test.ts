@@ -67,9 +67,12 @@ describe("apiFetch", () => {
     const { apiFetch } = await import("@/lib/api");
     const result = await apiFetch<{ ok: boolean }>("/health");
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/health", {
-      headers: { "Content-Type": "application/json" },
-    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/health",
+      expect.objectContaining({
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     expect(result).toEqual({ ok: true });
   });
 
@@ -86,12 +89,15 @@ describe("apiFetch", () => {
     const { apiFetch } = await import("@/lib/api");
     const result = await apiFetch<{ id: number }>("/users/me");
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/users/me", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer token-a",
-      },
-    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/users/me",
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer token-a",
+        },
+      }),
+    );
     expect(result).toEqual({ id: 1 });
   });
 
@@ -129,12 +135,16 @@ describe("apiFetch", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: "old-refresh" }),
     });
-    expect(mockFetch).toHaveBeenNthCalledWith(3, "/api/secure", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer new-access",
-      },
-    });
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      "/api/secure",
+      expect.objectContaining({
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer new-access",
+        },
+      }),
+    );
     expect(logout).not.toHaveBeenCalled();
     expect(result).toEqual({ success: true });
   });

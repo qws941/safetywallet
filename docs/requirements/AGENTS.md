@@ -1,36 +1,37 @@
-# AGENTS: REQUIREMENTS
+# AGENTS: DOCS/REQUIREMENTS
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-Requirements-subtree only.
-Parent `docs/AGENTS.md` owns docs-wide governance.
+- Requirements and PRD subtree only.
+- Parent `docs/AGENTS.md` owns docs-root governance.
 
-## CURRENT FILE SET
+## INVENTORY (CURRENT)
 
 - `SafetyWallet_PRD_v1.1.md`
 - `REQUIREMENTS_CHECKLIST.md`
 - `ELK_INDEX_PREFIX_REQUIREMENTS.md`
 - `Phase3_UI_Simplification_PRD.md`
-- `SafetyWallet_Implementation_Plan_v1.0.md` (deprecated archive)
+- `archived/SafetyWallet_Implementation_Plan_v1.0.md`
+- `AGENTS.md`
 
 ## FILE ROLES
 
-- `REQUIREMENTS_CHECKLIST.md`: operational comparison ledger.
-- `SafetyWallet_PRD_v1.1.md`: baseline product requirement corpus.
-- `ELK_INDEX_PREFIX_REQUIREMENTS.md`: focused technical requirement contract.
-- `Phase3_UI_Simplification_PRD.md`: completed phase-specific change spec.
-- `SafetyWallet_Implementation_Plan_v1.0.md`: historical only.
+- `REQUIREMENTS_CHECKLIST.md`: implementation status ledger.
+- `SafetyWallet_PRD_v1.1.md`: baseline product requirement source.
+- `ELK_INDEX_PREFIX_REQUIREMENTS.md`: focused technical requirement set.
+- `Phase3_UI_Simplification_PRD.md`: phase-specific spec/history.
+- `archived/SafetyWallet_Implementation_Plan_v1.0.md`: historical only.
 
 ## MODULE RULES
 
-- Keep acceptance criteria explicit and testable.
-- Keep superseded requirements annotated, not silently removed.
-- Keep conflict resolution notes when checklist diverges from baseline PRD.
-- Keep implementation-plan file clearly marked deprecated.
-- Keep operations procedures out of this subtree (runbook lives in `docs/cloudflare-operations.md`).
+- Keep requirements testable and evidence-oriented.
+- Keep superseded requirements annotated with context/date.
+- Keep checklist-vs-PRD divergence explicitly called out.
+- Keep archived docs outside active root list when moved.
+- Keep operations runbook content out of this subtree.
 
 ## ANTI-DRIFT
 
-- Do not treat deprecated plan as active architecture source.
-- Do not copy requirement status tables across multiple files.
-- Do not hide scope changes without date/version markers.
+- No active-reference use of archived implementation plan.
+- No duplicated status tables across multiple requirement docs.
+- No stale file paths after archive moves.

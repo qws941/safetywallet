@@ -18,6 +18,7 @@ export interface CreatePostDto {
   visibility?: Visibility;
   isAnonymous?: boolean;
   imageUrls?: string[];
+  imageHashes?: (string | null)[];
   metadata?: Record<string, unknown>;
 }
 

@@ -1,36 +1,37 @@
-# AGENTS: LIB/TESTS
+# AGENTS: LIB TESTS
 
 ## PURPOSE
 
-Vitest suites for `src/lib` contracts.
-Focus: pure helper behavior, adapter failure handling, envelope stability.
+Unit tests for modules under `apps/api/src/lib`.
+Covers utility contracts, adapter behavior, and envelope stability.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File                         | Coverage Focus         | Current Facts                                                                |
-| ---------------------------- | ---------------------- | ---------------------------------------------------------------------------- |
-| `fas-sync.test.ts`           | FAS->D1 sync engine    | Largest suite; heavy DB chain mocks; verifies collision and upsert branches. |
-| `web-push.test.ts`           | Push crypto/send paths | Validates payload encryption and subscription result classification.         |
-| `notification-queue.test.ts` | Queue batch processor  | Verifies ack/retry/remove behavior for mixed delivery outcomes.              |
-| `points-engine.test.ts`      | Reward policy logic    | Covers duplicate window, daily caps, role/condition branches.                |
-| `response.test.ts`           | API envelope helper    | Asserts exact `{ success, data/error, timestamp }` shape.                    |
-| `state-machine.test.ts`      | Transition validator   | Ensures invalid transitions return structured failure state.                 |
+- Test files in this directory: 23 (`*.test.ts`).
+- Representative suites:
+  - `fas-sync.test.ts` - FAS sync paths, collision scenarios, update/create counts.
+  - `notification-queue.test.ts` - queue ack/retry/remove handling.
+  - `web-push.test.ts` - push payload encryption and delivery classification.
+  - `points-engine.test.ts` - scoring limits and duplicate windows.
+  - `response.test.ts` - API envelope shape contract.
+  - `state-machine.test.ts` - status transition guards.
 
-## MODULE SNAPSHOT
+## CURRENT FACTS
 
-- 23 files: `*.test.ts` under this directory.
-- One suite per lib module pattern; no integration bootstrap app here.
-- Common mocks: `drizzle` chains, external adapters, logger side effects.
+- Every main utility module has a corresponding test file here.
+- Tests are pure vitest unit tests; no full Hono app bootstrapping in this directory.
+- Common patterns include DB chain mocks, queue/push stubs, and logger mock assertions.
 
-## PATTERNS
+## CONVENTIONS
 
-- Build lightweight factory helpers per suite (`makeDb`, `makeEmployee`, similar).
-- Mock module boundary, not internals of function under test.
-- Use deterministic IDs/timestamps for crypto and sync assertions.
-- Assert both success path and degraded path (retry/fallback/error classification).
+- Keep deterministic fixture values for timestamps, IDs, and hashes when asserting exact objects.
+- Mock module boundaries (`vi.mock`) instead of private function internals.
+- Assert both positive path and degraded path (retry, removal, fallback, partial failure).
+- Reset mocks per suite (`beforeEach`) to avoid cross-file leakage.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- `response.test.ts` is contract sentinel for API envelope shape.
-- `fas-sync.test.ts` uses queued mock responses; sequence changes break expectations.
-- Avoid cross-suite shared mutable state; each suite resets mocks in `beforeEach`.
+- Do not weaken `response.test.ts` envelope assertions; routes depend on exact shape.
+- Do not share mutable singleton fixtures across multiple suites.
+- Do not test route/middleware concerns in this directory.
+- Do not skip failure-path assertions for queue, push, and sync utilities.

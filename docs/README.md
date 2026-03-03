@@ -9,6 +9,8 @@ This index defines current documentation sources of truth.
 - ELK logging prefix requirements: `docs/requirements/ELK_INDEX_PREFIX_REQUIREMENTS.md`
 - Feature/status tracking: `docs/FEATURE_CHECKLIST.md`
 - Cloudflare operations runbook: `docs/cloudflare-operations.md`
+- Implementation verification checklist: `docs/requirements/IMPLEMENTATION_VERIFICATION_CHECKLIST.md`
+- Registration verification report: `docs/requirements/REGISTRATION_VERIFICATION_REPORT.md`
 
 ## Redirected
 

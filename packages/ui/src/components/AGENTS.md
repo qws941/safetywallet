@@ -2,41 +2,42 @@
 
 ## SCOPE DELTA
 
-- This file documents concrete component file/export inventory.
-- Parent `packages/ui/AGENTS.md` covers package-level surface/theme rules.
+- Documents concrete component file inventory + export patterns.
+- Parent package AGENTS owns high-level package policy.
 
-## FILES + PRIMARY EXPORTS
+## FILES (14)
 
-- `button.tsx`: `Button`, `buttonVariants`, `ButtonProps`.
-- `card.tsx`: `Card`, `CardHeader`, `CardFooter`, `CardTitle`, `CardDescription`, `CardContent`.
-- `input.tsx`: `Input`, `InputProps`.
-- `badge.tsx`: `Badge`, `badgeVariants`, `BadgeProps`.
-- `skeleton.tsx`: `Skeleton`.
-- `avatar.tsx`: `Avatar`, `AvatarImage`, `AvatarFallback`.
-- `toast.tsx`: `ToastProvider`, `ToastViewport`, `Toast`, `ToastTitle`, `ToastDescription`, `ToastClose`, `ToastAction`, `ToastProps`, `ToastActionElement`.
-- `use-toast.tsx`: `useToast`, `toast`, `reducer` (exported for tests).
-- `toaster.tsx`: `Toaster`.
-- `alert-dialog.tsx`: `AlertDialog*` compound exports.
-- `dialog.tsx`: `Dialog*` compound exports.
-- `select.tsx`: `Select*` compound exports incl. scroll buttons.
-- `switch.tsx`: `Switch`.
-- `sheet.tsx`: `Sheet*` compound exports.
+- `alert-dialog.tsx` - `AlertDialog*` compound wrappers.
+- `avatar.tsx` - `Avatar`, `AvatarImage`, `AvatarFallback`.
+- `badge.tsx` - `Badge`, `badgeVariants`.
+- `button.tsx` - `Button`, `buttonVariants`.
+- `card.tsx` - `Card*` layout primitives.
+- `dialog.tsx` - `Dialog*` compound wrappers.
+- `input.tsx` - `Input`.
+- `select.tsx` - `Select*` with scroll controls.
+- `sheet.tsx` - `Sheet*` compound wrappers.
+- `skeleton.tsx` - `Skeleton`.
+- `switch.tsx` - `Switch`.
+- `toast.tsx` - `Toast*` primitives + typed toast props.
+- `toaster.tsx` - `Toaster` host renderer.
+- `use-toast.tsx` - `useToast`, `toast`, reducer/state helpers.
 
 ## PATTERN MAP
 
-- Radix wrappers: `alert-dialog`, `dialog`, `select`, `switch`, `sheet`, `toast`.
-- CVA variants present in: `button`, `badge`, `toast`, `sheet`.
-- `"use client"` required in stateful/portal modules: `toast`, `use-toast`, `toaster`, `alert-dialog`, `dialog`, `sheet`.
-- `React.forwardRef` is standard for DOM-facing primitives.
+- Radix wrapper modules: `alert-dialog`, `dialog`, `select`, `sheet`, `switch`, `toast`.
+- Variant/CVA modules: `button`, `badge`, `toast`, `sheet`.
+- Stateful client modules: `toast`, `toaster`, `use-toast`, plus portal/dialog wrappers.
+- DOM primitives follow `React.forwardRef` conventions.
 
-## MAINTENANCE RULES
+## MODULE RULES
 
-- If a component adds/removes exports, mirror change in `src/index.ts` same commit.
-- Keep compound component naming consistent with Radix primitive names.
-- Keep `use-toast.tsx` constants stable unless queue semantics intentionally change (`TOAST_LIMIT`, `TOAST_REMOVE_DELAY`).
+- Export change in any component requires matching `src/index.ts` update.
+- Keep compound naming aligned with upstream Radix primitive names.
+- Keep toast queue constants (`TOAST_LIMIT`, `TOAST_REMOVE_DELAY`) deliberate/stable.
+- Keep class merge path via `cn()`; no ad-hoc class concatenation helpers.
 
 ## ANTI-DRIFT
 
-- Do not export internal helper types/actions unless used by tests or barrel.
-- Do not mix business defaults into variant maps.
-- Do not bypass `cn()` merge path for class composition.
+- No hidden exports from component files.
+- No business-domain defaults embedded in UI primitives.
+- No stale component count/list in this file.

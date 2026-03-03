@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@safetywallet/ui";
+import { Button, useToast } from "@safetywallet/ui";
 import { Plus, ChevronUp } from "lucide-react";
 import {
   useCreateTbmRecord,
@@ -25,6 +25,7 @@ const INITIAL_FORM: TbmFormState = {
 
 export function TbmTab() {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
+  const { toast } = useToast();
   const [tbmForm, setTbmForm] = useState<TbmFormState>(INITIAL_FORM);
   const [editingTbmId, setEditingTbmId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +79,7 @@ export function TbmTab() {
       setEditingTbmId(null);
       setTbmForm(INITIAL_FORM);
     } catch (error) {
-      // Error handled by caller
+      toast({ variant: "destructive", description: getErrorMessage(error) });
     }
   };
 
@@ -86,7 +87,8 @@ export function TbmTab() {
     try {
       await deleteMutation.mutateAsync(tbmId);
     } catch (error) {
-      // Error handled by caller
+      // Re-throw so tbm-list.tsx handleDeleteTbm can show error toast
+      throw error;
     }
   };
 

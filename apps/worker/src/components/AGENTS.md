@@ -1,40 +1,45 @@
-# AGENTS: COMPONENTS
+# AGENTS: WORKER COMPONENTS
 
 ## PURPOSE
 
-Reusable UI and guard layer for app pages.
-Owns provider composition, nav/header shell, domain cards, modal wrappers.
+- Reusable UI/guard/provider layer for worker pages.
+- Owns route shell parts, status banners, cards, modal wrappers.
+- Keeps network/state access delegated to hooks/lib/stores.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| Component            | File                                  | Role                                                           |
-| -------------------- | ------------------------------------- | -------------------------------------------------------------- |
-| `Providers`          | `components/providers.tsx`            | Query client + i18n + auth guard + toaster                     |
-| `AuthGuard`          | `components/auth-guard.tsx`           | Public path allowlist + protected redirect + query cache clear |
-| `AttendanceGuard`    | `components/attendance-guard.tsx`     | Attendance-required content gate using `useAttendanceToday`    |
-| `Header`             | `components/header.tsx`               | App title + site snippet + locale switcher + system banner     |
-| `BottomNav`          | `components/bottom-nav.tsx`           | Fixed mobile nav with center create action                     |
-| `SystemBanner`       | `components/system-banner.tsx`        | Severity-based notice strip from `/system/status`              |
-| `LocaleSwitcher`     | `components/locale-switcher.tsx`      | Locale dropdown + localStorage persistence                     |
-| `PostCard`           | `components/post-card.tsx`            | Post list card + status/category badges                        |
-| `PointsCard`         | `components/points-card.tsx`          | Balance + monthly delta summary                                |
-| `RankingCard`        | `components/ranking-card.tsx`         | Rank card linking to `/points`                                 |
-| `UnsafeWarningModal` | `components/unsafe-warning-modal.tsx` | AlertDialog wrapper for unsafe-behavior submit confirmation    |
+- Component files (13):
+  - `attendance-guard.tsx`
+  - `auth-guard.tsx`
+  - `bottom-nav.tsx`
+  - `header.tsx`
+  - `install-banner.tsx`
+  - `locale-switcher.tsx`
+  - `offline-queue-indicator.tsx`
+  - `points-card.tsx`
+  - `post-card.tsx`
+  - `providers.tsx`
+  - `ranking-card.tsx`
+  - `system-banner.tsx`
+  - `unsafe-warning-modal.tsx`
+- Tests under `components/__tests__/` mirror component names.
 
-## PATTERNS
+## CONVENTIONS
 
-- Components consume `useTranslation()` keys; no inline translation map.
-- Guard components return spinner/null/fallback early; page body renders only after gate pass.
-- `BottomNav` active state uses `pathname.startsWith(item.href)`.
-- `PostCard` maps enum values (`Category`, `ReviewStatus`, `ActionStatus`) to badges.
-- `SystemBanner` severity style map: `critical | warning | info`.
-- Provider order fixed: `QueryClientProvider -> I18nProvider -> AuthGuard`.
+- Provider composition in `providers.tsx` is authoritative for app-wide wrappers.
+- `AuthGuard` public path rule: `/`, `/login`, `/login/*` only.
+- `AuthGuard` clears React Query cache on logged-out hydrated state.
+- `AttendanceGuard` is attendance gate (`useAttendanceToday`) with loading and fallback modes.
+- `Header` renders attendance chip + `LocaleSwitcher` + `SystemBanner`.
+- `BottomNav` center CTA is `/posts/new`; center label intentionally empty.
+- `OfflineQueueIndicator` polls queue length and supports manual replay.
+- `SystemBanner` severity map: `critical | warning | info`.
+- `PostCard` enum badge mapping includes review/action statuses and urgent marker.
 
-## GOTCHAS
+## ANTI-PATTERNS
 
-- `AuthGuard` treats only `/`, `/login`, `/login/*` as public paths.
-- `AuthGuard` clears React Query cache on logout; keep side-effect intact.
-- `LocaleSwitcher` writes `i18n-locale` directly; aligned with i18n context loader.
-- `BottomNav` has center button label empty string by design.
-- `PostCard` shows +100P badge only on `ReviewStatus.APPROVED`.
-- `AttendanceGuard` returns `null` when not authenticated; page can look empty if used outside auth flow.
+- Do not call API directly from components unless hook abstraction is intentionally absent.
+- Do not widen public-route allowlist in `AuthGuard` without matching auth policy changes.
+- Do not remove query cache clear on logout; stale cross-session data leaks.
+- Do not hardcode locale list in `LocaleSwitcher`; consume `i18n/config` exports.
+- Do not remove queue indicator/storage listeners; offline replay visibility is required.

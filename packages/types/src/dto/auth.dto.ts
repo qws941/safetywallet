@@ -47,3 +47,10 @@ export interface MeResponseDto {
     checkInAt: string;
   } | null;
 }
+
+export interface RegisterDto {
+  name: string;
+  phone: string;
+  dob: string;
+  deviceId?: string;
+}

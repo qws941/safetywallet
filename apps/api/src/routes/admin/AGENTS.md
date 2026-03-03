@@ -1,36 +1,34 @@
-# AGENTS: ROUTES/ADMIN
+# AGENTS: ROUTES ADMIN
 
 ## PURPOSE
 
-Admin API subtree mounted at `/api/admin`.
-Owns operational dashboards, exports, moderation, sync error handling, alert controls.
+Admin API layer mounted at `/api/admin`.
+Owns moderation, monitoring, export, sync-error triage, policy/settlement controls.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File             | Role                         | Current Facts                                                                                          |
-| ---------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `index.ts`       | admin router entry           | Applies `app.use("*", authMiddleware)` then mounts all admin sub-routers.                              |
-| `helpers.ts`     | shared admin helpers         | Exports `AppContext`, day-cutoff constants, CSV builders, role/export guards, export limiter.          |
-| `export.ts`      | CSV endpoints                | Supports users/posts/attendance CSV; uses validator schemas, `requireExportAccess`, `exportRateLimit`. |
-| `monitoring.ts`  | API metrics views            | Reads aggregated `apiMetrics` for metrics, top-errors, summary endpoints.                              |
-| `alerting.ts`    | alert + maintenance controls | Alert config/test endpoints plus maintenance message CRUD in KV.                                       |
-| `sync-errors.ts` | sync error triage            | Filter/list sync errors, patch status to `RESOLVED` or `IGNORED`.                                      |
+- Top-level route files in this directory: 16
+  - `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts`
+- Feature subdirectories: `fas/`, `posts/`, `users/`
+- Tests: `__tests__/` (19 admin test files)
 
-## MODULE SNAPSHOT
+## CURRENT FACTS
 
-- Runtime modules in this directory: 17 (`*.ts` including `index.ts` and `helpers.ts`).
-- Route modules mounted by `index.ts`: 15.
-- Admin tests in sibling `__tests__/`: 17 files.
+- `index.ts` applies `authMiddleware` globally, then mounts 17 subrouters.
+- Mounted modules include subdir routers (`users`, `fas`, `posts`) plus the 14 top-level feature routers.
+- `alerting.ts` includes maintenance message endpoints; there is no separate `maintenance.ts` route file.
+- `export.ts` uses export query validators and export-specific guards/rate-limit helpers from admin helper layer.
 
-## PATTERNS
+## CONVENTIONS
 
-- `index.ts` owns global auth middleware; child modules usually add `requireAdmin` guard per endpoint.
-- Shared helper imports come from `./helpers` to keep role/date/csv logic consistent.
-- CSV export path: parse query schema -> fetch rows -> `buildCsv` -> `csvResponse`.
-- Monitoring endpoints aggregate by bucket/endpoint over `apiMetrics` table.
+- Keep cross-admin helpers in `helpers.ts` and consume from all admin modules.
+- Keep export endpoints protected by both role/permission checks and export rate limiting.
+- Keep monitoring endpoints centered on `apiMetrics` aggregation logic.
+- Keep sync error transitions explicit (`OPEN` -> `RESOLVED` or `IGNORED`) in sync-error handlers.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- Maintenance endpoints live in `alerting.ts`; no standalone `maintenance.ts` route module.
-- Keep `exportRateLimit` attached to export endpoints; high-cost route protection.
-- `requireExportAccess` currently reads `users.canManageUsers` as export permission flag.
+- Do not bypass `authMiddleware` in `index.ts` for new admin routes.
+- Do not duplicate helper logic inside `posts/`, `fas/`, or `users/` subrouters when it exists in `helpers.ts`.
+- Do not create root-level admin handlers for domains already owned by subdirectories.
+- Do not drift endpoint naming between `index.ts` mounts and feature router paths.

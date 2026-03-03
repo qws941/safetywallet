@@ -2,45 +2,53 @@
 
 ## SCOPE DELTA
 
-- This folder defines DTO file inventory and domain contracts only.
-- Parent already defines package-wide rules; do not restate them here.
+- Folder owns DTO contract files only.
+- Parent (`packages/types/AGENTS.md`) owns package-wide rules.
 
-## FILE INVENTORY (11)
+## FILE INVENTORY (12)
 
+- `index.ts`
+- `action.dto.ts`
+- `analytics.dto.ts`
+- `announcement.dto.ts`
 - `auth.dto.ts`
-- `user.dto.ts`
-- `site.dto.ts`
+- `education.dto.ts`
+- `points.dto.ts`
 - `post.dto.ts`
 - `review.dto.ts`
-- `points.dto.ts`
-- `action.dto.ts`
-- `announcement.dto.ts`
-- `education.dto.ts`
+- `site.dto.ts`
+- `user.dto.ts`
 - `vote.dto.ts`
-- `analytics.dto.ts`
 
-## BARREL ORDER
+## DOMAIN MAP
 
-- `index.ts` re-exports all 11 files.
-- Keep barrel complete after file add/remove.
-- Keep domain grouping stable (auth/user/site/post/review/points/action/announcement/education/vote/analytics).
+- `action`: corrective actions + images + status transitions.
+- `analytics`: trend + distribution response contracts.
+- `announcement`: create/update/list/detail contracts.
+- `auth`: OTP/login/token/me envelopes.
+- `education`: content, quiz, statutory training, TBM records.
+- `points`: award/revoke/balance/history contracts.
+- `post`: create/list/detail/filter + media.
+- `review`: review action/status contracts.
+- `site`: site/member/dashboard contracts.
+- `user`: user profile/update contracts.
+- `vote`: candidate/vote/result/export contracts.
 
-## DTO SYMBOLS (CURRENT)
+## BARREL RULES
 
-- `auth`: `OtpRequestDto`, `OtpVerifyDto`, `TokenRefreshDto`, `AuthResponseDto`, `TokenPayloadDto`, `MeResponseDto`.
-- `user`: `UserDto`, `UserProfileDto`, `UpdateProfileDto`.
-- `site`: `SiteDto`, `CreateSiteDto`, `SiteMemberDto`, `UpdateMemberStatusDto`, `DashboardStatsDto`.
-- `post`: `CreatePostDto`, `PostDto`, `PostImageDto`, `PostListDto`, `PostFilterDto`.
-- `review`: `ReviewActionDto`, `ReviewDto`.
-- `points`: `AwardPointsDto`, `RevokePointsDto`, `PointsLedgerDto`, `PointsBalanceDto`, `PointsHistoryItemDto`, `PointsHistoryFilterDto`.
-- `action`: `CreateActionDto`, `ActionDto`, `ActionImageDto`, `UpdateActionStatusDto`.
-- `announcement`: `CreateAnnouncementDto`, `AnnouncementDto`, `UpdateAnnouncementDto`.
-- `education`: `CreateEducationContentDto`, `EducationContentDto`, `EducationContentListDto`, `CreateQuizDto`, `CreateQuizQuestionDto`, `QuizDto`, `QuizQuestionDto`, `QuizListDto`, `SubmitQuizAttemptDto`, `QuizAttemptDto`, `QuizAttemptFilterDto`, `CreateStatutoryTrainingDto`, `UpdateStatutoryTrainingDto`, `StatutoryTrainingDto`, `StatutoryTrainingFilterDto`, `CreateTbmRecordDto`, `TbmRecordDto`, `TbmAttendeeDto`, `TbmRecordListDto`, `TbmRecordFilterDto`.
-- `vote`: `VoteCandidateDto`, `CreateVoteCandidateDto`, `VoteResultDto`, `VoteDto`, `MyVoteDto`, `VotePeriodSummaryDto`, `VoteResultExportDto`.
-- `analytics`: `TrendDataPointDto`, `TrendFilterDto`, `PointsDistributionDto`.
+- `index.ts` re-exports all 11 domain DTO files.
+- Add/remove DTO file: update barrel in same change.
+- Keep domain grouping order stable for low-noise diffs.
 
 ## EDIT GUARDRAILS
 
-- Keep enum-typed fields wired to `../enums` imports; avoid string fallback.
-- Keep optional fields explicit (`?` vs `| null`) matching current API payload semantics.
-- Preserve nested object shapes used by list/detail responses.
+- Keep enum-backed fields imported from `../enums`.
+- Preserve optional/null semantics already used by API payloads.
+- Preserve nested list/detail object shapes consumed by apps/e2e.
+- No fallback to `any` or untyped extension maps.
+
+## ANTI-DRIFT
+
+- No stale file count.
+- No undocumented DTO file additions.
+- No duplicate DTO ownership text from parent AGENTS.

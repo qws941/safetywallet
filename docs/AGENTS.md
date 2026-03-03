@@ -1,41 +1,42 @@
 # AGENTS: DOCS
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-`docs/` module-specific documentation ownership.
-Global policy remains in repo-root AGENTS.
+- Owns `docs/` root documentation inventory + ownership.
+- Repo-wide policy remains in root AGENTS/rules.
 
-## CURRENT FILE SET
+## ROOT INVENTORY (CURRENT)
 
-- `README.md` docs index + redirect map
-- `cloudflare-operations.md` operational runbook
-- `FEATURE_CHECKLIST.md` feature completion tracker
-- `deployment.md` redirect stub
-- `rollback.md` redirect stub
-- `REQUIREMENTS_REVIEW.md` redirect stub
-- `requirements/` requirement specs subtree
+- `README.md` (docs index + redirects)
+- `cloudflare-operations.md` (runbook)
+- `FEATURE_CHECKLIST.md` (feature tracker)
+- `deployment.md` (redirect doc)
+- `rollback.md` (redirect doc)
+- `REQUIREMENTS_REVIEW.md` (redirect doc)
+- `requirements/` (requirements subtree)
 
-## DOC OWNERSHIP
+## OWNERSHIP MAP
 
-- Operations truth: `cloudflare-operations.md`
-- Requirements truth entrypoint: `requirements/REQUIREMENTS_CHECKLIST.md`
-- Historical/deprecated marker: `requirements/SafetyWallet_Implementation_Plan_v1.0.md`
-- Redirect governance: `README.md` must list every redirect doc
+- Operational source of truth: `cloudflare-operations.md`.
+- Requirements source of truth: `docs/requirements/REQUIREMENTS_CHECKLIST.md`.
+- Historical implementation plan now archived under:
+  `docs/requirements/archived/SafetyWallet_Implementation_Plan_v1.0.md`.
+- Redirect governance: `docs/README.md` tracks canonical targets.
 
 ## MODULE RULES
 
-- Keep redirect docs short and explicit (`Moved` + canonical target).
-- Keep runbook instructions executable and CI-automation aligned.
-- Keep secret references as names only (`CLOUDFLARE_*`, `SLACK_*`, etc.).
-- Keep resource naming notes current (`safewallet` runtime vs legacy `safework2-*` infra IDs).
-- Keep docs index synchronized when adding/removing docs files.
+- Keep redirect files minimal, explicit, and canonical-target-first.
+- Keep runbook steps executable and CI/deploy-policy consistent.
+- Keep secret references as variable names only.
+- Keep naming references accurate (`safetywallet` current, legacy `safework2-*` where required).
+- Keep docs index synchronized on file add/remove/move.
 
-## SUBMODULE DOC
+## SUBMODULE
 
-- `docs/requirements/AGENTS.md` owns requirement-subtree deltas.
+- `docs/requirements/AGENTS.md` owns requirement-doc specifics.
 
 ## ANTI-DRIFT
 
-- Do not duplicate the same source-of-truth across multiple docs.
-- Do not present redirect files as primary documentation.
-- Do not keep stale workflow/deploy statements after workflow changes.
+- No duplicate source-of-truth text across multiple docs.
+- No primary guidance in redirect stubs.
+- No stale path references after archive moves.

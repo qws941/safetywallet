@@ -1,39 +1,48 @@
 # AGENTS: ATTENDANCE
 
-## PURPOSE
+## SCOPE
 
-Attendance admin module. Scope: logs, unmatched records, FAS sync diagnostics.
+- Attendance admin pages and local components.
+- Includes logs, unmatched record review, FAS sync diagnostics.
 
-## KEY FILES
+## FILE MAP
 
-| File                                 | Role                   | Notes                                             |
-| ------------------------------------ | ---------------------- | ------------------------------------------------- |
-| `page.tsx`                           | primary page           | tab switch (`logs`/`unmatched`) + anomaly filters |
-| `components/attendance-logs-tab.tsx` | logs UI                | date/result/company/anomaly filters               |
-| `components/unmatched-tab.tsx`       | unmatched UI           | record reconciliation view                        |
-| `components/attendance-stats.tsx`    | summary cards          | totals, success/fail, anomaly count               |
-| `attendance-helpers.ts`              | helper layer           | KST hour + date formatting                        |
-| `sync/page.tsx`                      | sync dashboard         | health normalization + card composition           |
-| `sync/components/*`                  | sync widgets           | manual sync, search, errors, logs                 |
-| `sync/sync-helpers.ts`               | sync formatter helpers | status/date formatting                            |
-| `unmatched/page.tsx`                 | deep-link page         | stand-alone unmatched table route                 |
-| `error.tsx`                          | feature error UI       | attendance-only fallback                          |
+- `page.tsx` - primary attendance page; logs/unmatched tab orchestration.
+- `components/attendance-logs-tab.tsx` - logs table + filter surface.
+- `components/unmatched-tab.tsx` - unresolved attendance records table.
+- `components/attendance-stats.tsx` - summary counters/cards.
+- `attendance-helpers.ts` - KST/date/status helper utilities.
+- `sync/page.tsx` - sync dashboard route.
+- `sync/components/*` - sync status, manual trigger, search, error/log widgets.
+- `sync/sync-helpers.ts` - sync health/format normalization helpers.
+- `unmatched/page.tsx` - direct deep-link unmatched view.
+- `error.tsx` - feature-scoped error fallback.
 
-## PATTERNS
+## OPERATION FLOW
 
-| Pattern                   | Applied in      | Notes                                         |
-| ------------------------- | --------------- | --------------------------------------------- |
-| In-page tab orchestration | `page.tsx`      | avoids route jump for log/unmatched switching |
-| Derived anomaly logic     | `page.tsx`      | flags early/late check-in + duplicate names   |
-| Sync health normalization | `sync/page.tsx` | accepts `up/ok/healthy/0/empty` as healthy    |
+- Logs tab: query + filter + anomaly review for attendance events.
+- Unmatched tab: detect records lacking worker/site linkage.
+- Sync page: inspect health, run manual sync, review recent sync errors.
 
-## GOTCHAS
+## FILTER/DERIVATION PATTERNS
 
-- `useAttendanceLogs` currently called with `limit=2000`; heavy payload is intentional for admin filtering.
-- `attendance/unmatched/page.tsx` and unmatched tab overlap; both must remain aligned.
-- Date logic assumes 5AM KST day boundary via helper utilities.
+- In-page tab switching for logs/unmatched avoids full route transition.
+- Derived anomaly flags applied on log rows (timing irregularities, duplicate-name suspicion).
+- Sync health normalization treats multiple backend variants as healthy (`up`, `ok`, `healthy`, empty-like states).
+- Helper utilities centralize display labels and timezone/date shaping.
 
-## PARENT DELTA
+## KNOWN CONSTRAINTS
 
-- Parent app doc covers route tree only.
-- This file adds attendance-specific component/helper contracts and sync-card map.
+- `useAttendanceLogs` uses high limit (`2000`) by design for admin-side filtering.
+- `attendance/unmatched/page.tsx` and unmatched tab in `attendance/page.tsx` must stay behavior-aligned.
+- Date partitioning logic assumes KST operational context.
+
+## TEST SURFACE
+
+- `page.test.tsx` and `attendance-helpers.test.ts` cover route + helper behavior.
+- Sync components contain separate local tests under `sync/components` where present.
+
+## BOUNDARY NOTES
+
+- API behavior lives in `src/hooks/use-attendance.ts` and `src/hooks/use-fas-sync.ts`.
+- This doc stays UI-route focused; do not duplicate hook/store contracts here.

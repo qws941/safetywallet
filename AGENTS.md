@@ -1,6 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-02-27
+**Generated:** 2026-03-03
 **Branch:** master
 
 <!-- WARNING: This file is a sync target from qws941/.github via BetaHuhn/repo-file-sync-action.
@@ -26,7 +26,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ├── scripts/                  # Operational scripts (lint, verify, migrate, sync)
 ├── docs/                     # PRD, implementation plans, feature checklists
 │   └── requirements/         # Detailed requirement specs
-├── .github/workflows/        # 14 GitHub Actions workflows
+├── .github/workflows/        # 16 GitHub Actions workflows
 ├── turbo.json                # Pipeline: build/dev/lint/typecheck/test/test:e2e/clean
 ├── vitest.config.ts          # Workspace vitest: 5 project configs
 ├── playwright.config.ts      # 5 projects: api, admin-setup, worker, admin, cross-app
@@ -105,7 +105,7 @@ SafetyWallet — industrial safety compliance platform. Turborepo monorepo with 
 ### Testing
 
 - Vitest (5 workspace configs: api, admin, worker, types, ui) + Playwright (5 projects: api, admin-setup, worker, admin, cross-app)
-- ~1554 tests across 147 files. Run: `npm test` (unit), `npm run test:e2e` (E2E)
+- 294 Vitest test files + 64 Playwright E2E specs. Run: `npm test` (unit), `npm run test:e2e` (E2E)
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -147,4 +147,4 @@ npm run lint:naming            # Validate file/dir naming conventions
 ## NOTES
 
 - Node version pinned to 20 via `.nvmrc`.
-- 45 subdirectory AGENTS.md files exist across the monorepo providing module-level context.
+- 46 subdirectory AGENTS.md files exist across the monorepo providing module-level context.

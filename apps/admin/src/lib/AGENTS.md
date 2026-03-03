@@ -1,35 +1,47 @@
 # AGENTS: LIB
 
-## PURPOSE
+## SCOPE
 
-Admin-side network client and utility layer. Hooks and pages import from here — never raw `fetch`.
+- Admin library utilities in `src/lib`.
+- Network client boundary and lightweight helper exports.
 
-## KEY FILES
+## FILES
 
-| File       | Lines | Role                                                  |
-| ---------- | ----- | ----------------------------------------------------- |
-| `api.ts`   | 82    | `apiFetch<T>()`, `ApiError`, `API_BASE`, refresh flow |
-| `utils.ts` | 1     | Re-exports `cn` from `@safetywallet/ui`               |
+- `api.ts` - admin API client (`apiFetch`, `ApiError`, `API_BASE`, auth-refresh flow).
+- `utils.ts` - utility re-export boundary (`cn` from `@safetywallet/ui`).
+- `__tests__/` - API utility tests.
 
-## `apiFetch` CONTRACT
+## `apiFetch` RUNTIME CONTRACT
 
-- Reads tokens from `useAuthStore.getState()` — no token param needed.
-- Auto-attaches `Authorization: Bearer` header when token present.
-- On 401 + refreshToken available: calls `/auth/refresh` → retries original request once.
-- On refresh success: updates store via `setTokens()`.
-- On refresh failure or second 401: calls `logout()` and throws `ApiError`.
-- Always throws `ApiError(message, status, code)` on non-ok responses.
+- Reads auth tokens from `useAuthStore.getState()`.
+- Adds `Authorization: Bearer` when access token exists.
+- On `401` with refresh token:
+  - calls `/auth/refresh`.
+  - updates store via `setTokens()` on success.
+  - retries original request once.
+- On refresh failure or repeated unauthorized response:
+  - triggers `logout()`.
+  - throws `ApiError`.
+- Non-OK responses always throw `ApiError(message, status, code?)`.
 
-## CONVENTIONS
+## CONFIG FACTS
 
-- Keep network behavior in `api.ts`; domain hooks call `apiFetch` instead of raw fetch.
-- Keep `NEXT_PUBLIC_API_URL` as the single base URL source for admin API calls.
-- Preserve refresh-token retry flow; do not add second retry.
-- Keep `utils.ts` side-effect free and presentation-focused.
+- API base source: `NEXT_PUBLIC_API_URL`.
+- Fallback base in admin app config: `/api`.
+- Admin app is static-exported; runtime API target must stay browser-safe.
+
+## USAGE RULES
+
+- Hooks/pages use `apiFetch`; avoid ad-hoc raw `fetch` for authenticated API calls.
+- Keep auth/session side effects in store + `api.ts`, not in domain hooks.
+- Keep utility exports side-effect free.
+
+## ALLOWED EXCEPTIONS
+
+- Direct `fetch` is acceptable for explicit non-standard flows (example: blob/CSV download helper in vote hook) when documented in hook module.
 
 ## ANTI-PATTERNS
 
-- Do not add domain/business rules here; keep that in `src/hooks/*`.
-- Do not swallow auth failures silently; throw `ApiError` with status/code.
-- Do not duplicate token storage logic outside `src/stores/auth.ts`.
-- Do not bypass `apiFetch` with raw `fetch` in hooks or pages.
+- Duplicating refresh-token logic inside hooks.
+- Swallowing API failures without error propagation.
+- Embedding domain-specific business rules into `src/lib/api.ts`.

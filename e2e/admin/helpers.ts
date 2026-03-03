@@ -235,7 +235,6 @@ export const SIDEBAR_ITEMS = [
     path: "/announcements",
     urlPattern: /\/announcements/,
   },
-  { label: "안전교육", path: "/education", urlPattern: /\/education/ },
   { label: "포상 관리", path: "/rewards", urlPattern: /\/rewards/ },
   { label: "투표 후보 관리", path: "/votes", urlPattern: /\/votes/ },
   { label: "설정", path: "/settings", urlPattern: /\/settings/ },

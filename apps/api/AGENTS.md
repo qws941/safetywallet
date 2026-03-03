@@ -1,39 +1,38 @@
-# AGENTS: API-WORKER
+# AGENTS: API APP ROOT
 
 ## PURPOSE
 
-Worker runtime entrypoint. Route mounting, global middleware chain, queue/scheduled wiring, SPA fallback serving.
-Child AGENTS files own module detail; this file only integration map.
+Runtime composition for `apps/api/src/index.ts`.
+Owns wiring only: middleware order, route mounts, queue/scheduler exports, static asset fallback.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File            | Role                | Current Facts                                                                                                                |
-| --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `src/index.ts`  | Runtime composition | 412 lines. Builds `app` + `/api` sub-app. Exports `{ app }`, `RateLimiter`, `JobScheduler`, default `fetch/scheduled/queue`. |
-| `src/types.ts`  | Binding contract    | `Env` includes D1, R2/STATIC, KV, optional DO/Hyperdrive/Analytics/AI/Queue bindings.                                        |
-| `wrangler.toml` | Deployment bindings | Source of truth for runtime binding names consumed by `Env`.                                                                 |
+- `src/index.ts` - worker entrypoint and integration surface.
+- `src/types.ts` - `Env` binding contract used by all route/middleware modules.
+- `src/routes/` - API modules (core and admin subtree).
+- `src/middleware/` - global and handler-level guards.
+- `src/durable-objects/` + `src/jobs/` - scheduler/rate-limit runtime classes and job logic.
 
-## ROUTE REGISTRATION SNAPSHOT
+## CURRENT INTEGRATION FACTS
 
-- `/api` sub-app mounts 18 core route modules: `auth`, `attendance`, `votes`, `recommendations`, `posts`, `actions`, `users`, `sites`, `announcements`, `points`, `reviews`, `fas`, `disputes`, `policies`, `approvals`, `education`, `images`, `notifications`.
-- `/api/admin` mounted via `adminRoute` subtree.
-- Direct endpoints in `index.ts`: `GET /api/health`, `GET /api/system/status`, `POST /api/fas-sync`, `api.all("*")` 404 JSON.
+- `src/index.ts` exports `app`, `RateLimiter`, `JobScheduler`, and default `{ fetch, queue }`.
+- `/api` mounts 18 route modules: `auth`, `attendance`, `votes`, `recommendations`, `posts`, `actions`, `users`, `sites`, `announcements`, `points`, `reviews`, `fas`, `disputes`, `policies`, `approvals`, `education`, `images`, `notifications`.
+- `/api/admin` is mounted through `src/routes/admin/index.ts`.
+- Direct endpoints defined in root file: `GET /api/health`, `GET /api/system/status`, `POST /api/fas-sync`.
+- API catch-all exists: `api.all("*")` returns JSON 404 envelope.
+- Static fallback branch serves from `ASSETS` and rewrites hostname `admin.*` to `/admin/*` asset path.
 
-## MIDDLEWARE CHAIN (`index.ts`)
+## CONVENTIONS
 
-- `app.use("*", initFasConfig)` first; hydrates FAS config from env each request.
-- Then global chain: `securityHeaders` -> `requestLoggerMiddleware` -> `analyticsMiddleware` -> `honoLogger()` -> dynamic CORS.
-- CORS reads `ALLOWED_ORIGINS`, allows localhost fallback, sets `Device-Id` / `X-Device-Id` headers.
+- Preserve middleware order in `src/index.ts`: `initFasConfig` -> `securityHeaders` -> `requestLoggerMiddleware` -> `analyticsMiddleware` -> `honoLogger` -> dynamic CORS.
+- Keep CORS allow-headers aligned with mobile clients: `Device-Id`, `X-Device-Id`.
+- Keep API 404 catch-all inside `api` app, before mounting static fallback on root app.
+- Keep `/api/system/status` envelope stable (`success`, `data`, `timestamp`) for outage banner polling.
+- Keep queue handler delegated to `processNotificationBatch` from `src/lib/notification-queue.ts`.
 
-## RUNTIME FLOWS
+## ANTI-PATTERNS
 
-- **Scheduled:** `scheduled(controller, env, ctx)` delegates to `JobScheduler` DO via `src/jobs/registry.ts`.
-- **Queue:** `processNotificationBatch(batch, env)` handles `NOTIFICATION_QUEUE` messages.
-- **Static fallback:** hostname switch (`admin.*` => `admin/` prefix). Missing asset falls back to index HTML from `STATIC` bucket.
-
-## GOTCHAS/WARNINGS
-
-- `api.post("/fas-sync")` uses raw `c.json(...)` response shape; not `success()` helper.
-- `GET /api/system/status` also returns manual envelope (`success/data/timestamp`) for outage banner contract.
-- Route 404 handler must stay before `app.route("/api", api)` static catch-all; order is behavior-critical.
-- `types.ts` currently contains prefixed line noise in source; avoid mass edits without full regression pass.
+- Do not move admin/worker-specific routes into static fallback block.
+- Do not reorder middleware chain without checking auth, analytics, and CORS side effects.
+- Do not duplicate route registration in both root app and sub-router modules.
+- Do not change `/api/fas-sync` auth shape (`secret` gate) without updating operational callers.

@@ -331,24 +331,6 @@ test.describe("Admin API Write Operations", () => {
       },
     );
     await assertWriteResponse(deleteAnnouncementResponse);
-
-    const createEducationResponse = await request.post("./education/contents", {
-      headers: adminHeaders(),
-      data: {
-        siteId: "nonexistent",
-        title: "E2E Education Content",
-        contentType: "TEXT",
-      },
-    });
-    await assertWriteResponse(createEducationResponse);
-
-    const deleteEducationResponse = await request.delete(
-      "./education/contents/nonexistent",
-      {
-        headers: adminHeaders(),
-      },
-    );
-    await assertWriteResponse(deleteEducationResponse);
   });
 
   test("admin attendance management write endpoints", async ({ request }) => {

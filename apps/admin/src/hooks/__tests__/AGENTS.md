@@ -1,38 +1,50 @@
-# AGENTS: HOOKS/**TESTS**
+# AGENTS: HOOK TESTS
 
-## PURPOSE
+## SCOPE
 
-Hook unit-test layer. Scope: hook behavior, endpoint/query-key correctness, invalidation side-effects.
+- Unit tests for admin hook modules (`src/hooks/__tests__`).
+- Validates query/mutation behavior, URL/query-key construction, invalidation side effects.
 
-## KEY FILES
+## TEST DIRECTORY FACTS
 
-| File                         | Coverage focus   | Notes                                         |
-| ---------------------------- | ---------------- | --------------------------------------------- |
-| `test-utils.tsx`             | shared wrapper   | QueryClient setup for `renderHook`            |
-| `use-api.test.ts`            | barrel integrity | export surface assertions                     |
-| `use-admin-api.test.ts`      | admin core hooks | site gating + approval/announcement mutations |
-| `use-attendance.test.ts`     | attendance hooks | URL param construction and unmatched flows    |
-| `use-monitoring-api.test.ts` | monitoring hooks | query string generation + cache keys          |
-| `use-fas-sync.test.ts`       | FAS hooks        | status fallback + sync mutation behaviors     |
-| `use-votes.test.ts`          | vote hooks       | period/candidate/result and invalidations     |
-| `use-education-api.test.ts`  | education hooks  | content/quiz mutations and payload handling   |
+- Test files in folder: `19` entries total including `AGENTS.md` + shared utils.
+- Shared test harness: `test-utils.tsx` (QueryClient wrapper for `renderHook`).
 
-## PATTERNS
+## MAJOR SUITES
 
-| Pattern                 | Applied in                  | Notes                                          |
-| ----------------------- | --------------------------- | ---------------------------------------------- |
-| Boundary mocking        | most suites                 | mock `@/lib/api` or `@/hooks/use-api-base`     |
-| Store selector stubbing | site-aware hooks            | provide `currentSiteId`, hydration, role flags |
-| Invalidation assertions | mutation suites             | spy on `queryClient.invalidateQueries`         |
-| URL string checks       | attendance/monitoring tests | verify serialized query params                 |
+- Barrel/export surface: `use-api.test.ts`, `use-api-base.test.ts`.
+- Admin aggregate: `use-admin-api.test.ts`.
+- Domain suites:
+  - `use-actions-api.test.ts`
+  - `use-attendance.test.ts`
+  - `use-education-api.test.ts`
+  - `use-fas-sync.test.ts`
+  - `use-monitoring-api.test.ts`
+  - `use-points-api.test.ts`
+  - `use-posts-api.test.ts`
+  - `use-recommendations.test.ts`
+  - `use-rewards.test.ts`
+  - `use-sites-api.test.ts`
+  - `use-stats.test.ts`
+  - `use-sync-errors.test.ts`
+  - `use-trends.test.ts`
+  - `use-votes.test.ts`
 
-## GOTCHAS
+## TEST PATTERNS
 
-- Old references to `use-auth.test.ts` or `use-site-context.test.ts` are stale; these files do not exist.
-- `use-api.test.ts` intentionally checks the barrel only; non-barrel hooks need direct-module tests.
-- Some test files contain encoded line prefixes in tool output; source files remain standard TS.
+- Mock boundary at transport layer (`@/lib/api` or `@/hooks/use-api-base`).
+- Stub auth store selectors for `currentSiteId`, hydration, role flags.
+- Assert query invalidation calls for mutation hooks.
+- Validate URL/query-string serialization in list/filter hooks.
+- Keep non-barrel hooks covered by direct-module suites.
 
-## PARENT DELTA
+## CONSTRAINTS
 
-- Parent hooks doc maps runtime hook modules.
-- This file adds test harness and per-suite verification responsibilities.
+- `use-api.test.ts` checks barrel exports only; it is not a replacement for domain behavior tests.
+- Keep tests deterministic (no real network, no wall-clock dependency).
+- Prefer explicit query-key assertions where cache behavior is contract-critical.
+
+## RELATION TO PARENT DOC
+
+- `src/hooks/AGENTS.md` describes runtime hook inventory and boundaries.
+- This file describes verification strategy and test ownership.

@@ -5,7 +5,8 @@ export interface CreateActionDto {
   assigneeType: string;
   assigneeId?: string;
   dueDate?: string;
-  priority: ActionPriority;
+  priority?: ActionPriority;
+  description?: string;
 }
 
 export interface ActionDto {

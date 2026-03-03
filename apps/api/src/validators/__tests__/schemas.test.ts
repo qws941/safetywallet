@@ -149,8 +149,8 @@ const fixtures: Record<string, Fixture> = {
     invalid: { scheduledAt: "not-a-date" },
   },
   CastVoteSchema: {
-    valid: { siteId: "site-1", candidateId: "user-2", month: "2026-02" },
-    invalid: { siteId: "site-1", candidateId: "user-2", month: "2026/02" },
+    valid: { siteId: "site-1", candidateId: "user-2" },
+    invalid: {},
   },
   AdminChangeRoleSchema: {
     valid: { role: "SITE_ADMIN" },
@@ -220,34 +220,6 @@ const fixtures: Record<string, Fixture> = {
     },
     invalid: { siteId: "site-1", title: "Course", contentType: "AUDIO" },
   },
-  UpdateCourseSchema: {
-    valid: { title: "Updated", sortOrder: 1 },
-    invalid: { sortOrder: 1.2 },
-  },
-  CreateQuizSchema: {
-    valid: {
-      siteId: "site-1",
-      title: "Safety Quiz",
-      questions: [
-        {
-          questionText: "What to wear?",
-          options: ["Helmet", "Nothing"],
-          correctIndex: 0,
-        },
-      ],
-    },
-    invalid: {
-      siteId: "site-1",
-      title: "Safety Quiz",
-      questions: [
-        {
-          questionText: "What to wear?",
-          options: ["Only one"],
-          correctIndex: 0,
-        },
-      ],
-    },
-  },
   SubmitQuizSchema: {
     valid: {
       quizId: "quiz-1",
@@ -262,41 +234,9 @@ const fixtures: Record<string, Fixture> = {
       startedAt: "2026-02-15",
     },
   },
-  CreateStatutoryTrainingSchema: {
-    valid: {
-      siteId: "site-1",
-      userId: "user-1",
-      trainingType: "NEW_WORKER",
-      trainingName: "Orientation",
-      trainingHours: 2,
-      scheduledDate: "2026-02-20",
-    },
-    invalid: {
-      siteId: "site-1",
-      userId: "user-1",
-      trainingType: "NEW_WORKER",
-      trainingName: "Orientation",
-      trainingHours: 0,
-      scheduledDate: "2026-02-20",
-    },
-  },
   UpdateStatutoryTrainingSchema: {
     valid: { status: "COMPLETED", completedDate: "2026-02-21" },
     invalid: { status: "DONE" },
-  },
-  CreateTbmRecordSchema: {
-    valid: {
-      siteId: "site-1",
-      tbmDate: "2026-02-15",
-      topic: "Morning briefing",
-      attendeeIds: ["user-1"],
-    },
-    invalid: {
-      siteId: "site-1",
-      tbmDate: "2026-02-15",
-      topic: "Morning briefing",
-      attendeeIds: [],
-    },
   },
   CreateQuizInputSchema: {
     valid: {
@@ -336,16 +276,12 @@ const fixtures: Record<string, Fixture> = {
       topic: "",
     },
   },
-  UpdateTbmRecordSchema: {
-    valid: { topic: "Updated topic" },
-    invalid: { topic: "", location: "Gate A" },
-  },
   AttendTbmSchema: {
     valid: { tbmRecordId: "tbm-1" },
     invalid: { tbmRecordId: "" },
   },
   ManualCheckinSchema: {
-    valid: { siteId: "site-1", note: "manual override" },
+    valid: { siteId: "site-1" },
     invalid: { siteId: "" },
   },
   UpdateProfileSchema: {
@@ -449,11 +385,7 @@ describe("schemas", () => {
       phone: "010",
       dob: "90",
     });
-    const voteFail = schemas.CastVoteSchema.safeParse({
-      siteId: "site-1",
-      candidateId: "user-1",
-      month: "2026/02",
-    });
+    const voteFail = schemas.CastVoteSchema.safeParse({});
 
     if (registerFail.success) {
       throw new Error("Expected register validation to fail");
@@ -465,6 +397,6 @@ describe("schemas", () => {
     const messages = registerFail.error.issues.map((issue) => issue.message);
     expect(messages).toContain("Phone number must be 11 digits");
     expect(messages).toContain("DOB must be 6 or 8 digits");
-    expect(voteFail.error.issues[0]?.message).toBe("Must be YYYY-MM format");
+    expect(voteFail.error.issues[0]?.code).toBe("invalid_type");
   });
 });

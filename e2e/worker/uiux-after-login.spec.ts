@@ -15,7 +15,6 @@ const ROUTES = [
   "/posts",
   "/actions",
   "/votes",
-  "/education",
   "/announcements",
   "/points",
   "/profile",

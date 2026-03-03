@@ -1,45 +1,57 @@
 # AGENTS: ADMIN-APP
 
-## PURPOSE
+## SCOPE
 
-Admin dashboard subtree guide. Scope: `src/app`, `src/components`, `src/hooks`, `src/stores`.
+- Admin dashboard app root (`apps/admin`).
+- Covers route tree, UI composition, hooks, store, utilities.
+- Child AGENTS files own module detail; this file stays integration-level.
 
-## KEY FILES
+## CURRENT FACTS
 
-| Area            | Path                             | Why it matters                       |
-| --------------- | -------------------------------- | ------------------------------------ |
-| Route shell     | `src/app/layout.tsx`             | wraps Providers + AdminShell         |
-| Route redirect  | `src/app/page.tsx`               | root redirect to `/dashboard`        |
-| Auth gate shell | `src/components/admin-shell.tsx` | login redirect + protected rendering |
-| Sidebar/nav     | `src/components/sidebar.tsx`     | desktop collapse + mobile icon strip |
-| Query/bootstrap | `src/components/providers.tsx`   | QueryClient + current site bootstrap |
-| Auth store      | `src/stores/auth.ts`             | persisted session + role/admin state |
+- Framework: Next.js 15 App Router (`next@15.5.10`, React 18).
+- Dev/start port: `3001` (`next dev -p 3001`, `next start -p 3001`).
+- Build mode: static export (`next.config.js` -> `output: "export"`).
+- Admin routes: `30` `page.tsx` files under `src/app`.
+- Hook modules: `31` `use-*.ts` files under `src/hooks`.
+- Data stack: TanStack Query + Zustand auth/session store.
+- Runtime hosting: admin SPA served via API worker static catch-all from `ASSETS` (R2-backed binding), `admin.*` hostname maps to `/admin/*` fallback.
+- UI language direction: Korean-primary labels/content.
 
-## PATTERNS
+## CORE INTEGRATION FILES
 
-| Pattern                          | Applied in                                   | Notes                                                   |
-| -------------------------------- | -------------------------------------------- | ------------------------------------------------------- |
-| Wrapper pages for dynamic routes | `posts/[id]/page.tsx`, `votes/[id]/page.tsx` | `generateStaticParams` placeholder + client page import |
-| Site-scoped admin flows          | hooks + sidebar + Providers                  | `currentSiteId` seeded from memberships                 |
-| Domain docs split                | each subtree `AGENTS.md`                     | children document deltas only                           |
+- `src/app/layout.tsx` - shell composition root.
+- `src/components/admin-shell.tsx` - auth-gated app frame.
+- `src/components/providers.tsx` - QueryClient + bootstrap.
+- `src/components/sidebar.tsx` - nav + site switching surface.
+- `src/stores/auth.ts` - persisted user/tokens/site context.
+- `src/lib/api.ts` - API client with refresh-on-401 retry.
 
-## GOTCHAS
+## ROUTE GROUPS (TOP LEVEL)
 
-- Sidebar architecture changed: no mobile drawer component.
-- `Sidebar` always mounted; mobile width fixed `w-16`, desktop expands with `md:w-64`.
-- `MobileHeader` only label bar; menu toggle removed from shell.
-- `use-votes.ts`, `use-recommendations.ts`, `use-stats.ts`, `use-trends.ts` exist but are not re-exported by `use-api.ts`.
+- `dashboard` (+ `analytics`, `recommendations`).
+- `attendance` (+ `sync`, `unmatched`).
+- `posts`, `votes` (+ `candidates`, `new`, dynamic detail).
+- `actions`, `announcements`, `approvals`, `audit`.
+- `education`, `monitoring`, `sync-errors`.
+- `points` (+ `policies`, `settlement`).
+- `recommendations`, `rewards`, `settings`, `members`, `login`.
 
-## CHILD MAP
+## CROSS-CUTTING PATTERNS
 
-| Child doc                       | Scope delta                                              |
-| ------------------------------- | -------------------------------------------------------- |
-| `src/app/AGENTS.md`             | route directories, static-export wrappers, feature edges |
-| `src/app/attendance/AGENTS.md`  | attendance logs/unmatched/sync modules                   |
-| `src/app/posts/AGENTS.md`       | post list + post detail client wrapper                   |
-| `src/app/votes/AGENTS.md`       | vote month dashboard + candidate and detail flows        |
-| `src/app/education/AGENTS.md`   | tabbed education hub modules                             |
-| `src/components/AGENTS.md`      | shell/sidebar/provider/component boundaries              |
-| `src/hooks/AGENTS.md`           | hook inventory and barrel boundary                       |
-| `src/hooks/__tests__/AGENTS.md` | hook test harness + mock boundaries                      |
-| `src/stores/AGENTS.md`          | auth store state/method contracts                        |
+- Dynamic route wrappers keep static export compatibility (`generateStaticParams` placeholder + client page import).
+- Site-scoped queries hinge on `currentSiteId` from auth store.
+- Query invalidation handled in hook mutation layers, not page components.
+- Sidebar is always mounted (mobile icon rail + desktop expand state).
+
+## CHILD AGENTS MAP
+
+- `src/app/AGENTS.md` - full app route topology and wrappers.
+- `src/app/attendance/AGENTS.md` - logs/unmatched/sync specifics.
+- `src/app/posts/AGENTS.md` - review list/detail composition.
+- `src/app/votes/AGENTS.md` - period/candidate/result flows.
+- `src/app/education/AGENTS.md` - tabbed education hub.
+- `src/components/AGENTS.md` - shell/sidebar/provider components.
+- `src/hooks/AGENTS.md` - 31-hook inventory + boundaries.
+- `src/hooks/__tests__/AGENTS.md` - hook test harness and coverage.
+- `src/stores/AGENTS.md` - auth store contract.
+- `src/lib/AGENTS.md` - API client and utility boundary.

@@ -1,43 +1,48 @@
 # AGENTS: SCRIPTS
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-Repository utility scripts in `scripts/` only.
+- Operational/dev tooling under `scripts/` only.
+- Keep this file synced to real script inventory.
 
-## CURRENT FILE SET
+## INVENTORY (CURRENT)
+
+- Directory files: 12 total (including this `AGENTS.md`).
+- Operational files: 11.
+
+## OPERATIONAL FILE SET (11)
 
 - `build-static.go`
 - `check-anti-patterns.go`
 - `check-wrangler-sync.js`
 - `create-cf-token.go`
+- `create-test-user.sql`
 - `create-test-user.ts`
 - `git-preflight.go`
 - `hash-admin-password.ts`
 - `lint-naming.js`
+- `migrate-s4-enums.sql`
 - `verify.go`
-
-## FILE INTENT SNAPSHOT
-
-- Anti-pattern commit guard for staged files.
-- Root/app wrangler binding sync guard.
-- Cloudflare token bootstrap helper (manual/operator use).
-- Test-user SQL generator (`scripts/create-test-user.sql` output).
-- Git remote/auth/push preflight checker.
-- Admin password PBKDF2 hash generator.
-- Workspace package naming linter.
-- Static export build+copy helper (legacy).
-- Full project verification (build, lint, typecheck, tests).
 
 ## MODULE RULES
 
-- Keep secret inputs from env only.
-- Keep scripts idempotent where practical.
-- Keep CI-called scripts non-interactive and deterministic.
-- Keep output paths explicit when scripts generate artifacts.
-- Keep Go scripts standalone (`//go:build ignore`, no go.mod).
+- Go-first policy for operational scripts.
+- Node.js exception allowed for ecosystem-tied validators/hooks/linters.
+- Keep CI-facing scripts deterministic, non-interactive, and exit-code strict.
+- Keep secret values from env/flags only; never hardcode credentials.
+- Keep generated artifact paths explicit (`create-test-user.sql` flow).
+
+## SCRIPT ROLE SNAPSHOT
+
+- `verify.go`: umbrella verification runner.
+- `git-preflight.go`: push-readiness gate.
+- `check-anti-patterns.go`: staged-content guardrail.
+- `check-wrangler-sync.js`: wrangler consistency checker.
+- `lint-naming.js`: monorepo naming-policy validator.
+- SQL/TS helpers: test-user + enum-migration support.
 
 ## ANTI-DRIFT
 
-- Do not list deleted helper files in this doc.
-- Do not assume local-only paths in CI guard scripts.
-- Do not add plaintext credentials or tokens to script defaults.
+- No stale file list/count.
+- No local-path assumptions in CI scripts.
+- No plaintext token/password defaults.

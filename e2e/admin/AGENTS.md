@@ -1,46 +1,36 @@
-# AGENTS: ADMIN-APP
+# AGENTS: E2E/ADMIN
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-Admin-app browser suites only.
-Root `e2e/AGENTS.md` covers shared policies.
+- Admin dashboard browser tests only.
+- Shared E2E policy lives in `e2e/AGENTS.md`.
 
-## CURRENT FILE SET
+## CURRENT INVENTORY
 
-- `admin.setup.ts` auth bootstrap, writes storage state
-- `helpers.ts` `adminLogin`, `expectAdminShellVisible`, sidebar helpers
-- `smoke.spec.ts`
-- `login.spec.ts`
-- `auth.spec.ts`
-- `dashboard.spec.ts`
-- `navigation.spec.ts`
-- `pages.spec.ts`
-- `mobile-visual.spec.ts`
-- `hamburger.spec.ts`
-- `uiux-after-login.spec.ts`
-- `posts.spec.ts`
-- `members.spec.ts`
-- `attendance.spec.ts`
-- `points.spec.ts`
-- `announcements.spec.ts`
-- `education.spec.ts`
-- `education-registration.spec.ts`
-- `rewards.spec.ts`
-- `settings.spec.ts`
-- `monitoring.spec.ts`
-- `actions.spec.ts`
-- `audit.spec.ts`
+- Total TS files: 32.
+- Support files: `admin.setup.ts`, `helpers.ts`.
+- Spec files: 30 (`*.spec.ts`).
+
+## SPEC SET (30)
+
+- auth + shell: `smoke`, `login`, `auth`, `navigation`, `pages`, `dashboard`.
+- post/content: `posts`, `post-detail`, `announcements`.
+- people/attendance: `members`, `member-detail`, `attendance`, `attendance-sync`, `attendance-unmatched`.
+- points/rewards: `points`, `points-policies`, `points-settlement`, `rewards`.
+- governance/ops: `actions`, `approvals`, `audit`, `monitoring`, `settings`, `sync-errors`.
+- UX/visual: `mobile-visual`, `uiux-after-login`.
+- feature slices: `recommendations`, `dashboard-recommendations`, `dashboard-analytics`, `votes`.
 
 ## MODULE RULES
 
-- Reuse `adminLogin(page)` for authenticated flows.
-- Treat `AdminRateLimitError` as known environment blocker signal.
-- Keep sidebar coverage aligned with `SIDEBAR_ITEMS` export.
-- Keep Korean UI assertions (`로그인`, labels) stable.
-- Keep unauthenticated checks explicit in smoke/login suites.
+- Use `admin.setup.ts` storage-state bootstrap for authenticated project runs.
+- Reuse helpers (`adminLogin`, shell/sidebar checks) instead of copy-paste login flows.
+- Keep Korean UI assertions explicit for login/shell critical paths.
+- Keep selector/wait strategy locator-first; avoid fixed sleep timing.
+- Keep base URL sourced from Playwright config/env, never hardcoded per spec.
 
 ## ANTI-DRIFT
 
-- Do not duplicate auth bootstrap outside `admin.setup.ts` or helper.
-- Do not hardcode absolute domains inside specs.
-- Do not replace locator-based waits with fixed sleeps.
+- No stale spec count/list.
+- No duplicate auth bootstrap logic outside setup/helper.
+- No deleted spec references (for example legacy `hamburger.spec.ts`).

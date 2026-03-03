@@ -1,39 +1,48 @@
 # AGENTS: COMPONENTS
 
-## PURPOSE
+## SCOPE
 
-Admin UI composition layer. Scope: shell/navigation, shared widgets, feature component packs.
+- Shared admin components in `src/components`.
+- Includes shell/nav, reusable primitives, and feature component subtrees.
 
-## KEY FILES
+## DIRECTORY SNAPSHOT
 
-| File                         | Role                     | Notes                                            |
-| ---------------------------- | ------------------------ | ------------------------------------------------ |
-| `admin-shell.tsx`            | app shell                | auth gate + login bypass + frame layout          |
-| `sidebar.tsx`                | navigation system        | `Sidebar`, `MobileHeader`, internal `SidebarNav` |
-| `providers.tsx`              | app providers            | QueryClient + site bootstrap gate + toaster      |
-| `data-table.tsx`             | generic table            | search/sort/pagination/selectable rows           |
-| `review-actions.tsx`         | post review action panel | approve/reject/request/urgent flows              |
-| `stats-card.tsx`             | metric tile              | reusable dashboard summary card                  |
-| `approvals/*`                | approvals widgets        | dialog/list/history/reject components            |
-| `votes/candidate-dialog.tsx` | vote component           | add-candidate dialog                             |
-| `ui/table.tsx`               | local table primitive    | route pages importing non-shared table variant   |
+- `admin-shell.tsx` - protected frame + auth gate.
+- `sidebar.tsx` - desktop/sidebar rail, mobile header label, site switch.
+- `providers.tsx` - QueryClient provider + bootstrap/hydration guard + toaster.
+- `data-table.tsx` - reusable searchable/sortable/paginated table shell.
+- `image-lightbox.tsx` - image preview overlay component.
+- `rich-text-editor.tsx` - Tiptap-based editor surface.
+- `review-actions.tsx` - review workflow action widget.
+- `stats-card.tsx` - dashboard metric card.
+- `approvals/` - approvals-specific dialog/list/history/reject components.
+- `review-actions/` - split review action UI pieces.
+- `votes/` - vote-specific shared dialog/components.
+- `ui/` - local UI primitives (including table variant).
+- `__tests__/` - component unit tests.
 
-## PATTERNS
+## COMPOSITION PATTERNS
 
-| Pattern               | Applied in             | Notes                                                      |
-| --------------------- | ---------------------- | ---------------------------------------------------------- |
-| Site bootstrap gate   | `providers.tsx`        | blocks protected shell until `currentSiteId` resolved      |
-| Sidebar cache hygiene | `sidebar.tsx`          | logout clears query cache; site switch invalidates queries |
-| Component test focus  | `__tests__/*.test.tsx` | behavior-focused tests per component                       |
+- `AdminShell` wraps protected pages and redirects unauthenticated users.
+- `Providers` centralizes React Query bootstrap and app-level providers.
+- Sidebar handles navigation and site context switching; query cache hygiene occurs at this boundary.
+- Feature pages compose cards/panels from this folder instead of embedding large JSX in route files.
 
-## GOTCHAS
+## CURRENT NAV MODEL
 
-- `MobileSidebar` removed; do not reintroduce drawer/menu state.
-- Current exports from `sidebar.tsx`: `Sidebar`, `MobileHeader`; `SidebarNav` is internal helper.
-- Sidebar is always visible now: mobile icon strip (`w-16`), desktop expandable (`md:w-64`).
-- `admin-shell.tsx` no longer tracks mobile menu open/close state.
+- No drawer-based mobile sidebar in current architecture.
+- Sidebar always mounted:
+  - mobile: icon rail (`w-16`)
+  - desktop: expandable pane (`md:w-64`)
+- `MobileHeader` is label/header only; menu toggle state removed.
 
-## PARENT DELTA
+## CONSTRAINTS
 
-- Parent doc links component area at high level.
-- This file defines concrete shell/sidebar/provider contracts and the updated no-drawer nav model.
+- Keep route-specific business logic in hooks/pages; components stay presentation + interaction shell.
+- Avoid duplicating primitives from `@safetywallet/ui` unless admin-specific behavior is required.
+- Do not reintroduce removed `MobileSidebar` patterns.
+
+## TEST NOTES
+
+- Component behavior tests live in `src/components/__tests__`.
+- Hook/network assertions belong to hook test suites, not component tests.

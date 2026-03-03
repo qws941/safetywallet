@@ -2,33 +2,36 @@
 
 ## PURPOSE
 
-Single-source DB contract for api-worker runtime.
-Only two runtime files: schema catalog + D1 batching helper.
+Database contract for API worker runtime.
+Owns table definitions, relations, enums, and batch-write helpers.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File         | Role                | Current Facts                                                                    |
-| ------------ | ------------------- | -------------------------------------------------------------------------------- |
-| `schema.ts`  | Full Drizzle schema | 1565 lines. 32 `sqliteTable(...)` exports. Enums + relations colocated.          |
-| `helpers.ts` | D1 batch helpers    | `dbBatch<T>()`, `dbBatchChunked()`; chunk limit constant `D1_BATCH_LIMIT = 100`. |
+- `schema.ts` - full Drizzle schema catalog.
+- `helpers.ts` - D1 batch execution helpers.
+- `__tests__/schema.test.ts` and `__tests__/helpers.test.ts` validate schema and batching semantics.
 
-## TABLE GROUPS (32)
+## CURRENT FACTS
 
-- **Identity/access:** `users`, `sites`, `siteMemberships`, `accessPolicies`, `manualApprovals`, `joinCodeHistory`, `deviceRegistrations`.
-- **Safety lifecycle:** `posts`, `postImages`, `reviews`, `actions`, `actionImages`, `disputes`, `auditLogs`, `announcements`.
-- **Points/vote/recommendation:** `pointsLedger`, `pointPolicies`, `votes`, `voteCandidates`, `votePeriods`, `recommendations`.
-- **Attendance/sync:** `attendance`, `syncErrors`, `apiMetrics`, `pushSubscriptions`.
-- **Education:** `educationContents`, `quizzes`, `quizQuestions`, `quizAttempts`, `statutoryTrainings`, `tbmRecords`, `tbmAttendees`.
+- `schema.ts` currently defines 32 `sqliteTable(...)` tables.
+- Primary domain groups in file:
+  - identity/access: `users`, `sites`, `siteMemberships`, `accessPolicies`, `manualApprovals`, `joinCodeHistory`, `deviceRegistrations`
+  - safety lifecycle: `posts`, `postImages`, `reviews`, `actions`, `actionImages`, `disputes`, `auditLogs`, `announcements`
+  - points/votes: `pointsLedger`, `pointPolicies`, `votes`, `voteCandidates`, `votePeriods`, `recommendations`
+  - attendance/sync: `attendance`, `syncErrors`, `apiMetrics`, `pushSubscriptions`
+  - education: `educationContents`, `quizzes`, `quizQuestions`, `quizAttempts`, `statutoryTrainings`, `tbmRecords`, `tbmAttendees`
+- `helpers.ts` exposes `dbBatch` and `dbBatchChunked`; chunk limit constant is `D1_BATCH_LIMIT = 100`.
 
-## PATTERNS
+## CONVENTIONS
 
-- Table + indexes + relations added in same file section; no split schema fragments.
-- Date-only fields intentionally stored as epoch integer in several tables (`votePeriods`, `statutoryTrainings`, `tbmRecords`).
-- `syncErrors` + `apiMetrics` support admin monitoring/alerting flows.
-- `helpers.ts` throws only when all chunks fail; partial chunk failure returned via `BatchChunkedResult`.
+- Keep table, indexes, and relation declarations close together in `schema.ts`.
+- Keep enum values in sync with route validators and shared type usage.
+- Use `dbBatchChunked` for large mutation sets; inspect returned failed chunk metadata when partial success is unacceptable.
+- Prefer additive schema changes; leave compatibility columns/enums until migrations remove them.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- Existing comment still says "33 tables" in legacy docs; actual `sqliteTable` count is 32.
-- `taskStatusEnum` remains in file but marked deprecated; prefer `actionStatusEnum`.
-- `dbBatchChunked()` logs failures and continues; callers must inspect `failedChunks` when partial success unacceptable.
+- Do not scatter table definitions across unrelated files.
+- Do not bump table count in docs without verifying `sqliteTable(...)` usage in source.
+- Do not use single huge `db.batch` calls that can exceed D1 operation limits.
+- Do not remove deprecated enum values unless all route and migration paths are updated.

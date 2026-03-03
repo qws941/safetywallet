@@ -24,7 +24,6 @@ test.describe("Admin Navigation", () => {
       { path: "/points", title: "포인트 관리" },
       { path: "/actions", title: "조치 현황" },
       { path: "/announcements", title: "공지사항" },
-      { path: "/education", title: "교육 관리" },
       { path: "/rewards", title: "포상 관리" },
       { path: "/monitoring", title: "운영 모니터링" },
       { path: "/audit", title: "감사 로그" },

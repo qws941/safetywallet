@@ -1,40 +1,40 @@
 # AGENTS: .GITHUB
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-Repo automation config surface.
-Exact files present in this directory only.
+- Top-level GitHub automation config only.
+- Workflow-specific details live in `.github/workflows/AGENTS.md`.
 
-## CURRENT FILE SET
-
-- `.github/dependabot.yml`
-- `.github/labeler.yml`
-- `.github/workflows/*.yml` (14 workflow files)
-
-## OWNERSHIP SPLIT
-
-- This file: top-level automation config (`dependabot`, label mapping).
-- `workflows/AGENTS.md`: per-workflow behavior and guardrails.
-
-## TOP-LEVEL CONFIG NOTES
+## TOP-LEVEL INVENTORY (CURRENT)
 
 - `dependabot.yml`
-  - npm + github-actions updates
-  - weekly Monday cadence
-  - reviewer `jclee-v1`
+- `labeler.yml`
+- `release-drafter.yml`
+- `FUNDING.yml`
+- `ISSUE_TEMPLATE/` (3 templates: `bug_report.yml`, `feature_request.yml`, `config.yml`)
+- `workflows/` (16 workflow files + local AGENTS)
+
+## CONFIG SNAPSHOT
+
+- `dependabot.yml`
+  - ecosystems: `npm`, `github-actions`
+  - cadence: weekly Monday
+  - reviewer: `jclee-v1`
   - grouped minor/patch npm updates
 - `labeler.yml`
-  - path->label mapping for docs/ci/terraform/docker/python/typescript/shell/config
+  - path-based labels for docs/ci/terraform/docker/python/typescript/shell/config
+- `release-drafter.yml`
+  - release note category policy (workflow consumer)
 
 ## MODULE RULES
 
-- Keep labels/config generic and path-driven.
-- Keep bot configs free of project secrets.
-- Keep workflow references aligned with real files only.
-- Any new workflow file must be reflected in `workflows/AGENTS.md`.
+- Keep bot configs secret-free and path-driven.
+- Keep template and label mappings aligned with active repo structure.
+- Keep workflow file references delegated to `workflows/AGENTS.md`.
+- Any workflow add/remove requires updates in workflow AGENTS.
 
 ## ANTI-DRIFT
 
-- Do not reference removed workflow files.
-- Do not duplicate policy text already owned by root AGENTS.
-- Do not place runtime artifacts under `.github/`.
+- No stale workflow counts at top-level.
+- No duplicate repo-root policy prose.
+- No runtime artifacts committed under `.github/`.

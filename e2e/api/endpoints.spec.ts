@@ -269,7 +269,6 @@ test.describe("Protected Endpoints Return 401", () => {
     { path: "./sites", name: "GET /sites" },
     { path: "./attendance/today", name: "GET /attendance/today" },
 
-    { path: "./education/courses", name: "GET /education/courses" },
     { path: "./points/balance", name: "GET /points/balance" },
     { path: "./votes/current", name: "GET /votes/current" },
     { path: "./disputes", name: "GET /disputes" },

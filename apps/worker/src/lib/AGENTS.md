@@ -1,33 +1,35 @@
-# AGENTS: LIB
+# AGENTS: WORKER LIB
 
 ## PURPOSE
 
-Client runtime primitives shared by hooks/pages.
-Network transport, offline queue replay, media sanitation/compression, small helpers.
+- Shared client utilities for hooks/pages/components.
+- Owns API transport policy, offline replay, media processing, HTML sanitization.
+- Keeps app-level reliability/security behavior centralized.
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File                    | Exports                                                                         | Responsibility                                                   |
-| ----------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `lib/api.ts`            | `apiFetch`, `flushOfflineQueue`, `getOfflineQueueLength`, `ApiError`            | Auth header injection, 401 refresh mutex, optional offline queue |
-| `lib/image-compress.ts` | `compressImage`, `compressImages`                                               | Canvas-based JPEG conversion + resize + EXIF strip               |
-| `lib/sanitize-html.ts`  | `sanitizeAnnouncementHtml`, `hasHtmlContent`, `renderSanitizedAnnouncementHtml` | Announcement HTML allowlist sanitizer + React node rendering     |
-| `lib/utils.ts`          | `cn` re-export                                                                  | UI class merge bridge                                            |
+- `api.ts`: `apiFetch`, `flushOfflineQueue`, `getOfflineQueueLength`, `ApiError`, queue types.
+- `image-compress.ts`: `compressImage`, `compressImages` (canvas/offscreen processing).
+- `sanitize-html.ts`: `sanitizeAnnouncementHtml`, `hasHtmlContent`, `renderSanitizedAnnouncementHtml`.
+- `utils.ts`: `cn` re-export bridge from `@safetywallet/ui`.
+- Tests under `lib/__tests__/` for api/image/sanitize/utils behavior.
 
-## PATTERNS
+## CONVENTIONS
 
-- `apiFetch` defaults `API_BASE_URL` from `NEXT_PUBLIC_API_URL` or `/api`.
-- `apiFetch` 401 flow: `refreshToken()` mutex -> retry original request once.
-- Offline queue item shape: `{ id, endpoint, options, createdAt, retryCount }`.
-- Queue replay cap: max 5 retries per queued item.
-- Image policy: max file 10MB, max dimension 1920, JPEG quality 0.8 (0.92 for small files).
-- Sanitizer allowlist tags: `p,strong,em,ul,li,blockquote,code,pre,a,img`.
+- API base defaults to `NEXT_PUBLIC_API_URL` or `/api`.
+- Auth header injected from store unless `skipAuth: true`.
+- 401 handling uses refresh mutex; single retry after successful refresh.
+- Offline queue primary key: `safetywallet_offline_queue`.
+- Legacy queue migration on first access: `safework2_offline_queue` -> `safetywallet_offline_queue`.
+- Queue item carries `retryCount`; replay drops item after 5 failed attempts.
+- Offline mode with `offlineQueue: true` returns queued sentinel payload.
+- Module-level `online` listener triggers automatic queue flush.
+- Image compression policy: max 10MB, max dimension 1920, JPEG conversion, EXIF stripped.
+- HTML sanitization allowlist includes `p,strong,em,ul,li,blockquote,code,pre,a,img`.
 
-## GOTCHAS
+## ANTI-PATTERNS
 
-- Queue key string is `safework2_offline_queue` (legacy prefix).
-- `apiFetch` can return queued sentinel payload (`{ success: true, data: null, queued: true }`) when offline queue enabled.
-- `apiFetch` adds `Content-Type: application/json` unless request body is `FormData`.
-- `flushOfflineQueue()` auto-runs on browser `online` event at module load.
-- `sanitize-html.ts` uses browser DOM APIs; client-only usage required.
-- Some flows still call native `fetch` directly (`login-client`, store logout).
+- Do not create direct `fetch` wrappers outside `api.ts` for standard API flows.
+- Do not change queue key names without explicit migration logic.
+- Do not run `sanitize-html` helpers in server-only contexts (DOM APIs required).
+- Do not bypass image compression path when posting user images from worker pages.

@@ -1,41 +1,51 @@
 # AGENTS: VOTES
 
-## PURPOSE
+## SCOPE
 
-Voting admin module. Scope: monthly vote period, candidates, results, detail routes.
+- Admin voting module pages and local vote components.
+- Covers month/period setup, candidate management, vote results, detail flows.
 
-## KEY FILES
+## FILE MAP
 
-| File                                    | Role                    | Notes                                          |
-| --------------------------------------- | ----------------------- | ---------------------------------------------- |
-| `page.tsx`                              | main dashboard          | month picker + period/candidates/results cards |
-| `components/vote-period-card.tsx`       | period block            | start/end window control                       |
-| `components/candidates-card.tsx`        | candidate summary block | month-scoped candidate list                    |
-| `components/results-card.tsx`           | results block           | month-scoped aggregated output                 |
-| `new/page.tsx`                          | create flow             | month input then redirect to `/votes/{month}`  |
-| `candidates/page.tsx`                   | candidate management    | table + create dialog + delete confirmation    |
-| `[id]/page.tsx`                         | detail wrapper          | static-export placeholder + `vote-detail`      |
-| `[id]/vote-detail.tsx`                  | detail client page      | period-centric detail controls                 |
-| `[id]/candidates/new/page.tsx`          | nested wrapper          | forwards to `add-candidate` client page        |
-| `[id]/candidates/new/add-candidate.tsx` | add-candidate form      | explicit per-period candidate addition         |
-| `votes-helpers.ts`                      | labels/helpers          | vote-related UI derivations                    |
-| `error.tsx`                             | feature error UI        | votes-only fallback                            |
+- `page.tsx` - main monthly vote dashboard.
+- `components/vote-period-card.tsx` - period open/close controls.
+- `components/candidates-card.tsx` - month candidate snapshot.
+- `components/results-card.tsx` - aggregated voting results.
+- `new/page.tsx` - period creation/start flow.
+- `candidates/page.tsx` - candidate CRUD surface.
+- `[id]/page.tsx` - dynamic wrapper route for static export.
+- `[id]/vote-detail.tsx` - month detail client page.
+- `[id]/candidates/new/page.tsx` - nested dynamic wrapper.
+- `[id]/candidates/new/add-candidate.tsx` - add-candidate form UI.
+- `votes-helpers.ts` - month/status/UI helper derivations.
+- `error.tsx` - votes-scoped error fallback.
 
-## PATTERNS
+## DOMAIN MODEL
 
-| Pattern                      | Applied in            | Notes                                       |
-| ---------------------------- | --------------------- | ------------------------------------------- |
-| Month as primary context     | all pages             | `YYYY-MM` state drives queries/mutations    |
-| Wrapper + client split       | dynamic routes        | required for static export of `[id]` routes |
-| Dialog-driven candidate CRUD | `candidates/page.tsx` | create via dialog, delete via AlertDialog   |
+- Primary context key: vote month (`YYYY-MM`).
+- Month key drives period status, candidate set, and result queries.
+- Detail route path parameter (`[id]`) represents month/period identifier.
 
-## GOTCHAS
+## UI PATTERNS
 
-- Legacy references to `periods/page.tsx` or `results/page.tsx` are stale; those are component blocks on `page.tsx`.
-- `use-votes.ts` is not in barrel export; imports must target `@/hooks/use-votes`.
-- CSV export helper in `use-votes.ts` performs direct `fetch` for file download; this is intentional edge behavior.
+- Dashboard card composition: period + candidates + results.
+- Candidate CRUD in dialog/confirmation flows (`AlertDialog` for destructive action).
+- New-period flow writes period, then routes into month detail workflow.
+- Dynamic pages use wrapper/client split for static-export compatibility.
 
-## PARENT DELTA
+## CONSTRAINTS
 
-- Parent app doc covers route existence.
-- This file captures votes-local month context model and dynamic wrapper constraints.
+- Do not reintroduce obsolete `periods/page.tsx` or `results/page.tsx` routes; current design keeps both as cards on `votes/page.tsx`.
+- Keep wrapper routes thin (`generateStaticParams` placeholder + client handoff).
+- `use-votes.ts` is intentionally direct-imported (not re-exported by `use-api.ts`).
+- CSV download helper in hook uses direct `fetch` by design.
+
+## TEST SURFACE
+
+- `votes/__tests__/*` contains module-level tests for helpers/components.
+- Hook behavior validated in `src/hooks/__tests__/use-votes.test.ts`.
+
+## BOUNDARY NOTES
+
+- This file documents route/component behavior only.
+- API contract and query invalidation live in `src/hooks/use-votes.ts`.

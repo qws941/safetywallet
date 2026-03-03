@@ -2,31 +2,39 @@
 
 ## PURPOSE
 
-Zod schema source for route validation inputs and selected response contracts.
-Shared by core routes and admin routes.
+Central Zod schemas for API request validation.
+Scope here is validator definitions only (no route handler logic).
 
-## KEY FILES
+## FILES/STRUCTURE
 
-| File          | Scope                      | Current Facts                                                                                                                          |
-| ------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `schemas/`    | main API schemas           | Split into `auth.ts`, `domain.ts`, `shared.ts`. Auth, posts, actions, disputes, votes, admin bodies, education, pagination primitives. |
-| `fas-sync.ts` | strict FAS payloads        | Defines FAS timestamp regex (`YYYY-MM-DD HH:MM:SS`), attendance sync event/body, sync result schema types.                             |
-| `export.ts`   | admin export query schemas | Defines users/posts/attendance export query validators with strict `YYYY-MM-DD` date checks and page coercion.                         |
+- Top-level validator files: 2
+  - `fas-sync.ts`
+  - `export.ts`
+- Shared schema directory: `schemas/`
+  - `auth.ts`
+  - `domain.ts`
+  - `shared.ts`
+  - `index.ts` (barrel for auth/domain only)
+- Tests: `__tests__/schemas.test.ts`, `__tests__/fas-sync.test.ts`, `__tests__/export.test.ts`
 
-## MODULE SNAPSHOT
+## CURRENT FACTS
 
-- Runtime schema files: 5 (`schemas/auth.ts`, `schemas/domain.ts`, `schemas/shared.ts`, `fas-sync.ts`, `export.ts`).
-- Tests: `__tests__/schemas.test.ts`, `__tests__/fas-sync.test.ts`, `__tests__/export.test.ts`.
+- `fas-sync.ts` defines strict FAS timestamp format `YYYY-MM-DD HH:MM:SS` and attendance sync payload/response schemas.
+- `fas-sync.ts` accepts `checkinAt` as ISO datetime or FAS timestamp format.
+- `export.ts` defines post/user/attendance export query schemas with strict `YYYY-MM-DD` date checks.
+- `export.ts` normalizes `page` from query string to integer with default fallback to `1`.
+- `schemas/index.ts` intentionally re-exports only `auth` and `domain`; `shared.ts` stays internal.
 
-## PATTERNS
+## CONVENTIONS
 
-- Keep shared primitives in `schemas/shared.ts` (`uuid`, month pattern, non-empty strings).
-- Use named `*Schema` exports and paired inferred types where routes consume typed payloads.
-- Tight input bounds on external-system payloads (`max`, `regex`, date-range guards).
-- Export query schemas normalize page values to sane defaults.
+- Keep reusable primitives and regexes in `schemas/shared.ts`.
+- Keep schema names explicit with `*Schema` suffix and export inferred types for route typing.
+- Keep strict bounds on external payloads (`min`, `max`, `regex`, `refine`) for sync and export inputs.
+- Keep compatibility validations documented when multiple timestamp/date formats are accepted.
 
-## GOTCHAS/WARNINGS
+## ANTI-PATTERNS
 
-- Enum lists in `schemas/domain.ts` must stay aligned with DB/type package enums.
-- `fas-sync.ts` accepts both ISO datetime and FAS timestamp for attendance events; maintain compatibility.
-- `export.ts` date validators intentionally reject non-`YYYY-MM-DD` query forms.
+- Do not add route-specific side effects in validator files.
+- Do not loosen date/timestamp validation to accept ambiguous free-form strings.
+- Do not export internal shared primitives from `schemas/index.ts` unless all imports are updated intentionally.
+- Do not diverge enum constraints from DB/type-level enum values without coordinated changes.

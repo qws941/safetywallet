@@ -1,43 +1,45 @@
 # AGENTS: .GITHUB/WORKFLOWS
 
-## DELTA SCOPE
+## SCOPE DELTA
 
-Workflow-file specifics only.
-Parent `.github/AGENTS.md` covers top-level config ownership.
+- Workflow-file inventory + coupling notes only.
+- Parent `.github/AGENTS.md` owns top-level config scope.
 
-## CURRENT WORKFLOW FILES
+## WORKFLOW INVENTORY (16)
 
-- `ci.yml` (`name: CI`)
-- `deploy-monitoring.yml` (`name: Deployment Monitoring`)
-- `commitlint.yml` (`name: Commitlint`)
-- `pr-size.yml` (`name: PR Size`)
-- `auto-merge.yml` (`name: Auto Merge`)
-- `auto-merge-dependabot.yml` (`name: Auto-merge Dependabot`)
-- `labeler.yml` (`name: Auto-label PRs`)
-- `stale.yml` (`name: Stale issue/PR cleanup`)
-- `welcome.yml` (`name: Welcome`)
-- `lock-threads.yml` (`name: Lock Threads`)
-- `release-drafter.yml` (`name: Release Drafter`)
-- `ssl-fix.yml` (`name: SSL Diagnostic & Fix`)
-- `codex-auto-issue.yml` (`name: Codex Auto-Issue`)
-- `codex-triage.yml` (`name: Codex Triage`)
-- `e2e-auto-issue.yml` (`name: E2E Auto-Issue`)
-- `e2e-nightly.yml` (`name: E2E Nightly`)
+- `auto-merge-dependabot.yml` - `Auto-merge Dependabot`
+- `auto-merge.yml` - `Auto Merge`
+- `ci.yml` - `CI`
+- `codex-auto-issue.yml` - `Codex Auto-Issue`
+- `codex-triage.yml` - `Codex Triage`
+- `commitlint.yml` - `Commitlint`
+- `deploy-monitoring.yml` - `Deployment Monitoring`
+- `e2e-auto-issue.yml` - `E2E Failure Issue`
+- `e2e-nightly.yml` - `E2E Nightly`
+- `labeler.yml` - `Auto-label PRs`
+- `lock-threads.yml` - `Lock Threads`
+- `pr-size.yml` - `PR Size`
+- `release-drafter.yml` - `Release Drafter`
+- `ssl-fix.yml` - `SSL Diagnostic & Fix`
+- `stale.yml` - `Stale issue/PR cleanup`
+- `welcome.yml` - `Welcome`
 
 ## FLOW LINKS
 
-- Production deploy is handled by Cloudflare Git Integration on push to `master` — no deploy workflow.
-- `deploy-monitoring.yml` watches `CI`, `Deploy SafetyWallet`, `Deploy Staging` completion.
-- `ci.yml` controls monorepo build/test/e2e gate and Slack notify.
+- Production deploy uses Cloudflare Git integration (push to `master`).
+- `ci.yml` is the primary monorepo verify gate.
+- `deploy-monitoring.yml` runs post-CI endpoint health + incident upsert/close.
+- Nightly and auto-issue workflows capture E2E failure automation.
 
 ## MODULE RULES
 
-- Keep action pins as commit SHA.
-- Keep incident automation path intact in monitoring workflow.
-- Keep workflow names stable when referenced by other workflows.
+- SHA-pin all action `uses:` entries (no mutable tags).
+- Keep workflow `name:` values stable when referenced by automation.
+- Keep monitoring/incident workflow path intact.
+- Keep local manual deploy logic out of workflows.
 
 ## ANTI-DRIFT
 
-- Do not reintroduce removed workflow files (`deploy-production.yml`, `deploy-verify.yml`) in docs/comments.
-- Do not rename workflow `name:` fields without updating dependents.
-- Do not move deploy logic into manual local command steps.
+- No stale workflow names/counts.
+- No references to removed deploy workflows.
+- No unpinned action tags introduced.
