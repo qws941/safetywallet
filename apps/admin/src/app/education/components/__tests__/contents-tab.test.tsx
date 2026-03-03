@@ -17,8 +17,8 @@ const updateAsyncMock = vi.fn();
 const oembedAsyncMock = vi.fn();
 
 vi.mock("next/image", () => ({
-  // eslint-disable-next-line @next/next/no-img-element
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    // eslint-disable-next-line @next/next/no-img-element
     <img alt="thumb" {...props} />
   ),
 }));
