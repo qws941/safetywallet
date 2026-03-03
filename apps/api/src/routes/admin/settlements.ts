@@ -36,12 +36,21 @@ function getSettlementSnapshotKey(month: string): string {
 
 app.get("/settlements/status", requireManagerOrAdmin, async (c) => {
   const db = drizzle(c.env.DB);
-  const month = c.req.query("month")?.trim() || formatYearMonth(new Date());
-  const siteId = c.req.query("siteId")?.trim();
+  const querySchema = z.object({
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    siteId: z.string().optional(),
+  });
 
-  if (!/^\d{4}-\d{2}$/.test(month)) {
-    return error(c, "INVALID_MONTH", "month must be YYYY-MM", 400);
+  const parsed = querySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: { code: "INVALID_QUERY_PARAMS", message: parsed.error.message },
+      },
+      400,
+    );
   }
+  const { month, siteId } = parsed.data;
 
   const { start, end } = getMonthRange(month);
   const ledgerConditions: SQL[] = [eq(pointsLedger.settleMonth, month)];

@@ -112,7 +112,9 @@ export async function persistSyncFailure(
   if (options.setFasDownStatus) {
     try {
       await env.KV.put("fas-status", "down", { expirationTtl: 600 });
-    } catch {}
+    } catch (e) {
+      console.error("[sync] Failed to set fas-status in KV:", e);
+    }
   }
 
   try {
@@ -127,7 +129,9 @@ export async function persistSyncFailure(
         lockName: options.lockName,
       }),
     });
-  } catch {}
+  } catch (e) {
+    console.error("[sync] Failed to insert sync error record:", e);
+  }
 }
 
 export function getKSTDate(): Date {

@@ -244,7 +244,9 @@ function TbmTab({ siteId }: { siteId: string }) {
         try {
           const parsed = JSON.parse(error.message);
           errorCode = parsed?.error?.code ?? "";
-        } catch {}
+        } catch {
+          /* JSON parse failure is expected for non-JSON error messages — errorCode stays empty */
+        }
         if (errorCode === "ALREADY_ATTENDED") {
           toast({
             title: t("education.alreadyAttended"),

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
 import { and, inArray, isNull } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
@@ -128,11 +129,30 @@ interface UnmatchedSourceRecord {
 // GET /attendance-logs - 출근 기록 조회 (관리자)
 app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
   const db = drizzle(c.env.DB);
+  const querySchema = z.object({
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    limit: z.coerce.number().min(1).max(1000).default(100),
+  });
+
+  const parsed = querySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: { code: "INVALID_QUERY_PARAMS", message: parsed.error.message },
+      },
+      400,
+    );
+  }
+  const query = parsed.data;
+
   const siteId = c.req.query("siteId");
   const page = parseInt(c.req.query("page") || "1", 10);
-  const limit = parseInt(c.req.query("limit") || "50", 10);
+  const limit = query.limit;
   const offset = (page - 1) * limit;
-  const dateStr = c.req.query("date")?.trim();
+  const dateStr = query.date?.trim();
   const resultFilter = c.req.query("result");
 
   if (!siteId) {

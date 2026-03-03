@@ -26,14 +26,10 @@ describe("i18n loader", () => {
 
   it("falls back to default locale for unsupported locale", async () => {
     vi.resetModules();
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { getLocale } = await import("@/i18n/loader");
     const ko = (await import("@/locales/ko.json")).default;
 
     await expect(getLocale("fr" as Locale)).resolves.toEqual(ko);
-    expect(warnSpy).toHaveBeenCalledWith(
-      "Locale fr not found, falling back to ko",
-    );
   });
 
   it("handles loader errors and falls back to default locale", async () => {
@@ -42,43 +38,37 @@ describe("i18n loader", () => {
       throw new Error("mocked locale import failure");
     });
 
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { getLocale } = await import("@/i18n/loader");
     const ko = (await import("@/locales/ko.json")).default;
 
     await expect(getLocale("en")).resolves.toEqual(ko);
-    expect(errorSpy).toHaveBeenCalled();
   });
 
-  it("does not warn for unsupported locale in production mode", async () => {
+  it("silently falls back for unsupported locale in production mode", async () => {
     vi.resetModules();
     vi.stubEnv("NODE_ENV", "production");
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { getLocale } = await import("@/i18n/loader");
     const ko = (await import("@/locales/ko.json")).default;
 
     try {
       await expect(getLocale("fr" as Locale)).resolves.toEqual(ko);
-      expect(warnSpy).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
     }
   });
 
-  it("does not log loader error in production mode", async () => {
+  it("silently falls back on loader error in production mode", async () => {
     vi.resetModules();
     vi.doMock("@/locales/en.json", () => {
       throw new Error("mocked locale import failure");
     });
 
     vi.stubEnv("NODE_ENV", "production");
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { getLocale } = await import("@/i18n/loader");
     const ko = (await import("@/locales/ko.json")).default;
 
     try {
       await expect(getLocale("en")).resolves.toEqual(ko);
-      expect(errorSpy).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();
     }

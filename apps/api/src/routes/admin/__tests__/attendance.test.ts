@@ -199,7 +199,7 @@ describe("admin/attendance", () => {
         expect.anything(),
         expect.any(String),
         "10",
-        50,
+        100,
         0,
         DEFAULT_FAS_SOURCE,
       );
@@ -243,7 +243,7 @@ describe("admin/attendance", () => {
         expect.anything(),
         "20260220",
         "10",
-        50,
+        100,
         0,
         DEFAULT_FAS_SOURCE,
       );

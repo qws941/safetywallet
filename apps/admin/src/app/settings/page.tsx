@@ -31,7 +31,7 @@ export default function SettingsPage() {
       });
       setIsDirty(false);
     } catch (err) {
-      console.error("Failed to save site settings", err);
+      // Silent fail - error state is displayed via updateSite.isError
     }
   };
 
