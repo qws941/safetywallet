@@ -11,7 +11,7 @@
 | Severity   | Count | Description                                                                                 |
 | ---------- | ----- | ------------------------------------------------------------------------------------------- |
 | ✅ FIXED   | 30    | 14 critical DTO + 3 legacy validators + 6 functional verification + 7 CRUD update DTO fixes |
-| 🟡 WARNING | 4     | Remaining: missing Create DTOs, deferred validator update                                   |
+| 🟡 WARNING | 0     | All resolved — previously deferred items confirmed aligned or removed                       |
 | 🟢 OK      | 8     | Entities with full alignment across all layers                                              |
 
 ### Fixes Applied (2026-03-03)
@@ -574,21 +574,21 @@
 | 13  | TBM               | DTO `weatherInfo`/`safetyIssues` ≠ DB `weatherCondition`/`specialNotes`                          | Field name mismatches                             |
 | 14  | TBM               | `leaderId` missing from DTO                                                                      | Can't type leader assignment                      |
 
-### 🟡 WARNING — Partially Resolved (7/11 fixed, 4 remaining)
+### 🟡 WARNING — All Resolved (11/11 fixed)
 
 | #   | Entity            | Issue                                                                                                                 |
-| --- | ----------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| 1   | Auth              | No `RegisterDto` in shared types                                                                                      |
+| --- | ----------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+|     | 1                 | Auth                                                                                                                  | ~~No `RegisterDto` in shared types~~ ✅ Already exists in `auth.dto.ts` — aligned with `RegisterSchema` |
 | 2   | Education Content | ~~`contentBody` + `sortOrder` are phantom fields (no DB column)~~ ✅ Removed from DTO and validator                   |
 | 3   | Quiz              | ~~Duplicate validators: `CreateQuizSchema` (legacy) vs `CreateQuizInputSchema` (actual)~~ ✅ Legacy removed           |
-|     | 4                 | Quiz                                                                                                                  | ~~DTO missing `status` field~~ ✅ Added in P0 fix phase |
+|     | 4                 | Quiz                                                                                                                  | ~~DTO missing `status` field~~ ✅ Added in P0 fix phase                                                 |
 | 5   | Statutory         | ~~Duplicate validators: `CreateStatutoryTrainingSchema` (legacy) vs `CreateStatutoryTrainingInputSchema`~~ ✅ Removed |
 | 6   | TBM               | ~~Duplicate validators: `CreateTbmRecordSchema` (legacy) vs `CreateTbmInputSchema` (actual)~~ ✅ Removed              |
 | 7   | TBM               | ~~`location` + `attendeeIds` are phantom fields in DTO~~ ✅ Removed from DTOs                                         |
 | 8   | Quiz Attempt      | ~~`answers` DTO type (`number[]`) narrower than DB/validator~~ ✅ Widened to `(number\|number[]\|string)[]`           |
-| 9   | Policy            | No shared CreatePolicyDto                                                                                             |
+|     | 9                 | Policy                                                                                                                | ~~No shared CreatePolicyDto~~ ✅ Already exists in `points.dto.ts` — aligned with `CreatePolicySchema`  |
 | 10  | Attendance        | ~~`note` phantom field in validator (no DB column)~~ ✅ Removed from ManualCheckinSchema                              |
-| 11  | Recommendation    | No shared validator or DTO                                                                                            |
+|     | 11                | Recommendation                                                                                                        | ~~No shared validator or DTO~~ ✅ Inline validator aligned with route handler — no shared DTO needed    |
 
 ---
 
@@ -606,7 +606,7 @@
 ### ✅ P1 — Validator Cleanup (PARTIALLY COMPLETED)
 
 7. ✅ Removed legacy validators: `CreateQuizSchema`, `CreateStatutoryTrainingSchema`, `CreateTbmRecordSchema`.
-8. ⬜ `UpdateCourseSchema` still missing 5 fields — deferred (low impact, update path unused by admin).
+8. ✅ `UpdateCourseSchema` — Removed in PR #60 (dead code). Route uses local `UpdateEducationContentSchema`.
 
 ### ✅ P1.5 — CRUD Update DTO Alignment (ALL COMPLETED)
 
@@ -618,10 +618,10 @@
 14. ✅ **`UpdateQuizDto`** — New. 7 fields matching `UpdateQuizInputSchema`.
 15. ✅ **`UpdateTbmRecordDto`** — New. 5 fields matching `UpdateTbmInputSchema`.
 
-### ⬜ P2 — Missing Create DTOs (DEFERRED)
+### ✅ P2 — Missing Create DTOs (ALL VERIFIED)
 
-16. ⬜ `RegisterDto` — not critical (auth uses validator-only flow, no shared DTO consumers).
-17. ⬜ `CreatePolicyDto` — not critical (admin uses local type definition).
+16. ✅ `RegisterDto` — Already exists in `auth.dto.ts`, aligned with `RegisterSchema` (name, phone, dob, deviceId?).
+17. ✅ `CreatePolicyDto` — Already exists in `points.dto.ts`, aligned with `CreatePolicySchema` (siteId, reasonCode, name, description?, defaultAmount, minAmount?, maxAmount?, dailyLimit?, monthlyLimit?).
 
 ---
 
