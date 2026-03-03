@@ -145,10 +145,10 @@ app.get("/", async (c) => {
   }
 
   const limit = Math.min(
-    Number.parseInt(c.req.query("limit") || "20", 10),
+    Number.parseInt(c.req.query("limit") || "20", 10) || 20,
     100,
   );
-  const offset = Number.parseInt(c.req.query("offset") || "0", 10);
+  const offset = Number.parseInt(c.req.query("offset") || "0", 10) || 0;
 
   const whereClause = status
     ? and(

@@ -42,8 +42,8 @@ app.get("/", async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
   const siteId = c.req.query("siteId");
-  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
-  const offset = parseInt(c.req.query("offset") || "0");
+  const limit = Math.min(parseInt(c.req.query("limit") || "20") || 20, 100);
+  const offset = parseInt(c.req.query("offset") || "0") || 0;
 
   // Admin users are exempt from attendance checks
   if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {

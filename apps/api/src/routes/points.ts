@@ -361,7 +361,7 @@ app.get("/leaderboard/:siteId", async (c) => {
   await attendanceMiddleware(c, async () => {}, siteId);
 
   const limitParam = c.req.query("limit");
-  const limit = Math.min(parseInt(limitParam || "10"), 50);
+  const limit = Math.min(parseInt(limitParam || "10") || 10, 50);
   const type = c.req.query("type");
 
   const site = await db

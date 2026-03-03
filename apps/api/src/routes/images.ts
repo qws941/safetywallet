@@ -259,8 +259,8 @@ app.post("/upload", uploadRateLimit, async (c) => {
     const fileUrl = `/r2/${filename}`;
 
     if (c.env.AI) {
-      const aiPromise = classifyHazard(c.env.AI, publicBuffer).then(
-        async (result) => {
+      const aiPromise = classifyHazard(c.env.AI, publicBuffer)
+        .then(async (result) => {
           if (result) {
             const obj = await c.env.R2.head(filename);
             if (obj) {
@@ -275,8 +275,10 @@ app.post("/upload", uploadRateLimit, async (c) => {
               });
             }
           }
-        },
-      );
+        })
+        .catch(() => {
+          // AI classification is best-effort; silently ignore failures
+        });
       if (c.executionCtx?.waitUntil) {
         c.executionCtx.waitUntil(aiPromise);
       }
