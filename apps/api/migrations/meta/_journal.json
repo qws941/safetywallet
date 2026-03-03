@@ -113,6 +113,13 @@
       "when": 1709424000000,
       "tag": "0015_add_missing_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1709510400000,
+      "tag": "0016_seed_education_contents",
+      "breakpoints": true
     }
   ]
 }
