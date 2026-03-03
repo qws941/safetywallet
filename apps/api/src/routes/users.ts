@@ -191,8 +191,8 @@ app.patch("/me", zValidator("json", UpdateProfileSchema), async (c) => {
 app.get("/me/points", async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
-  const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
-  const offset = parseInt(c.req.query("offset") || "0");
+  const limit = Math.min(parseInt(c.req.query("limit") || "20") || 20, 100);
+  const offset = parseInt(c.req.query("offset") || "0") || 0;
 
   const ledger = await db
     .select()
