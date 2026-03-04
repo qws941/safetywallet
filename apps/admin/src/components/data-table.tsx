@@ -172,7 +172,7 @@ export function DataTable<T extends object>({
                 <th
                   key={String(col.key)}
                   className={cn(
-                    "px-4 py-3 text-left text-sm font-medium text-muted-foreground",
+                    "px-4 py-3 text-left text-sm font-medium text-muted-foreground break-words",
                     col.sortable && "cursor-pointer select-none",
                     col.className,
                   )}
@@ -223,7 +223,10 @@ export function DataTable<T extends object>({
                   {columns.map((col) => (
                     <td
                       key={String(col.key)}
-                      className={cn("px-4 py-3 text-sm", col.className)}
+                      className={cn(
+                        "px-4 py-3 text-sm break-words",
+                        col.className,
+                      )}
                     >
                       {col.render
                         ? col.render(item)
