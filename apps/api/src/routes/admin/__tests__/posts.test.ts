@@ -181,7 +181,7 @@ vi.mock("../../../db/schema", () => ({
   reviewStatusEnum: ["PENDING", "IN_REVIEW", "APPROVED", "REJECTED"],
 }));
 
-function makeAuth(role = "ADMIN", userId = "admin-1"): AuthContext {
+function makeAuth(role = "SITE_ADMIN", userId = "admin-1"): AuthContext {
   return {
     user: {
       id: userId,
@@ -583,7 +583,7 @@ describe("routes/admin/posts", () => {
       mockAllQueue.push([{ id: "r1" }]);
       mockAllQueue.push([{ id: "pt1" }]);
 
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/admin/posts/p1",
         {
@@ -605,7 +605,7 @@ describe("routes/admin/posts", () => {
     it("returns 404 when target post does not exist", async () => {
       mockGetQueue.push(undefined);
 
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/admin/posts/nonexistent",
         {
@@ -659,7 +659,7 @@ describe("routes/admin/posts", () => {
     });
 
     it("returns 403 for non-SUPER_ADMIN", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/admin/posts/p1/emergency-purge",
         {
@@ -746,7 +746,7 @@ describe("routes/admin/posts", () => {
     });
 
     it("returns 403 for non-SUPER_ADMIN", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/admin/actions/a1/emergency-purge",
         {

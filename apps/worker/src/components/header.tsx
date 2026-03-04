@@ -33,12 +33,12 @@ export function Header() {
             (attendance.attended ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
                 <CheckCircle className="h-3.5 w-3.5" />
-                {formatTime(attendance.checkinAt)} 출근
+                {formatTime(attendance.checkinAt)} {t("components.attended")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
                 <XCircle className="h-3.5 w-3.5" />
-                미출근
+                {t("components.notAttended")}
               </span>
             ))}
           <LocaleSwitcher />

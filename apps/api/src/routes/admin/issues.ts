@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Env, AuthContext } from "../../types";
+import { success, error } from "../../lib/response";
 import { requireAdmin } from "./helpers";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
@@ -11,14 +12,7 @@ const GITHUB_REPO = "safetywallet";
 app.get("/issues", requireAdmin, async (c) => {
   const token = c.env.GITHUB_TOKEN;
   if (!token) {
-    return c.json(
-      {
-        success: false,
-        code: "MISSING_TOKEN",
-        message: "GITHUB_TOKEN not configured",
-      },
-      500,
-    );
+    return error(c, "MISSING_TOKEN", "GITHUB_TOKEN not configured", 500);
   }
 
   const state = c.req.query("state") || "open";
@@ -47,30 +41,20 @@ app.get("/issues", requireAdmin, async (c) => {
 
   if (!res.ok) {
     const err = await res.text();
-    return c.json(
-      { success: false, code: "GITHUB_ERROR", message: err },
-      res.status as 400,
-    );
+    return error(c, "GITHUB_ERROR", err, res.status as 400);
   }
 
   const allItems = (await res.json()) as Record<string, unknown>[];
   // GitHub Issues API returns both issues and PRs — filter out PRs
   const issues = allItems.filter((item) => !item.pull_request);
-  return c.json({ success: true, data: issues });
+  return success(c, issues);
 });
 
 /** POST /issues — create GitHub issue with optional codex assignment */
 app.post("/issues", requireAdmin, async (c) => {
   const token = c.env.GITHUB_TOKEN;
   if (!token) {
-    return c.json(
-      {
-        success: false,
-        code: "MISSING_TOKEN",
-        message: "GITHUB_TOKEN not configured",
-      },
-      500,
-    );
+    return error(c, "MISSING_TOKEN", "GITHUB_TOKEN not configured", 500);
   }
 
   const body = await c.req.json<{
@@ -81,10 +65,7 @@ app.post("/issues", requireAdmin, async (c) => {
   }>();
 
   if (!body.title?.trim()) {
-    return c.json(
-      { success: false, code: "INVALID_INPUT", message: "title is required" },
-      400,
-    );
+    return error(c, "INVALID_INPUT", "title is required");
   }
 
   const labels = body.labels || [];
@@ -114,10 +95,7 @@ app.post("/issues", requireAdmin, async (c) => {
 
   if (!createRes.ok) {
     const err = await createRes.text();
-    return c.json(
-      { success: false, code: "GITHUB_ERROR", message: err },
-      createRes.status as 400,
-    );
+    return error(c, "GITHUB_ERROR", err, createRes.status as 400);
   }
 
   const issue = (await createRes.json()) as {
@@ -175,7 +153,7 @@ app.post("/issues", requireAdmin, async (c) => {
     );
   }
 
-  return c.json({ success: true, data: issue }, 201);
+  return success(c, issue, 201);
 });
 
 export default app;

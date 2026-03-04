@@ -94,7 +94,7 @@ async function createApp(kvGet = vi.fn(), kvPut = vi.fn()) {
   const { default: settlementsRoute } = await import("../settlements");
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
-    c.set("auth", { user: { id: "admin-1", role: "ADMIN" } });
+    c.set("auth", { user: { id: "admin-1", role: "SITE_ADMIN" } });
     await next();
   });
   app.route("/admin", settlementsRoute);

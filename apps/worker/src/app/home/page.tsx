@@ -82,7 +82,7 @@ export default function HomePage() {
             {t("auth.noSitesAvailable")}
           </h2>
           <p className="text-sm text-muted-foreground max-w-xs">
-            잠시만 기다려주세요...
+            {t("home.pleaseWait")}
           </p>
         </main>
         <BottomNav />
@@ -102,9 +102,12 @@ export default function HomePage() {
             <CardContent className="p-4 flex items-center gap-3">
               <CheckCircle className="h-8 w-8 text-green-500 flex-shrink-0" />
               <div>
-                <p className="font-medium text-green-700">출근 완료</p>
+                <p className="font-medium text-green-700">
+                  {t("home.checkedIn")}
+                </p>
                 <p className="text-sm text-green-600">
-                  {formatCheckinTime(attendanceData.checkinAt)} 체크인
+                  {formatCheckinTime(attendanceData.checkinAt)}{" "}
+                  {t("home.checkIn")}
                 </p>
               </div>
             </CardContent>
@@ -114,9 +117,11 @@ export default function HomePage() {
             <CardContent className="p-4 flex items-center gap-3">
               <XCircle className="h-8 w-8 text-amber-500 flex-shrink-0" />
               <div>
-                <p className="font-medium text-amber-700">미출근</p>
+                <p className="font-medium text-amber-700">
+                  {t("home.notCheckedIn")}
+                </p>
                 <p className="text-sm text-amber-600">
-                  안면인식으로 출근 체크인 해주세요
+                  {t("home.checkInPrompt")}
                 </p>
               </div>
             </CardContent>

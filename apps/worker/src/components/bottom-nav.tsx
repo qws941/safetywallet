@@ -31,7 +31,7 @@ export function BottomNav() {
                 key={item.href}
                 href={item.href}
                 className="flex items-center justify-center w-14 h-14 -mt-5 bg-primary rounded-full shadow-lg"
-                aria-label="새 제보 작성"
+                aria-label={t("nav.createReportAria")}
               >
                 <Icon className="w-6 h-6 text-primary-foreground" />
               </Link>

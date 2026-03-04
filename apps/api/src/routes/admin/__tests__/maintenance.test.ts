@@ -34,7 +34,7 @@ function buildApp() {
   const app = new Hono<AppEnv>();
 
   app.use("*", async (c, next) => {
-    c.set("auth", makeAuth("ADMIN"));
+    c.set("auth", makeAuth("SITE_ADMIN"));
     await next();
   });
 

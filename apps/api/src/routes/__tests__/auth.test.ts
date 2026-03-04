@@ -722,7 +722,7 @@ describe("auth", () => {
       mockLimit.mockReturnValueOnce([
         {
           id: "user-1",
-          role: "ADMIN",
+          role: "SITE_ADMIN",
           refreshTokenExpiresAt: null,
           piiViewFull: true,
           phoneEncrypted: "encrypted-phone",

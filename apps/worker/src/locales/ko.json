@@ -56,6 +56,9 @@
     "loginPageSubtitle": "휴대폰, 이름, 생년월일로 로그인",
     "loginPageHint": "등록된 전화번호, 이름, 생년월일로 로그인합니다.",
     "loginPageNote": "최초 이용 시 출근 기록이 필요할 수 있습니다.",
+    "loginAttendanceOnly": "출근 인식된 사용자만 로그인할 수 있습니다",
+    "loginFieldGuide": "이름 / 휴대폰 번호 / 생년월일을 입력해 주세요",
+    "loginFieldLoginOnly": "현장 출근 인식 사용자 전용 로그인",
     "noAccount": "계정이 없으신가요?",
     "tabPhone": "휴대폰 로그인",
     "tabAcetime": "AceTime 로그인",
@@ -69,6 +72,11 @@
     "welcome": "안녕하세요",
     "myPoints": "나의 포인트",
     "myRank": "나의 순위",
+    "checkIn": "체크인",
+    "checkInPrompt": "안면인식으로 출근 체크인 해주세요",
+    "checkedIn": "출근 완료",
+    "notCheckedIn": "미출근",
+    "pleaseWait": "잠시만 기다려주세요...",
     "recentReports": "최근 보고서",
     "noReports": "보고서가 없습니다",
     "viewAll": "모두 보기",
@@ -79,12 +87,14 @@
     "home": "홈",
     "education": "교육",
     "create": "작성",
+    "createReportAria": "새 제보 작성",
     "actions": "시정조치",
     "profile": "프로필"
   },
   "posts": {
     "title": "안전 보고",
     "new": {
+      "addPhotoVideo": "사진/동영상 추가",
       "title": "새 보고서",
       "anonymous": "익명으로 제보",
       "zone": "구역",
@@ -267,7 +277,14 @@
     "companyName": "소속업체",
     "tradeType": "공종",
     "workerInfo": "근로자 정보",
-    "noName": "이름 없음"
+    "noName": "이름 없음",
+    "pushAriaLabel": "푸시 알림 수신",
+    "pushDisabled": "중요 공지와 안내를 알림으로 받을 수 있습니다.",
+    "pushEnabled": "알림 수신이 활성화되었습니다.",
+    "pushNotSupported": "현재 기기에서는 푸시 알림을 지원하지 않습니다.",
+    "pushNotifications": "푸시 알림",
+    "pushUpdating": "알림 설정을 적용하는 중입니다...",
+    "copyright": "© 2026 송도세브란스 SafetyWallet"
   },
   "announcements": {
     "title": "공지사항",
@@ -706,7 +723,22 @@
   },
   "components": {
     "appTitle": "송도세브란스 안전지갑",
+    "attended": "출근",
     "siteIdLabel": "현장 ID:",
+    "installBanner": {
+      "close": "닫기",
+      "description": "홈 화면에 추가하여 빠르게 접근하세요",
+      "install": "설치",
+      "title": "앱 설치하기"
+    },
+    "notAttended": "미출근",
+    "offlineQueue": {
+      "countUnit": "건",
+      "offline": "오프라인",
+      "pending": "오프라인 대기",
+      "syncing": "동기화 중...",
+      "syncNow": "지금 동기화"
+    },
     "unsafeWarningTitle": "⚠️ 불안전행동 제보 안내",
     "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",
     "unsafeWarningPrivacyNote": "제보 시 얼굴이나 개인정보가 노출되지 않도록 주의해 주세요.",

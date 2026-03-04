@@ -63,7 +63,7 @@ describe("Header", () => {
 
     render(<Header />);
 
-    expect(screen.getByText(/출근/)).toBeInTheDocument();
+    expect(screen.getByText(/components\.attended/)).toBeInTheDocument();
   });
 
   it("shows not-attended badge when attendance data has attended=false", () => {
@@ -84,7 +84,7 @@ describe("Header", () => {
 
     render(<Header />);
 
-    expect(screen.getByText("미출근")).toBeInTheDocument();
+    expect(screen.getByText("components.notAttended")).toBeInTheDocument();
   });
 
   it("does not show badge before hydration", () => {
@@ -100,7 +100,9 @@ describe("Header", () => {
 
     render(<Header />);
 
-    expect(screen.queryByText(/출근/)).not.toBeInTheDocument();
-    expect(screen.queryByText("미출근")).not.toBeInTheDocument();
+    expect(screen.queryByText("components.attended")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("components.notAttended"),
+    ).not.toBeInTheDocument();
   });
 });

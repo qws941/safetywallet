@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Button } from "@safetywallet/ui";
+import { useTranslation } from "@/hooks/use-translation";
 import { flushOfflineQueue, getOfflineQueueLength } from "@/lib/api";
 
 export function OfflineQueueIndicator() {
+  const t = useTranslation();
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -52,8 +54,13 @@ export function OfflineQueueIndicator() {
   return (
     <div className="fixed bottom-24 right-4 z-50 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
       <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium">오프라인 대기</span>
-        <Badge variant="secondary">{pendingCount}건</Badge>
+        <span className="font-medium">
+          {t("components.offlineQueue.pending")}
+        </span>
+        <Badge variant="secondary">
+          {pendingCount}
+          {t("components.offlineQueue.countUnit")}
+        </Badge>
       </div>
       <div className="mt-2">
         <Button
@@ -62,7 +69,11 @@ export function OfflineQueueIndicator() {
           disabled={!isOnline || isSyncing}
           onClick={handleSyncNow}
         >
-          {isSyncing ? "동기화 중..." : isOnline ? "지금 동기화" : "오프라인"}
+          {isSyncing
+            ? t("components.offlineQueue.syncing")
+            : isOnline
+              ? t("components.offlineQueue.syncNow")
+              : t("components.offlineQueue.offline")}
         </Button>
       </div>
     </div>

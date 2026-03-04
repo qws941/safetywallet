@@ -469,7 +469,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
       return error(c, "POST_NOT_FOUND", "Post not found", 404);
     }
 
-    if (post.userId !== user.id && user.role !== "ADMIN") {
+    if (post.userId !== user.id && user.role !== "SITE_ADMIN") {
       return error(
         c,
         "UNAUTHORIZED",

@@ -25,7 +25,7 @@ export async function compressImage(file: File): Promise<File> {
 
   // Reject files over 10MB
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error("이미지 크기는 10MB를 초과할 수 없습니다.");
+    throw new Error("Image size cannot exceed 10MB.");
   }
 
   const isSmall = file.size < SMALL_FILE_THRESHOLD;

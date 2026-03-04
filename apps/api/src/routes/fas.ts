@@ -12,6 +12,8 @@ import { authMiddleware } from "../middleware/auth";
 import { maskName } from "../utils/common";
 import { AdminSyncWorkersSchema } from "../validators/schemas";
 
+const FAS_EMPLOYEES_LIMIT = 1000;
+
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
 app.post(
@@ -275,7 +277,7 @@ app.delete("/workers/:externalWorkerId", authMiddleware, async (c) => {
 app.get("/employees", authMiddleware, async (c) => {
   const auth = c.get("auth");
   if (
-    auth.user.role !== "ADMIN" &&
+    auth.user.role !== "SITE_ADMIN" &&
     auth.user.role !== "SITE_ADMIN" &&
     auth.user.role !== "SUPER_ADMIN"
   ) {
@@ -293,7 +295,7 @@ app.get("/employees", authMiddleware, async (c) => {
     .from(users)
     .where(eq(users.externalSystem, "FAS"))
     .orderBy(desc(users.updatedAt))
-    .limit(1000);
+    .limit(FAS_EMPLOYEES_LIMIT);
 
   return success(c, { employees });
 });

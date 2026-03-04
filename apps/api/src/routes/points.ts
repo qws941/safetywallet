@@ -22,6 +22,8 @@ import {
   PointsLeaderboardQuerySchema,
 } from "../validators/query";
 
+const POINT_HISTORY_LIMIT = 20;
+
 const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
@@ -197,7 +199,7 @@ app.get("/", zValidator("query", PointsSiteQuerySchema), async (c) => {
       and(eq(pointsLedger.userId, user.id), eq(pointsLedger.siteId, siteId)),
     )
     .orderBy(desc(pointsLedger.createdAt))
-    .limit(20)
+    .limit(POINT_HISTORY_LIMIT)
     .all();
 
   return success(c, { balance: balanceResult?.total ?? 0, history });
@@ -252,12 +254,7 @@ app.get("/history", async (c) => {
 
   const parsed = querySchema.safeParse(c.req.query());
   if (!parsed.success) {
-    return c.json(
-      {
-        error: { code: "INVALID_QUERY_PARAMS", message: parsed.error.message },
-      },
-      400,
-    );
+    return error(c, "INVALID_QUERY_PARAMS", parsed.error.message);
   }
   const query = parsed.data;
 

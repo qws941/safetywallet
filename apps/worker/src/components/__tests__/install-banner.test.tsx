@@ -4,6 +4,9 @@ import { InstallBanner } from "@/components/install-banner";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 
 vi.mock("@/hooks/use-install-prompt", () => ({ useInstallPrompt: vi.fn() }));
+vi.mock("@/hooks/use-translation", () => ({
+  useTranslation: () => (key: string) => key,
+}));
 
 describe("InstallBanner", () => {
   it("returns null when install is not available", () => {
@@ -30,8 +33,12 @@ describe("InstallBanner", () => {
 
     render(<InstallBanner />);
 
-    fireEvent.click(screen.getByRole("button", { name: "설치" }));
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "components.installBanner.install" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "components.installBanner.close" }),
+    );
 
     expect(promptInstall).toHaveBeenCalled();
     expect(dismissBanner).toHaveBeenCalled();

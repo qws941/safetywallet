@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { UserRole } from "@safetywallet/types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+import { API_BASE } from "@/lib/api";
 
 interface User {
   id: string;

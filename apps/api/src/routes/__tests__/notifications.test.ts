@@ -125,7 +125,7 @@ interface AuthContext {
   loginDate: string;
 }
 
-function makeAuth(role = "ADMIN", userId = "user-1"): AuthContext {
+function makeAuth(role = "SITE_ADMIN", userId = "user-1"): AuthContext {
   return {
     user: {
       id: userId,
@@ -357,7 +357,7 @@ describe("routes/notifications", () => {
 
     it("handles no subscriptions case", async () => {
       mockAll.mockResolvedValue([]);
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -390,7 +390,7 @@ describe("routes/notifications", () => {
         failureCount: 0,
         results: [{ success: true }],
       });
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -433,7 +433,7 @@ describe("routes/notifications", () => {
         results: [{ success: true }, { success: true }],
       });
 
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -481,7 +481,7 @@ describe("routes/notifications", () => {
         results: [{ success: true }, { success: true }],
       });
 
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -512,7 +512,7 @@ describe("routes/notifications", () => {
         results: [{ success: true }, { success: true }],
       });
 
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -535,7 +535,7 @@ describe("routes/notifications", () => {
     });
 
     it("returns 503 if VAPID not configured", async () => {
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -568,7 +568,7 @@ describe("routes/notifications", () => {
       ];
       mockAll.mockResolvedValue(subs);
       const mockQueue = { send: vi.fn().mockResolvedValue(undefined) };
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const env = {
         ...makeEnv(),
         NOTIFICATION_QUEUE: mockQueue,
@@ -624,7 +624,7 @@ describe("routes/notifications", () => {
       });
 
       const mockQueue = { send: vi.fn().mockResolvedValue(undefined) };
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const env = {
         ...makeEnv(),
         NOTIFICATION_QUEUE: mockQueue,
@@ -698,7 +698,7 @@ describe("routes/notifications", () => {
         results: [{ success: true }, { success: true }],
       });
 
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {
@@ -753,7 +753,7 @@ describe("routes/notifications", () => {
       ] as never);
       vi.mocked(shouldRemoveSubscription).mockReturnValue(false);
 
-      const app = await createApp(makeAuth("ADMIN"));
+      const app = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/notifications/send",
         {

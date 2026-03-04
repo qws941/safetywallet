@@ -13,7 +13,7 @@ describe("i18n/index", () => {
 
   it("re-exports locale config", () => {
     expect(i18n.defaultLocale).toBe("ko");
-    expect(i18n.locales).toEqual(["ko", "en", "zh"]);
+    expect(i18n.locales).toEqual(["ko", "en", "vi", "zh"]);
     expect(i18n.localeNames.ko).toBe("한국어");
   });
 });

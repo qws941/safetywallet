@@ -125,7 +125,7 @@ describe("sites route", () => {
 
   describe("GET /", () => {
     it("returns 200 for ADMIN with empty site list", async () => {
-      const { app, env } = createApp(makeAuth("ADMIN"));
+      const { app, env } = createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("http://localhost/sites", {}, env);
       expect(res.status).toBe(200);
     });
@@ -141,7 +141,7 @@ describe("sites route", () => {
 
   describe("GET /:id", () => {
     it("returns 404 when site not found", async () => {
-      const { app, env } = createApp(makeAuth("ADMIN"));
+      const { app, env } = createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("http://localhost/sites/site-1", {}, env);
       expect(res.status).toBe(404);
     });
@@ -261,27 +261,13 @@ describe("sites route", () => {
       expect(res.status).toBe(403);
     });
 
-    it("returns 403 for SITE_ADMIN creating a site", async () => {
-      const { app, env } = createApp(makeAuth("SITE_ADMIN"));
-      const res = await app.request(
-        "http://localhost/sites",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "Test Site" }),
-        },
-        env,
-      );
-      expect(res.status).toBe(403);
-    });
-
-    it("creates site for ADMIN", async () => {
+    it("creates site for SITE_ADMIN", async () => {
       mockInsertGetQueue.push({
         id: "site-1",
         name: "Test Site",
         active: true,
       });
-      const { app, env } = createApp(makeAuth("ADMIN"));
+      const { app, env } = createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "http://localhost/sites",
         {

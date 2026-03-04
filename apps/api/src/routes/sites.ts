@@ -29,7 +29,7 @@ app.get("/", zValidator("query", SitesListQuerySchema), async (c) => {
   const { user } = c.get("auth");
   const { limit, offset } = c.req.valid("query");
 
-  if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+  if (user.role === "SITE_ADMIN" || user.role === "SUPER_ADMIN") {
     const allSites = await db
       .select()
       .from(sites)
@@ -78,7 +78,7 @@ app.get("/:id", async (c) => {
     return error(c, "SITE_NOT_FOUND", "Site not found", 404);
   }
 
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
     const membership = await db
       .select()
       .from(siteMemberships)
@@ -138,13 +138,17 @@ app.get(
       )
       .get();
 
-    if (!membership && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    if (
+      !membership &&
+      user.role !== "SITE_ADMIN" &&
+      user.role !== "SUPER_ADMIN"
+    ) {
       return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
     }
 
     if (
       membership?.role === "WORKER" &&
-      user.role !== "ADMIN" &&
+      user.role !== "SITE_ADMIN" &&
       user.role !== "SUPER_ADMIN"
     ) {
       return error(c, "NOT_AUTHORIZED", "Not authorized to view members", 403);
@@ -193,13 +197,17 @@ app.get("/:id/members/:memberId", async (c) => {
     )
     .get();
 
-  if (!membership && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (
+    !membership &&
+    user.role !== "SITE_ADMIN" &&
+    user.role !== "SUPER_ADMIN"
+  ) {
     return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
   }
 
   if (
     membership?.role === "WORKER" &&
-    user.role !== "ADMIN" &&
+    user.role !== "SITE_ADMIN" &&
     user.role !== "SUPER_ADMIN"
   ) {
     return error(c, "NOT_AUTHORIZED", "Not authorized to view members", 403);
@@ -235,7 +243,7 @@ app.post("/", zValidator("json", CreateSiteSchema as never), async (c) => {
   const { user } = c.get("auth");
   const data: z.infer<typeof CreateSiteSchema> = c.req.valid("json");
 
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
     return error(c, "ADMIN_ONLY", "Only admins can create sites", 403);
   }
 
@@ -258,7 +266,7 @@ app.patch("/:id", zValidator("json", UpdateSiteSchema), async (c) => {
   const siteId = c.req.param("id");
   const data = c.req.valid("json");
 
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
     const membership = await db
       .select()
       .from(siteMemberships)

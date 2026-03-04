@@ -97,7 +97,7 @@ describe("app/home/page", () => {
     render(<HomePage />);
 
     expect(screen.getByText("auth.noSitesAvailable")).toBeInTheDocument();
-    expect(screen.getByText("잠시만 기다려주세요...")).toBeInTheDocument();
+    expect(screen.getByText("home.pleaseWait")).toBeInTheDocument();
   });
 
   it("renders dashboard links and cards", () => {

@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import type { Env, AuthContext } from "../../types";
+import { success } from "../../lib/response";
 import {
   educationCompletions,
   educationContents,
@@ -80,18 +81,14 @@ app.get(
 
     const total = totalResult[0]?.count ?? 0;
 
-    return c.json({
-      success: true,
-      data: {
-        items,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+    return success(c, {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-      timestamp: new Date().toISOString(),
     });
   },
 );

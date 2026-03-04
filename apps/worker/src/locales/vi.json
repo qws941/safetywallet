@@ -56,6 +56,9 @@
     "loginPageSubtitle": "Đăng nhập bằng số điện thoại, họ tên và ngày sinh",
     "loginPageHint": "Đăng nhập bằng số điện thoại, họ tên và ngày sinh đã đăng ký.",
     "loginPageNote": "Có thể cần bản ghi chấm công khi sử dụng lần đầu.",
+    "loginAttendanceOnly": "Chỉ người đã được xác nhận chấm công mới có thể đăng nhập",
+    "loginFieldGuide": "Vui lòng nhập họ tên / số điện thoại / ngày sinh",
+    "loginFieldLoginOnly": "Đăng nhập dành cho người đã được nhận diện tại công trường",
     "noAccount": "Chưa có tài khoản?",
     "tabPhone": "Đăng nhập SĐT",
     "tabAcetime": "Đăng nhập AceTime",
@@ -69,6 +72,11 @@
     "welcome": "Xin chào",
     "myPoints": "Điểm của tôi",
     "myRank": "Xếp hạng của tôi",
+    "checkIn": "Điểm danh",
+    "checkInPrompt": "Vui lòng điểm danh bằng nhận diện khuôn mặt",
+    "checkedIn": "Đã điểm danh",
+    "notCheckedIn": "Chưa điểm danh",
+    "pleaseWait": "Vui lòng chờ trong giây lát...",
     "recentReports": "Báo cáo gần đây",
     "noReports": "Không có báo cáo",
     "viewAll": "Xem tất cả",
@@ -79,12 +87,19 @@
     "home": "Trang chủ",
     "education": "Đào tạo",
     "create": "Tạo mới",
+    "createReportAria": "Tạo báo cáo mới",
     "actions": "Khắc phục",
     "profile": "Hồ sơ"
   },
   "posts": {
     "title": "Báo cáo an toàn",
-    "new": "Báo cáo mới",
+    "new": {
+      "addPhotoVideo": "Thêm ảnh/video",
+      "anonymous": "Báo cáo ẩn danh",
+      "title": "Báo cáo mới",
+      "unsafeBehaviorWarning": "Khi báo cáo hành vi không an toàn, vui lòng không đưa thông tin cá nhân.",
+      "zone": "Khu vực"
+    },
     "createReport": "Tạo báo cáo",
     "selectCategory": "Vui lòng chọn danh mục",
     "category": {
@@ -250,7 +265,14 @@
     "companyName": "Công ty",
     "tradeType": "Ngành nghề",
     "workerInfo": "Thông tin công nhân",
-    "noName": "Không có tên"
+    "noName": "Không có tên",
+    "pushAriaLabel": "Nhận thông báo đẩy",
+    "pushDisabled": "Bạn có thể nhận thông báo cho các thông tin quan trọng.",
+    "pushEnabled": "Thông báo đã được bật.",
+    "pushNotSupported": "Thiết bị hiện tại không hỗ trợ thông báo đẩy.",
+    "pushNotifications": "Thông báo đẩy",
+    "pushUpdating": "Đang áp dụng cài đặt thông báo...",
+    "copyright": "© 2026 Songdo Severance SafetyWallet"
   },
   "announcements": {
     "title": "Thông báo",
@@ -669,7 +691,22 @@
   },
   "components": {
     "appTitle": "Ví An Toàn",
+    "attended": "Đã điểm danh",
     "siteIdLabel": "Mã công trường:",
+    "installBanner": {
+      "close": "Đóng",
+      "description": "Thêm vào màn hình chính để truy cập nhanh",
+      "install": "Cài đặt",
+      "title": "Cài đặt ứng dụng"
+    },
+    "notAttended": "Chưa điểm danh",
+    "offlineQueue": {
+      "countUnit": " mục",
+      "offline": "Ngoại tuyến",
+      "pending": "Hàng chờ ngoại tuyến",
+      "syncing": "Đang đồng bộ...",
+      "syncNow": "Đồng bộ ngay"
+    },
     "unsafeWarningTitle": "\u26a0\ufe0f Hướng dẫn báo cáo hành vi không an toàn",
     "unsafeWarningImprovementNote": "Báo cáo hành vi không an toàn được sử dụng nhằm mục đích cải thiện, không phải xử phạt cá nhân.",
     "unsafeWarningPrivacyNote": "Vui lòng chú ý không để lộ khuôn mặt hoặc thông tin cá nhân khi báo cáo.",

@@ -108,7 +108,7 @@ interface AuthContext {
   loginDate: string;
 }
 
-function makeAuth(role = "ADMIN", userId = "user-1"): AuthContext {
+function makeAuth(role = "SITE_ADMIN", userId = "user-1"): AuthContext {
   return {
     user: {
       id: userId,
@@ -153,7 +153,7 @@ describe("routes/approvals", () => {
     });
 
     it("returns 400 for invalid status parameter", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals?status=INVALID_STATUS",
         {},
@@ -178,7 +178,7 @@ describe("routes/approvals", () => {
         },
       ];
       mockFindMany.mockResolvedValue(mockApprovals);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/approvals?limit=10&offset=0", {}, env);
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -191,7 +191,7 @@ describe("routes/approvals", () => {
 
     it("returns approvals with date filter", async () => {
       mockFindMany.mockResolvedValue([]);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/approvals?date=2025-01-15", {}, env);
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -203,7 +203,7 @@ describe("routes/approvals", () => {
 
     it("returns approvals with valid status filter", async () => {
       mockFindMany.mockResolvedValue([]);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/approvals?status=PENDING", {}, env);
       expect(res.status).toBe(200);
     });
@@ -230,7 +230,7 @@ describe("routes/approvals", () => {
 
     it("returns 404 if approval not found", async () => {
       mockFindFirst.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/nonexistent/approve",
         { method: "POST" },
@@ -271,7 +271,7 @@ describe("routes/approvals", () => {
         siteId: null,
         userId: "u1",
       });
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/approve",
         { method: "POST" },
@@ -294,7 +294,7 @@ describe("routes/approvals", () => {
         requestedDate: "2025-01-15",
       });
       mockReturningGet.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/approve",
         { method: "POST" },
@@ -319,7 +319,7 @@ describe("routes/approvals", () => {
       mockReturningGet.mockResolvedValue({ id: "a1", status: "APPROVED" });
       // existingAttendance check via db.query.attendance.findFirst()
       mockAttendanceFindFirst.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/approve",
         { method: "POST" },
@@ -351,7 +351,7 @@ describe("routes/approvals", () => {
     });
 
     it("returns 400 if reason is missing", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/reject",
         {
@@ -366,7 +366,7 @@ describe("routes/approvals", () => {
 
     it("returns 404 if approval not found", async () => {
       mockFindFirst.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/reject",
         {
@@ -386,7 +386,7 @@ describe("routes/approvals", () => {
         siteId: null,
         userId: "u1",
       });
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/reject",
         {
@@ -407,7 +407,7 @@ describe("routes/approvals", () => {
         userId: "u1",
       });
       mockReturningGet.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/reject",
         {
@@ -428,7 +428,7 @@ describe("routes/approvals", () => {
         userId: "u1",
       });
       mockReturningGet.mockResolvedValue({ id: "a1", status: "REJECTED" });
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/approvals/a1/reject",
         {

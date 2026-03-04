@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq, and, desc, gte, lte, count, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env, AuthContext } from "../../types";
+import { success } from "../../lib/response";
 import { recommendations, users, sites } from "../../db/schema";
 import * as schema from "../../db/schema";
 import { requireAdmin, buildCsv, csvResponse } from "./helpers";
@@ -77,18 +78,14 @@ app.get(
 
     const total = totalResult[0]?.count ?? 0;
 
-    return c.json({
-      success: true,
-      data: {
-        items,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+    return success(c, {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-      timestamp: new Date().toISOString(),
     });
   },
 );
@@ -143,14 +140,10 @@ app.get(
         .limit(30),
     ]);
 
-    return c.json({
-      success: true,
-      data: {
-        totalRecommendations: totalResult[0]?.count ?? 0,
-        topRecommended,
-        dailyCounts,
-      },
-      timestamp: new Date().toISOString(),
+    return success(c, {
+      totalRecommendations: totalResult[0]?.count ?? 0,
+      topRecommended,
+      dailyCounts,
     });
   },
 );

@@ -390,7 +390,9 @@ export default function NewPostPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">사진/동영상 추가</CardTitle>
+              <CardTitle className="text-base">
+                {t("posts.new.addPhotoVideo")}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <input
@@ -406,7 +408,7 @@ export default function NewPostPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full p-3 border-2 border-dashed border-border rounded-lg hover:border-primary transition-colors"
               >
-                사진/동영상 추가
+                {t("posts.new.addPhotoVideo")}
               </button>
 
               {files.length > 0 && (

@@ -7,6 +7,9 @@ vi.mock("@/components/auth-guard", () => ({
     <div data-testid="auth-guard">{children}</div>
   ),
 }));
+vi.mock("@/hooks/use-translation", () => ({
+  useTranslation: () => (key: string) => key,
+}));
 vi.mock("@/i18n", () => ({
   I18nProvider: ({
     children,

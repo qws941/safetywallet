@@ -300,7 +300,7 @@ describe("authMiddleware", () => {
       mockVerifyJwt.mockResolvedValue({
         sub: "user-no-kv-2",
         phone: "010-7777-8888",
-        role: "ADMIN",
+        role: "SITE_ADMIN",
         loginDate: "2025-01-15",
       });
       mockCheckSameDay.mockReturnValue(true);

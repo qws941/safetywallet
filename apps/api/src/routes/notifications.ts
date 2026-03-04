@@ -176,7 +176,7 @@ app.post("/send", zValidator("json", SendPushSchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
     return error(c, "FORBIDDEN", "관리자만 푸시 알림을 보낼 수 있습니다.", 403);
   }
 

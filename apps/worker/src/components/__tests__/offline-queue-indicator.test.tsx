@@ -7,6 +7,9 @@ vi.mock("@/lib/api", () => ({
   flushOfflineQueue: vi.fn(),
   getOfflineQueueLength: vi.fn(),
 }));
+vi.mock("@/hooks/use-translation", () => ({
+  useTranslation: () => (key: string) => key,
+}));
 
 describe("OfflineQueueIndicator", () => {
   beforeEach(() => {
@@ -26,8 +29,12 @@ describe("OfflineQueueIndicator", () => {
 
     render(<OfflineQueueIndicator />);
 
-    expect(await screen.findByText("오프라인 대기")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "오프라인" })).toBeDisabled();
+    expect(
+      await screen.findByText("components.offlineQueue.pending"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "components.offlineQueue.offline" }),
+    ).toBeDisabled();
   });
 
   it("syncs queue when online", async () => {
@@ -36,7 +43,11 @@ describe("OfflineQueueIndicator", () => {
 
     render(<OfflineQueueIndicator />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "지금 동기화" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "components.offlineQueue.syncNow",
+      }),
+    );
 
     await waitFor(() => {
       expect(flushOfflineQueue).toHaveBeenCalled();

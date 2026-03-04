@@ -154,25 +154,27 @@ export default function ProfilePage() {
           <CardContent className="py-4 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="font-medium">푸시 알림</h3>
+                <h3 className="font-medium">
+                  {t("profile.pushNotifications")}
+                </h3>
                 <p className="text-xs text-muted-foreground">
                   {isSupported
                     ? isSubscribed
-                      ? "알림 수신이 활성화되었습니다."
-                      : "중요 공지와 안내를 알림으로 받을 수 있습니다."
-                    : "현재 기기에서는 푸시 알림을 지원하지 않습니다."}
+                      ? t("profile.pushEnabled")
+                      : t("profile.pushDisabled")
+                    : t("profile.pushNotSupported")}
                 </p>
               </div>
               <Switch
                 checked={isSubscribed}
                 disabled={!isSupported || isPushLoading}
                 onCheckedChange={handlePushToggle}
-                aria-label="푸시 알림 수신"
+                aria-label={t("profile.pushAriaLabel")}
               />
             </div>
             {isPushLoading ? (
               <p className="text-xs text-muted-foreground">
-                알림 설정을 적용하는 중입니다...
+                {t("profile.pushUpdating")}
               </p>
             ) : null}
             {pushError ? (
@@ -230,7 +232,7 @@ export default function ProfilePage() {
         {/* App Info */}
         <Card>
           <CardContent className="py-4 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 송도세브란스 SafetyWallet</p>
+            <p>{t("profile.copyright")}</p>
           </CardContent>
         </Card>
       </main>

@@ -50,7 +50,7 @@ app.get("/", async (c) => {
   const offset = parseInt(c.req.query("offset") || "0") || 0;
 
   // Admin users are exempt from attendance checks
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
     await attendanceMiddleware(c, async () => {}, siteId);
   }
 
@@ -67,7 +67,11 @@ app.get("/", async (c) => {
       )
       .get();
 
-    if (!membership && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    if (
+      !membership &&
+      user.role !== "SITE_ADMIN" &&
+      user.role !== "SUPER_ADMIN"
+    ) {
       return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
     }
   }
@@ -81,7 +85,7 @@ app.get("/", async (c) => {
   }
 
   // Non-admin users only see published announcements
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
     conditions.push(eq(announcements.isPublished, true));
   }
 
@@ -158,7 +162,7 @@ app.post(
       );
     }
 
-    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
       if (!body.siteId) {
         return error(
           c,
@@ -219,14 +223,14 @@ app.patch(
     }
 
     if (
-      user.role !== "ADMIN" &&
+      user.role !== "SITE_ADMIN" &&
       user.role !== "SUPER_ADMIN" &&
       announcement.authorId !== user.id
     ) {
       return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
     }
 
-    if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    if (user.role !== "SITE_ADMIN" && user.role !== "SUPER_ADMIN") {
       const membership = await getActiveMembership(
         db,
         user.id,
@@ -283,7 +287,7 @@ app.delete("/:id", async (c) => {
   }
 
   if (
-    user.role !== "ADMIN" &&
+    user.role !== "SITE_ADMIN" &&
     user.role !== "SUPER_ADMIN" &&
     announcement.authorId !== user.id
   ) {

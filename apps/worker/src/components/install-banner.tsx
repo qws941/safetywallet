@@ -2,8 +2,10 @@
 
 import { Download, X } from "lucide-react";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
+import { useTranslation } from "@/hooks/use-translation";
 
 export function InstallBanner() {
+  const t = useTranslation();
   const { isInstallable, promptInstall, dismissBanner } = useInstallPrompt();
 
   if (!isInstallable) return null;
@@ -15,7 +17,7 @@ export function InstallBanner() {
           type="button"
           onClick={dismissBanner}
           className="absolute right-2 top-2 p-1 text-slate-400 hover:text-white"
-          aria-label="닫기"
+          aria-label={t("components.installBanner.close")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -26,10 +28,10 @@ export function InstallBanner() {
           </div>
           <div className="flex-1">
             <h3 className="font-semibold leading-none tracking-tight">
-              앱 설치하기
+              {t("components.installBanner.title")}
             </h3>
             <p className="mt-1 text-xs text-slate-300">
-              홈 화면에 추가하여 빠르게 접근하세요
+              {t("components.installBanner.description")}
             </p>
           </div>
           <button
@@ -37,7 +39,7 @@ export function InstallBanner() {
             onClick={promptInstall}
             className="flex-shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 active:bg-blue-700"
           >
-            설치
+            {t("components.installBanner.install")}
           </button>
         </div>
       </div>

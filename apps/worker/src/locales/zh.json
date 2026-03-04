@@ -56,6 +56,9 @@
     "loginPageSubtitle": "使用手机号、姓名和出生日期登录",
     "loginPageHint": "使用已注册的电话号码、姓名和出生日期登录。",
     "loginPageNote": "首次使用时可能需要考勤记录。",
+    "loginAttendanceOnly": "仅已识别出勤的用户可登录",
+    "loginFieldGuide": "请输入姓名 / 手机号 / 出生日期",
+    "loginFieldLoginOnly": "仅限工地出勤识别用户登录",
     "noAccount": "没有账户？",
     "tabPhone": "手机登录",
     "tabAcetime": "AceTime登录",
@@ -69,6 +72,11 @@
     "welcome": "你好",
     "myPoints": "我的积分",
     "myRank": "我的排名",
+    "checkIn": "签到",
+    "checkInPrompt": "请通过人脸识别进行签到",
+    "checkedIn": "已签到",
+    "notCheckedIn": "未签到",
+    "pleaseWait": "请稍候...",
     "recentReports": "最近报告",
     "noReports": "没有报告",
     "viewAll": "查看全部",
@@ -79,12 +87,19 @@
     "home": "首页",
     "education": "培训",
     "create": "创建",
+    "createReportAria": "新建举报",
     "actions": "整改",
     "profile": "个人"
   },
   "posts": {
     "title": "安全报告",
-    "new": "新报告",
+    "new": {
+      "addPhotoVideo": "添加照片/视频",
+      "anonymous": "匿名举报",
+      "title": "新报告",
+      "unsafeBehaviorWarning": "举报不安全行为时，请注意不要包含个人信息。",
+      "zone": "区域"
+    },
     "createReport": "创建报告",
     "selectCategory": "请选择类别",
     "category": {
@@ -250,7 +265,14 @@
     "companyName": "所属公司",
     "tradeType": "工种",
     "workerInfo": "工人信息",
-    "noName": "无姓名"
+    "noName": "无姓名",
+    "pushAriaLabel": "接收推送通知",
+    "pushDisabled": "您可以通过通知接收重要公告和提醒。",
+    "pushEnabled": "通知接收已启用。",
+    "pushNotSupported": "当前设备不支持推送通知。",
+    "pushNotifications": "推送通知",
+    "pushUpdating": "正在应用通知设置...",
+    "copyright": "© 2026 Songdo Severance SafetyWallet"
   },
   "announcements": {
     "title": "公告",
@@ -685,7 +707,22 @@
   },
   "components": {
     "appTitle": "安全钱包",
+    "attended": "已签到",
     "siteIdLabel": "工地ID：",
+    "installBanner": {
+      "close": "关闭",
+      "description": "添加到主屏幕以便快速访问",
+      "install": "安装",
+      "title": "安装应用"
+    },
+    "notAttended": "未签到",
+    "offlineQueue": {
+      "countUnit": "条",
+      "offline": "离线",
+      "pending": "离线队列",
+      "syncing": "同步中...",
+      "syncNow": "立即同步"
+    },
     "unsafeWarningTitle": "\u26a0\ufe0f 不安全行为举报指南",
     "unsafeWarningImprovementNote": "不安全行为举报用于改进目的，而非个人处罚。",
     "unsafeWarningPrivacyNote": "举报时请注意不要暴露面部或个人信息。",

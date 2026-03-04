@@ -76,7 +76,7 @@ describe("compressImage", () => {
     const file = makeFile("huge.png", "image/png", 10 * 1024 * 1024 + 1);
 
     await expect(compressImage(file)).rejects.toThrow(
-      "이미지 크기는 10MB를 초과할 수 없습니다.",
+      "Image size cannot exceed 10MB.",
     );
     expect(createImageBitmapMock).not.toHaveBeenCalled();
   });

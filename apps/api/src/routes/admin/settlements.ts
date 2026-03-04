@@ -43,12 +43,7 @@ app.get("/settlements/status", requireManagerOrAdmin, async (c) => {
 
   const parsed = querySchema.safeParse(c.req.query());
   if (!parsed.success) {
-    return c.json(
-      {
-        error: { code: "INVALID_QUERY_PARAMS", message: parsed.error.message },
-      },
-      400,
-    );
+    return error(c, "INVALID_QUERY_PARAMS", parsed.error.message);
   }
   const { month, siteId } = parsed.data;
 

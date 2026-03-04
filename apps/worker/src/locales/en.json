@@ -56,6 +56,9 @@
     "loginPageSubtitle": "Login with phone, name, and date of birth",
     "loginPageHint": "Login with your registered phone number, name, and date of birth.",
     "loginPageNote": "Attendance check-in may be required for first-time use.",
+    "loginAttendanceOnly": "Only workers recognized as checked in can log in",
+    "loginFieldGuide": "Please enter your name / phone number / date of birth",
+    "loginFieldLoginOnly": "Login only for workers recognized at the site",
     "noAccount": "Don't have an account?",
     "tabPhone": "Phone Login",
     "tabAcetime": "AceTime Login",
@@ -69,6 +72,11 @@
     "welcome": "Hello",
     "myPoints": "My Points",
     "myRank": "My Rank",
+    "checkIn": "Check-in",
+    "checkInPrompt": "Please check in with facial recognition",
+    "checkedIn": "Checked In",
+    "notCheckedIn": "Not Checked In",
+    "pleaseWait": "Please wait a moment...",
     "recentReports": "Recent Reports",
     "noReports": "No reports",
     "viewAll": "View All",
@@ -79,12 +87,19 @@
     "home": "Home",
     "education": "Education",
     "create": "Create",
+    "createReportAria": "Create new report",
     "actions": "Actions",
     "profile": "Profile"
   },
   "posts": {
     "title": "Safety Reports",
-    "new": "New Report",
+    "new": {
+      "addPhotoVideo": "Add Photo/Video",
+      "anonymous": "Report anonymously",
+      "title": "New Report",
+      "unsafeBehaviorWarning": "When reporting unsafe behavior, make sure no personal information is included.",
+      "zone": "Zone"
+    },
     "createReport": "Create Report",
     "selectCategory": "Select a category",
     "category": {
@@ -250,7 +265,14 @@
     "companyName": "Company",
     "tradeType": "Trade",
     "workerInfo": "Worker Info",
-    "noName": "No Name"
+    "noName": "No Name",
+    "pushAriaLabel": "Receive push notifications",
+    "pushDisabled": "You can receive important notices and guidance as notifications.",
+    "pushEnabled": "Notifications are enabled.",
+    "pushNotSupported": "Push notifications are not supported on this device.",
+    "pushNotifications": "Push Notifications",
+    "pushUpdating": "Applying notification settings...",
+    "copyright": "© 2026 Songdo Severance SafetyWallet"
   },
   "announcements": {
     "title": "Announcements",
@@ -711,7 +733,22 @@
   },
   "components": {
     "appTitle": "송도세브란스 안전지갑",
+    "attended": "Checked In",
     "siteIdLabel": "현장 ID:",
+    "installBanner": {
+      "close": "Close",
+      "description": "Add to your home screen for quick access",
+      "install": "Install",
+      "title": "Install App"
+    },
+    "notAttended": "Not Checked In",
+    "offlineQueue": {
+      "countUnit": " items",
+      "offline": "Offline",
+      "pending": "Offline Queue",
+      "syncing": "Syncing...",
+      "syncNow": "Sync Now"
+    },
     "unsafeWarningTitle": "⚠️ 불안전행동 제보 안내",
     "unsafeWarningImprovementNote": "불안전행동 제보는 개인 처벌이 아닌 개선 목적으로 활용됩니다.",
     "unsafeWarningPrivacyNote": "제보 시 얼굴이나 개인정보가 노출되지 않도록 주의해 주세요.",

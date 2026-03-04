@@ -4,6 +4,9 @@ import LoginClient from "@/app/login/login-client";
 import { useAuth } from "@/hooks/use-auth";
 
 vi.mock("@/hooks/use-auth", () => ({ useAuth: vi.fn() }));
+vi.mock("@/hooks/use-translation", () => ({
+  useTranslation: () => (key: string) => key,
+}));
 
 describe("app/login/login-client", () => {
   const login = vi.fn();
@@ -47,16 +50,16 @@ describe("app/login/login-client", () => {
   it("disables submit until form is valid", () => {
     render(<LoginClient />);
 
-    const button = screen.getByRole("button", { name: "로그인" });
+    const button = screen.getByRole("button", { name: "auth.login" });
     expect(button).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("휴대폰 번호"), {
+    fireEvent.change(screen.getByLabelText("auth.phoneNumber"), {
       target: { value: "01012345678" },
     });
-    fireEvent.change(screen.getByLabelText("이름"), {
+    fireEvent.change(screen.getByLabelText("auth.name"), {
       target: { value: "홍길동" },
     });
-    fireEvent.change(screen.getByLabelText("생년월일"), {
+    fireEvent.change(screen.getByLabelText("auth.dateOfBirth"), {
       target: { value: "900101" },
     });
 
@@ -83,16 +86,16 @@ describe("app/login/login-client", () => {
 
     render(<LoginClient />);
 
-    fireEvent.change(screen.getByLabelText("휴대폰 번호"), {
+    fireEvent.change(screen.getByLabelText("auth.phoneNumber"), {
       target: { value: "01012345678" },
     });
-    fireEvent.change(screen.getByLabelText("이름"), {
+    fireEvent.change(screen.getByLabelText("auth.name"), {
       target: { value: "홍길동" },
     });
-    fireEvent.change(screen.getByLabelText("생년월일"), {
+    fireEvent.change(screen.getByLabelText("auth.dateOfBirth"), {
       target: { value: "900101" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+    fireEvent.click(screen.getByRole("button", { name: "auth.login" }));
 
     await waitFor(() => {
       expect(login).toHaveBeenCalled();
@@ -110,19 +113,21 @@ describe("app/login/login-client", () => {
 
     render(<LoginClient />);
 
-    fireEvent.change(screen.getByLabelText("휴대폰 번호"), {
+    fireEvent.change(screen.getByLabelText("auth.phoneNumber"), {
       target: { value: "01012345678" },
     });
-    fireEvent.change(screen.getByLabelText("이름"), {
+    fireEvent.change(screen.getByLabelText("auth.name"), {
       target: { value: "홍길동" },
     });
-    fireEvent.change(screen.getByLabelText("생년월일"), {
+    fireEvent.change(screen.getByLabelText("auth.dateOfBirth"), {
       target: { value: "900101" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+    fireEvent.click(screen.getByRole("button", { name: "auth.login" }));
 
     await waitFor(() => {
-      expect(screen.getByText("계정을 찾을 수 없습니다.")).toBeInTheDocument();
+      expect(
+        screen.getByText("auth.error.accountNotFound"),
+      ).toBeInTheDocument();
     });
   });
 });

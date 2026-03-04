@@ -794,7 +794,7 @@ describe("routes/posts", () => {
       mockGetQueue.push({ id: "p1", userId: "other-user" });
       mockAllQueue.push([]);
 
-      const { app, env } = await createApp(makeAuth("ADMIN", "admin-1"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN", "admin-1"));
       const res = await app.request("/posts/p1", { method: "DELETE" }, env);
       expect(res.status).toBe(200);
     });

@@ -61,7 +61,7 @@ async function createApp() {
   const { default: distributionsRoute } = await import("../distributions");
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
-    c.set("auth", { user: { id: "admin-1", role: "ADMIN" } });
+    c.set("auth", { user: { id: "admin-1", role: "SITE_ADMIN" } });
     await next();
   });
   app.route("/admin", distributionsRoute);

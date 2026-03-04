@@ -109,7 +109,7 @@ interface AuthContext {
   loginDate: string;
 }
 
-function makeAuth(role = "ADMIN", userId = "user-1"): AuthContext {
+function makeAuth(role = "SITE_ADMIN", userId = "user-1"): AuthContext {
   return {
     user: {
       id: userId,
@@ -148,7 +148,7 @@ describe("routes/announcements", () => {
         },
       ];
       mockAll.mockResolvedValue(mockData);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/announcements", {}, env);
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -179,7 +179,7 @@ describe("routes/announcements", () => {
 
     it("respects limit and offset params", async () => {
       mockAll.mockResolvedValue([]);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements?limit=5&offset=10",
         {},
@@ -196,7 +196,7 @@ describe("routes/announcements", () => {
 
     it("caps limit at 100", async () => {
       mockAll.mockResolvedValue([]);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/announcements?limit=500", {}, env);
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -213,7 +213,7 @@ describe("routes/announcements", () => {
         announcement: { id: "a1", title: "Hello" },
         author: { id: "u1", name: "Author" },
       });
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/announcements/a1", {}, env);
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -225,7 +225,7 @@ describe("routes/announcements", () => {
 
     it("returns 404 when not found", async () => {
       mockGet.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request("/announcements/missing", {}, env);
       expect(res.status).toBe(404);
       const body = (await res.json()) as {
@@ -246,7 +246,7 @@ describe("routes/announcements", () => {
         authorId: "user-1",
       };
       mockInsertReturningGet.mockResolvedValue(newAnnouncement);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements",
         {
@@ -269,7 +269,7 @@ describe("routes/announcements", () => {
     });
 
     it("returns 400 when title is missing", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements",
         {
@@ -286,7 +286,7 @@ describe("routes/announcements", () => {
     });
 
     it("returns 400 when siteId is missing (zod rejects)", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements",
         {
@@ -300,7 +300,7 @@ describe("routes/announcements", () => {
     });
 
     it("returns 400 when title is missing", async () => {
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements",
         {
@@ -388,7 +388,7 @@ describe("routes/announcements", () => {
 
     it("returns 404 when announcement not found", async () => {
       mockSelectFromWhereGet.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements/missing",
         {
@@ -427,7 +427,7 @@ describe("routes/announcements", () => {
         id: "a1",
         authorId: "other-user",
       });
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements/a1",
         {
@@ -440,7 +440,7 @@ describe("routes/announcements", () => {
 
     it("returns 404 when announcement not found", async () => {
       mockSelectFromWhereGet.mockResolvedValue(null);
-      const { app, env } = await createApp(makeAuth("ADMIN"));
+      const { app, env } = await createApp(makeAuth("SITE_ADMIN"));
       const res = await app.request(
         "/announcements/missing",
         {

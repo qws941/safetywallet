@@ -159,7 +159,7 @@ export function csvResponse(
 export const requireAdmin = async (c: AppContext, next: Next) => {
   const { user } = c.get("auth");
   if (
-    user.role !== "ADMIN" &&
+    user.role !== "SITE_ADMIN" &&
     user.role !== "SITE_ADMIN" &&
     user.role !== "SUPER_ADMIN"
   ) {
@@ -206,7 +206,7 @@ export const requireManagerOrAdmin = async (c: AppContext, next: Next) => {
   const { user } = c.get("auth");
   const siteId = c.req.query("siteId") || c.req.param("siteId");
 
-  if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+  if (user.role === "SITE_ADMIN" || user.role === "SUPER_ADMIN") {
     await next();
     return;
   }

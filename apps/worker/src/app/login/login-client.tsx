@@ -11,6 +11,7 @@ import {
   CardDescription,
 } from "@safetywallet/ui";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
 import type {
   ApiResponse,
   AuthResponseDto,
@@ -25,7 +26,7 @@ const ERROR_CODES: Record<string, string> = {
   RATE_LIMIT_EXCEEDED: "auth.error.tooManyAttempts",
 };
 
-function parseErrorMessage(err: unknown): string {
+function parseErrorMessage(err: unknown, t: (key: string) => string): string {
   if (err instanceof Error) {
     try {
       const parsed = JSON.parse(err.message);
@@ -33,28 +34,29 @@ function parseErrorMessage(err: unknown): string {
       if (code && ERROR_CODES[code]) {
         switch (ERROR_CODES[code]) {
           case "auth.error.accountNotFound":
-            return "계정을 찾을 수 없습니다.";
+            return t("auth.error.accountNotFound");
           case "auth.error.invalidCredentials":
-            return "입력 정보를 확인해 주세요.";
+            return t("auth.error.invalidCredentials");
           case "auth.error.accountLocked":
-            return "출근 인식된 사용자만 로그인할 수 있습니다.";
+            return t("auth.error.accountLocked");
           case "auth.error.tooManyAttempts":
-            return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+            return t("auth.error.tooManyAttempts");
           default:
-            return "로그인에 실패했습니다.";
+            return t("auth.success.loginFailed");
         }
       }
       if (parsed?.error?.message) {
         return parsed.error.message;
       }
     } catch {
-      return "로그인에 실패했습니다.";
+      return t("auth.success.loginFailed");
     }
   }
-  return "로그인에 실패했습니다.";
+  return t("auth.success.loginFailed");
 }
 
 export default function LoginClient() {
+  const t = useTranslation();
   const { login, setCurrentSite, isAuthenticated, _hasHydrated } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -114,7 +116,7 @@ export default function LoginClient() {
 
       window.location.replace("/home/");
     } catch (err) {
-      setError(parseErrorMessage(err));
+      setError(parseErrorMessage(err, t));
     } finally {
       setLoading(false);
     }
@@ -130,16 +132,14 @@ export default function LoginClient() {
     <div className="flex items-center justify-center min-h-screen p-4 bg-muted">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">로그인</CardTitle>
-          <CardDescription>
-            출근 인식된 사용자만 로그인할 수 있습니다
-          </CardDescription>
+          <CardTitle className="text-2xl">{t("auth.login")}</CardTitle>
+          <CardDescription>{t("auth.loginAttendanceOnly")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="phone" className="text-sm font-medium">
-                휴대폰 번호
+                {t("auth.phoneNumber")}
               </label>
               <Input
                 id="phone"
@@ -155,13 +155,13 @@ export default function LoginClient() {
             </div>
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
-                이름
+                {t("auth.name")}
               </label>
               <Input
                 id="name"
                 type="text"
                 className="h-11"
-                placeholder="홍길동"
+                placeholder={t("auth.name")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={loading}
@@ -170,7 +170,7 @@ export default function LoginClient() {
             </div>
             <div className="space-y-2">
               <label htmlFor="dob" className="text-sm font-medium">
-                생년월일
+                {t("auth.dateOfBirth")}
               </label>
               <Input
                 id="dob"
@@ -195,13 +195,13 @@ export default function LoginClient() {
               className="w-full"
               disabled={loading || !isFormValid}
             >
-              {loading ? "처리 중..." : "로그인"}
+              {loading ? t("auth.success.loggingIn") : t("auth.login")}
             </Button>
 
             <p className="text-xs text-muted-foreground text-center mt-4">
-              현장 출근 인식 사용자 전용 로그인
+              {t("auth.loginFieldLoginOnly")}
               <br />
-              이름 / 휴대폰 번호 / 생년월일을 입력해 주세요
+              {t("auth.loginFieldGuide")}
             </p>
           </form>
         </CardContent>
