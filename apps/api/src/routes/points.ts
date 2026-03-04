@@ -277,7 +277,9 @@ app.get("/history", async (c) => {
   const offset = query.offset;
 
   const targetUserId = query.userId || user.id;
-  if (targetUserId !== user.id) {
+  const isViewingAnotherUser = targetUserId !== user.id;
+
+  if (isViewingAnotherUser) {
     if (user.role !== "SUPER_ADMIN") {
       if (!query.siteId) {
         return error(
@@ -312,6 +314,28 @@ app.get("/history", async (c) => {
     }
   }
 
+  let showAllSiteEntries = false;
+  if (query.siteId && !query.userId) {
+    if (user.role === "SUPER_ADMIN") {
+      showAllSiteEntries = true;
+    } else {
+      const adminMembership = await db
+        .select()
+        .from(siteMemberships)
+        .where(
+          and(
+            eq(siteMemberships.userId, user.id),
+            eq(siteMemberships.siteId, query.siteId),
+            eq(siteMemberships.status, "ACTIVE"),
+            eq(siteMemberships.role, "SITE_ADMIN"),
+          ),
+        )
+        .get();
+
+      showAllSiteEntries = !!adminMembership;
+    }
+  }
+
   if (query.siteId) {
     const membership = await db
       .select()
@@ -330,15 +354,29 @@ app.get("/history", async (c) => {
     }
   }
 
-  const conditions = [eq(pointsLedger.userId, targetUserId)];
+  const conditions = [];
+
+  if (!showAllSiteEntries) {
+    conditions.push(eq(pointsLedger.userId, targetUserId));
+  }
 
   if (query.siteId) {
     conditions.push(eq(pointsLedger.siteId, query.siteId));
   }
 
   const entries = await db
-    .select()
+    .select({
+      id: pointsLedger.id,
+      userId: pointsLedger.userId,
+      siteId: pointsLedger.siteId,
+      amount: pointsLedger.amount,
+      reasonCode: pointsLedger.reasonCode,
+      reasonText: pointsLedger.reasonText,
+      createdAt: pointsLedger.createdAt,
+      userName: users.name,
+    })
     .from(pointsLedger)
+    .leftJoin(users, eq(pointsLedger.userId, users.id))
     .where(and(...conditions))
     .orderBy(desc(pointsLedger.createdAt))
     .limit(limit)

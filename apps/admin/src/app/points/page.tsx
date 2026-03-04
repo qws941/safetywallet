@@ -13,10 +13,12 @@ import {
 
 interface PointsEntry {
   id: string;
+  userId: string;
   amount: number;
-  reason: string;
+  reasonCode: string;
+  reasonText: string | null;
   createdAt: string;
-  member: { user: { nameMasked: string } };
+  userName: string | null;
 }
 
 export default function PointsPage() {
@@ -48,8 +50,9 @@ export default function PointsPage() {
 
   const columns: Column<PointsEntry>[] = [
     {
-      key: "member.user.nameMasked",
+      key: "userName",
       header: "회원",
+      render: (item) => item.userName || "알 수 없음",
     },
     {
       key: "amount",
@@ -62,7 +65,11 @@ export default function PointsPage() {
         </span>
       ),
     },
-    { key: "reason", header: "사유" },
+    {
+      key: "reasonText",
+      header: "사유",
+      render: (item) => item.reasonText || item.reasonCode,
+    },
     {
       key: "createdAt",
       header: "일시",

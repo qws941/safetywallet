@@ -2,33 +2,26 @@
 
 import { useState } from "react";
 import { useIssues, useCreateIssue } from "@/hooks/use-issues-api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
+  Button,
+  Input,
+  Badge,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@safetywallet/ui";
 import {
   Plus,
   ExternalLink,
@@ -81,7 +74,9 @@ export default function IssuesPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">제목</Label>
+                <label htmlFor="title" className="text-sm font-medium">
+                  제목
+                </label>
                 <Input
                   id="title"
                   placeholder="이슈 제목을 입력하세요"
@@ -91,30 +86,37 @@ export default function IssuesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="body">내용</Label>
-                <Textarea
+                <label htmlFor="body" className="text-sm font-medium">
+                  내용
+                </label>
+                <textarea
                   id="body"
                   placeholder="이슈 내용을 입력하세요"
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setBody(e.target.value)
+                  }
                   rows={6}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox
+                <input
+                  type="checkbox"
                   id="assignCodex"
                   checked={assignCodex}
-                  onCheckedChange={(checked) =>
-                    setAssignCodex(checked === true)
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setAssignCodex(e.target.checked)
                   }
+                  className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label
+                <label
                   htmlFor="assignCodex"
                   className="flex items-center gap-1.5 text-sm"
                 >
                   <Bot className="h-4 w-4" />
                   Codex 자동 할당
-                </Label>
+                </label>
               </div>
               <Button
                 type="submit"

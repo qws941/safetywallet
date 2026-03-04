@@ -6,14 +6,12 @@ import { apiFetch } from "./use-api-base";
 
 interface PointsEntry {
   id: string;
+  userId: string;
   amount: number;
-  reason: string;
+  reasonCode: string;
+  reasonText: string | null;
   createdAt: string;
-  member: {
-    user: {
-      nameMasked: string;
-    };
-  };
+  userName: string | null;
 }
 
 export function usePointsLedger() {
