@@ -22,10 +22,10 @@ export function useMembers(siteId?: string) {
   return useQuery({
     queryKey: ["admin", "members", targetSiteId],
     queryFn: async () => {
-      const res = await apiFetch<{ data: Member[]; pagination: unknown }>(
+      const members = await apiFetch<Member[]>(
         `/sites/${targetSiteId}/members?limit=100`,
       );
-      return res.data;
+      return members;
     },
     enabled: !!targetSiteId,
   });

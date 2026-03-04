@@ -24,12 +24,10 @@ export function useIssues(state: string = "open") {
   return useQuery({
     queryKey: ["admin", "issues", state],
     queryFn: async () => {
-      const res = await apiFetch<{
-        success: boolean;
-        data: GitHubIssue[];
-      }>(`/admin/issues?state=${state}&per_page=50`);
-      if (!res.success) throw new Error("Failed to fetch issues");
-      return res.data;
+      const issues = await apiFetch<GitHubIssue[]>(
+        `/admin/issues?state=${state}&per_page=50`,
+      );
+      return issues;
     },
   });
 }
@@ -39,16 +37,12 @@ export function useCreateIssue() {
 
   return useMutation({
     mutationFn: async (input: CreateIssueInput) => {
-      const res = await apiFetch<{
-        success: boolean;
-        data: GitHubIssue;
-      }>("/admin/issues", {
+      const issue = await apiFetch<GitHubIssue>("/admin/issues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      if (!res.success) throw new Error("Failed to create issue");
-      return res.data;
+      return issue;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "issues"] });

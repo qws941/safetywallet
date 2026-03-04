@@ -21,10 +21,10 @@ export function useAdminAnnouncements() {
   return useQuery({
     queryKey: ["admin", "announcements", siteId],
     queryFn: async () => {
-      const res = await apiFetch<{ data: Announcement[]; pagination: unknown }>(
+      const announcements = await apiFetch<Announcement[]>(
         `/announcements${params}`,
       );
-      return res.data;
+      return announcements;
     },
   });
 }
