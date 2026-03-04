@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 🔒 보안 취약점 신고
-    url: https://github.com/qws941/.github/blob/master/SECURITY.md
-    about: 보안 취약점은 이슈 대신 보안 정책을 통해 신고해 주세요 (security@jclee.me, 48시간 내 응답).
-  - name: 🏗️ 템플릿 / 거버넌스 이슈
-    url: https://github.com/qws941/.github/issues/new/choose
-    about: 공유 템플릿, 워크플로우, 라벨 등 조직 공통 파일에 대한 이슈는 .github 저장소에서 등록해 주세요.
+  - name: Security Vulnerability
+    url: https://github.com/qws941-lab/.github/blob/master/SECURITY.md
+    about: Report security vulnerabilities via the organization-wide security policy (security@jclee.me, 48h SLA).
+  - name: Template / Governance Issue
+    url: https://github.com/qws941-lab/.github/issues/new/choose
+    about: Report issues with shared templates, workflows, labels, or governance files (managed in the .github repo).
