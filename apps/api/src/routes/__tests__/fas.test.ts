@@ -65,6 +65,19 @@ vi.mock("../../utils/common", () => ({
   maskName: vi.fn((name: string) => name.slice(0, 1) + "**"),
 }));
 
+vi.mock("../../db/helpers", () => ({
+  dbBatchChunked: vi.fn(async () => ({
+    totalOps: 0,
+    completedOps: 0,
+    failedChunks: 0,
+    errors: [] as Array<{ chunkIndex: number; error: string }>,
+  })),
+}));
+
+vi.mock("../../validators/schemas", () => ({
+  AdminSyncWorkersSchema: {},
+}));
+
 // ── Queue-based DB mock ────────────────────────────────────────────────
 const mockGetQueue: unknown[] = [];
 const mockAllQueue: unknown[] = [];
@@ -174,8 +187,8 @@ describe("routes/fas", () => {
   // ── POST /fas/workers/sync ───────────────────────────────────────────
   describe("POST /fas/workers/sync", () => {
     it("creates new workers successfully", async () => {
-      // select().from(users).where(eq(externalWorkerId)).get() → no existing user
-      mockGetQueue.push(undefined);
+      // Batch lookup via inArray → no existing users
+      mockAllQueue.push([]);
 
       const { app, env } = await createApp();
       const res = await app.request(
@@ -210,8 +223,8 @@ describe("routes/fas", () => {
     });
 
     it("updates existing workers", async () => {
-      // select().get() → existing user found
-      mockGetQueue.push({ id: "user-1", externalWorkerId: "EXT-001" });
+      // Batch lookup → existing user found
+      mockAllQueue.push([{ id: "user-1", externalWorkerId: "EXT-001" }]);
 
       const { app, env } = await createApp();
       const res = await app.request(
@@ -277,10 +290,8 @@ describe("routes/fas", () => {
     });
 
     it("handles multiple workers with mixed results", async () => {
-      // First worker: not existing → create
-      mockGetQueue.push(undefined);
-      // Second worker: existing → update
-      mockGetQueue.push({ id: "user-2", externalWorkerId: "EXT-002" });
+      // Batch lookup → only EXT-002 exists
+      mockAllQueue.push([{ id: "user-2", externalWorkerId: "EXT-002" }]);
       // Third worker: missing fields → fail (no DB query)
 
       const { app, env } = await createApp();
@@ -323,15 +334,17 @@ describe("routes/fas", () => {
       expect(body.data.failed).toBe(1);
     });
 
-    it("handles DB error during worker processing", async () => {
-      // The select.get() throws an error
-      mockGetQueue.push(undefined);
-      // Force insert to throw by making insert().values() throw
-      mockDb.insert.mockImplementationOnce(() => ({
-        values: vi.fn(() => {
-          throw new Error("DB insert failed");
-        }),
-      }));
+    it("handles batch DB error during worker processing", async () => {
+      // Batch lookup: no existing users
+      mockAllQueue.push([]);
+      // Mock dbBatchChunked to report a failed chunk
+      const helpers = await import("../../db/helpers");
+      vi.mocked(helpers.dbBatchChunked).mockResolvedValueOnce({
+        totalOps: 1,
+        completedOps: 0,
+        failedChunks: 1,
+        errors: [{ chunkIndex: 0, error: "DB insert failed" }],
+      });
 
       const { app, env } = await createApp();
       const res = await app.request(
@@ -357,12 +370,17 @@ describe("routes/fas", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
         data: {
+          created: number;
           failed: number;
           errors: Array<{ externalWorkerId: string; error: string }>;
         };
       };
+      // created is incremented during build phase before batch execution
+      expect(body.data.created).toBe(1);
       expect(body.data.failed).toBe(1);
-      expect(body.data.errors[0].error).toBe("DB insert failed");
+      expect(body.data.errors[0].error).toBe(
+        "Chunk 0 failed: DB insert failed",
+      );
     });
 
     it("handles worker with 'unknown' externalWorkerId when missing", async () => {
@@ -399,7 +417,7 @@ describe("routes/fas", () => {
     });
 
     it("sets optional companyName/tradeType to null when not provided", async () => {
-      mockGetQueue.push(undefined); // no existing user
+      mockAllQueue.push([]); // no existing user (batch lookup)
       const { app, env } = await createApp();
       const res = await app.request(
         "/fas/workers/sync",
