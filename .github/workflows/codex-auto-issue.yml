@@ -1,6 +1,7 @@
-# Codex Auto-Issue: trigger Codex on issues with 'codex' label
-# SSoT: qws941/.github — synced to all repos
-# Synced via: .github/sync.yml → Group 3
+# Codex Auto-Issue
+# SSoT: qws941-lab/.github — synced to all repos
+# Synced via: .github/sync.yml
+# Template: _codex-auto-issue.yml
 
 name: Codex Auto-Issue
 
@@ -11,44 +12,6 @@ on:
 permissions:
   issues: write
 
-concurrency:
-  group: codex-issue-${{ github.event.issue.number }}
-  cancel-in-progress: false
-
 jobs:
-  codex-trigger:
-    if: github.event.label.name == 'codex'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Trigger Codex on issue
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          github-token: ${{ secrets.GH_PAT }}
-          script: |
-            const issue = context.payload.issue;
-
-            // Assign Codex via GraphQL (REST API silently ignores bot assignees)
-            try {
-              await github.graphql(`
-                mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
-                  addAssigneesToAssignable(input: { assignableId: $assignableId, assigneeIds: $assigneeIds }) {
-                    assignable { ... on Issue { number } }
-                  }
-                }
-              `, {
-                assignableId: issue.node_id,
-                assigneeIds: ['BOT_kgDODnSAjQ'],
-              });
-            } catch (e) {
-              core.info(`Codex assignee skipped: ${e.message}`);
-            }
-
-            const body = `@codex ${issue.title}\n\n${issue.body || ''}`.trim();
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              body: body,
-            });
+  codex:
+    uses: qws941-lab/.github/.github/workflows/_codex-auto-issue.yml@master

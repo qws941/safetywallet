@@ -1,72 +1,93 @@
-name: 🐛 버그 신고
-description: 오류나 비정상적인 동작을 신고해 주세요
+name: "🐛 Bug Report"
+description: Report an issue with enough context for quick triage and resolution.
 labels: ["type:bug"]
+assignees: [qws941]
 body:
   - type: markdown
     attributes:
       value: |
-        버그를 발견해 주셔서 감사합니다.
-        아래 항목을 작성해 주시면 빠르게 해결하겠습니다.
-
-  - type: dropdown
-    id: app
-    attributes:
-      label: 어디에서 발생했나요?
-      description: 문제가 발생한 앱을 선택해 주세요.
-      options:
-        - 근로자 앱 (Worker)
-        - 관리자 대시보드 (Admin)
-        - API / 서버
-        - 잘 모르겠음
-    validations:
-      required: true
+        Thanks for taking the time to report this bug.
+        Please fill out the sections below to help us understand and reproduce the issue.
 
   - type: textarea
     id: description
     attributes:
-      label: 어떤 문제인가요?
-      description: 어떤 문제가 발생했는지 간단히 설명해 주세요.
-      placeholder: "예: 출근 버튼을 눌러도 반응이 없어요"
+      label: Description
+      description: A clear and concise description of the bug.
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: 어떻게 하면 문제가 생기나요?
-      description: 문제를 다시 발생시키려면 어떤 순서로 하면 되나요?
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
       placeholder: |
-        1. ○○ 화면에 들어간다
-        2. ○○ 버튼을 누른다
-        3. 에러가 발생한다
+        1. Go to '...'
+        2. Run '...'
+        3. See error
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: 원래 어떻게 되어야 하나요?
-      description: 정상적으로 동작했을 때 기대하는 결과를 알려 주세요.
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
     validations:
       required: true
 
   - type: dropdown
     id: severity
     attributes:
-      label: 심각도
-      description: 얼마나 심각한 문제인가요?
+      label: Severity
+      description: How severe is this bug?
       options:
-        - 낮음 — 사소한 불편 (화면 깨짐, 오타 등)
-        - 보통 — 기능 오작동이지만 다른 방법으로 가능
-        - 높음 — 기능을 전혀 사용할 수 없음
-        - 긴급 — 데이터 손실, 보안 문제, 시스템 장애
+        - Low — Cosmetic or minor inconvenience
+        - Medium — Broken feature with workaround available
+        - High — Broken feature with no workaround
+        - Critical — Data loss, security issue, or system outage
     validations:
       required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgently does this need attention?
+      options:
+        - P0 - Critical (service down)
+        - P1 - High (degraded)
+        - P2 - Medium (workaround exists)
+        - P3 - Low (cosmetic)
+    validations:
+      required: true
+
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Relevant environment details.
+      placeholder: |
+        - OS: e.g. Ubuntu 22.04, macOS 14
+        - Runtime: e.g. Node.js 20.x, Python 3.12
+        - Tool version: e.g. Terraform 1.9, Docker 27
+    validations:
+      required: false
 
   - type: textarea
     id: screenshots
     attributes:
-      label: 화면 캡처 / 스크린샷
-      description: 문제 화면을 캡처해서 첨부해 주시면 도움이 됩니다.
+      label: Screenshots / Logs
+      description: If applicable, add screenshots or log output.
     validations:
       required: false
