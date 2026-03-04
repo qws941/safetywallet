@@ -21,6 +21,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useToast,
 } from "@safetywallet/ui";
 import {
   Plus,
@@ -40,21 +41,31 @@ export default function IssuesPage() {
 
   const { data: issues, isLoading } = useIssues(stateFilter);
   const createIssue = useCreateIssue();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    await createIssue.mutateAsync({
-      title: title.trim(),
-      body: body.trim() || undefined,
-      assignCodex,
-    });
+    try {
+      await createIssue.mutateAsync({
+        title: title.trim(),
+        body: body.trim() || undefined,
+        assignCodex,
+      });
 
-    setTitle("");
-    setBody("");
-    setAssignCodex(true);
-    setDialogOpen(false);
+      toast({ description: "이슈가 등록되었습니다." });
+      setTitle("");
+      setBody("");
+      setAssignCodex(true);
+      setDialogOpen(false);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description:
+          error instanceof Error ? error.message : "이슈 등록에 실패했습니다.",
+      });
+    }
   };
 
   return (
