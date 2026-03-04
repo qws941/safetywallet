@@ -21,6 +21,7 @@ import {
   GraduationCap,
   Building2,
   ChevronDown,
+  Bug,
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ const navItems = [
   { href: "/settings", label: "설정", icon: Settings },
   { href: "/monitoring", label: "운영 모니터링", icon: Activity },
   { href: "/audit", label: "감사 로그", icon: ScrollText },
+  { href: "/issues", label: "이슈 관리", icon: Bug },
 ];
 
 /** Shared nav content used by desktop and mobile sidebar */
