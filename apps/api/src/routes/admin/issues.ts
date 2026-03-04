@@ -120,28 +120,34 @@ app.post("/admin/issues", requireAdmin, async (c) => {
 
   const issue = (await createRes.json()) as {
     number: number;
+    node_id: string;
     title: string;
     body: string;
   };
 
   // If codex assigned, assign Codex user + post @codex comment
   if (body.assignCodex) {
-    // Assign Codex (bot type — may fail, non-blocking)
+    // Assign Codex via GraphQL (REST API silently ignores bot assignees)
     try {
-      await fetch(
-        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${issue.number}/assignees`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "safetywallet-admin",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ assignees: ["Codex"] }),
+      await fetch("https://api.github.com/graphql", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "User-Agent": "safetywallet-admin",
         },
-      );
+        body: JSON.stringify({
+          query: `mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
+            addAssigneesToAssignable(input: { assignableId: $assignableId, assigneeIds: $assigneeIds }) {
+              assignable { ... on Issue { number } }
+            }
+          }`,
+          variables: {
+            assignableId: issue.node_id,
+            assigneeIds: ["BOT_kgDODnSAjQ"],
+          },
+        }),
+      });
     } catch {
       // Bot assignee may fail — non-blocking
     }
