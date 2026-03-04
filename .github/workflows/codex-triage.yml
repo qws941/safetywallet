@@ -35,13 +35,17 @@ jobs:
               labels: ['codex'],
             });
 
-            // Assign Codex (bot type — may fail, non-blocking)
+            // Assign Codex via GraphQL (REST API silently ignores bot assignees)
             try {
-              await github.rest.issues.addAssignees({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                assignees: ['Codex'],
+              await github.graphql(`
+                mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
+                  addAssigneesToAssignable(input: { assignableId: $assignableId, assigneeIds: $assigneeIds }) {
+                    assignable { ... on Issue { number } }
+                  }
+                }
+              `, {
+                assignableId: issue.node_id,
+                assigneeIds: ['BOT_kgDODnSAjQ'],
               });
             } catch (e) {
               core.info(`Codex assignee skipped: ${e.message}`);
