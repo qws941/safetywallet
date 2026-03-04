@@ -27,11 +27,25 @@ jobs:
           github-token: ${{ secrets.GH_PAT }}
           script: |
             const issue = context.payload.issue;
+
+            // Assign Codex (bot type — may fail, non-blocking)
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: ['Codex'],
+              });
+            } catch (e) {
+              core.info(`Codex assignee skipped: ${e.message}`);
+            }
+
             const body = [
               `@codex ${issue.title}`,
               '',
               issue.body || ''
-            ].join('\n').trim();
+            ].join('
+').trim();
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,

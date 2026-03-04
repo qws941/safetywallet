@@ -35,9 +35,22 @@ jobs:
               labels: ['codex'],
             });
 
+            // Assign Codex (bot type — may fail, non-blocking)
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: ['Codex'],
+              });
+            } catch (e) {
+              core.info(`Codex assignee skipped: ${e.message}`);
+            }
+
             // Trigger @codex directly (label events from GITHUB_TOKEN
             // cannot trigger other workflows)
-            const body = [`@codex ${issue.title}`, '', issue.body || ''].join('\n').trim();
+            const body = [`@codex ${issue.title}`, '', issue.body || ''].join('
+').trim();
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
