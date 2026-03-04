@@ -57,6 +57,8 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   // VAPID contact for web push
   VAPID_SUBJECT?: string;
+  // GitHub API token for issue management
+  GITHUB_TOKEN?: string;
 }
 
 export interface User {
