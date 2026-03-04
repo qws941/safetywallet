@@ -38,17 +38,23 @@ export function useAwardPoints() {
 
   return useMutation({
     mutationFn: ({
-      memberId,
+      userId,
       amount,
       reason,
     }: {
-      memberId: string;
+      userId: string;
       amount: number;
       reason: string;
     }) =>
       apiFetch(`/points/award`, {
         method: "POST",
-        body: JSON.stringify({ siteId, memberId, amount, reason }),
+        body: JSON.stringify({
+          siteId,
+          userId,
+          amount,
+          reasonCode: "MANUAL_AWARD",
+          reasonText: reason,
+        }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "points"] });

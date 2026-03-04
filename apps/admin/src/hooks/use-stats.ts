@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 
 interface StatsData {
   totalUsers: number;
@@ -16,9 +17,13 @@ interface StatsData {
 }
 
 export function useStats() {
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+
   return useQuery({
     queryKey: ["admin", "stats"],
     queryFn: () =>
       apiFetch<{ stats: StatsData }>("/admin/stats").then((res) => res.stats),
+    enabled: hasHydrated && isAdmin,
   });
 }

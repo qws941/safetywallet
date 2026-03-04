@@ -32,7 +32,7 @@ export default function PointsPage() {
     if (!selectedMember || !amount || !reason) return;
     awardMutation.mutate(
       {
-        memberId: selectedMember,
+        userId: selectedMember,
         amount: parseInt(amount, 10),
         reason,
       },
@@ -95,7 +95,7 @@ export default function PointsPage() {
           >
             <option value="">회원 선택</option>
             {(members as Member[]).map((m) => (
-              <option key={m.id} value={m.id}>
+              <option key={m.user.id} value={m.user.id}>
                 {m.user.name}
               </option>
             ))}

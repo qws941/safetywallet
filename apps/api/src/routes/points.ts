@@ -26,7 +26,8 @@ interface AwardPointsBody {
   userId: string;
   siteId: string;
   amount: number;
-  reason?: string;
+  reasonCode: string;
+  reasonText?: string;
 }
 
 interface QueryPointsParams {
@@ -124,7 +125,7 @@ app.post("/award", zValidator("json", AwardPointsSchema), async (c) => {
       siteId: data.siteId,
       amount: resolvedAmount,
       reasonCode: "MANUAL_AWARD",
-      reasonText: data.reason ?? null,
+      reasonText: data.reasonText ?? null,
       settleMonth,
       adminId: user.id,
     })
@@ -134,7 +135,7 @@ app.post("/award", zValidator("json", AwardPointsSchema), async (c) => {
   await logAuditWithContext(c, db, "POINT_AWARD", user.id, "POINT", entry.id, {
     userId: data.userId,
     amount: resolvedAmount,
-    reason: data.reason,
+    reason: data.reasonText,
     reasonCode: "MANUAL_AWARD",
   });
 

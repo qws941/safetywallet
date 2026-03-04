@@ -128,8 +128,11 @@ export default function AnnouncementsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">공지사항</h1>
         {!showForm && (
-          <Button onClick={() => setShowForm(true)} className="gap-1">
-            <Plus size={16} />새 공지
+          <Button
+            onClick={() => setShowForm(true)}
+            className="gap-2 bg-primary text-primary-foreground shadow-md hover:bg-primary/90 px-6 py-2.5 text-base font-semibold rounded-lg"
+          >
+            <Plus size={20} />새 공지 작성
           </Button>
         )}
       </div>

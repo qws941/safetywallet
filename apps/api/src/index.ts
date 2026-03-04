@@ -284,6 +284,16 @@ app.all("*", async (c) => {
   const url = new URL(c.req.url);
   const isAdmin = url.hostname.startsWith("admin.");
 
+  // Redirect /admin/* on non-admin hostname to admin subdomain
+  if (!isAdmin && url.pathname.startsWith("/admin")) {
+    const adminUrl = new URL(
+      url.pathname.replace(/^\/admin/, "") || "/",
+      `${url.protocol}//admin.${url.hostname}`,
+    );
+    adminUrl.search = url.search;
+    return c.redirect(adminUrl.toString(), 301);
+  }
+
   // Clean up path logic for SPA routing
   let path = url.pathname;
   if (path.endsWith("/")) {

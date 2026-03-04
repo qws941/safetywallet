@@ -9,6 +9,11 @@ vi.mock("@/lib/api", () => ({
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
+vi.mock("@/stores/auth", () => ({
+  useAuthStore: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ isAdmin: true, _hasHydrated: true }),
+}));
+
 describe("use-stats", () => {
   beforeEach(() => {
     vi.clearAllMocks();

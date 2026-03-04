@@ -47,7 +47,7 @@ describe("use-points-api", () => {
     const { result } = renderHook(() => useAwardPoints(), { wrapper });
 
     await result.current.mutateAsync({
-      memberId: "m1",
+      userId: "m1",
       amount: 100,
       reason: "안전수칙 준수",
     });

@@ -134,7 +134,7 @@ app.get("/attendance-logs", requireManagerOrAdmin, async (c) => {
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
-    limit: z.coerce.number().min(1).max(1000).default(100),
+    limit: z.coerce.number().min(1).max(2000).default(100),
   });
 
   const parsed = querySchema.safeParse(c.req.query());

@@ -133,7 +133,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="space-y-4">
+        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
           <div>
             <label
               htmlFor="admin-username"
@@ -172,13 +172,14 @@ export default function LoginPage() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button
+            type="button"
             className="w-full"
             onClick={handleLogin}
             disabled={!username || !password || isLoading}
           >
             {isLoading ? "로그인 중..." : "로그인"}
           </Button>
-        </div>
+        </form>
       </Card>
     </div>
   );

@@ -151,7 +151,7 @@ export const CreateAnnouncementSchema = z.object({
   title: nonEmptyStr,
   content: nonEmptyStr,
   isPinned: z.boolean().optional(),
-  scheduledAt: z.string().datetime().optional(),
+  scheduledAt: z.string().datetime().nullable().optional(),
 });
 
 export const UpdateAnnouncementSchema = z.object({

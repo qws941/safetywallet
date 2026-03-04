@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./use-api-base";
+import { useAuthStore } from "@/stores/auth";
 
 interface DashboardStats {
   totalUsers: number;
@@ -16,12 +17,16 @@ interface DashboardStats {
 }
 
 export function useDashboardStats() {
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+
   return useQuery({
     queryKey: ["dashboard", "stats"],
     queryFn: async () => {
       const res = await apiFetch<{ stats: DashboardStats }>("/admin/stats");
       return res.stats;
     },
+    enabled: hasHydrated && isAdmin,
     refetchInterval: 30_000,
   });
 }
