@@ -401,6 +401,13 @@
       "submitError": "Nộp bài thất bại.",
       "passedMessage": "Bạn đã đạt!",
       "failedMessage": "Rất tiếc, bạn chưa đạt.",
+      "status": {
+        "pass": "PASS",
+        "fail": "FAIL"
+      },
+      "answersHeading": "Bài làm đã nộp",
+      "answerLabel": "Câu trả lời của bạn",
+      "noAnswer": "Chưa chọn đáp án",
       "passingScoreLabel": "Điểm đạt:",
       "backToListButton": "Quay lại danh sách",
       "submitting": "Đang nộp...",

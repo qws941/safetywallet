@@ -8,6 +8,8 @@ import {
   type ApiResponse,
 } from "./use-api-base";
 
+type QuizAnswerValue = number | number[] | string;
+
 export function useEducationContents(siteId: string) {
   return useQuery({
     queryKey: ["education-contents", siteId],
@@ -147,6 +149,7 @@ export function useSubmitQuizAttempt() {
             passed: boolean;
             totalQuestions: number;
             correctCount: number;
+            answers?: QuizAnswerValue[];
           };
         }>
       >(`/education/quizzes/${quizId}/attempt`, {
@@ -182,6 +185,7 @@ export function useMyQuizAttempts(quizId: string) {
             totalQuestions: number;
             correctCount: number;
             createdAt: string;
+            answers?: QuizAnswerValue[];
           }>;
         }>
       >(`/education/quizzes/${quizId}/my-attempts`).then(

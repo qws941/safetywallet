@@ -429,6 +429,13 @@
       "submitError": "제출에 실패했습니다.",
       "passedMessage": "합격입니다!",
       "failedMessage": "아쉽게도 불합격입니다.",
+      "status": {
+        "pass": "PASS",
+        "fail": "FAIL"
+      },
+      "answersHeading": "제출한 답안",
+      "answerLabel": "내 답변",
+      "noAnswer": "선택한 답변이 없습니다.",
       "passingScoreLabel": "합격기준:",
       "backToListButton": "목록으로 돌아가기",
       "submitting": "제출 중...",

@@ -90,18 +90,71 @@ function QuizTakeContent() {
   const [lastResult, setLastResult] = useState<{
     score: number;
     passed: boolean;
+    answers?: AnswerValue[] | null;
   } | null>(null);
 
-  // If already passed, show result state by default
+  // If there is a prior attempt, show the latest result and prefill answers
   useEffect(() => {
-    if (attempts && attempts.length > 0) {
-      const passedAttempt = attempts.find((a) => a.passed);
-      if (passedAttempt) {
-        setShowResult(true);
-        setLastResult({ score: passedAttempt.score, passed: true });
+    if (quiz && attempts && attempts.length > 0) {
+      const [latestAttempt] = attempts;
+      setShowResult(true);
+      setLastResult({
+        score: latestAttempt.score,
+        passed: latestAttempt.passed,
+        answers: latestAttempt.answers ?? null,
+      });
+
+      if (latestAttempt.answers?.length) {
+        const restoredAnswers: Record<string, AnswerValue> = {};
+        quiz.questions.forEach((question, index) => {
+          restoredAnswers[question.id] = latestAttempt.answers?.[index] ?? "";
+        });
+        setAnswers(restoredAnswers);
       }
     }
-  }, [attempts]);
+  }, [attempts, quiz]);
+
+  const hasAnswerReview =
+    Array.isArray(lastResult?.answers) && lastResult.answers.length > 0;
+
+  const formatAnswerValue = (
+    questionType: QuestionType,
+    options: string[],
+    value: AnswerValue | undefined,
+  ) => {
+    if (questionType === "SHORT_ANSWER") {
+      return typeof value === "string" && value.trim().length > 0
+        ? value
+        : t("education.quiz.noAnswer");
+    }
+
+    if (questionType === "MULTI_CHOICE") {
+      if (!Array.isArray(value) || value.length === 0) {
+        return t("education.quiz.noAnswer");
+      }
+
+      const selectedOptions = value
+        .map((optionIndex) => options[optionIndex])
+        .filter(Boolean);
+      return selectedOptions.length > 0
+        ? selectedOptions.join(", ")
+        : t("education.quiz.noAnswer");
+    }
+
+    if (typeof value !== "number") {
+      return t("education.quiz.noAnswer");
+    }
+
+    if (questionType === "OX") {
+      return value === 0
+        ? "O"
+        : value === 1
+          ? "X"
+          : t("education.quiz.noAnswer");
+    }
+
+    return options[value] ?? t("education.quiz.noAnswer");
+  };
 
   if (isQuizLoading || isAttemptsLoading) {
     return <LoadingState />;
@@ -188,12 +241,21 @@ function QuizTakeContent() {
           setLastResult({
             score: data.attempt.score,
             passed: data.attempt.passed,
+            answers: data.attempt.answers ?? null,
           });
           setShowResult(true);
+          if (data.attempt.answers?.length) {
+            const restoredAnswers: Record<string, AnswerValue> = {};
+            quiz.questions.forEach((question, index) => {
+              restoredAnswers[question.id] =
+                data.attempt.answers?.[index] ?? answers[question.id] ?? "";
+            });
+            setAnswers(restoredAnswers);
+          }
           toast({
             title: data.attempt.passed
-              ? t("education.quiz.congratulations")
-              : t("education.quiz.failedMessage"),
+              ? t("education.quiz.status.pass")
+              : t("education.quiz.status.fail"),
             description: t("education.quiz.scoreDisplay").replace(
               "${score}",
               String(data.attempt.score),
@@ -218,6 +280,10 @@ function QuizTakeContent() {
   };
 
   if (showResult && lastResult) {
+    const statusLabel = lastResult.passed
+      ? t("education.quiz.status.pass")
+      : t("education.quiz.status.fail");
+
     return (
       <div className="min-h-screen bg-muted pb-nav">
         <Header />
@@ -225,9 +291,12 @@ function QuizTakeContent() {
           <div className="text-6xl mb-2">{lastResult.passed ? "🎉" : "😢"}</div>
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold">
-              {lastResult.passed
-                ? t("education.quiz.passedMessage")
-                : t("education.quiz.failedMessage")}
+              <Badge
+                variant={lastResult.passed ? "default" : "destructive"}
+                className="px-4 py-2 text-base"
+              >
+                {statusLabel}
+              </Badge>
             </h2>
             <p className="text-muted-foreground">
               {t("common.score")}{" "}
@@ -239,6 +308,45 @@ function QuizTakeContent() {
               {t("education.quiz.scorePoints")})
             </p>
           </div>
+
+          {hasAnswerReview && (
+            <div className="w-full max-w-2xl space-y-3">
+              <h3 className="text-lg font-semibold text-center">
+                {t("education.quiz.answersHeading")}
+              </h3>
+              {quiz.questions.map((question, index) => {
+                const options = parseQuestionOptions(question.options);
+                const questionType = getQuestionType(question.questionType);
+                const answerValue = lastResult.answers?.[index];
+                const answerText = formatAnswerValue(
+                  questionType,
+                  options,
+                  answerValue,
+                );
+                return (
+                  <Card key={question.id}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <span className="text-primary">Q{index + 1}.</span>
+                        <span className="flex-1 break-words">
+                          {question.question}
+                        </span>
+                        <Badge variant="outline" className="ml-1">
+                          {getQuestionTypeLabel(questionType)}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {t("education.quiz.answerLabel")}
+                      </span>{" "}
+                      <span className="text-foreground">{answerText}</span>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
           <div className="w-full max-w-sm space-y-3">
             {!lastResult.passed && (

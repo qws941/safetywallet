@@ -417,6 +417,13 @@
       "submitError": "提交失败。",
       "passedMessage": "及格了！",
       "failedMessage": "很遗憾，未及格。",
+      "status": {
+        "pass": "PASS",
+        "fail": "FAIL"
+      },
+      "answersHeading": "已提交答案",
+      "answerLabel": "你的答案",
+      "noAnswer": "未选择答案",
       "passingScoreLabel": "及格标准：",
       "backToListButton": "返回列表",
       "submitting": "提交中...",

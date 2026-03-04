@@ -46,7 +46,9 @@ describe("app/education/quiz-take/page", () => {
     setMockSearchParams({ id: "q1" });
     const mutate = vi.fn(
       (_payload: unknown, options: { onSuccess: (v: unknown) => void }) =>
-        options.onSuccess({ attempt: { score: 100, passed: true } }),
+        options.onSuccess({
+          attempt: { score: 100, passed: true, answers: [0] },
+        }),
     );
     vi.mocked(useSubmitQuizAttempt).mockReturnValue({
       mutate,
@@ -85,8 +87,60 @@ describe("app/education/quiz-take/page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("education.quiz.passedMessage"),
+        screen.getByText("education.quiz.status.pass"),
       ).toBeInTheDocument();
     });
+  });
+
+  it("shows previous answers when revisiting a quiz", async () => {
+    setMockSearchParams({ id: "q1" });
+    vi.mocked(useSubmitQuizAttempt).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never);
+    vi.mocked(useQuiz).mockReturnValue({
+      data: {
+        id: "q1",
+        title: "안전 퀴즈",
+        passingScore: 60,
+        maxAttempts: 3,
+        questions: [
+          {
+            id: "qq1",
+            question: "정답은?",
+            questionType: "SINGLE_CHOICE",
+            options: ["사과", "배"],
+            correctAnswer: 0,
+            explanation: null,
+            displayOrder: 1,
+          },
+        ],
+      },
+      isLoading: false,
+    } as never);
+    vi.mocked(useMyQuizAttempts).mockReturnValue({
+      data: [
+        {
+          id: "a1",
+          score: 90,
+          passed: true,
+          totalQuestions: 1,
+          correctCount: 1,
+          createdAt: "2024-01-01",
+          answers: [1],
+        },
+      ],
+      isLoading: false,
+    } as never);
+
+    render(<QuizTakePage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("education.quiz.answersHeading"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText("education.quiz.status.pass")).toBeInTheDocument();
+    expect(screen.getByText("배")).toBeInTheDocument();
   });
 });

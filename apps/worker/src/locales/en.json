@@ -420,6 +420,13 @@
       "submitError": "An error occurred while submitting the quiz",
       "passedMessage": "You passed the quiz!",
       "failedMessage": "You did not pass. Please try again.",
+      "status": {
+        "pass": "PASS",
+        "fail": "FAIL"
+      },
+      "answersHeading": "Submitted answers",
+      "answerLabel": "Your answer",
+      "noAnswer": "No answer selected",
       "passingScoreLabel": "Passing Score",
       "backToListButton": "Back to List",
       "submitting": "제출 중...",
