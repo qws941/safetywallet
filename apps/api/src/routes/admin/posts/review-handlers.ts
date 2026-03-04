@@ -20,6 +20,9 @@ export async function reviewPostHandler(c: AppContext) {
   const db = drizzle(c.env.DB);
   const { user: reviewer } = c.get("auth");
   const postId = c.req.param("id");
+  if (!postId) {
+    return error(c, "BAD_REQUEST", "Post ID is required", 400);
+  }
 
   const body = c.req.valid("json" as never) as z.infer<
     typeof AdminReviewPostSchema

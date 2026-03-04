@@ -424,6 +424,9 @@ export async function handleSiteReport(c: AppContext) {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
   const siteId = c.req.param("siteId");
+  if (!siteId) {
+    return error(c, "BAD_REQUEST", "Site ID is required", 400);
+  }
 
   // Auth check: SUPER_ADMIN or SITE_ADMIN of this site
   if (user.role !== "SUPER_ADMIN") {

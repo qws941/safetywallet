@@ -154,6 +154,9 @@ export function registerListRoutes(app: AdminPostsApp) {
   app.get("/posts/:id", requireManagerOrAdmin, async (c) => {
     const db = drizzle(c.env.DB);
     const postId = c.req.param("id");
+    if (!postId) {
+      return error(c, "BAD_REQUEST", "Post ID is required", 400);
+    }
 
     const post = await db
       .select()

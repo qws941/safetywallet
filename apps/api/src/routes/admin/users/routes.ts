@@ -233,6 +233,9 @@ router.post("/users/:id/restriction/clear", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const userId = c.req.param("id");
+  if (!userId) {
+    return error(c, "BAD_REQUEST", "User ID is required", 400);
+  }
 
   const updated = await db
     .update(users)
@@ -473,6 +476,9 @@ router.post("/users/:id/lock", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const userId = c.req.param("id");
+  if (!userId) {
+    return error(c, "BAD_REQUEST", "User ID is required", 400);
+  }
 
   const lockedUntil = new Date("2099-12-31T23:59:59Z");
 
@@ -506,6 +512,9 @@ router.post("/users/:id/unlock", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const userId = c.req.param("id");
+  if (!userId) {
+    return error(c, "BAD_REQUEST", "User ID is required", 400);
+  }
 
   const updated = await db
     .update(users)

@@ -295,7 +295,7 @@ describe("permission middleware", () => {
       });
       app.get(
         "/site/:siteId/admin",
-        requireSiteAdmin((c) => c.req.param("siteId")),
+        requireSiteAdmin((c) => c.req.param("siteId") ?? ""),
         (c) => c.json({ ok: true }),
       );
       return { app, env: makeEnv(mockDb) };

@@ -212,6 +212,9 @@ app.delete("/votes/candidates/:id", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const id = c.req.param("id");
+  if (!id) {
+    return error(c, "BAD_REQUEST", "Vote ID is required", 400);
+  }
 
   const existing = await db
     .select()
@@ -240,6 +243,9 @@ app.get("/votes/period/:siteId/:month", requireAdmin, async (c) => {
   const db = drizzle(c.env.DB);
   const siteId = c.req.param("siteId");
   const month = c.req.param("month");
+  if (!siteId || !month) {
+    return error(c, "BAD_REQUEST", "Site ID and month are required", 400);
+  }
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return error(c, "INVALID_MONTH", "month must be YYYY-MM", 400);

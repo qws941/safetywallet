@@ -16,6 +16,9 @@ const app = new Hono<{
 app.get("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
   const db = drizzle(c.env.DB);
   const siteId = c.req.param("siteId");
+  if (!siteId) {
+    return error(c, "BAD_REQUEST", "siteId is required", 400);
+  }
 
   const policy = await db
     .select()
@@ -36,6 +39,9 @@ app.put("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
   const db = drizzle(c.env.DB);
   const { user: currentUser } = c.get("auth");
   const siteId = c.req.param("siteId");
+  if (!siteId) {
+    return error(c, "BAD_REQUEST", "siteId is required", 400);
+  }
 
   const body = await c.req.json<{
     requireCheckin: boolean;

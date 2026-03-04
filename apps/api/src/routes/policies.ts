@@ -52,6 +52,9 @@ policies.get("/site/:siteId", authMiddleware, async (c) => {
   }
 
   const siteId = c.req.param("siteId");
+  if (!siteId) {
+    return error(c, "BAD_REQUEST", "Site ID is required", 400);
+  }
   const db = drizzle(c.env.DB);
 
   const policyList = await db
@@ -69,6 +72,9 @@ policies.get("/:id", authMiddleware, async (c) => {
   }
 
   const policyId = c.req.param("id");
+  if (!policyId) {
+    return error(c, "BAD_REQUEST", "Policy ID is required", 400);
+  }
   const db = drizzle(c.env.DB);
 
   const policy = await db
@@ -256,6 +262,9 @@ policies.delete("/:id", authMiddleware, async (c) => {
   }
 
   const policyId = c.req.param("id");
+  if (!policyId) {
+    return error(c, "BAD_REQUEST", "Policy ID is required", 400);
+  }
   const db = drizzle(c.env.DB);
 
   const existingPolicy = await db
