@@ -6,6 +6,7 @@
 #   - Dependabot PRs (auto-merge with squash)
 #   - Repository owner PRs (auto-merge with squash)
 #   - PRs with 'auto-merge', 'sync', or 'codex' label
+#   - Codex bot PRs (author: 'Codex', branch: 'codex/*')
 #
 # Merge strategy: GH_PAT with admin bypass via repository rulesets
 # No approval step needed — admin role bypasses required reviews
@@ -25,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.actor == 'dependabot[bot]' ||
+      github.actor == 'Codex' ||
       github.actor == github.repository_owner ||
       contains(github.event.pull_request.labels.*.name, 'auto-merge') ||
       contains(github.event.pull_request.labels.*.name, 'codex') ||
