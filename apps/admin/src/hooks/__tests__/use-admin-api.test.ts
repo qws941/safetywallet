@@ -92,7 +92,7 @@ describe("use-admin-api hooks", () => {
   });
 
   it("uses explicit site id when fetching members", async () => {
-    mockApiFetch.mockResolvedValue({ data: [{ id: "member-1" }] });
+    mockApiFetch.mockResolvedValue([{ id: "member-1" }]);
     const { wrapper } = createWrapper();
     const { result } = renderHook(() => useMembers("site-2"), { wrapper });
 
@@ -120,16 +120,15 @@ describe("use-admin-api hooks", () => {
     const { wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    mockApiFetch.mockResolvedValueOnce({
-      data: [{ id: "a1" }],
-      pagination: {},
-    });
+    const announcementsData = [{ id: "a1" }];
+    mockApiFetch.mockResolvedValueOnce(announcementsData);
     const announcements = renderHook(() => useAdminAnnouncements(), {
       wrapper,
     });
     await waitFor(() =>
       expect(announcements.result.current.isSuccess).toBe(true),
     );
+    expect(announcements.result.current.data).toEqual(announcementsData);
     expect(mockApiFetch).toHaveBeenCalledWith("/announcements?siteId=site-1");
 
     mockApiFetch.mockResolvedValue({ ok: true });
@@ -202,12 +201,14 @@ describe("use-admin-api hooks", () => {
     const { wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    mockApiFetch.mockResolvedValueOnce({ data: [{ id: "m1" }] });
+    const manualApprovals = [{ id: "m1" }];
+    mockApiFetch.mockResolvedValueOnce(manualApprovals);
     const query = renderHook(
       () => useManualApprovals("site-2", "2026-02-15", "PENDING"),
       { wrapper },
     );
     await waitFor(() => expect(query.result.current.isSuccess).toBe(true));
+    expect(query.result.current.data).toEqual(manualApprovals);
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/approvals?siteId=site-2&date=2026-02-15&status=PENDING",
     );

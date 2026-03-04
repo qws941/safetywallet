@@ -26,7 +26,7 @@ describe("use-actions-api", () => {
   });
 
   it("fetches action items by current site", async () => {
-    mockApiFetch.mockResolvedValue({ data: [{ id: "a1" }] });
+    mockApiFetch.mockResolvedValue([{ id: "a1" }]);
     const { wrapper, queryClient } = createWrapper();
     const { result } = renderHook(() => useActionItems(), { wrapper });
 
