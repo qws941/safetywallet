@@ -98,7 +98,7 @@ async function createApp(auth?: AuthContext) {
     if (auth) c.set("auth", auth);
     await next();
   });
-  app.route("/", route);
+  app.route("/completions", route);
   const env = { DB: {} } as Record<string, unknown>;
   return { app, env };
 }
@@ -121,7 +121,11 @@ describe("education/completions route", () => {
       "/completions",
       {
         method: "POST",
-        body: JSON.stringify({ contentId: "missing", signature: "data" }),
+        body: JSON.stringify({
+          contentId: "missing",
+          signature: "data:image/png;base64,sig",
+        }),
+        headers: { "Content-Type": "application/json" },
       },
       env,
     );
@@ -145,6 +149,7 @@ describe("education/completions route", () => {
           contentId: "c-1",
           signature: "data:image/png;base64,sig",
         }),
+        headers: { "Content-Type": "application/json" },
       },
       env,
     );

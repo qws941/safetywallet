@@ -8,8 +8,8 @@ import {
   useUpdateEducationContent,
   useEducationContents,
   useYouTubeOembed,
-  useEducationCompletions,
 } from "@/hooks/use-api";
+import { useEducationCompletions } from "@/hooks/use-education-completions";
 
 const toastMock = vi.fn();
 const createAsyncMock = vi.fn();
@@ -35,6 +35,9 @@ vi.mock("@/hooks/use-api", () => ({
   useUpdateEducationContent: vi.fn(),
   useEducationContents: vi.fn(),
   useYouTubeOembed: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-education-completions", () => ({
   useEducationCompletions: vi.fn(),
 }));
 
@@ -80,6 +83,7 @@ vi.mock("@safetywallet/ui", () => ({
   CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
   CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  CardDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input {...props} />
   ),
@@ -95,6 +99,7 @@ vi.mock("@safetywallet/ui", () => ({
   ),
   SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   useToast: () => ({ toast: toastMock }),
+  Skeleton: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 const mockUseEducationContents = vi.mocked(useEducationContents);
@@ -155,7 +160,7 @@ describe("contents tab", () => {
 
   it("renders list and creates content", async () => {
     render(<ContentsTab />);
-    expect(screen.getByText("안전교육 영상")).toBeInTheDocument();
+    expect(screen.getAllByText("안전교육 영상")[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /자료 등록/ }));
 

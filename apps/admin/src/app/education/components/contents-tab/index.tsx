@@ -7,7 +7,7 @@ import { useEducationContents } from "@/hooks/use-api";
 import { ContentForm } from "./content-form";
 import { ContentList } from "./content-list";
 import type { EducationContentItem } from "../education-types";
-import { ContentCompletions } from "./content-completions";
+import { ContentCompletions } from "../content-completions";
 
 export function ContentsTab() {
   const [editingContentId, setEditingContentId] = useState<string | null>(null);
