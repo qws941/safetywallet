@@ -90,7 +90,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-4">

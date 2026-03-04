@@ -127,7 +127,7 @@ export default function LoginClient() {
   const isFormValid = isPhoneValid && name.trim().length > 0 && isDobValid;
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-gray-50">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-muted">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">로그인</CardTitle>

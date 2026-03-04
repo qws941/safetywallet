@@ -32,7 +32,7 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   const reviewStatusColors: Record<ReviewStatus, string> = {
-    [ReviewStatus.PENDING]: "bg-gray-100 text-gray-700",
+    [ReviewStatus.PENDING]: "bg-muted text-foreground",
     [ReviewStatus.IN_REVIEW]: "bg-blue-100 text-blue-700",
     [ReviewStatus.NEED_INFO]: "bg-yellow-100 text-yellow-700",
     [ReviewStatus.APPROVED]: "bg-green-100 text-green-700",

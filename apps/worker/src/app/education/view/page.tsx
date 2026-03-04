@@ -41,7 +41,7 @@ import {
 
 function LoadingState() {
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
       <main className="p-4 space-y-4">
         <Skeleton className="h-8 w-32" />
@@ -186,7 +186,7 @@ function EducationDetailContent() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4">
           <div className="text-center py-12">
@@ -203,7 +203,7 @@ function EducationDetailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-4">
@@ -260,7 +260,7 @@ function EducationDetailContent() {
           })()}
 
         {data.contentType === "IMAGE" && data.contentUrl && (
-          <div className="rounded-lg overflow-hidden border border-gray-200">
+          <div className="rounded-lg overflow-hidden border border-border">
             <Image
               src={data.contentUrl}
               alt={data.title}
@@ -274,7 +274,7 @@ function EducationDetailContent() {
 
         {data.description && (
           <Card>
-            <CardContent className="p-4 bg-gray-50 text-sm text-gray-600 break-words">
+            <CardContent className="p-4 bg-muted text-sm text-muted-foreground break-words">
               {data.description}
             </CardContent>
           </Card>
@@ -332,7 +332,7 @@ function EducationDetailContent() {
             )}
 
             {completionData?.completion?.signatureData && (
-              <div className="rounded-md border bg-white p-2">
+              <div className="rounded-md border bg-background p-2">
                 <img
                   src={completionData.completion.signatureData}
                   alt={t("education.signature.previewAlt")}
@@ -377,12 +377,12 @@ function EducationDetailContent() {
               {t("education.signature.modalHint")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="rounded-md border bg-white">
+          <div className="rounded-md border bg-background">
             <canvas
               ref={canvasRef}
               width={600}
               height={240}
-              className="w-full bg-white"
+              className="w-full bg-background"
               onPointerDown={startDrawing}
               onPointerMove={drawSignature}
               onPointerUp={endDrawing}

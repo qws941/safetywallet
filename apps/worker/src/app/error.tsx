@@ -10,11 +10,11 @@ export default function Error({
   const isDev = process.env.NODE_ENV === "development";
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
-      <div className="bg-white rounded-lg shadow-md p-8 max-w-sm w-full text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-muted px-4">
+      <div className="bg-background rounded-lg shadow-md p-8 max-w-sm w-full text-center">
         <h1 className="text-3xl font-bold text-red-500 mb-4">500</h1>
-        <p className="text-gray-700 mb-2">오류가 발생했습니다</p>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-foreground mb-2">오류가 발생했습니다</p>
+        <p className="text-sm text-muted-foreground mb-6">
           페이지를 새로고침하거나 다시 시도해 주세요.
         </p>
 

@@ -101,7 +101,7 @@ export function ActionImageGallery({
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-lg text-muted-foreground text-sm">
+          <div className="text-center py-8 bg-muted rounded-lg text-muted-foreground text-sm">
             {emptyMessage}
           </div>
         )}

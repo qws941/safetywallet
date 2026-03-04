@@ -74,11 +74,11 @@ export default function HomePage() {
 
   if (!currentSiteId) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
           <div className="text-4xl">🏗️</div>
-          <h2 className="text-lg font-semibold text-gray-700">
+          <h2 className="text-lg font-semibold text-foreground">
             {t("auth.noSitesAvailable")}
           </h2>
           <p className="text-sm text-muted-foreground max-w-xs">
@@ -91,7 +91,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-4">

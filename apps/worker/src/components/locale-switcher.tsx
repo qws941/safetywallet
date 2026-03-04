@@ -34,7 +34,7 @@ export function LocaleSwitcher() {
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-50">
           {locales.map((locale) => (
             <button
               key={locale}
@@ -42,7 +42,7 @@ export function LocaleSwitcher() {
               className={`w-full px-4 py-2 text-left text-sm transition-colors ${
                 currentLocale === locale
                   ? "bg-primary text-primary-foreground font-medium"
-                  : "hover:bg-gray-100 text-gray-700"
+                  : "hover:bg-muted text-muted-foreground"
               }`}
             >
               {localeNames[locale]}

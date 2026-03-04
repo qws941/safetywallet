@@ -50,7 +50,7 @@ export default function ActionsPage() {
   const priorityColors: Record<string, string> = {
     [ActionPriority.HIGH]: "bg-red-50 text-red-700",
     [ActionPriority.MEDIUM]: "bg-amber-50 text-amber-700",
-    [ActionPriority.LOW]: "bg-gray-50 text-gray-600",
+    [ActionPriority.LOW]: "bg-muted text-muted-foreground",
   };
 
   const { data, isLoading } = useMyActions({
@@ -60,7 +60,7 @@ export default function ActionsPage() {
   const actions = data?.data || [];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4">
@@ -78,7 +78,7 @@ export default function ActionsPage() {
                 "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
                 activeFilter === filter.value
                   ? "bg-primary text-primary-foreground"
-                  : "bg-white text-muted-foreground border",
+                  : "bg-background text-muted-foreground border",
               )}
             >
               {filter.label}
@@ -104,7 +104,7 @@ export default function ActionsPage() {
               return (
                 <Card
                   key={action.id}
-                  className="active:bg-gray-50 transition-colors cursor-pointer"
+                  className="active:bg-muted transition-colors cursor-pointer"
                   onClick={() => router.push(`/actions/view?id=${action.id}`)}
                 >
                   <CardContent className="p-4 space-y-3">
@@ -114,7 +114,7 @@ export default function ActionsPage() {
                           className={cn(
                             "font-medium",
                             statusColors[action.actionStatus] ||
-                              "bg-gray-100 text-gray-800",
+                              "bg-muted text-foreground",
                           )}
                         >
                           {statusLabels[action.actionStatus] ||
@@ -124,7 +124,7 @@ export default function ActionsPage() {
                           variant="outline"
                           className={cn(
                             priorityColors[action.priority] ||
-                              "bg-gray-50 text-gray-600",
+                              "bg-muted text-muted-foreground",
                           )}
                         >
                           {priorityLabels[action.priority] || action.priority}

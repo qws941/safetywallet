@@ -22,7 +22,7 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-200 safe-top">
+    <header className="sticky top-0 z-40 bg-background border-b border-border safe-top">
       <div className="flex items-center justify-between h-14 px-4">
         <h1 className="text-lg font-bold text-primary">
           {t("components.appTitle")}

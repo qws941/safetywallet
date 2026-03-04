@@ -94,7 +94,7 @@ export default function RecommendationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-20">
+    <div className="min-h-screen bg-muted p-4 pb-20">
       <div className="max-w-md mx-auto space-y-4">
         <Card>
           <CardHeader>
@@ -117,14 +117,14 @@ export default function RecommendationsPage() {
                 {t("votes.canRecommendTomorrow")}
               </p>
               {todayData.recommendation && (
-                <div className="mt-4 p-3 bg-white rounded-lg text-left">
-                  <p className="text-sm font-medium text-gray-700">
+                <div className="mt-4 p-3 bg-background rounded-lg text-left">
+                  <p className="text-sm font-medium text-foreground">
                     {todayData.recommendation.recommendedName}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {todayData.recommendation.tradeType}
                   </p>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {todayData.recommendation.reason}
                   </p>
                 </div>
@@ -178,7 +178,7 @@ export default function RecommendationsPage() {
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                     setReason(e.target.value)
                   }
-                  className="w-full min-h-[100px] p-3 rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  className="w-full min-h-[100px] p-3 rounded-lg border border-border resize-none focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 />
               </div>
 
@@ -245,7 +245,7 @@ export default function RecommendationsPage() {
                         {rec.recommendationDate}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1 break-words">
+                    <p className="text-xs text-muted-foreground mt-1 break-words">
                       {rec.reason}
                     </p>
                   </CardContent>

@@ -48,10 +48,10 @@ export default function EducationPage() {
   const [activeTab, setActiveTab] = useState<Tab>("contents");
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
-      <div className="sticky top-14 z-30 bg-white border-b border-gray-200 px-4">
+      <div className="sticky top-14 z-30 bg-background border-b border-border px-4">
         <div className="flex gap-4">
           <button
             type="button"
@@ -205,7 +205,7 @@ function QuizzesTab({ siteId }: { siteId: string }) {
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                 {quiz.description || t("education.noDescription")}
               </p>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground bg-gray-50 p-2 rounded">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground bg-muted p-2 rounded">
                 <div className="flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>
@@ -299,7 +299,7 @@ function TbmTab({ siteId }: { siteId: string }) {
             </div>
 
             {record.content && (
-              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
                 {record.content}
               </p>
             )}

@@ -61,7 +61,7 @@ const parseQuestionOptions = (
 
 function LoadingState() {
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
       <main className="p-4 space-y-4">
         <Skeleton className="h-8 w-32" />
@@ -109,7 +109,7 @@ function QuizTakeContent() {
 
   if (!quiz) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4 text-center py-12">
           <p className="text-4xl mb-4">❌</p>
@@ -219,7 +219,7 @@ function QuizTakeContent() {
 
   if (showResult && lastResult) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4 flex flex-col items-center justify-center min-h-[60vh] space-y-6">
           <div className="text-6xl mb-2">{lastResult.passed ? "🎉" : "😢"}</div>
@@ -262,7 +262,7 @@ function QuizTakeContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-6">
@@ -288,7 +288,7 @@ function QuizTakeContent() {
             )}
           </div>
           {quiz.description && (
-            <p className="text-sm text-gray-600 break-words">
+            <p className="text-sm text-muted-foreground break-words">
               {quiz.description}
             </p>
           )}
@@ -324,7 +324,7 @@ function QuizTakeContent() {
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                             selected
                               ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
-                              : "border-gray-200 hover:bg-gray-50"
+                              : "border-border hover:bg-muted"
                           }`}
                           onClick={() => handleAnswerSelect(q.id, optIdx)}
                           onKeyDown={(e) => {
@@ -336,7 +336,7 @@ function QuizTakeContent() {
                         >
                           <div
                             className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                              selected ? "border-primary" : "border-gray-400"
+                              selected ? "border-primary" : "border-border"
                             }`}
                           >
                             {selected && (
@@ -360,7 +360,7 @@ function QuizTakeContent() {
                         className={`rounded-lg border px-4 py-6 text-xl font-bold transition-colors ${
                           answer === 0
                             ? "border-primary bg-primary/10 text-primary shadow-sm ring-2 ring-primary/30"
-                            : "border-gray-200 hover:bg-gray-50"
+                            : "border-border hover:bg-muted"
                         }`}
                         onClick={() => handleAnswerSelect(q.id, 0)}
                       >
@@ -371,7 +371,7 @@ function QuizTakeContent() {
                         className={`rounded-lg border px-4 py-6 text-xl font-bold transition-colors ${
                           answer === 1
                             ? "border-primary bg-primary/10 text-primary shadow-sm ring-2 ring-primary/30"
-                            : "border-gray-200 hover:bg-gray-50"
+                            : "border-border hover:bg-muted"
                         }`}
                         onClick={() => handleAnswerSelect(q.id, 1)}
                       >
@@ -393,7 +393,7 @@ function QuizTakeContent() {
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                             selected
                               ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
-                              : "border-gray-200 hover:bg-gray-50"
+                              : "border-border hover:bg-muted"
                           }`}
                           onClick={() => handleMultiChoiceToggle(q.id, optIdx)}
                           onKeyDown={(e) => {
@@ -407,11 +407,11 @@ function QuizTakeContent() {
                             className={`w-4 h-4 rounded border flex items-center justify-center ${
                               selected
                                 ? "border-primary bg-primary"
-                                : "border-gray-400"
+                                : "border-border"
                             }`}
                           >
                             {selected && (
-                              <div className="w-2 h-2 rounded-sm bg-white" />
+                              <div className="w-2 h-2 rounded-sm bg-background" />
                             )}
                           </div>
                           <span className="text-sm flex-1 break-words">

@@ -78,7 +78,7 @@ export default function PostsPage() {
   }, [handleObserver]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4">
@@ -104,7 +104,7 @@ export default function PostsPage() {
                 "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
                 activeFilter === filter.value
                   ? "bg-primary text-primary-foreground"
-                  : "bg-white text-muted-foreground border",
+                  : "bg-background text-muted-foreground border",
               )}
             >
               {filter.label}

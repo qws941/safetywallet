@@ -74,14 +74,14 @@ export function ActionDetailContent() {
   const priorityColors: Record<string, string> = {
     [ActionPriority.HIGH]: "bg-red-50 text-red-700",
     [ActionPriority.MEDIUM]: "bg-amber-50 text-amber-700",
-    [ActionPriority.LOW]: "bg-gray-50 text-gray-600",
+    [ActionPriority.LOW]: "bg-muted text-muted-foreground",
   };
 
   const action = data?.data;
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4 space-y-4">
           <Skeleton className="h-8 w-32" />
@@ -95,7 +95,7 @@ export function ActionDetailContent() {
 
   if (error || !action) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4 flex flex-col items-center justify-center h-full">
           <p className="text-4xl mb-4">❌</p>
@@ -168,7 +168,7 @@ export function ActionDetailContent() {
     action.images?.filter((img) => img.imageType === "AFTER") || [];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-4">
@@ -186,7 +186,7 @@ export function ActionDetailContent() {
         <div className="flex items-center gap-2 mb-2">
           <Badge
             className={cn(
-              statusColors[action.actionStatus] || "bg-gray-100 text-gray-800",
+              statusColors[action.actionStatus] || "bg-muted text-foreground",
             )}
           >
             {statusLabels[action.actionStatus] || action.actionStatus}
@@ -194,7 +194,8 @@ export function ActionDetailContent() {
           <Badge
             variant="outline"
             className={cn(
-              priorityColors[action.priority] || "bg-gray-50 text-gray-600",
+              priorityColors[action.priority] ||
+                "bg-muted text-muted-foreground",
             )}
           >
             {priorityLabels[action.priority] || action.priority}
@@ -232,11 +233,11 @@ export function ActionDetailContent() {
             </div>
 
             {action.post && (
-              <div className="bg-gray-50 p-3 rounded-lg text-sm">
-                <span className="font-medium text-gray-700">
+              <div className="bg-muted p-3 rounded-lg text-sm">
+                <span className="font-medium text-foreground">
                   {t("actions.view.relatedReport")}:
                 </span>{" "}
-                <span className="text-gray-600 break-words">
+                <span className="text-muted-foreground break-words">
                   {action.post.title}
                 </span>
               </div>
@@ -301,11 +302,11 @@ export function ActionDetailContent() {
                   {t("actions.view.awaitingReview")}
                 </p>
                 {action.completionNote && (
-                  <div className="mt-4 text-left bg-white p-3 rounded border border-green-100">
+                  <div className="mt-4 text-left bg-background p-3 rounded border border-green-100">
                     <p className="text-xs text-green-600 mb-1">
                       {t("actions.view.completionContent")}
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-foreground">
                       {action.completionNote}
                     </p>
                   </div>

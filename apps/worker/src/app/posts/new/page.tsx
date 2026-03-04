@@ -276,7 +276,7 @@ export default function NewPostPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       <Header />
 
       <main className="p-4">
@@ -303,7 +303,7 @@ export default function NewPostPage() {
                     className={`p-3 rounded-lg border text-center transition-colors ${
                       category === opt.value
                         ? "border-primary bg-primary/10"
-                        : "border-gray-200 hover:border-gray-300"
+                        : "border-border hover:border-border"
                     }`}
                   >
                     <div className="text-2xl mb-1">{opt.icon}</div>
@@ -339,7 +339,7 @@ export default function NewPostPage() {
                       className={`flex-1 py-2 px-4 rounded-lg border-2 text-center transition-colors ${
                         riskLevel === opt.value
                           ? "border-current"
-                          : "border-gray-200"
+                          : "border-border"
                       } ${opt.color}`}
                     >
                       {t(opt.label)}
@@ -361,7 +361,7 @@ export default function NewPostPage() {
                 placeholder={t("posts.description")}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary resize-none"
+                className="w-full h-32 p-3 border border-border rounded-lg focus:outline-none focus:border-primary resize-none"
               />
             </CardContent>
           </Card>
@@ -404,7 +404,7 @@ export default function NewPostPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary transition-colors"
+                className="w-full p-3 border-2 border-dashed border-border rounded-lg hover:border-primary transition-colors"
               >
                 사진/동영상 추가
               </button>
@@ -414,7 +414,7 @@ export default function NewPostPage() {
                   {files.map((file, idx) => (
                     <div
                       key={`${file.name}-${file.size}-${file.lastModified}`}
-                      className="flex items-center justify-between gap-2 p-2 bg-gray-100 rounded"
+                      className="flex items-center justify-between gap-2 p-2 bg-muted rounded"
                     >
                       {file.type.startsWith("video/") ? (
                         <div className="flex items-center gap-3 min-w-0">
@@ -427,7 +427,7 @@ export default function NewPostPage() {
                           />
                           <div className="min-w-0">
                             <p className="text-sm truncate">{file.name}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               {(file.size / (1024 * 1024)).toFixed(1)} MB
                             </p>
                           </div>

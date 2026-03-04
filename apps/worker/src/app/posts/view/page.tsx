@@ -23,7 +23,7 @@ import { AlertCircle, HelpCircle, Send } from "lucide-react";
 
 function LoadingState() {
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
       <main className="p-4 space-y-4">
         <Skeleton className="h-8 w-32" />
@@ -135,7 +135,7 @@ function PostDetailContent() {
   };
 
   const reviewStatusColors: Record<ReviewStatus, string> = {
-    [ReviewStatus.PENDING]: "bg-gray-100 text-gray-700",
+    [ReviewStatus.PENDING]: "bg-muted text-foreground",
     [ReviewStatus.IN_REVIEW]: "bg-blue-100 text-blue-700",
     [ReviewStatus.NEED_INFO]: "bg-yellow-100 text-yellow-700",
     [ReviewStatus.APPROVED]: "bg-green-100 text-green-700",
@@ -149,7 +149,7 @@ function PostDetailContent() {
 
   if (error || !post) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4">
           <div className="text-center py-12">
@@ -166,7 +166,7 @@ function PostDetailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-4">

@@ -63,21 +63,21 @@ export default function AnnouncementsPage() {
       GENERAL: {
         icon: "📢",
         label: t("announcements.types.GENERAL"),
-        color: "bg-gray-100 text-gray-800",
+        color: "bg-muted text-foreground",
       },
     };
     return (
       configs[type || "GENERAL"] || {
         icon: "📢",
         label: t("announcements.types.GENERAL"),
-        color: "bg-gray-100 text-gray-800",
+        color: "bg-muted text-foreground",
       }
     );
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-nav">
+      <div className="min-h-screen bg-muted pb-nav">
         <Header />
         <main className="p-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -92,7 +92,7 @@ export default function AnnouncementsPage() {
   const items = announcements?.data || [];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4">
@@ -143,7 +143,7 @@ export default function AnnouncementsPage() {
                           )}
                         </p>
                         {isExpanded && (
-                          <div className="mt-3 pt-3 border-t text-sm text-gray-600">
+                          <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
                             {announcement.content ||
                               t("announcements.noContent")}
                           </div>

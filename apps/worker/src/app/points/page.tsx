@@ -30,18 +30,20 @@ export default function PointsPage() {
     if (rank === 1)
       return <Crown className="w-5 h-5 text-yellow-500 fill-yellow-500" />;
     if (rank === 2)
-      return <Medal className="w-5 h-5 text-gray-400 fill-gray-400" />;
+      return (
+        <Medal className="w-5 h-5 text-muted-foreground fill-muted-foreground" />
+      );
     if (rank === 3)
       return <Medal className="w-5 h-5 text-amber-700 fill-amber-700" />;
     return (
-      <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-gray-500">
+      <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-muted-foreground">
         {rank}
       </span>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-nav">
+    <div className="min-h-screen bg-muted pb-nav">
       <Header />
 
       <main className="p-4 space-y-4">
@@ -65,7 +67,7 @@ export default function PointsPage() {
                 onClick={() => setRankingTab("monthly")}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm rounded-md transition-colors ${
                   rankingTab === "monthly"
-                    ? "bg-white text-amber-900 font-medium shadow-sm"
+                    ? "bg-background text-amber-900 font-medium shadow-sm"
                     : "text-amber-700"
                 }`}
               >
@@ -77,7 +79,7 @@ export default function PointsPage() {
                 onClick={() => setRankingTab("cumulative")}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-sm rounded-md transition-colors ${
                   rankingTab === "cumulative"
-                    ? "bg-white text-amber-900 font-medium shadow-sm"
+                    ? "bg-background text-amber-900 font-medium shadow-sm"
                     : "text-amber-700"
                 }`}
               >
@@ -94,7 +96,7 @@ export default function PointsPage() {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : leaderboard.length > 0 ? (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-border">
                 {leaderboard.slice(0, 10).map((entry) => (
                   <div
                     key={entry.userId}
@@ -106,19 +108,19 @@ export default function PointsPage() {
                       <div className="w-8 flex justify-center">
                         {renderRankBadge(entry.rank)}
                       </div>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-foreground">
                         {entry.nameMasked}
                         {entry.isCurrentUser && (
                           <Badge
                             variant="outline"
-                            className="ml-2 text-xs border-amber-500 text-amber-600 bg-white"
+                            className="ml-2 text-xs border-amber-500 text-amber-600 bg-background"
                           >
                             {t("points.me")}
                           </Badge>
                         )}
                       </div>
                     </div>
-                    <div className="font-bold text-gray-700 text-sm">
+                    <div className="font-bold text-foreground text-sm">
                       {entry.totalPoints.toLocaleString()} P
                     </div>
                   </div>
@@ -126,7 +128,7 @@ export default function PointsPage() {
 
                 {myRank && myRank > 10 && (
                   <>
-                    <div className="p-2 text-center text-gray-400 text-xs">
+                    <div className="p-2 text-center text-muted-foreground text-xs">
                       •••
                     </div>
                     <div className="flex items-center justify-between p-3 bg-amber-50 border-t border-amber-100">
@@ -136,18 +138,18 @@ export default function PointsPage() {
                             {myRank}
                           </span>
                         </div>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-foreground">
                           {leaderboard.find((e) => e.isCurrentUser)
                             ?.nameMasked || t("points.me")}
                           <Badge
                             variant="outline"
-                            className="ml-2 text-xs border-amber-500 text-amber-600 bg-white"
+                            className="ml-2 text-xs border-amber-500 text-amber-600 bg-background"
                           >
                             {t("points.me")}
                           </Badge>
                         </div>
                       </div>
-                      <div className="font-bold text-gray-700 text-sm">
+                      <div className="font-bold text-foreground text-sm">
                         {leaderboard
                           .find((e) => e.isCurrentUser)
                           ?.totalPoints.toLocaleString() || 0}{" "}
@@ -158,7 +160,7 @@ export default function PointsPage() {
                 )}
               </div>
             ) : (
-              <div className="p-8 text-center text-gray-500 text-sm">
+              <div className="p-8 text-center text-muted-foreground text-sm">
                 {t("points.noRankingData")}
               </div>
             )}
