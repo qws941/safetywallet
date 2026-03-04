@@ -98,7 +98,9 @@ describe("use-admin-api hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual([{ id: "member-1" }]);
-    expect(mockApiFetch).toHaveBeenCalledWith("/sites/site-2/members");
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/sites/site-2/members?limit=100",
+    );
   });
 
   it("fetches single member and disables when member id is missing", async () => {
