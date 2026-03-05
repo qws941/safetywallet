@@ -25,7 +25,7 @@ export function usePosts(siteId: string) {
 export function usePost(id: string) {
   return useQuery({
     queryKey: ["post", id],
-    queryFn: () => apiFetch<ApiResponse<PostDto>>(`/posts/${id}`),
+    queryFn: () => apiFetch<ApiResponse<{ post: PostDto }>>(`/posts/${id}`),
     enabled: !!id,
   });
 }
