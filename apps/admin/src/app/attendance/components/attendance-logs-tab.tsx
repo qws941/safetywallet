@@ -13,17 +13,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Badge,
 } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
-import { AlertCircle } from "lucide-react";
-import {
-  type AnomalyType,
-  ANOMALY_LABELS,
-  ANOMALY_COLORS,
-  getKSTHour,
-  formatTime,
-} from "../attendance-helpers";
+import { formatTime } from "../attendance-helpers";
 
 interface AttendanceLog {
   userName: string | null;
@@ -43,8 +35,6 @@ interface AttendanceLogsTabProps {
   setResultFilter: (filter: "ALL" | "SUCCESS" | "FAIL") => void;
   companyFilter: string;
   setCompanyFilter: (filter: string) => void;
-  showAnomalyOnly: boolean;
-  setShowAnomalyOnly: (show: boolean) => void;
 }
 
 export function AttendanceLogsTab({
@@ -57,8 +47,6 @@ export function AttendanceLogsTab({
   setResultFilter,
   companyFilter,
   setCompanyFilter,
-  showAnomalyOnly,
-  setShowAnomalyOnly,
 }: AttendanceLogsTabProps) {
   const companyNames = useMemo<string[]>(() => {
     // Company name not available from backend
@@ -72,28 +60,8 @@ export function AttendanceLogsTab({
     }
     // Company filter disabled — backend does not return companyName
 
-    const withAnomalies = logs.map((log, i) => {
-      const anomalies: AnomalyType[] = [];
-
-      if (log.checkinAt) {
-        const hour = getKSTHour(log.checkinAt);
-        if (hour < 5) anomalies.push("EARLY");
-        if (hour >= 12) anomalies.push("LATE");
-      }
-
-      // checkOutTime not available from backend
-
-      return { ...log, index: i + 1, anomalies };
-    });
-
-    if (showAnomalyOnly) {
-      return withAnomalies
-        .filter((l) => l.anomalies.length > 0)
-        .map((l, i) => ({ ...l, index: i + 1 }));
-    }
-
-    return withAnomalies;
-  }, [allLogs, resultFilter, showAnomalyOnly]);
+    return logs.map((log, i) => ({ ...log, index: i + 1 }));
+  }, [allLogs, resultFilter]);
 
   const logColumns: Column<(typeof filteredLogs)[0]>[] = [
     {
@@ -121,31 +89,7 @@ export function AttendanceLogsTab({
       key: "result",
       header: "상태",
       sortable: true,
-      render: (item) => (
-        <Badge
-          variant={item.result === "SUCCESS" ? "default" : "destructive"}
-          className="capitalize"
-        >
-          {item.result === "SUCCESS" ? "성공" : "실패"}
-        </Badge>
-      ),
-    },
-    {
-      key: "anomalies",
-      header: "이상치",
-      render: (item) =>
-        item.anomalies.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {item.anomalies.map((a) => (
-              <span
-                key={a}
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ANOMALY_COLORS[a]}`}
-              >
-                {ANOMALY_LABELS[a]}
-              </span>
-            ))}
-          </div>
-        ) : null,
+      render: (item) => (item.result === "SUCCESS" ? "성공" : "실패"),
     },
     {
       key: "checkinAt",
@@ -208,15 +152,6 @@ export function AttendanceLogsTab({
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant={showAnomalyOnly ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowAnomalyOnly(!showAnomalyOnly)}
-              className="whitespace-nowrap"
-            >
-              <AlertCircle className="h-4 w-4 mr-1" />
-              이상치만
-            </Button>
           </div>
         </div>
       </CardHeader>

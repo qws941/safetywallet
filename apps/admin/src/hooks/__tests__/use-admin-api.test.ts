@@ -92,7 +92,7 @@ describe("use-admin-api hooks", () => {
   });
 
   it("uses explicit site id when fetching members", async () => {
-    mockApiFetch.mockResolvedValue([{ id: "member-1" }]);
+    mockApiFetch.mockResolvedValue({ data: [{ id: "member-1" }] });
     const { wrapper } = createWrapper();
     const { result } = renderHook(() => useMembers("site-2"), { wrapper });
 
@@ -202,7 +202,10 @@ describe("use-admin-api hooks", () => {
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     const manualApprovals = [{ id: "m1" }];
-    mockApiFetch.mockResolvedValueOnce(manualApprovals);
+    mockApiFetch.mockResolvedValueOnce({
+      data: manualApprovals,
+      pagination: { limit: 20, offset: 0, count: 1 },
+    });
     const query = renderHook(
       () => useManualApprovals("site-2", "2026-02-15", "PENDING"),
       { wrapper },

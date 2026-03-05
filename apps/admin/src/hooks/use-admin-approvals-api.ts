@@ -43,10 +43,13 @@ export function useManualApprovals(
   return useQuery({
     queryKey: ["admin", "manual-approvals", targetSiteId, date, status],
     queryFn: async () => {
-      const approvals = await apiFetch<ManualApproval[]>(
-        `/approvals?${params.toString()}`,
-      );
-      return approvals;
+      const response = await apiFetch<
+        { data?: ManualApproval[] } | ManualApproval[]
+      >(`/approvals?${params.toString()}`);
+      if (Array.isArray(response)) {
+        return response;
+      }
+      return response.data ?? [];
     },
     enabled: !!targetSiteId,
   });
