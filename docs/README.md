@@ -11,6 +11,7 @@ This index defines current documentation sources of truth.
 - Cloudflare operations runbook: `docs/cloudflare-operations.md`
 - Implementation verification checklist: `docs/requirements/IMPLEMENTATION_VERIFICATION_CHECKLIST.md`
 - Registration verification report: `docs/requirements/REGISTRATION_VERIFICATION_REPORT.md`
+- Phase 3 UI simplification PRD: `docs/requirements/Phase3_UI_Simplification_PRD.md`
 
 ## Redirected
 
@@ -20,6 +21,6 @@ This index defines current documentation sources of truth.
 
 ## Archived/Deprecated
 
-- `docs/requirements/SafetyWallet_Implementation_Plan_v1.0.md`
+- `docs/requirements/archived/SafetyWallet_Implementation_Plan_v1.0.md`
   - Deprecated because it was written for a legacy NestJS + PostgreSQL architecture.
   - Keep for historical context only.

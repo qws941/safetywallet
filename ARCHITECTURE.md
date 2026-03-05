@@ -9,7 +9,7 @@ SafetyWallet is an industrial safety compliance platform. Field workers use a mo
 - Monorepo: Turborepo (`turbo.json`) with npm workspaces.
 - API: Hono + Drizzle ORM on Cloudflare Workers/D1 (`wrangler.toml`).
 - Web: Next.js 15 + React 18 static export for admin and worker apps.
-- Testing: Vitest + Testing Library + happy-dom. No E2E framework.
+- Testing: Vitest + Testing Library + happy-dom. Playwright for E2E (`playwright.config.ts`).
 - CI: GitHub Actions (`ci.yml`) — lint → typecheck → guards → test → audit → build → d1-migrate → validate → Slack notify.
 
 ## Directory Structure
@@ -25,10 +25,13 @@ SafetyWallet is an industrial safety compliance platform. Field workers use a mo
 │   └── ui/                  # Shared UI components (shadcn/ui + Tailwind v4 theme tokens)
 ├── docs/                    # PRD, requirements, ops runbooks
 ├── scripts/                 # Repo tooling (verify, naming lint, anti-pattern checks)
+├── e2e/                     # Playwright E2E tests (auth setup, admin, worker)
 ├── .github/workflows/       # CI/CD and automation workflows
 ├── wrangler.toml            # Root CF Worker config + bindings
 ├── turbo.json               # Turborepo pipeline
 └── vitest.config.ts         # Vitest workspace config
+├── playwright.config.ts     # Playwright E2E config (6 projects)
+├── .env.e2e                 # 1Password secret references for E2E (op:// URIs)
 ```
 
 ## Hosting Model
@@ -36,8 +39,9 @@ SafetyWallet is an industrial safety compliance platform. Field workers use a mo
 A single Cloudflare Worker handles all traffic via hostname-based routing:
 
 - `safetywallet.jclee.me/api/*` → Hono API routes.
-- `safetywallet.jclee.me/*` → Worker PWA static assets from R2 (`ASSETS`).
-- `admin.safetywallet.jclee.me/*` → Admin SPA static assets from R2 (`ASSETS` at `/admin/*` prefix).
+- `safetywallet.jclee.me/r2/*` → R2 media files (user-uploaded images and videos).
+- `safetywallet.jclee.me/*` → Worker PWA static assets from Workers Static Assets (`ASSETS`).
+- `admin.safetywallet.jclee.me/*` → Admin SPA static assets from Workers Static Assets (`ASSETS` at `/admin/*` prefix).
 - Static frontends are built with `next export` and aggregated into `dist/` via `build:static`.
 
 ## Authentication & Authorization
@@ -49,19 +53,19 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 
 ## Cloudflare Bindings
 
-| Binding                                   | Type             | Purpose                                          |
-| ----------------------------------------- | ---------------- | ------------------------------------------------ |
-| `DB`                                      | D1               | Primary database (32 tables, SQLite via Drizzle) |
-| `FAS_HYPERDRIVE`                          | Hyperdrive       | External FAS employee database                   |
-| `ASSETS`                                  | R2               | Static frontend assets (worker + admin SPAs)     |
-| `IMAGES_BUCKET`                           | R2               | User-uploaded images (face blur + phash)         |
-| `ACETIME_BUCKET`                          | R2               | Attendance-related assets                        |
-| `KV`                                      | KV               | Auth cache, system status, config                |
-| `NOTIFICATION_QUEUE` / `NOTIFICATION_DLQ` | Queue            | Notification delivery pipeline                   |
-| `RATE_LIMITER`                            | Durable Object   | Per-IP/user rate limiting                        |
-| `JOB_SCHEDULER`                           | Durable Object   | Scheduled admin tasks                            |
-| `AI`                                      | Workers AI       | Inference (face blur, content analysis)          |
-| `ANALYTICS`                               | Analytics Engine | Request analytics and metrics                    |
+| Binding                                   | Type                  | Purpose                                          |
+| ----------------------------------------- | --------------------- | ------------------------------------------------ |
+| `DB`                                      | D1                    | Primary database (32 tables, SQLite via Drizzle) |
+| `FAS_HYPERDRIVE`                          | Hyperdrive            | External FAS employee database                   |
+| `ASSETS`                                  | Workers Static Assets | Static frontend files (worker + admin SPAs)      |
+| `R2`                                      | R2                    | User-uploaded images and videos                  |
+| `ACETIME_BUCKET`                          | R2                    | Attendance-related assets                        |
+| `KV`                                      | KV                    | Auth cache, system status, config                |
+| `NOTIFICATION_QUEUE` / `NOTIFICATION_DLQ` | Queue                 | Notification delivery pipeline                   |
+| `RATE_LIMITER`                            | Durable Object        | Per-IP/user rate limiting                        |
+| `JOB_SCHEDULER`                           | Durable Object        | Scheduled admin tasks                            |
+| `AI`                                      | Workers AI            | Inference (face blur, content analysis)          |
+| `ANALYTICS`                               | Analytics Engine      | Request analytics and metrics                    |
 
 ## Database Schema
 
@@ -79,7 +83,7 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 - **Worker offline**: IndexedDB queue (`safetywallet_offline_queue`) syncs on reconnect.
 - **API → D1**: Drizzle ORM queries via `DB` binding.
 - **API → FAS**: Hyperdrive connection for external employee sync (`/api/fas/*` routes).
-- **API → R2**: Image upload with Workers AI face blur + perceptual hash dedup.
+- **API → R2**: Image/video upload with Workers AI face blur + perceptual hash dedup. Served via `GET /r2/*` route.
 - **API → KV**: Auth session cache, system status flags (`fas_down`, `maintenance`).
 - **API → Queue**: Notification delivery via `NOTIFICATION_QUEUE` with DLQ fallback.
 - **Observability**: Analytics Engine for request metrics. GitHub issue auto-creation on unhandled errors.
@@ -90,6 +94,7 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 - `npm run build:static` — Builds Next.js apps + copies static output to `dist/` for R2 upload.
 - `npm run typecheck` — Workspace-wide TypeScript check.
 - `npm test` — Vitest across all workspaces.
+- `npm run e2e` — Playwright E2E tests (credentials via 1Password `op run`).
 - `npm run verify` — 7-step pipeline: typecheck → eslint → vitest → anti-pattern → naming → wrangler-sync → build.
 - Deploy: Git-ref driven via Cloudflare Git Integration. Manual deploy scripts exit non-zero.
 - D1 migrations: Applied on master push in CI (`d1-migrate` step).

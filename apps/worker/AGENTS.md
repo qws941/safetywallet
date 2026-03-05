@@ -19,12 +19,12 @@ Next.js 15 PWA for field workers. Mobile-first safety workflow app with offline-
 - `vitest.config.ts` — test runner config
 - `I18N_IMPLEMENTATION.md` — i18n design notes
 - `public/` — static assets, manifest, service worker
-- `src/app/` — 16 route pages (App Router)
+- `src/app/` — 10 route groups (actions, announcements, education, home, login, points, posts, profile, register, votes)
 - `src/components/` — 13 reusable components + providers
 - `src/hooks/` — 14 hook modules
 - `src/stores/` — Zustand auth store
 - `src/i18n/` — locale config, loader, context, translator
-- `src/lib/` — API client, offline queue, image compression, HTML sanitization
+- `src/lib/` — API client, offline queue, image compression, HTML sanitization, utilities
 
 ## Conventions
 

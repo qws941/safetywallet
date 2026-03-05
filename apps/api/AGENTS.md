@@ -19,7 +19,7 @@ Owns middleware chain, route mounts, queue consumer, static asset fallback.
     ├── index.ts               # Worker entrypoint, middleware chain, route mounts
     ├── types.ts               # Env binding contract
     ├── db/                    # Drizzle schema, migrations tooling
-    ├── durable-objects/       # RateLimiter DO
+    ├── durable-objects/       # RateLimiter + JobScheduler DOs
     ├── jobs/                  # Scheduled job registry and implementations
     ├── lib/                   # Shared business logic (25 modules)
     ├── middleware/            # Request guards and observability hooks
@@ -31,18 +31,19 @@ Owns middleware chain, route mounts, queue consumer, static asset fallback.
 
 ## BINDINGS (wrangler.toml)
 
-| Binding            | Type           | Purpose                        |
-| ------------------ | -------------- | ------------------------------ |
-| DB                 | D1             | Primary database               |
-| R2                 | R2             | Image storage                  |
-| STATIC             | R2             | Static frontend files          |
-| ACETIME_BUCKET     | R2             | Acetime data                   |
-| FAS_HYPERDRIVE     | Hyperdrive     | FAS MariaDB direct connection  |
-| KV                 | KV Namespace   | Cache, sessions, feature flags |
-| ANALYTICS          | Analytics      | Request metrics                |
-| NOTIFICATION_QUEUE | Queue          | Notification delivery pipeline |
-| AI                 | Workers AI     | Hazard classification, privacy |
-| RATE_LIMITER       | Durable Object | Per-user/IP rate limiting      |
+| Binding            | Type                  | Purpose                        |
+| ------------------ | --------------------- | ------------------------------ |
+| DB                 | D1                    | Primary database               |
+| R2                 | R2                    | Image storage                  |
+| ASSETS             | Workers Static Assets | Static frontend files          |
+| ACETIME_BUCKET     | R2                    | Acetime data                   |
+| FAS_HYPERDRIVE     | Hyperdrive            | FAS MariaDB direct connection  |
+| KV                 | KV Namespace          | Cache, sessions, feature flags |
+| ANALYTICS          | Analytics             | Request metrics                |
+| NOTIFICATION_QUEUE | Queue                 | Notification delivery pipeline |
+| AI                 | Workers AI            | Hazard classification, privacy |
+| RATE_LIMITER       | Durable Object        | Per-user/IP rate limiting      |
+| JOB_SCHEDULER      | Durable Object        | Scheduled admin tasks          |
 
 ## MIDDLEWARE CHAIN ORDER
 
@@ -58,11 +59,13 @@ Direct endpoints in `src/index.ts`: `GET /api/health`, `GET /api/system/status`,
 
 API catch-all: `api.all("*")` returns JSON 404 envelope.
 
+R2 media serving: `GET /r2/*` serves user-uploaded images and videos from `R2` bucket with content-type detection and conditional caching.
+
 Static fallback serves from `ASSETS`; hostname `admin.*` rewrites to `/admin/*` asset path.
 
 ## EXPORTS
 
-`src/index.ts` exports: `app`, `RateLimiter`, default `{ fetch, queue }`.
+`src/index.ts` exports: `app`, `RateLimiter`, `JobScheduler`, default `{ fetch, queue }`.
 
 Queue consumer delegates to `processNotificationBatch` from `src/lib/notification-queue.ts`.
 

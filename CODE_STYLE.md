@@ -9,7 +9,7 @@
 
 - Apps live under `apps/` with App Router pages under `src/app/` (`apps/admin/src/app/`, `apps/worker/src/app/`).
 - Shared packages under `packages/` (`packages/types/src`, `packages/ui/src`).
-- E2E tests live under `e2e/` with per-surface folders (`e2e/api`, `e2e/admin`, `e2e/worker`, `e2e/cross-app`).
+- E2E tests live under `e2e/` with per-surface folders (`e2e/auth`, `e2e/admin`, `e2e/worker`).
 - Repo tooling and verification scripts live under `scripts/` (`scripts/verify.go`, `scripts/lint-naming.js`).
 
 ## Import Style
@@ -38,7 +38,7 @@
 
 - Unit tests: Vitest workspace config (`vitest.config.ts`) and per-package configs (`apps/*/vitest.config.ts`, `packages/*/vitest.config.ts`).
 - E2E: Playwright projects in `playwright.config.ts`, tests under `e2e/`.
-- Scripts: `npm test`, `npm run test:e2e`, `npm run test:e2e:smoke` (`package.json`).
+- Scripts: `npm test`, `npm run e2e`, `npm run e2e:headed`, `npm run e2e:ui` (`package.json`).
 
 ## Do's and Don'ts
 

@@ -11,6 +11,7 @@ Project documentation, runbooks, and redirect stubs.
 - `rollback.md` — redirect to `cloudflare-operations.md`.
 - `REQUIREMENTS_REVIEW.md` — redirect to `requirements/REQUIREMENTS_CHECKLIST.md`.
 - `requirements/` — requirements and PRD subtree (see `requirements/AGENTS.md`).
+- `requirements/archived/` — deprecated documents (legacy architecture plans).
 
 ## Conventions
 
