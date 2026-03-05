@@ -145,7 +145,6 @@ vi.mock("../../db/schema", () => ({
     siteId: "siteId",
     title: "title",
     status: "status",
-    passingScore: "passingScore",
     pointsReward: "pointsReward",
     createdAt: "createdAt",
     createdById: "createdById",
@@ -511,7 +510,6 @@ describe("education", () => {
         id: "q1",
         siteId: "site-1",
         status: "DRAFT",
-        passingScore: 70,
         pointsReward: 10,
       });
       const { app, env } = await createApp(makeAuth());
@@ -533,7 +531,6 @@ describe("education", () => {
           id: "q1",
           siteId: "site-1",
           status: "PUBLISHED",
-          passingScore: 50,
           pointsReward: 10,
           createdById: "admin-1",
         })
@@ -999,7 +996,6 @@ describe("education", () => {
           id: "q1",
           siteId: "site-1",
           status: "PUBLISHED",
-          passingScore: 70,
           pointsReward: 10,
           createdById: "admin-1",
         })
@@ -1025,7 +1021,6 @@ describe("education", () => {
           id: "q1",
           siteId: "site-1",
           status: "PUBLISHED",
-          passingScore: 70,
           pointsReward: 10,
           createdById: "admin-1",
         })
@@ -1054,7 +1049,6 @@ describe("education", () => {
           id: "q1",
           siteId: "site-1",
           status: "PUBLISHED",
-          passingScore: 70,
           pointsReward: 10,
           createdById: "admin-1",
         })

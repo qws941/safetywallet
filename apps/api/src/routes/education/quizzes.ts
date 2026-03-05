@@ -33,7 +33,6 @@ const UpdateQuizMetadataSchema = z
     description: z.string().optional(),
     status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
     pointsReward: z.number().int().optional(),
-    passingScore: z.number().int().optional(),
     timeLimitMinutes: z.number().int().optional(),
     contentId: z.string().uuid().optional(),
   })
@@ -99,7 +98,6 @@ app.post("/", zValidator("json", CreateQuizInputSchema), async (c) => {
       description: body.description ?? null,
       status: body.status ?? "DRAFT",
       pointsReward: body.pointsReward ?? 0,
-      passingScore: body.passingScore ?? 70,
       timeLimitMinutes: body.timeLimitMinutes ?? null,
       createdById: user.id,
     })
@@ -282,9 +280,6 @@ app.patch("/:id", zValidator("json", UpdateQuizMetadataSchema), async (c) => {
       ...(body.status !== undefined && { status: body.status }),
       ...(body.pointsReward !== undefined && {
         pointsReward: body.pointsReward,
-      }),
-      ...(body.passingScore !== undefined && {
-        passingScore: body.passingScore,
       }),
       ...(body.timeLimitMinutes !== undefined && {
         timeLimitMinutes: body.timeLimitMinutes,

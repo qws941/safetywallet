@@ -28,7 +28,6 @@ import {
   MonitorPlay,
   Link as LinkIcon,
   AlertCircle,
-  CheckCircle2,
   MapPin,
   Users,
 } from "lucide-react";
@@ -157,9 +156,13 @@ function ContentsTab({ siteId }: { siteId: string }) {
                     {new Date(content.createdAt).toLocaleDateString("ko-KR")}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    <span>조회 {content.viewCount ?? 0}</span>
+                    <span>
+                      조회 {(content.viewCount ?? 0).toLocaleString()}
+                    </span>
                     <span>·</span>
-                    <span>이수 {content.completionCount ?? 0}명</span>
+                    <span>
+                      이수 {(content.completionCount ?? 0).toLocaleString()}명
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -211,12 +214,6 @@ function QuizzesTab({ siteId }: { siteId: string }) {
                 {quiz.description || t("education.noDescription")}
               </p>
               <div className="flex items-center gap-4 text-xs text-muted-foreground bg-muted p-2 rounded">
-                <div className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>
-                    {t("education.passingScore")} {quiz.passingScore}점
-                  </span>
-                </div>
                 {quiz.maxAttempts != null && quiz.maxAttempts > 0 && (
                   <div className="flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />

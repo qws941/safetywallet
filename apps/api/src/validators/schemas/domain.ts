@@ -304,7 +304,6 @@ export const CreateQuizInputSchema = z.object({
   description: z.string().optional(),
   status: z.enum(QuizStatus).optional(),
   pointsReward: z.number().int().optional(),
-  passingScore: z.number().int().optional(),
   timeLimitMinutes: z.number().int().optional(),
 });
 

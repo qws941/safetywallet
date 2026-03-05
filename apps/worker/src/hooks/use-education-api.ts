@@ -71,7 +71,6 @@ export function useQuizzes(siteId: string) {
             id: string;
             title: string;
             description: string | null;
-            passingScore: number;
             timeLimitMinutes: number | null;
             maxAttempts: number;
             isActive: boolean;
@@ -110,7 +109,6 @@ export function useQuiz(id: string) {
           id: string;
           title: string;
           description: string | null;
-          passingScore: number;
           timeLimitMinutes: number | null;
           maxAttempts: number;
           questions: Array<{

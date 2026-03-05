@@ -52,7 +52,6 @@ export interface Quiz {
   description: string | null;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   pointsReward: number;
-  passingScore: number;
   timeLimitMinutes: number | null;
   createdById: string;
   createdAt: string;
@@ -91,7 +90,6 @@ export interface CreateQuizInput {
   description?: string;
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   pointsReward?: number;
-  passingScore?: number;
   timeLimitMinutes?: number;
 }
 
@@ -239,7 +237,6 @@ export interface UpdateQuizInput {
   description?: string;
   status?: string;
   pointsReward?: number;
-  passingScore?: number;
   timeLimitMinutes?: number;
 }
 

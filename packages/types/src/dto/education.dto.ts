@@ -69,7 +69,6 @@ export interface CreateQuizDto {
   description?: string;
   status?: QuizStatus;
   pointsReward?: number;
-  passingScore?: number;
   timeLimitMinutes?: number;
 }
 
@@ -78,7 +77,6 @@ export interface UpdateQuizDto {
   description?: string;
   status?: QuizStatus;
   pointsReward?: number;
-  passingScore?: number;
   timeLimitMinutes?: number;
   contentId?: string;
 }

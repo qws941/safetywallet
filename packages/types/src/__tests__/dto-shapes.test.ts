@@ -505,7 +505,6 @@ describe("DTO and envelope shapes", () => {
       contentId: "ec1",
       title: "안전 퀴즈",
       description: "기본",
-      passingScore: 80,
       pointsReward: 10,
       timeLimitMinutes: 5,
     } satisfies CreateQuizDto;
@@ -544,7 +543,6 @@ describe("DTO and envelope shapes", () => {
     const updateQuiz = {
       title: "수정 퀴즈",
       status: QuizStatus.PUBLISHED,
-      passingScore: 90,
     } satisfies UpdateQuizDto;
     const submitAttempt = {
       quizId: "quiz1",
@@ -692,10 +690,8 @@ describe("DTO and envelope shapes", () => {
     expect(content.isActive).toBe(true);
     expect(contentList.quizCount).toBe(2);
     expect(updateContent.durationMinutes).toBe(30);
-    expect(createQuiz.passingScore).toBe(80);
     expect(quiz.status).toBe(QuizStatus.PUBLISHED);
     expect(quizList.status).toBe(QuizStatus.DRAFT);
-    expect(updateQuiz.passingScore).toBe(90);
     expect(submitAttempt.answers[0]).toBe(0);
     expect(attempt.passed).toBe(true);
     expect(attemptFilter.limit).toBe(20);

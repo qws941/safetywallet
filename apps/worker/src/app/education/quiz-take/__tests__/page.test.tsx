@@ -62,7 +62,6 @@ describe("app/education/quiz-take/page", () => {
       data: {
         id: "q1",
         title: "안전 퀴즈",
-        passingScore: 60,
         maxAttempts: 3,
         questions: [
           {
@@ -102,7 +101,6 @@ describe("app/education/quiz-take/page", () => {
       data: {
         id: "q1",
         title: "안전 퀴즈",
-        passingScore: 60,
         maxAttempts: 3,
         questions: [
           {

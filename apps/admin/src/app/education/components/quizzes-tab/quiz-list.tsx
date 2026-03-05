@@ -66,11 +66,6 @@ export function QuizList({
       ),
     },
     {
-      key: "passingScore",
-      header: "통과점수",
-      sortable: true,
-    },
-    {
       key: "timeLimitMinutes",
       header: "제한시간",
       render: (item) =>

@@ -45,7 +45,6 @@ export function QuizRegistration({ editingQuiz, onCancelEdit }: Props = {}) {
         description: editingQuiz.description || "",
         status: editingQuiz.status,
         pointsReward: String(editingQuiz.pointsReward || 0),
-        passingScore: String(editingQuiz.passingScore || 70),
         timeLimitMinutes: editingQuiz.timeLimitMinutes
           ? String(editingQuiz.timeLimitMinutes)
           : "",
@@ -65,7 +64,6 @@ export function QuizRegistration({ editingQuiz, onCancelEdit }: Props = {}) {
             description: quizForm.description || undefined,
             status: quizForm.status,
             pointsReward: Number(quizForm.pointsReward || 0),
-            passingScore: Number(quizForm.passingScore || 70),
             timeLimitMinutes: quizForm.timeLimitMinutes
               ? Number(quizForm.timeLimitMinutes)
               : undefined,
@@ -80,7 +78,6 @@ export function QuizRegistration({ editingQuiz, onCancelEdit }: Props = {}) {
           description: quizForm.description || undefined,
           status: quizForm.status,
           pointsReward: Number(quizForm.pointsReward || 0),
-          passingScore: Number(quizForm.passingScore || 70),
           timeLimitMinutes: quizForm.timeLimitMinutes
             ? Number(quizForm.timeLimitMinutes)
             : undefined,
@@ -144,17 +141,6 @@ export function QuizRegistration({ editingQuiz, onCancelEdit }: Props = {}) {
               setQuizForm((prev) => ({
                 ...prev,
                 pointsReward: e.target.value,
-              }))
-            }
-          />
-          <Input
-            type="number"
-            placeholder="통과 점수"
-            value={quizForm.passingScore}
-            onChange={(e) =>
-              setQuizForm((prev) => ({
-                ...prev,
-                passingScore: e.target.value,
               }))
             }
           />

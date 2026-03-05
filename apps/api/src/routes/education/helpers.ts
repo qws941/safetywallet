@@ -24,7 +24,6 @@ export interface CreateQuizBody {
   description?: string;
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   pointsReward?: number;
-  passingScore?: number;
   timeLimitMinutes?: number;
 }
 

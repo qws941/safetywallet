@@ -144,7 +144,6 @@ describe("quizzes tab", () => {
             id: "q1",
             title: "안전 퀴즈",
             status: "DRAFT",
-            passingScore: 70,
             timeLimitMinutes: 10,
             createdAt: "2026-02-01T00:00:00.000Z",
           },

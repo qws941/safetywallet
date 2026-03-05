@@ -110,7 +110,9 @@ export function ContentList({
       header: "조회수",
       sortable: true,
       render: (item) => (
-        <span className="text-muted-foreground">{item.viewCount ?? 0}</span>
+        <span className="text-muted-foreground">
+          {(item.viewCount ?? 0).toLocaleString()}
+        </span>
       ),
     },
     {
@@ -128,7 +130,7 @@ export function ContentList({
               setSelectedContent(item);
             }}
           >
-            {count}명
+            {count.toLocaleString()}명
           </button>
         ) : (
           <span className="text-muted-foreground">0명</span>

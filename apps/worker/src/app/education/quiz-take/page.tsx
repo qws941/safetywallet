@@ -303,9 +303,7 @@ function QuizTakeContent() {
               <span className="font-bold text-primary text-xl">
                 {lastResult.score}
               </span>
-              {t("education.quiz.scorePoints")} (
-              {t("education.quiz.passingScoreLabel")} {quiz.passingScore}
-              {t("education.quiz.scorePoints")})
+              {t("education.quiz.scorePoints")}
             </p>
           </div>
 
@@ -377,11 +375,6 @@ function QuizTakeContent() {
         <div className="space-y-2">
           <h1 className="text-xl font-bold break-words">{quiz.title}</h1>
           <div className="flex gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              {t("education.quiz.passingScore")} {quiz.passingScore}
-              {t("education.quiz.scorePoints")}
-            </Badge>
             <Badge variant="outline" className="gap-1">
               <AlertCircle className="w-3 h-3" />
               {t("education.quiz.maximumLabel")} {quiz.maxAttempts}

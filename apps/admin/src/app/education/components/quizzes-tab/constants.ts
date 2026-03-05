@@ -16,7 +16,6 @@ export const INITIAL_QUIZ_FORM: QuizFormState = {
   description: "",
   status: "DRAFT",
   pointsReward: "0",
-  passingScore: "70",
   timeLimitMinutes: "",
 };
 

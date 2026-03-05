@@ -24,7 +24,6 @@ export type QuizFormState = {
   description: string;
   status: CreateQuizInput["status"];
   pointsReward: string;
-  passingScore: string;
   timeLimitMinutes: string;
 };
 
@@ -83,7 +82,6 @@ export type QuizItem = {
   description?: string | null;
   status: CreateQuizInput["status"];
   pointsReward?: number | null;
-  passingScore: number;
   timeLimitMinutes?: number | null;
   createdAt: string;
   questionCount?: number;
