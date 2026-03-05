@@ -30,9 +30,6 @@ function getGitHubErrorMessage(raw: string, fallback: string): string {
 /** GET /issues — list GitHub issues */
 app.get("/issues", requireAdmin, async (c) => {
   const token = c.env.GITHUB_TOKEN;
-  if (!token) {
-    return error(c, "MISSING_TOKEN", "GITHUB_TOKEN not configured", 503);
-  }
 
   const state = c.req.query("state") || "open";
   const labels = c.req.query("labels") || "";
@@ -50,14 +47,16 @@ app.get("/issues", requireAdmin, async (c) => {
   if (labels) url.searchParams.set("labels", labels);
 
   try {
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "safetywallet-admin",
-      },
-    });
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "safetywallet-admin",
+    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url.toString(), { headers });
 
     if (!res.ok) {
       const errText = await res.text();
