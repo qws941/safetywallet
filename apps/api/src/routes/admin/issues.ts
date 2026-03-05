@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { parse } from "yaml";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
 import { requireAdmin } from "./helpers";
@@ -26,6 +27,139 @@ function getGitHubErrorMessage(raw: string, fallback: string): string {
   } catch {}
   return raw.slice(0, 300);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Issue template types                                               */
+/* ------------------------------------------------------------------ */
+
+interface TemplateField {
+  id: string;
+  type: "textarea" | "dropdown";
+  label: string;
+  description?: string;
+  placeholder?: string;
+  options?: string[];
+  required: boolean;
+}
+
+interface ParsedTemplate {
+  slug: string;
+  name: string;
+  description: string;
+  labels: string[];
+  fields: TemplateField[];
+}
+
+interface YamlBodyEntry {
+  type?: string;
+  id?: string;
+  attributes?: {
+    label?: string;
+    description?: string;
+    placeholder?: string;
+    options?: string[];
+  };
+  validations?: {
+    required?: boolean;
+  };
+}
+
+interface YamlTemplate {
+  name?: string;
+  description?: string;
+  labels?: string[];
+  body?: YamlBodyEntry[];
+}
+
+const TEMPLATE_FILES = ["bug_report.yml", "feature_request.yml", "task.yml"];
+const KV_CACHE_KEY = "github:issue-templates";
+const KV_CACHE_TTL = 3600;
+
+/** GET /issues/templates — fetch and parse GitHub issue templates */
+app.get("/issues/templates", requireAdmin, async (c) => {
+  const token = c.env.GITHUB_TOKEN;
+  const kv = c.env.KV;
+
+  // Check KV cache first
+  if (kv) {
+    try {
+      const cached = await kv.get(KV_CACHE_KEY, "json");
+      if (cached) return success(c, cached);
+    } catch {}
+  }
+
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "safetywallet-admin",
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const templates: ParsedTemplate[] = [];
+
+    for (const file of TEMPLATE_FILES) {
+      const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/.github/ISSUE_TEMPLATE/${file}`;
+      const res = await fetch(url, { headers });
+
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as { content?: string };
+      if (!data.content) continue;
+
+      const decoded = atob(data.content.replace(/\n/g, ""));
+      const yml = parse(decoded) as YamlTemplate;
+
+      if (!yml?.name || !yml?.body) continue;
+
+      const slug = file.replace(/\.yml$/, "");
+      const fields: TemplateField[] = [];
+
+      for (const entry of yml.body) {
+        if (entry.type !== "textarea" && entry.type !== "dropdown") continue;
+        if (!entry.id || !entry.attributes?.label) continue;
+
+        fields.push({
+          id: entry.id,
+          type: entry.type as "textarea" | "dropdown",
+          label: entry.attributes.label,
+          description: entry.attributes.description,
+          placeholder: entry.attributes.placeholder,
+          options: entry.attributes.options,
+          required: entry.validations?.required ?? false,
+        });
+      }
+
+      templates.push({
+        slug,
+        name: yml.name,
+        description: yml.description || "",
+        labels: yml.labels || [],
+        fields,
+      });
+    }
+
+    // Cache in KV
+    if (kv && templates.length > 0) {
+      try {
+        await kv.put(KV_CACHE_KEY, JSON.stringify(templates), {
+          expirationTtl: KV_CACHE_TTL,
+        });
+      } catch {}
+    }
+
+    return success(c, templates);
+  } catch {
+    return error(
+      c,
+      "GITHUB_UPSTREAM_UNAVAILABLE",
+      "Failed to fetch issue templates from GitHub",
+      502,
+    );
+  }
+});
 
 /** GET /issues — list GitHub issues */
 app.get("/issues", requireAdmin, async (c) => {

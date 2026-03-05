@@ -24,6 +24,7 @@
     "mysql2": "^3.17.2",
     "piexifjs": "^1.0.6",
     "sql.js": "^1.14.1",
+    "yaml": "^2.8.2",
     "zod": "3.25.76"
   },
   "devDependencies": {

@@ -1,36 +1,40 @@
 import { describe, expect, it } from "vitest";
 import { buildIssueBody } from "../issue-template";
+import type { IssueTemplateField } from "../issue-template";
 
 describe("buildIssueBody", () => {
-  it("formats bug report to match GitHub template order", () => {
-    const body = buildIssueBody("bug", {
+  it("formats fields in order with ### headings", () => {
+    const fields: IssueTemplateField[] = [
+      { id: "description", type: "textarea", label: "설명", required: true },
+      {
+        id: "severity",
+        type: "dropdown",
+        label: "심각도",
+        options: ["높음", "중간", "낮음"],
+        required: true,
+      },
+      {
+        id: "priority",
+        type: "dropdown",
+        label: "우선순위",
+        options: ["🔴 긴급 (P0)", "🟡 보통 (P2)"],
+        required: true,
+      },
+    ];
+
+    const values: Record<string, string> = {
+      description: "버그가 발생했습니다.",
       severity: "높음",
       priority: "🔴 긴급 (P0)",
-      description: "버그가 발생했습니다.",
-      steps: "1. 버튼 클릭\n2. 에러 확인",
-      expected: "성공 메시지",
-      actual: "500 에러",
-      environment: "Chrome 120",
-      screenshots: "![error](...)",
-    });
+    };
+
+    const body = buildIssueBody(fields, values);
 
     expect(body).toBe(
       [
         "### 설명",
         "",
         "버그가 발생했습니다.",
-        "",
-        "### 재현 단계",
-        "",
-        "1. 버튼 클릭\n2. 에러 확인",
-        "",
-        "### 기대 동작",
-        "",
-        "성공 메시지",
-        "",
-        "### 실제 동작",
-        "",
-        "500 에러",
         "",
         "### 심각도",
         "",
@@ -39,109 +43,59 @@ describe("buildIssueBody", () => {
         "### 우선순위",
         "",
         "🔴 긴급 (P0)",
-        "",
-        "### 환경 정보",
-        "",
-        "Chrome 120",
-        "",
-        "### 스크린샷/로그",
-        "",
-        "![error](...)",
       ].join("\n"),
     );
   });
 
-  it("formats feature request to match GitHub template order", () => {
-    const body = buildIssueBody("feature", {
-      kind: "신규 기능",
-      priority: "🟡 보통 (P2)",
-      summary: "요약",
-      motivation: "동기",
-      solution: "제안하는 해결 방법",
-      alternatives: "고려한 대안",
-      acceptance: "- [ ] 기준 1",
-    });
+  it("uses '_No response_' for empty or whitespace-only values", () => {
+    const fields: IssueTemplateField[] = [
+      {
+        id: "environment",
+        type: "textarea",
+        label: "환경 정보",
+        required: false,
+      },
+      {
+        id: "screenshots",
+        type: "textarea",
+        label: "스크린샷/로그",
+        required: false,
+      },
+    ];
 
-    expect(body).toBe(
-      [
-        "### 유형",
-        "",
-        "신규 기능",
-        "",
-        "### 우선순위",
-        "",
-        "🟡 보통 (P2)",
-        "",
-        "### 요약",
-        "",
-        "요약",
-        "",
-        "### 동기",
-        "",
-        "동기",
-        "",
-        "### 제안하는 해결 방법",
-        "",
-        "제안하는 해결 방법",
-        "",
-        "### 고려한 대안",
-        "",
-        "고려한 대안",
-        "",
-        "### 완료 기준",
-        "",
-        "- [ ] 기준 1",
-      ].join("\n"),
-    );
-  });
-
-  it("formats task to match GitHub template order", () => {
-    const body = buildIssueBody("task", {
-      area: "API (apps/api)",
-      priority: "높음",
-      description: "작업 내용",
-      acceptance: "완료 기준",
-      context: "참고 사항",
-    });
-
-    expect(body).toBe(
-      [
-        "### 관련 영역",
-        "",
-        "API (apps/api)",
-        "",
-        "### 우선순위",
-        "",
-        "높음",
-        "",
-        "### 작업 내용",
-        "",
-        "작업 내용",
-        "",
-        "### 완료 기준",
-        "",
-        "완료 기준",
-        "",
-        "### 참고 사항",
-        "",
-        "참고 사항",
-      ].join("\n"),
-    );
-  });
-
-  it("falls back to '_No response_' when optional fields are empty", () => {
-    const body = buildIssueBody("bug", {
-      severity: "낮음",
-      priority: "🟢 낮음 (P3)",
-      description: "설명",
-      steps: "단계",
-      expected: "기대",
-      actual: "실제",
+    const values: Record<string, string> = {
       environment: "",
       screenshots: "  ",
-    });
+    };
+
+    const body = buildIssueBody(fields, values);
 
     expect(body).toContain("### 환경 정보\n\n_No response_");
     expect(body).toContain("### 스크린샷/로그\n\n_No response_");
+  });
+
+  it("uses '_No response_' for missing field values", () => {
+    const fields: IssueTemplateField[] = [
+      { id: "notes", type: "textarea", label: "참고 사항", required: false },
+    ];
+
+    const body = buildIssueBody(fields, {});
+
+    expect(body).toBe("### 참고 사항\n\n_No response_");
+  });
+
+  it("handles single field", () => {
+    const fields: IssueTemplateField[] = [
+      { id: "summary", type: "textarea", label: "요약", required: true },
+    ];
+
+    const body = buildIssueBody(fields, { summary: "간단한 요약" });
+
+    expect(body).toBe("### 요약\n\n간단한 요약");
+  });
+
+  it("handles empty fields array", () => {
+    const body = buildIssueBody([], {});
+    expect(body).toBe("");
   });
 });

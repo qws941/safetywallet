@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./use-api-base";
+import type { IssueTemplate } from "@/app/issues/issue-template";
 
 interface GitHubIssue {
   number: number;
@@ -47,5 +48,18 @@ export function useCreateIssue() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "issues"] });
     },
+  });
+}
+
+export function useIssueTemplates() {
+  return useQuery({
+    queryKey: ["admin", "issues", "templates"],
+    queryFn: async () => {
+      const templates = await apiFetch<IssueTemplate[]>(
+        "/admin/issues/templates",
+      );
+      return templates;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
