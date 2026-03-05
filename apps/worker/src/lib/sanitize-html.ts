@@ -25,7 +25,11 @@ function isSafeUrl(value: string): boolean {
   }
 
   const lower = trimmed.toLowerCase();
-  if (lower.startsWith("javascript:")) {
+  if (
+    lower.startsWith("javascript:") ||
+    lower.startsWith("vbscript:") ||
+    lower.startsWith("data:")
+  ) {
     return false;
   }
 

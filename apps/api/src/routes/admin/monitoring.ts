@@ -21,8 +21,7 @@ app.get("/monitoring/metrics", requireAdmin, async (c: AppContext) => {
   // Default: last 24 hours
   const now = new Date();
   const defaultFrom = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const fromBucket =
-    from || defaultFrom.toISOString().slice(0, 16).replace("T", "T");
+  const fromBucket = from || defaultFrom.toISOString().slice(0, 16);
   const toBucket = to || now.toISOString().slice(0, 16);
 
   const db = drizzle(c.env.DB);

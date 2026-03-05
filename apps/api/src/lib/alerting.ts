@@ -154,8 +154,17 @@ function formatGenericPayload(alert: AlertPayload): Record<string, unknown> {
 }
 
 function detectWebhookFormat(url: string): "slack" | "discord" | "generic" {
-  if (url.includes("hooks.slack.com")) return "slack";
-  if (url.includes("discord.com/api/webhooks")) return "discord";
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "hooks.slack.com") return "slack";
+    if (
+      parsed.hostname === "discord.com" &&
+      parsed.pathname.startsWith("/api/webhooks")
+    )
+      return "discord";
+  } catch {
+    // Invalid URL — fall through to generic
+  }
   return "generic";
 }
 
