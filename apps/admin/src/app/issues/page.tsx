@@ -243,7 +243,7 @@ export default function IssuesPage() {
                   value={templateType}
                   onValueChange={handleTemplateChange}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="[&>span]:truncate">
                     <SelectValue placeholder="템플릿 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -275,7 +275,7 @@ export default function IssuesPage() {
                         value={bugSeverity}
                         onValueChange={setBugSeverity}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="[&>span]:truncate">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -293,7 +293,7 @@ export default function IssuesPage() {
                         value={bugPriority}
                         onValueChange={setBugPriority}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="[&>span]:truncate">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -407,7 +407,7 @@ export default function IssuesPage() {
                         value={featureKind}
                         onValueChange={setFeatureKind}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="[&>span]:truncate">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -425,7 +425,7 @@ export default function IssuesPage() {
                         value={featurePriority}
                         onValueChange={setFeaturePriority}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="[&>span]:truncate">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -525,7 +525,7 @@ export default function IssuesPage() {
                     <div className="space-y-2 flex-1">
                       <label className="text-sm font-medium">관련 영역</label>
                       <Select value={taskArea} onValueChange={setTaskArea}>
-                        <SelectTrigger>
+                        <SelectTrigger className="[&>span]:truncate">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -543,7 +543,7 @@ export default function IssuesPage() {
                         value={taskPriority}
                         onValueChange={setTaskPriority}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="[&>span]:truncate">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -646,7 +646,7 @@ export default function IssuesPage() {
 
       <div className="flex items-center gap-2">
         <Select value={stateFilter} onValueChange={setStateFilter}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[140px] [&>span]:truncate">
             <SelectValue placeholder="전체" />
           </SelectTrigger>
           <SelectContent>
