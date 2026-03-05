@@ -23,11 +23,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-background border-b border-border safe-top">
-      <div className="flex items-center justify-between h-14 px-4">
-        <h1 className="text-lg font-bold text-primary">
+      <div className="flex items-center justify-between h-14 px-4 gap-2 min-w-0">
+        <h1 className="text-lg font-bold text-primary truncate">
           {t("components.appTitle")}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {isReady &&
             attendance &&
             (attendance.attended ? (

@@ -15,12 +15,12 @@ export function PointsCard({ balance, recentPoints, delta }: PointsCardProps) {
   return (
     <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium opacity-90">
+        <CardTitle className="text-sm font-medium opacity-90 truncate">
           {t("pointsCard.myPoints")}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-bold">
+        <div className="text-3xl font-bold truncate">
           {balance.toLocaleString("ko-KR")} P
         </div>
         {recentPoints !== undefined && recentPoints > 0 && (
