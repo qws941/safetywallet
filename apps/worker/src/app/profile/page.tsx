@@ -106,7 +106,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 min-w-0">
                 <Avatar className="h-16 w-16">
                   <AvatarFallback className="text-xl">
                     {user?.nameMasked?.slice(0, 1) || "👷"}
@@ -117,7 +117,7 @@ export default function ProfilePage() {
                     {user?.nameMasked || t("profile.noName")}
                   </h2>
                   {user?.phone ? (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground truncate">
                       {user.phone}
                     </p>
                   ) : null}
@@ -136,7 +136,7 @@ export default function ProfilePage() {
         {/* Current Site Info */}
         {currentSiteId && (
           <Card>
-            <CardContent className="py-4">
+            <CardContent className="py-4 min-w-0">
               <h3 className="font-medium mb-2">{t("profile.currentSite")}</h3>
               <p className="text-sm font-medium truncate">
                 {site?.name || t("profile.loading")}

@@ -98,11 +98,15 @@ export default function RecommendationsPage() {
       <div className="max-w-md mx-auto space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-yellow-500" />
-              {t("votes.recommendWorkerTitle")}
+            <CardTitle className="flex items-center gap-2 truncate">
+              <Award className="h-5 w-5 text-yellow-500 shrink-0" />
+              <span className="truncate">
+                {t("votes.recommendWorkerTitle")}
+              </span>
             </CardTitle>
-            <CardDescription>{t("votes.recommendWorkerDesc")}</CardDescription>
+            <CardDescription className="break-words">
+              {t("votes.recommendWorkerDesc")}
+            </CardDescription>
           </CardHeader>
         </Card>
 
@@ -232,7 +236,7 @@ export default function RecommendationsPage() {
               history.map((rec) => (
                 <Card key={rec.id}>
                   <CardContent className="p-3">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-2 min-w-0">
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">
                           {rec.recommendedName}
@@ -241,7 +245,7 @@ export default function RecommendationsPage() {
                           {rec.tradeType}
                         </p>
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground shrink-0 truncate">
                         {rec.recommendationDate}
                       </span>
                     </div>

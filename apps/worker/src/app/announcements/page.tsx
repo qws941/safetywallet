@@ -143,7 +143,7 @@ export default function AnnouncementsPage() {
                           )}
                         </p>
                         {isExpanded && (
-                          <div className="mt-3 pt-3 border-t text-sm text-muted-foreground break-words whitespace-pre-wrap">
+                          <div className="mt-3 pt-3 border-t text-sm text-muted-foreground whitespace-pre-wrap break-words">
                             {announcement.content ||
                               t("announcements.noContent")}
                           </div>

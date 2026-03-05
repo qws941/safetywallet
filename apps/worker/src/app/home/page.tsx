@@ -102,7 +102,7 @@ export default function HomePage() {
             <CardContent className="p-4 flex items-center gap-3">
               <CheckCircle className="h-8 w-8 text-green-500 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="font-medium text-green-700">
+                <p className="font-medium text-green-700 truncate">
                   {t("home.checkedIn")}
                 </p>
                 <p className="text-sm text-green-600">
@@ -117,7 +117,7 @@ export default function HomePage() {
             <CardContent className="p-4 flex items-center gap-3">
               <XCircle className="h-8 w-8 text-amber-500 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="font-medium text-amber-700">
+                <p className="font-medium text-amber-700 truncate">
                   {t("home.notCheckedIn")}
                 </p>
                 <p className="text-sm text-amber-600">
@@ -177,50 +177,14 @@ export default function HomePage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                {t("home.announcements")}
-              </CardTitle>
-              <Link href="/announcements" className="text-sm text-primary">
-                {t("home.viewAll")}
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {recentAnnouncements.length > 0 ? (
-              <div>
-                {recentAnnouncements.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 py-2">
-                    <Bell className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`text-sm truncate ${item.isPinned ? "font-medium" : ""}`}
-                      >
-                        {item.isPinned && "📌 "}
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString("ko-KR")}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-4">
-                {t("home.noAnnouncements")}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base truncate">
                 {t("home.recentReports")}
               </CardTitle>
-              <Link href="/posts" className="text-sm text-primary">
+              <Link
+                href="/posts"
+                className="text-sm text-primary shrink-0 inline-flex"
+              >
                 {t("home.viewAll")}
               </Link>
             </div>

@@ -25,7 +25,7 @@ export function StatsCard({
   return (
     <Card className={cn("p-6", className)}>
       <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1">
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-muted-foreground truncate">
             {title}
           </p>
@@ -47,7 +47,7 @@ export function StatsCard({
             </p>
           )}
         </div>
-        <div className="rounded-full bg-primary/10 p-3">
+        <div className="rounded-full bg-primary/10 p-3 shrink-0">
           <Icon className="h-6 w-6 text-primary" />
         </div>
       </div>
