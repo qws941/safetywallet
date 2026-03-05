@@ -200,13 +200,16 @@ app.get("/:id", async (c) => {
   }
 
   // Increment view count (fire-and-forget, don't block response)
-  c.executionCtx.waitUntil(
-    db
-      .update(educationContents)
-      .set({ viewCount: sql`${educationContents.viewCount} + 1` })
-      .where(eq(educationContents.id, id))
-      .run(),
-  );
+  const incrementViewCount = db
+    .update(educationContents)
+    .set({ viewCount: sql`${educationContents.viewCount} + 1` })
+    .where(eq(educationContents.id, id))
+    .run();
+  try {
+    c.executionCtx.waitUntil(incrementViewCount);
+  } catch {
+    void incrementViewCount;
+  }
 
   return success(c, content);
 });
