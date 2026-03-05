@@ -21,6 +21,10 @@ const deleteQuestionAsyncMock = vi.fn();
 const deleteQuizAsyncMock = vi.fn();
 const updateQuizAsyncMock = vi.fn();
 
+const { mockUseAdminQuizAttempts } = vi.hoisted(() => ({
+  mockUseAdminQuizAttempts: vi.fn(),
+}));
+
 vi.mock("@/stores/auth", () => ({
   useAuthStore: (selector: (s: { currentSiteId: string }) => string) =>
     selector({ currentSiteId: "site-1" }),
@@ -66,6 +70,17 @@ vi.mock("@safetywallet/ui", () => ({
       {children}
     </button>
   ),
+  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   Button: ({
     children,
@@ -97,6 +112,10 @@ vi.mock("@safetywallet/ui", () => ({
     <textarea {...props} />
   ),
   useToast: () => ({ toast: toastMock }),
+}));
+
+vi.mock("@/hooks/use-education-quizzes-api", () => ({
+  useAdminQuizAttempts: mockUseAdminQuizAttempts,
 }));
 
 const mockUseQuizzes = vi.mocked(useQuizzes);
@@ -159,6 +178,13 @@ describe("quizzes tab", () => {
     mockUseUpdateQuiz.mockReturnValue({
       mutateAsync: updateQuizAsyncMock,
       isPending: false,
+    } as never);
+    mockUseAdminQuizAttempts.mockReturnValue({
+      data: {
+        items: [],
+        pagination: { page: 1, total: 0, limit: 20, totalPages: 0 },
+      },
+      isLoading: false,
     } as never);
   });
 
