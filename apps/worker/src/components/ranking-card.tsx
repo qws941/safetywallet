@@ -34,7 +34,7 @@ export function RankingCard({
             <div className="p-1.5 bg-amber-500 rounded-full text-white shadow-sm">
               <Trophy className="w-4 h-4" />
             </div>
-            <span className="font-bold text-amber-800 text-sm tracking-tight">
+            <span className="font-bold text-amber-800 text-sm tracking-tight truncate">
               {t("rankingCard.monthlyRank")}
             </span>
           </div>
@@ -53,12 +53,12 @@ export function RankingCard({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-amber-600 mt-1 font-medium">
+                <p className="text-xs text-amber-600 mt-1 font-medium truncate">
                   {t("rankingCard.challengeRank1")}
                 </p>
               </>
             ) : (
-              <div className="text-amber-800 font-medium text-sm">
+              <div className="text-amber-800 font-medium text-sm break-words">
                 {t("rankingCard.noRank")}
                 <span className="block text-xs text-amber-600 mt-0.5 font-normal">
                   {t("rankingCard.collectPoints")}

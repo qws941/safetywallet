@@ -63,8 +63,8 @@ export function PostCard({ post }: PostCardProps) {
       <Card className="mb-3 hover:shadow-md transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Badge variant="outline">
                   {categoryLabels[post.category as Category] || post.category}
                 </Badge>

@@ -101,7 +101,7 @@ export default function HomePage() {
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-4 flex items-center gap-3">
               <CheckCircle className="h-8 w-8 text-green-500 flex-shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-green-700">
                   {t("home.checkedIn")}
                 </p>
@@ -116,7 +116,7 @@ export default function HomePage() {
           <Card className="border-amber-200 bg-amber-50">
             <CardContent className="p-4 flex items-center gap-3">
               <XCircle className="h-8 w-8 text-amber-500 flex-shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-amber-700">
                   {t("home.notCheckedIn")}
                 </p>
@@ -147,7 +147,9 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4 text-center">
                 <div className="text-2xl mb-1">📢</div>
-                <div className="text-sm font-medium">{t("posts.title")}</div>
+                <div className="text-sm font-medium truncate">
+                  {t("posts.title")}
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -155,7 +157,7 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4 text-center">
                 <div className="text-2xl mb-1">📣</div>
-                <div className="text-sm font-medium">
+                <div className="text-sm font-medium truncate">
                   {t("announcements.title")}
                 </div>
               </CardContent>
@@ -165,7 +167,9 @@ export default function HomePage() {
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4 text-center">
                 <Award className="h-6 w-6 mx-auto mb-1 text-yellow-500" />
-                <div className="text-sm font-medium">{t("votes.title")}</div>
+                <div className="text-sm font-medium truncate">
+                  {t("votes.title")}
+                </div>
               </CardContent>
             </Card>
           </Link>

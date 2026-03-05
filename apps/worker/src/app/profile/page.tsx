@@ -112,8 +112,8 @@ export default function ProfilePage() {
                     {user?.nameMasked?.slice(0, 1) || "👷"}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h2 className="text-xl font-bold">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold truncate">
                     {user?.nameMasked || t("profile.noName")}
                   </h2>
                   {user?.phone ? (
@@ -122,7 +122,7 @@ export default function ProfilePage() {
                     </p>
                   ) : null}
                   {user?.companyName ? (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground truncate">
                       {user.companyName}
                       {user.tradeType ? ` · ${user.tradeType}` : ""}
                     </p>
@@ -138,11 +138,11 @@ export default function ProfilePage() {
           <Card>
             <CardContent className="py-4">
               <h3 className="font-medium mb-2">{t("profile.currentSite")}</h3>
-              <p className="text-sm font-medium">
+              <p className="text-sm font-medium truncate">
                 {site?.name || t("profile.loading")}
               </p>
               {site?.address && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1 break-words">
                   {site.address}
                 </p>
               )}
@@ -178,7 +178,9 @@ export default function ProfilePage() {
               </p>
             ) : null}
             {pushError ? (
-              <p className="text-xs text-destructive">{pushError}</p>
+              <p className="text-xs text-destructive break-words">
+                {pushError}
+              </p>
             ) : null}
           </CardContent>
         </Card>
