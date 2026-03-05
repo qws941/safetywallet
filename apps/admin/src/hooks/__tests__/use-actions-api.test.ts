@@ -26,7 +26,10 @@ describe("use-actions-api", () => {
   });
 
   it("fetches action items by current site", async () => {
-    mockApiFetch.mockResolvedValue([{ id: "a1" }]);
+    mockApiFetch.mockResolvedValue({
+      data: [{ id: "a1" }],
+      pagination: { limit: 20, offset: 0, count: 1 },
+    });
     const { wrapper, queryClient } = createWrapper();
     const { result } = renderHook(() => useActionItems(), { wrapper });
 

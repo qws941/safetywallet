@@ -1,34 +1,28 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button, Badge } from "@safetywallet/ui";
-import { useAttendanceLogs, useUnmatchedRecords } from "@/hooks/use-attendance";
+import { Button } from "@safetywallet/ui";
+import { useAttendanceLogs } from "@/hooks/use-attendance";
 import { useAuthStore } from "@/stores/auth";
 import { Database } from "lucide-react";
 import Link from "next/link";
-import { formatDateForInput, getKSTHour } from "./attendance-helpers";
+import { formatDateForInput } from "./attendance-helpers";
 import { AttendanceStats } from "./components/attendance-stats";
 import { AttendanceLogsTab } from "./components/attendance-logs-tab";
-import { UnmatchedTab } from "./components/unmatched-tab";
 
 export default function AttendancePage() {
   const siteId = useAuthStore((s) => s.currentSiteId);
-  const [activeTab, setActiveTab] = useState<"logs" | "unmatched">("logs");
   const [date, setDate] = useState<string>(formatDateForInput(new Date()));
   const [resultFilter, setResultFilter] = useState<"ALL" | "SUCCESS" | "FAIL">(
     "ALL",
   );
   const [companyFilter, setCompanyFilter] = useState<string>("ALL");
-  const [showAnomalyOnly, setShowAnomalyOnly] = useState(false);
 
   const { data: logsResponse, isLoading: isLogsLoading } = useAttendanceLogs(
     1,
     2000,
     { date },
   );
-
-  const { data: unmatchedData, isLoading: isUnmatchedLoading } =
-    useUnmatchedRecords();
 
   const allLogs = useMemo(() => {
     const logs = logsResponse?.logs ?? [];
@@ -60,16 +54,6 @@ export default function AttendancePage() {
     [allLogs, logsResponse?.pagination?.total],
   );
 
-  const anomalyCount = useMemo(() => {
-    return allLogs.filter((log) => {
-      if (log.checkinAt) {
-        const hour = getKSTHour(log.checkinAt);
-        if (hour < 5 || hour >= 12) return true;
-      }
-      return false;
-    }).length;
-  }, [allLogs]);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -90,32 +74,11 @@ export default function AttendancePage() {
         total={stats.total}
         success={stats.success}
         fail={stats.fail}
-        anomalyCount={anomalyCount}
       />
 
       <div className="space-y-4">
         <div className="flex items-center gap-2 border-b pb-2">
-          <Button
-            variant={activeTab === "logs" ? "default" : "ghost"}
-            onClick={() => setActiveTab("logs")}
-            className="rounded-full"
-            size="sm"
-          >
-            출근 기록
-          </Button>
-          <Button
-            variant={activeTab === "unmatched" ? "default" : "ghost"}
-            onClick={() => setActiveTab("unmatched")}
-            className="rounded-full"
-            size="sm"
-          >
-            미매칭 기록
-            {(unmatchedData?.records?.length ?? 0) > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 px-1.5">
-                {unmatchedData?.records?.length ?? 0}
-              </Badge>
-            )}
-          </Button>
+          <span className="text-sm text-muted-foreground">출근 기록</span>
           <Link href="/attendance/sync">
             <Button variant="ghost" className="rounded-full" size="sm">
               <Database className="h-4 w-4 mr-1" />
@@ -124,29 +87,17 @@ export default function AttendancePage() {
           </Link>
         </div>
 
-        {activeTab === "logs" && (
-          <AttendanceLogsTab
-            siteId={siteId}
-            allLogs={allLogs}
-            isLoading={isLogsLoading}
-            date={date}
-            setDate={setDate}
-            resultFilter={resultFilter}
-            setResultFilter={setResultFilter}
-            companyFilter={companyFilter}
-            setCompanyFilter={setCompanyFilter}
-            showAnomalyOnly={showAnomalyOnly}
-            setShowAnomalyOnly={setShowAnomalyOnly}
-          />
-        )}
-
-        {activeTab === "unmatched" && (
-          <UnmatchedTab
-            siteId={siteId}
-            records={unmatchedData?.records ?? []}
-            isLoading={isUnmatchedLoading}
-          />
-        )}
+        <AttendanceLogsTab
+          siteId={siteId}
+          allLogs={allLogs}
+          isLoading={isLogsLoading}
+          date={date}
+          setDate={setDate}
+          resultFilter={resultFilter}
+          setResultFilter={setResultFilter}
+          companyFilter={companyFilter}
+          setCompanyFilter={setCompanyFilter}
+        />
       </div>
     </div>
   );
