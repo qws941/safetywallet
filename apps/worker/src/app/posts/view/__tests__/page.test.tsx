@@ -56,18 +56,20 @@ describe("app/posts/view/page", () => {
     vi.mocked(usePost).mockReturnValue({
       data: {
         data: {
-          id: "p1",
-          category: "HAZARD",
-          reviewStatus: "NEED_INFO",
-          isUrgent: false,
-          content: "상세 내용",
-          createdAt: "2026-02-28T00:00:00Z",
-          locationFloor: "3층",
-          locationZone: "A",
-          images: [],
-          reviews: [
-            { createdAt: "2026-02-28T01:00:00Z", comment: "추가 설명 필요" },
-          ],
+          post: {
+            id: "p1",
+            category: "HAZARD",
+            reviewStatus: "NEED_INFO",
+            isUrgent: false,
+            content: "상세 내용",
+            createdAt: "2026-02-28T00:00:00Z",
+            locationFloor: "3층",
+            locationZone: "A",
+            images: [],
+            reviews: [
+              { createdAt: "2026-02-28T01:00:00Z", comment: "추가 설명 필요" },
+            ],
+          },
         },
       },
       isLoading: false,
