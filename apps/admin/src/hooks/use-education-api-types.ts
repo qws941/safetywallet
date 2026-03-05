@@ -250,3 +250,23 @@ export interface UpdateTbmRecordInput {
   weatherCondition?: string;
   specialNotes?: string;
 }
+
+export interface QuizAttemptItem {
+  id: string;
+  quizId: string;
+  userName: string | null;
+  score: number;
+  passed: boolean;
+  pointsAwarded: number;
+  completedAt: string | number | Date;
+}
+
+export interface QuizAttemptsResponse {
+  items: QuizAttemptItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

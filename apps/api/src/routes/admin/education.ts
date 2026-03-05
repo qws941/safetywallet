@@ -93,4 +93,60 @@ app.get(
   },
 );
 
+app.get(
+  "/education/quiz-attempts",
+  requireAdmin,
+  zValidator(
+    "query",
+    z.object({
+      siteId: z.string(),
+      quizId: z.string(),
+      page: z.coerce.number().min(1).default(1),
+      limit: z.coerce.number().min(1).max(100).default(20),
+    }),
+  ),
+  async (c) => {
+    const db = drizzle(c.env.DB, { schema });
+    const { siteId, quizId, page, limit } = c.req.valid("query");
+
+    const where = and(
+      eq(schema.quizAttempts.siteId, siteId),
+      eq(schema.quizAttempts.quizId, quizId),
+    );
+    const offset = (page - 1) * limit;
+
+    const [items, totalResult] = await Promise.all([
+      db
+        .select({
+          id: schema.quizAttempts.id,
+          quizId: schema.quizAttempts.quizId,
+          userName: users.name,
+          score: schema.quizAttempts.score,
+          passed: schema.quizAttempts.passed,
+          pointsAwarded: schema.quizAttempts.pointsAwarded,
+          completedAt: schema.quizAttempts.completedAt,
+        })
+        .from(schema.quizAttempts)
+        .leftJoin(users, eq(schema.quizAttempts.userId, users.id))
+        .where(where)
+        .orderBy(desc(schema.quizAttempts.completedAt))
+        .limit(limit)
+        .offset(offset),
+      db.select({ count: count() }).from(schema.quizAttempts).where(where),
+    ]);
+
+    const total = totalResult[0]?.count ?? 0;
+
+    return success(c, {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  },
+);
+
 export default app;

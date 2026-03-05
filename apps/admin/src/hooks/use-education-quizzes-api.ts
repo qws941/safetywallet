@@ -175,3 +175,23 @@ export function useDeleteQuiz() {
     },
   });
 }
+
+export function useAdminQuizAttempts(quizId?: string, page = 1, limit = 20) {
+  const siteId = useAuthStore((s) => s.currentSiteId);
+
+  return useQuery({
+    queryKey: ["admin", "quiz-attempts", siteId, quizId, page, limit],
+    enabled: !!siteId && !!quizId,
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (siteId) params.set("siteId", siteId);
+      if (quizId) params.set("quizId", quizId);
+      params.set("page", String(page));
+      params.set("limit", String(limit));
+
+      return apiFetch<import("./use-education-api-types").QuizAttemptsResponse>(
+        `/admin/education/quiz-attempts?${params.toString()}`,
+      );
+    },
+  });
+}

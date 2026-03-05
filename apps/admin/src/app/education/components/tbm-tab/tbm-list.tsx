@@ -11,11 +11,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   useToast,
 } from "@safetywallet/ui";
 import { useTbmRecord } from "@/hooks/use-api";
@@ -85,7 +86,23 @@ export function TbmList({
     {
       key: "_attendeeCount",
       header: "참석자수",
-      render: (item) => <span>{item.attendeeCount ?? 0}명</span>,
+      render: (item) => {
+        const count = item.attendeeCount ?? 0;
+        return count > 0 ? (
+          <button
+            type="button"
+            className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpandedTbmId(item.tbm.id);
+            }}
+          >
+            {count}명
+          </button>
+        ) : (
+          <span className="text-muted-foreground">0명</span>
+        );
+      },
     },
     {
       key: "tbm.weatherCondition",
@@ -153,38 +170,42 @@ export function TbmList({
         emptyMessage="등록된 TBM이 없습니다."
       />
 
-      {expandedTbmId && typedTbmDetail && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-base">
-              참석자 목록 ({typedTbmDetail.attendeeCount}명)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {typedTbmDetail.attendees.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                참석자가 없습니다.
-              </p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {typedTbmDetail.attendees.map((attendee) => (
-                  <li
-                    key={attendee.attendee.id}
-                    className="flex items-center justify-between rounded-md border px-3 py-2"
-                  >
-                    <span>{attendee.userName || "이름 없음"}</span>
-                    <span className="text-muted-foreground">
-                      {new Date(attendee.attendee.attendedAt).toLocaleString(
-                        "ko-KR",
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Dialog
+        open={!!expandedTbmId}
+        onOpenChange={(open) => !open && setExpandedTbmId(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              참석자 목록 ({typedTbmDetail?.attendeeCount ?? 0}명)
+            </DialogTitle>
+            <DialogDescription>TBM 참석자 상세 정보</DialogDescription>
+          </DialogHeader>
+          {!typedTbmDetail ? (
+            <p className="text-sm text-muted-foreground py-4">로딩 중...</p>
+          ) : typedTbmDetail.attendees.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">
+              참석자가 없습니다.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {typedTbmDetail.attendees.map((attendee) => (
+                <li
+                  key={attendee.attendee.id}
+                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                >
+                  <span>{attendee.userName || "이름 없음"}</span>
+                  <span className="text-muted-foreground">
+                    {new Date(attendee.attendee.attendedAt).toLocaleString(
+                      "ko-KR",
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!deleteTbmId}

@@ -13,7 +13,13 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@safetywallet/ui";
+import { useAdminQuizAttempts } from "@/hooks/use-education-quizzes-api";
 import { DataTable, type Column } from "@/components/data-table";
 import { getQuizStatusLabel } from "../../education-helpers";
 import type { QuizItem } from "../education-types";
@@ -36,6 +42,9 @@ export function QuizList({
   onDeleteQuiz,
 }: Props) {
   const [deleteQuizId, setDeleteQuizId] = useState<string | null>(null);
+  const [selectedQuiz, setSelectedQuiz] = useState<QuizItem | null>(null);
+  const { data: attemptsData, isLoading: attemptsLoading } =
+    useAdminQuizAttempts(selectedQuiz?.id);
 
   const columns: Column<QuizItem>[] = [
     {
@@ -81,11 +90,23 @@ export function QuizList({
       key: "attemptCount",
       header: "응시수",
       sortable: true,
-      render: (item) => (
-        <span className="text-muted-foreground">
-          {item.attemptCount ?? 0}회
-        </span>
-      ),
+      render: (item) => {
+        const count = item.attemptCount ?? 0;
+        return count > 0 ? (
+          <button
+            type="button"
+            className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedQuiz(item);
+            }}
+          >
+            {count}회
+          </button>
+        ) : (
+          <span className="text-muted-foreground">0회</span>
+        );
+      },
     },
     {
       key: "createdAt",
@@ -167,6 +188,61 @@ export function QuizList({
         searchPlaceholder="퀴즈 검색..."
         emptyMessage="등록된 퀴즈가 없습니다."
       />
+      <Dialog
+        open={!!selectedQuiz}
+        onOpenChange={(open) => !open && setSelectedQuiz(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedQuiz?.title} - 응시자 목록</DialogTitle>
+            <DialogDescription>
+              총 {selectedQuiz?.attemptCount ?? 0}회 응시
+            </DialogDescription>
+          </DialogHeader>
+          {attemptsLoading ? (
+            <p className="text-sm text-muted-foreground py-4">로딩 중...</p>
+          ) : attemptsData?.items.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">
+              응시 기록이 없습니다.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="py-2 pr-4">이름</th>
+                    <th className="py-2 pr-4">점수</th>
+                    <th className="py-2 pr-4">합격</th>
+                    <th className="py-2">응시일시</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attemptsData?.items.map((a) => (
+                    <tr key={a.id} className="border-b">
+                      <td className="py-2 pr-4">{a.userName || "-"}</td>
+                      <td className="py-2 pr-4">{a.score}점</td>
+                      <td className="py-2 pr-4">
+                        <span
+                          className={
+                            a.passed ? "text-green-600" : "text-red-600"
+                          }
+                        >
+                          {a.passed ? "합격" : "불합격"}
+                        </span>
+                      </td>
+                      <td className="py-2 text-muted-foreground">
+                        {a.completedAt
+                          ? new Date(a.completedAt).toLocaleString("ko-KR")
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <AlertDialog
         open={!!deleteQuizId}
         onOpenChange={(open) => !open && setDeleteQuizId(null)}
