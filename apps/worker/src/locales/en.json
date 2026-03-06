@@ -81,7 +81,13 @@
     "noReports": "No reports",
     "viewAll": "View All",
     "announcements": "Announcements",
-    "noAnnouncements": "No announcements"
+    "noAnnouncements": "No announcements",
+    "greetingName": "Hello, {name}.",
+    "myPointsCount": "My points: {count}",
+    "safetyReport": "Safety Report",
+    "recommendation": "Recommend",
+    "notices": "Notices",
+    "safetyWallet": "Safety Wallet"
   },
   "nav": {
     "home": "Home",
@@ -89,7 +95,8 @@
     "create": "Create",
     "createReportAria": "Create new report",
     "actions": "Actions",
-    "profile": "Profile"
+    "profile": "Profile",
+    "wallet": "My Wallet"
   },
   "posts": {
     "title": "Safety Reports",

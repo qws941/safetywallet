@@ -103,20 +103,30 @@ describe("app/home/page", () => {
   it("renders dashboard links and cards", () => {
     render(<HomePage />);
 
-    expect(screen.getByText("header")).toBeInTheDocument();
-    expect(screen.getByText("points:1200")).toBeInTheDocument();
-    expect(screen.getByText("rank:2")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /posts\.title/ })).toHaveAttribute(
+    expect(screen.getByText("MIRAE")).toBeInTheDocument();
+    expect(screen.getByText("DOSI")).toBeInTheDocument();
+
+    // The link text might be combined or contain SVG, but we mock translation to return key
+    // so we can test if it exists. But wait, we render it inside a string or inside text node.
+    expect(screen.getByText(/home\.myPointsCount/)).toBeInTheDocument();
+
+    // Wait, the links don't have aria-labels so getByRole("link", {name}) might match text content.
+    // In our component, we have text inside CardContent.
+    expect(
+      screen.getByRole("link", { name: /home\.safetyReport/ }),
+    ).toHaveAttribute("href", "/posts/new");
+    expect(screen.getByRole("link", { name: /home\.notices/ })).toHaveAttribute(
       "href",
-      "/posts/new",
+      "/announcements",
     );
     expect(
-      screen.getByRole("link", { name: /announcements\.title/ }),
-    ).toHaveAttribute("href", "/announcements");
-    expect(screen.getByRole("link", { name: /votes\.title/ })).toHaveAttribute(
-      "href",
-      "/votes",
-    );
-    expect(screen.getByText("home.noReports")).toBeInTheDocument();
+      screen.getByRole("link", { name: /home\.recommendation/ }),
+    ).toHaveAttribute("href", "/votes");
+    expect(
+      screen.getByRole("link", { name: /home\.safetyWallet/ }),
+    ).toHaveAttribute("href", "/points");
+    expect(
+      screen.getByRole("link", { name: /home\.safetyWallet/ }),
+    ).toHaveAttribute("href", "/points");
   });
 });

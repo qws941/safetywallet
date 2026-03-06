@@ -81,7 +81,13 @@
     "noReports": "Không có báo cáo",
     "viewAll": "Xem tất cả",
     "announcements": "Thông báo",
-    "noAnnouncements": "Không có thông báo"
+    "noAnnouncements": "Không có thông báo",
+    "greetingName": "Xin chào, {name}.",
+    "myPointsCount": "Điểm của tôi: {count}",
+    "safetyReport": "Báo cáo an toàn",
+    "recommendation": "Đề cử",
+    "notices": "Thông báo",
+    "safetyWallet": "Ví An Toàn"
   },
   "nav": {
     "home": "Trang chủ",
@@ -89,7 +95,8 @@
     "create": "Tạo mới",
     "createReportAria": "Tạo báo cáo mới",
     "actions": "Khắc phục",
-    "profile": "Hồ sơ"
+    "profile": "Hồ sơ",
+    "wallet": "Ví của tôi"
   },
   "posts": {
     "title": "Báo cáo an toàn",
@@ -714,7 +721,7 @@
       "syncing": "Đang đồng bộ...",
       "syncNow": "Đồng bộ ngay"
     },
-    "unsafeWarningTitle": "\u26a0\ufe0f Hướng dẫn báo cáo hành vi không an toàn",
+    "unsafeWarningTitle": "⚠️ Hướng dẫn báo cáo hành vi không an toàn",
     "unsafeWarningImprovementNote": "Báo cáo hành vi không an toàn được sử dụng nhằm mục đích cải thiện, không phải xử phạt cá nhân.",
     "unsafeWarningPrivacyNote": "Vui lòng chú ý không để lộ khuôn mặt hoặc thông tin cá nhân khi báo cáo.",
     "unsafeWarningAdminNote": "Báo cáo này chỉ quản trị viên mới có thể xem.",

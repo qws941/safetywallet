@@ -78,6 +78,12 @@ export const ko = {
   "home.noData": "데이터가 없습니다",
   "home.loadingError": "데이터를 불러올 수 없습니다",
   "home.retryButton": "다시 시도",
+  "home.greetingName": "{name}님 안녕하세요.",
+  "home.myPointsCount": "나의 포인트 {count}건",
+  "home.safetyReport": "안전보고",
+  "home.recommendation": "추천인",
+  "home.notices": "전달사항",
+  "home.safetyWallet": "안전지갑",
 
   // ==================== POSTS ====================
   "posts.title": "게시물",
@@ -426,6 +432,7 @@ export const ko = {
   "nav.points": "포인트",
   "nav.votes": "추천",
   "nav.announcements": "공지",
+  "nav.wallet": "내지갑",
 
   // ==================== COMMON / SHARED ====================
   "common.loading": "로딩 중...",

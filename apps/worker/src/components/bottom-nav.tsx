@@ -14,12 +14,12 @@ export function BottomNav() {
     { href: "/home", label: "nav.home", icon: HomeIcon },
     { href: "/education", label: "nav.education", icon: BookOpen },
     { href: "/posts/new", label: "", icon: PlusIcon, isCenter: true },
-    { href: "/actions", label: "nav.actions", icon: ClipboardCheckIcon },
+    { href: "/points", label: "nav.wallet", icon: WalletIcon },
     { href: "/profile", label: "nav.profile", icon: UserIcon },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#1a1a2e] border-t border-gray-800 safe-bottom">
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
@@ -44,10 +44,15 @@ export function BottomNav() {
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center w-16 h-14 text-xs",
-                isActive ? "text-primary" : "text-muted-foreground",
+                isActive ? "text-blue-400" : "text-gray-400",
               )}
             >
-              <Icon className="w-5 h-5 mb-1" />
+              <div className="relative">
+                <Icon className="w-5 h-5 mb-1" />
+                {item.href === "/education" && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#1a1a2e]" />
+                )}
+              </div>
               <span className="truncate max-w-full">
                 {item.label ? t(item.label) : ""}
               </span>
@@ -123,6 +128,23 @@ function UserIcon({ className }: { className?: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+      />
+    </svg>
+  );
+}
+function WalletIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
       />
     </svg>
   );

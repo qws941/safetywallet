@@ -2,80 +2,40 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
-import { usePosts, usePoints, useAttendanceToday } from "@/hooks/use-api";
-import type { ApiResponse } from "@safetywallet/types";
-import { useLeaderboard } from "@/hooks/use-leaderboard";
-import { Header } from "@/components/header";
+import { usePoints } from "@/hooks/use-api";
 import { BottomNav } from "@/components/bottom-nav";
-import { PointsCard } from "@/components/points-card";
-import { RankingCard } from "@/components/ranking-card";
-import { PostCard } from "@/components/post-card";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Skeleton,
-} from "@safetywallet/ui";
+import { Card, CardContent } from "@safetywallet/ui";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
-import { CheckCircle, XCircle, Award, Bell, ChevronRight } from "lucide-react";
-
-interface AnnouncementItem {
-  id: string;
-  title: string;
-  isPinned: boolean;
-  createdAt: string;
-}
+import {
+  Bell,
+  ChevronRight,
+  AlertTriangle,
+  ThumbsUp,
+  Megaphone,
+  Wallet,
+} from "lucide-react";
 
 export default function HomePage() {
-  const { currentSiteId, isAuthenticated, _hasHydrated } = useAuth();
+  const { currentSiteId, isAuthenticated, _hasHydrated, user } = useAuth();
   const isReady = _hasHydrated && isAuthenticated;
   const activeSiteId = isReady ? currentSiteId : "";
   const t = useTranslation();
-  const { data: postsData, isLoading: postsLoading } = usePosts(
-    activeSiteId || "",
-  );
-  const { data: pointsData, isLoading: pointsLoading } = usePoints(
-    activeSiteId || "",
-  );
-  const { data: leaderboardData, isLoading: leaderboardLoading } =
-    useLeaderboard(activeSiteId || null);
 
-  const { data: attendanceData, isLoading: attendanceLoading } =
-    useAttendanceToday(activeSiteId || null);
-
-  const recentPosts = postsData?.data?.posts?.slice(0, 3) || [];
+  const { data: pointsData } = usePoints(activeSiteId || "");
   const pointsBalance = pointsData?.data?.balance || 0;
-  const myRank = leaderboardData?.myRank || null;
-  const totalParticipants = leaderboardData?.leaderboard?.length || 0;
-
-  const { data: announcementsData } = useQuery<AnnouncementItem[]>({
-    queryKey: ["announcements", "recent", currentSiteId],
-    queryFn: async () => {
-      const res = await apiFetch<ApiResponse<{ data: AnnouncementItem[] }>>(
-        `/announcements?siteId=${currentSiteId}&limit=3`,
-      );
-      return res.data?.data || [];
-    },
-    enabled: !!activeSiteId,
-  });
-  const recentAnnouncements = announcementsData || [];
-
-  const formatCheckinTime = (dateStr: string | null) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("ko-KR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   if (!currentSiteId) {
     return (
-      <div className="min-h-screen bg-muted pb-nav">
-        <Header />
+      <div className="min-h-screen bg-[#f0f4f8] dark:bg-background pb-nav">
+        <header className="flex items-center justify-between px-6 py-5 bg-[#1a1a2e] text-white rounded-b-2xl shadow-sm">
+          <div className="leading-[1.05] tracking-tight text-blue-400">
+            <p className="text-xl font-semibold italic">MIRAE</p>
+            <p className="text-xl font-semibold italic">DOSI</p>
+          </div>
+          <button className="relative p-2" aria-label="Notifications">
+            <Bell className="w-6 h-6 text-white" />
+          </button>
+        </header>
         <main className="p-4 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
           <div className="text-4xl">🏗️</div>
           <h2 className="text-lg font-semibold text-foreground">
@@ -91,123 +51,90 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted pb-nav">
-      <Header />
+    <div className="min-h-screen bg-[#f0f4f8] dark:bg-background pb-nav">
+      <header className="flex items-center justify-between px-6 py-5 bg-[#1a1a2e] text-white rounded-b-2xl shadow-sm mb-6">
+        <div className="leading-[1.05] tracking-tight text-blue-400">
+          <p className="text-xl font-semibold italic">MIRAE</p>
+          <p className="text-xl font-semibold italic">DOSI</p>
+        </div>
+        <Link
+          href="/notifications"
+          className="relative p-2"
+          aria-label="Notifications"
+        >
+          <Bell className="w-6 h-6 text-white" />
+        </Link>
+      </header>
 
-      <main className="p-4 space-y-4">
-        {attendanceLoading ? (
-          <Skeleton className="h-16 w-full" />
-        ) : attendanceData?.attended ? (
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <CheckCircle className="h-8 w-8 text-green-500 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="font-medium text-green-700 truncate">
-                  {t("home.checkedIn")}
-                </p>
-                <p className="text-sm text-green-600">
-                  {formatCheckinTime(attendanceData.checkinAt)}{" "}
-                  {t("home.checkIn")}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <XCircle className="h-8 w-8 text-amber-500 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="font-medium text-amber-700 truncate">
-                  {t("home.notCheckedIn")}
-                </p>
-                <p className="text-sm text-amber-600">
-                  {t("home.checkInPrompt")}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid grid-cols-2 gap-3 h-32">
-          {pointsLoading ? (
-            <Skeleton className="h-full w-full" />
-          ) : (
-            <PointsCard balance={pointsBalance} />
-          )}
-
-          <RankingCard
-            myRank={myRank}
-            totalParticipants={totalParticipants}
-            isLoading={leaderboardLoading}
-          />
+      <main className="px-5 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-foreground">
+            {t("home.greetingName", {
+              name: user?.nameMasked || t("profile.noName"),
+            })}
+          </h2>
+          <Link
+            href="/points"
+            className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center hover:underline"
+          >
+            {t("home.myPointsCount", { count: pointsBalance })}{" "}
+            <ChevronRight className="w-4 h-4 ml-0.5" />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <Link href="/posts/new">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl mb-1">📢</div>
-                <div className="text-sm font-medium truncate">
-                  {t("posts.title")}
+            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer border-none shadow-sm rounded-2xl bg-white dark:bg-card">
+              <CardContent className="p-6 flex flex-col items-center justify-center h-36">
+                <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-3">
+                  <AlertTriangle className="w-7 h-7 text-red-500" />
                 </div>
+                <span className="text-base font-bold text-foreground">
+                  {t("home.safetyReport")}
+                </span>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/announcements">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl mb-1">📣</div>
-                <div className="text-sm font-medium truncate">
-                  {t("announcements.title")}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+
           <Link href="/votes">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-4 text-center">
-                <Award className="h-6 w-6 mx-auto mb-1 text-yellow-500" />
-                <div className="text-sm font-medium truncate">
-                  {t("votes.title")}
+            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer border-none shadow-sm rounded-2xl bg-white dark:bg-card">
+              <CardContent className="p-6 flex flex-col items-center justify-center h-36">
+                <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                  <ThumbsUp className="w-7 h-7 text-blue-500" />
                 </div>
+                <span className="text-base font-bold text-foreground">
+                  {t("home.recommendation")}
+                </span>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/announcements">
+            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer border-none shadow-sm rounded-2xl bg-white dark:bg-card">
+              <CardContent className="p-6 flex flex-col items-center justify-center h-36">
+                <div className="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mb-3">
+                  <Megaphone className="w-7 h-7 text-orange-500" />
+                </div>
+                <span className="text-base font-bold text-foreground">
+                  {t("home.notices")}
+                </span>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/points">
+            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer border-none shadow-sm rounded-2xl bg-white dark:bg-card">
+              <CardContent className="p-6 flex flex-col items-center justify-center h-36">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+                  <Wallet className="w-7 h-7 text-emerald-500" />
+                </div>
+                <span className="text-base font-bold text-foreground">
+                  {t("home.safetyWallet")}
+                </span>
               </CardContent>
             </Card>
           </Link>
         </div>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-base truncate">
-                {t("home.recentReports")}
-              </CardTitle>
-              <Link
-                href="/posts"
-                className="text-sm text-primary shrink-0 inline-flex"
-              >
-                {t("home.viewAll")}
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {postsLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : recentPosts.length > 0 ? (
-              <div>
-                {recentPosts.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">
-                {t("home.noReports")}
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </main>
 
       <BottomNav />

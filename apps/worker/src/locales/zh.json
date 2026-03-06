@@ -81,7 +81,13 @@
     "noReports": "没有报告",
     "viewAll": "查看全部",
     "announcements": "公告",
-    "noAnnouncements": "没有公告"
+    "noAnnouncements": "没有公告",
+    "greetingName": "你好，{name}。",
+    "myPointsCount": "我的积分: {count}",
+    "safetyReport": "安全报告",
+    "recommendation": "推荐",
+    "notices": "公告",
+    "safetyWallet": "安全钱包"
   },
   "nav": {
     "home": "首页",
@@ -89,7 +95,8 @@
     "create": "创建",
     "createReportAria": "新建举报",
     "actions": "整改",
-    "profile": "个人"
+    "profile": "个人",
+    "wallet": "我的钱包"
   },
   "posts": {
     "title": "安全报告",
@@ -730,7 +737,7 @@
       "syncing": "同步中...",
       "syncNow": "立即同步"
     },
-    "unsafeWarningTitle": "\u26a0\ufe0f 不安全行为举报指南",
+    "unsafeWarningTitle": "⚠️ 不安全行为举报指南",
     "unsafeWarningImprovementNote": "不安全行为举报用于改进目的，而非个人处罚。",
     "unsafeWarningPrivacyNote": "举报时请注意不要暴露面部或个人信息。",
     "unsafeWarningAdminNote": "此举报仅管理员可见。",

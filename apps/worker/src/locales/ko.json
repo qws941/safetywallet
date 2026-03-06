@@ -81,7 +81,13 @@
     "noReports": "보고서가 없습니다",
     "viewAll": "모두 보기",
     "announcements": "공지사항",
-    "noAnnouncements": "공지사항이 없습니다"
+    "noAnnouncements": "공지사항이 없습니다",
+    "greetingName": "{name}님 안녕하세요.",
+    "myPointsCount": "나의 포인트 {count}건",
+    "safetyReport": "안전보고",
+    "recommendation": "추천인",
+    "notices": "전달사항",
+    "safetyWallet": "안전지갑"
   },
   "nav": {
     "home": "홈",
@@ -89,7 +95,8 @@
     "create": "작성",
     "createReportAria": "새 제보 작성",
     "actions": "시정조치",
-    "profile": "프로필"
+    "profile": "프로필",
+    "wallet": "내지갑"
   },
   "posts": {
     "title": "안전 보고",

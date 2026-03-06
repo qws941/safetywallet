@@ -14,7 +14,7 @@ describe("BottomNav", () => {
 
     expect(screen.getByText("translated:nav.home")).toBeInTheDocument();
     expect(screen.getByText("translated:nav.education")).toBeInTheDocument();
-    expect(screen.getByText("translated:nav.actions")).toBeInTheDocument();
+    expect(screen.getByText("translated:nav.wallet")).toBeInTheDocument();
     expect(screen.getByText("translated:nav.profile")).toBeInTheDocument();
 
     const links = screen.getAllByRole("link");
@@ -32,7 +32,7 @@ describe("BottomNav", () => {
     const educationText = screen.getByText("translated:nav.education");
     const educationLink = educationText.closest("a");
 
-    expect(educationLink).toHaveClass("text-primary");
+    expect(educationLink).toHaveClass("text-blue-400");
     expect(educationLink).not.toHaveClass("text-muted-foreground");
   });
 
