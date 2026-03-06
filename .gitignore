@@ -85,3 +85,14 @@ COMPLETE_AUDIT_REPORT.md
 CRITICAL_FIXES_APPLIED.md
 MAJOR_MINOR_FIXES_APPLIED.md
 REMAINING_ISSUES_IMPLEMENTATION_GUIDE.md
+
+# Android build artifacts
+apps/worker/android/.build/
+apps/worker/android/app/build/
+apps/worker/android/build/
+apps/worker/android/.gradle/
+apps/worker/android/local.properties
+apps/worker/android/app-release-signed.apk
+apps/worker/android/app-release-bundle.aab
+apps/worker/android/app-release-signed.apk.idsig
+apps/worker/android/app-release-unsigned-aligned.apk

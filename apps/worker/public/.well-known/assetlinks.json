@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "me.jclee.safetywallet.twa",
-      "sha256_cert_fingerprints": ["__SHA256_FINGERPRINT__"]
+      "sha256_cert_fingerprints": [
+        "8D:70:34:F9:A0:51:5C:B1:B4:AF:47:5F:FB:AF:51:2D:27:DC:01:A6:65:8C:E7:C3:B6:49:A7:97:D3:51:B0:28"
+      ]
     }
   }
 ]
