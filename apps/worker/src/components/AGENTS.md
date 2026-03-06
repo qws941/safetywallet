@@ -1,45 +1,43 @@
 # Worker Components
 
-Reusable UI, guard, and provider layer for worker pages.
+Reusable component and guard/provider layer for worker screens.
 
 ## Purpose
 
-- Route shell parts (header, bottom nav), status banners, cards, modals
-- Auth/attendance guards for route protection
-- Provider composition for app-wide context wrappers
-- Network/state access delegated to hooks/lib/stores
+- Provide shared route shell UI and cards/modals
+- Enforce auth/attendance gating behavior in client runtime
+- Centralize app provider composition in one entrypoint (`providers.tsx`)
 
-## Files
+## Files (13 components)
 
-- `attendance-guard.tsx` — attendance gate with loading/fallback modes
-- `auth-guard.tsx` — auth redirect guard, public path allowlist
-- `bottom-nav.tsx` — bottom navigation bar, center CTA → `/posts/new`
-- `header.tsx` — attendance chip + locale switcher + system banner
-- `install-banner.tsx` — PWA install prompt with 7-day dismissal
-- `locale-switcher.tsx` — language selector from `i18n/config` locales
-- `offline-queue-indicator.tsx` — queue length display + manual replay
-- `points-card.tsx` — points summary card
-- `post-card.tsx` — safety report card with status badges + urgent marker
-- `providers.tsx` — app-wide provider composition (authoritative order)
-- `ranking-card.tsx` — leaderboard ranking card
-- `system-banner.tsx` — severity-based banner (critical/warning/info)
-- `unsafe-warning-modal.tsx` — unsafe condition warning modal
-- `__tests__/` — component tests mirroring component names
+- `attendance-guard.tsx` - attendance gate wrapper with loading/fallback behavior
+- `auth-guard.tsx` - auth redirect guard with public-path checks
+- `bottom-nav.tsx` - bottom navigation and center post CTA
+- `header.tsx` - page header with locale/system widgets
+- `install-banner.tsx` - PWA install CTA with dismissal window
+- `locale-switcher.tsx` - locale selector using i18n config
+- `offline-queue-indicator.tsx` - queued request indicator + replay trigger
+- `points-card.tsx` - points summary UI card
+- `post-card.tsx` - post list card with status/urgent markers
+- `providers.tsx` - authoritative provider stack for app root
+- `ranking-card.tsx` - leaderboard ranking card UI
+- `system-banner.tsx` - system severity banner UI
+- `unsafe-warning-modal.tsx` - unsafe-condition modal dialog
 
 ## Conventions
 
-- Provider order in `providers.tsx`:
-  `QueryClientProvider → I18nProvider → AuthGuard → {children} + OfflineQueueIndicator + Toaster + InstallBanner`
-- `AuthGuard` public paths: `/`, `/login`, `/login/*` only
-- `AuthGuard` clears React Query cache on logged-out hydrated state
-- `AttendanceGuard` uses `useAttendanceToday` with polling
-- `BottomNav` center label intentionally empty
-- `PostCard` badge mapping covers review/action statuses + urgent marker
+- Provider order in `providers.tsx` is fixed:
+  `QueryClientProvider -> I18nProvider -> AuthGuard -> children + OfflineQueueIndicator + Toaster + InstallBanner`
+- `AuthGuard` public paths are strictly `/`, `/login`, `/login/*`
+- `AuthGuard` clears React Query cache when hydrated and logged out
+- `OfflineQueueIndicator` reflects `lib/api` queue length and replay state
+- `InstallBanner` uses `safetywallet-install-dismissed` 7-day suppression
+- `LocaleSwitcher` uses `i18n/config` locale source, not hardcoded options
 
 ## Anti-Patterns
 
-- Do not call API directly from components; use hook abstractions
-- Do not widen `AuthGuard` public-route allowlist without auth policy changes
-- Do not remove query cache clear on logout; prevents stale cross-session data
-- Do not hardcode locale list in `LocaleSwitcher`; consume `i18n/config`
-- Do not remove queue indicator storage listeners; offline replay visibility required
+- Do not perform raw API calls directly in components
+- Do not widen public-route allowlist in `auth-guard.tsx` casually
+- Do not remove query cache clear-on-logout behavior
+- Do not inline locale constants in component files
+- Do not remove offline queue state/listener behavior from indicators

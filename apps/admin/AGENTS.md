@@ -1,60 +1,63 @@
 # Admin Dashboard
 
-Next.js 15 App Router admin SPA, statically exported, served via R2 `ASSETS` binding at `admin.*` hostname (port 3001).
+Next.js 15 admin dashboard app (App Router, static export), served from `admin.*` via R2 `ASSETS`.
 
-## Structure
+## PURPOSE
 
-- `src/app/` — 31 route pages (App Router). See `src/app/AGENTS.md`.
-- `src/components/` — shared shell, sidebar, data-table, review-actions, approvals. See `src/components/AGENTS.md`.
-- `src/hooks/` — 33 TanStack Query hook modules. See `src/hooks/AGENTS.md`.
-- `src/stores/` — Zustand auth store (persist key `safetywallet-admin-auth`). See `src/stores/AGENTS.md`.
-- `src/lib/` — `apiFetch` client + `cn` utility. See `src/lib/AGENTS.md`.
+- Define admin app boundaries and current folder ownership.
+- Keep route/component/data-layer inventories aligned with the live tree.
 
-## Core Integration Files
+## FILE INVENTORY
 
-- `src/app/layout.tsx` — shell composition root.
-- `src/components/admin-shell.tsx` — auth-gated app frame.
-- `src/components/providers.tsx` — QueryClient + bootstrap.
-- `src/components/sidebar.tsx` — nav + site switching.
-- `src/stores/auth.ts` — persisted user/tokens/site context.
-- `src/lib/api.ts` — API client with refresh-on-401 retry.
+- `src/app/` - route layer with `31` route pages (`**/page.tsx`) across `18` top-level route directories.
+- `src/components/` - shared shell, providers, sidebar, table, and feature component packs.
+- `src/hooks/` - `42` hook modules (`use-*.ts`) including TanStack Query domain hooks and AI helper hooks.
+- `src/stores/` - Zustand auth store (`auth.ts`) with persisted key `safetywallet-admin-auth`.
+- `src/lib/` - API wrapper (`api.ts`) and utility boundary (`utils.ts`).
+- Entry integration points:
+  - `src/app/layout.tsx`
+  - `src/components/admin-shell.tsx`
+  - `src/components/providers.tsx`
+  - `src/components/sidebar.tsx`
+  - `src/stores/auth.ts`
+  - `src/lib/api.ts`
 
-## Route Groups
+## ROUTE GROUPS
 
-- `dashboard` (+ `analytics`, `recommendations`).
-- `attendance` (+ `sync`, `unmatched`).
-- `posts`, `posts/[id]`.
-- `votes` (+ `new`, `candidates`, `[id]`, `[id]/candidates/new`).
-- `actions`, `announcements`, `approvals`, `audit`.
-- `education`, `issues`, `monitoring`, `sync-errors`.
-- `points` (+ `policies`, `settlement`).
-- `members` (+ `[id]`), `rewards`, `recommendations`, `settings`, `login`.
+- Core dashboard: `dashboard`, `dashboard/analytics`, `dashboard/recommendations`.
+- Operations: `attendance`, `attendance/sync`, `attendance/unmatched`, `monitoring`, `sync-errors`.
+- Reviews/content: `posts`, `posts/[id]`, `actions`, `announcements`, `issues`.
+- Voting: `votes`, `votes/new`, `votes/candidates`, `votes/[id]`, `votes/[id]/candidates/new`.
+- Governance/admin: `approvals`, `audit`, `recommendations`, `settings`, `login`.
+- Members/rewards: `members`, `members/[id]`, `rewards`.
+- Points: `points`, `points/policies`, `points/settlement`.
+- Education: `education` (single-page tabbed hub).
 
-## Conventions
+## CONVENTIONS
 
-- Dynamic route wrappers for static export: `generateStaticParams` placeholder + client page import.
-- Site-scoped queries use `currentSiteId` from auth store.
-- Query invalidation in hook mutation layers, not page components.
-- Sidebar always mounted: icon rail on mobile (`w-16`), expandable on desktop (`md:w-64`).
-- Data stack: TanStack Query (staleTime 2min, retry 1) + Zustand stores.
-- API calls via `lib/api.ts` `apiFetch` with `API_BASE` constant.
-- Korean-primary labels/content.
+- Route pages are client-first and use `"use client"` where browser state or hooks are required.
+- Dynamic route wrappers keep static export compatibility with minimal `generateStaticParams` placeholders.
+- Data fetching/mutations flow through hooks (TanStack Query); page files orchestrate layout/state only.
+- API requests use `apiFetch` from `src/lib/api.ts`; authenticated flows rely on centralized 401 refresh/retry.
+- Site-scoped behavior reads `currentSiteId` from `useAuthStore`.
+- Sidebar stays mounted (`w-16` mobile rail, `md:w-64` desktop expansion).
 
-## Anti-patterns
+## ANTI-PATTERNS
 
-- Do not duplicate `API_BASE` or refresh-token logic outside `src/lib/api.ts`.
-- Do not put query invalidation in page components — keep it in hooks.
-- Do not break static export by adding server-side dependencies to wrapper routes.
+- Duplicating auth refresh or token lifecycle logic outside `src/lib/api.ts` and `src/stores/auth.ts`.
+- Adding route-level server dependencies that break static export wrappers.
+- Re-implementing query invalidation in page components instead of hook mutation layers.
+- Mixing non-admin scopes (`apps/api`, `apps/worker`) into this subtree documentation.
 
-## Child Agents
+## CHILD AGENTS
 
-- `src/app/AGENTS.md` — route topology.
-- `src/app/attendance/AGENTS.md` — logs/unmatched/sync.
-- `src/app/education/AGENTS.md` — tabbed education hub.
-- `src/app/posts/AGENTS.md` — post review list/detail.
-- `src/app/votes/AGENTS.md` — vote period/candidate/result flows.
-- `src/components/AGENTS.md` — shell/sidebar/provider components.
-- `src/hooks/AGENTS.md` — 33-hook inventory.
-- `src/hooks/__tests__/AGENTS.md` — hook test harness.
-- `src/stores/AGENTS.md` — auth store contract.
-- `src/lib/AGENTS.md` — API client boundary.
+- `src/app/AGENTS.md` - route topology, wrapper pattern, and page grouping.
+- `src/app/attendance/AGENTS.md` - attendance logs/unmatched/sync surfaces.
+- `src/app/education/AGENTS.md` - education tab hub internals.
+- `src/app/posts/AGENTS.md` - post list/detail review workflow.
+- `src/app/votes/AGENTS.md` - month-period vote lifecycle.
+- `src/components/AGENTS.md` - shared component inventory.
+- `src/hooks/AGENTS.md` - hook-module ownership and boundaries.
+- `src/hooks/__tests__/AGENTS.md` - hook verification inventory.
+- `src/stores/AGENTS.md` - auth store contract.
+- `src/lib/AGENTS.md` - API wrapper contract.

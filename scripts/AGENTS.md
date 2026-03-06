@@ -1,29 +1,32 @@
 # Scripts
 
-Operational and development tooling scripts.
+Operational/developer scripts and one-off migration utilities.
 
-## Files
+## Inventory
 
-- `verify.go` — umbrella verification runner (lint, type-check, test, build).
-- `git-preflight.go` — push-readiness gate (branch, uncommitted changes, anti-patterns).
-- `check-anti-patterns.go` — blocks commits containing forbidden patterns from AGENTS.md.
-- `build-static.go` — builds static assets for worker-app.
-- `create-cf-token.go` — creates scoped Cloudflare API tokens.
-- `check-wrangler-sync.js` — ensures root and app `wrangler.toml` binding IDs match.
-- `lint-naming.js` — validates monorepo package naming conventions (kebab-case).
-- `create-test-user.ts` — generates test user SQL with HMAC hashing.
-- `hash-admin-password.ts` — generates PBKDF2 hash for admin password secret.
-- `create-test-user.sql` — generated SQL output for test user insertion.
-- `migrate-s4-enums.sql` — D1 migration for S4 post state machine enum values.
+- `AGENTS.md` — local script governance and drift rules.
+- `verify.go` — umbrella verifier (lint, type-check, unit tests, build).
+- `git-preflight.go` — commit/push readiness checks.
+- `check-anti-patterns.go` — scans staged/changed code for forbidden patterns.
+- `build-static.go` — static build pipeline helper for worker app assets.
+- `create-cf-token.go` — Cloudflare token creation helper.
+- `check-wrangler-sync.js` — validates `wrangler.toml` binding parity across root/app configs.
+- `lint-naming.js` — monorepo naming policy linter.
+- `create-test-user.ts` — emits SQL for test worker user bootstrap.
+- `hash-admin-password.ts` — PBKDF2 password hash generator for admin secret provisioning.
+- `create-test-user.sql` — generated SQL seed artifact used in local test setup.
+- `migrate-s4-enums.sql` — D1 migration script for S4 post state enum normalization.
 
 ## Conventions
 
-- Go-first policy for operational scripts.
-- Node.js exception for ecosystem-tied validators, hooks, and linters.
-- CI-facing scripts must be deterministic, non-interactive, and exit-code strict.
-- Secret values from env/flags only; never hardcode credentials.
+- Keep operational automation in Go by default.
+- JS/TS scripts are allowed only for ecosystem-coupled tooling or utility generation flows.
+- CI-executed scripts must be deterministic, non-interactive, and strict on non-zero exits.
+- Secrets must be supplied through env vars/flags, never embedded literals.
+- Utility scripts that generate artifacts should document output target and overwrite behavior.
 
-## Anti-patterns
+## Drift Guards
 
-- No local-path assumptions in CI scripts.
-- No plaintext token or password defaults.
+- No hardcoded local absolute paths in scripts used by CI.
+- No plaintext credential defaults in script source.
+- No stale script entries in this inventory.

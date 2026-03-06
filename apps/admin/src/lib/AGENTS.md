@@ -1,47 +1,31 @@
-# AGENTS: LIB
+# Lib
 
-## SCOPE
+## PURPOSE
 
-- Admin library utilities in `src/lib`.
-- Network client boundary and lightweight helper exports.
+- Own shared admin runtime utilities in `src/lib`.
+- Keep API transport and low-level helpers centralized.
 
-## FILES
+## FILE INVENTORY
 
-- `api.ts` - admin API client (`apiFetch`, `ApiError`, `API_BASE`, auth-refresh flow).
-- `utils.ts` - utility re-export boundary (`cn` from `@safetywallet/ui`).
-- `__tests__/` - API utility tests.
+- `api.ts` - `apiFetch`, `ApiError`, `API_BASE`, refresh mutex/retry flow.
+- `utils.ts` - utility re-export boundary (`cn`).
+- `__tests__/api.test.ts`, `__tests__/utils.test.ts`.
 
-## `apiFetch` RUNTIME CONTRACT
+## CONVENTIONS
 
-- Reads auth tokens from `useAuthStore.getState()`.
-- Adds `Authorization: Bearer` when access token exists.
-- On `401` with refresh token:
-  - calls `/auth/refresh`.
-  - updates store via `setTokens()` on success.
-  - retries original request once.
-- On refresh failure or repeated unauthorized response:
-  - triggers `logout()`.
-  - throws `ApiError`.
-- Non-OK responses always throw `ApiError(message, status, code?)`.
-
-## CONFIG FACTS
-
-- API base source: `NEXT_PUBLIC_API_URL`.
-- Fallback base in admin app config: `/api`.
-- Admin app is static-exported; runtime API target must stay browser-safe.
-
-## USAGE RULES
-
-- Hooks/pages use `apiFetch`; avoid ad-hoc raw `fetch` for authenticated API calls.
-- Keep auth/session side effects in store + `api.ts`, not in domain hooks.
-- Keep utility exports side-effect free.
-
-## ALLOWED EXCEPTIONS
-
-- Direct `fetch` is acceptable for explicit non-standard flows (example: blob/CSV download helper in vote hook) when documented in hook module.
+- All authenticated API calls go through `apiFetch`.
+- `apiFetch` reads auth state via `useAuthStore.getState()`.
+- 401 handling contract:
+  - attempt refresh when refresh token exists
+  - serialize refresh attempts with mutex-like guard
+  - update tokens via store on success
+  - retry original request once
+  - logout and throw `ApiError` on failure
+- API base resolves from `NEXT_PUBLIC_API_URL` with `/api` fallback.
+- Library files stay domain-agnostic and side-effect constrained.
 
 ## ANTI-PATTERNS
 
-- Duplicating refresh-token logic inside hooks.
-- Swallowing API failures without error propagation.
-- Embedding domain-specific business rules into `src/lib/api.ts`.
+- Re-implementing refresh/retry logic in hooks or components.
+- Swallowing non-OK API responses instead of throwing typed `ApiError`.
+- Introducing app-domain business rules into `src/lib` helpers.

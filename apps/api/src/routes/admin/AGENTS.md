@@ -3,32 +3,40 @@
 ## PURPOSE
 
 Admin API layer mounted at `/api/admin`.
-Owns moderation, monitoring, export, sync-error triage, policy/settlement controls.
+Owns operational endpoints for export, monitoring, sync errors, moderation, policy/access control, and admin analytics.
 
-## FILES/STRUCTURE
+## FILE INVENTORY
 
-- Top-level route files in this directory: 18
-  - `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `education.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `issues.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts`
-- Feature subdirectories: `fas/`, `posts/`, `users/`
-- Tests: `__tests__/` (20 admin test files)
+| Group                  | Count | Files/dirs                                                                                                                                                                                                                                                                            |
+| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Top-level route files  | 18    | `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `education.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `issues.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts` |
+| Feature subdirectories | 3     | `fas/`, `posts/`, `users/`                                                                                                                                                                                                                                                            |
+| Integration tests      | 20    | `__tests__/` contains 20 `*.test.ts` files                                                                                                                                                                                                                                            |
+
+## SUBDIR SNAPSHOT
+
+| Subdir   | Files                                                                                                     |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| `fas/`   | `helpers.ts`, `hyperdrive-routes.ts`, `index.ts`, `query-routes.ts`, `sync-workers-routes.ts`, `types.ts` |
+| `posts/` | `delete-handlers.ts`, `index.ts`, `list-routes.ts`, `moderation-routes.ts`, `review-handlers.ts`          |
+| `users/` | `index.ts`, `routes.ts`                                                                                   |
 
 ## CURRENT FACTS
 
-- `index.ts` applies `authMiddleware` globally, then mounts 18 subrouters.
-- Mounted modules include subdir routers (`users`, `fas`, `posts`) plus the 15 top-level feature routers.
-- `alerting.ts` includes maintenance message endpoints; there is no separate `maintenance.ts` route file.
-- `export.ts` uses export query validators and export-specific guards/rate-limit helpers from admin helper layer.
+- `index.ts` applies `authMiddleware` globally, then mounts 19 admin apps (`users`, `export`, `fas`, `posts`, and 15 top-level domain routers).
+- `alerting.ts` owns maintenance-message endpoints; `maintenance.test.ts` validates that behavior via alerting routes.
+- `export.ts` relies on admin helpers and export validators for guarded data extraction flows.
 
 ## CONVENTIONS
 
-- Keep cross-admin helpers in `helpers.ts` and consume from all admin modules.
-- Keep export endpoints protected by both role/permission checks and export rate limiting.
-- Keep monitoring endpoints centered on `apiMetrics` aggregation logic.
-- Keep sync error transitions explicit (`OPEN` -> `RESOLVED` or `IGNORED`) in sync-error handlers.
+- Keep shared admin query/response helpers centralized in `helpers.ts`.
+- Preserve global auth gate in `index.ts`; per-endpoint permission checks are additive.
+- Keep sync error status transitions explicit and auditable in `sync-errors.ts`.
+- Keep monitoring/statistical read models scoped to admin routes.
 
 ## ANTI-PATTERNS
 
-- Do not bypass `authMiddleware` in `index.ts` for new admin routes.
-- Do not duplicate helper logic inside `posts/`, `fas/`, or `users/` subrouters when it exists in `helpers.ts`.
-- Do not create root-level admin handlers for domains already owned by subdirectories.
-- Do not drift endpoint naming between `index.ts` mounts and feature router paths.
+- Do not bypass `authMiddleware` for any new admin route mount.
+- Do not duplicate shared helper logic inside `fas/`, `posts/`, or `users/`.
+- Do not create a standalone `maintenance.ts`; alerting owns that surface.
+- Do not diverge mounted route paths from module responsibility names.

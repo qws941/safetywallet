@@ -2,36 +2,32 @@
 
 ## PURPOSE
 
-Unit tests for modules under `apps/api/src/lib`.
-Covers utility contracts, adapter behavior, and envelope stability.
+Unit-test layer for `apps/api/src/lib` modules.
+Covers helper contracts, adapter behavior, retry/failure paths, and response envelope stability.
 
-## FILES/STRUCTURE
+## FILE INVENTORY
 
-- Test files in this directory: 24 (`*.test.ts`).
-- Representative suites:
-  - `fas-sync.test.ts` - FAS sync paths, collision scenarios, update/create counts.
-  - `notification-queue.test.ts` - queue ack/retry/remove handling.
-  - `web-push.test.ts` - push payload encryption and delivery classification.
-  - `points-engine.test.ts` - scoring limits and duplicate windows.
-  - `response.test.ts` - API envelope shape contract.
-  - `state-machine.test.ts` - status transition guards.
+| Type             | Count | Files                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit test suites | 24    | `alerting.test.ts`, `audit.test.ts`, `auto-issue.test.ts`, `crypto.test.ts`, `device-registrations.test.ts`, `face-blur.test.ts`, `fas-mariadb.test.ts`, `fas-sync.test.ts`, `image-privacy.test.ts`, `jwt.test.ts`, `key-manager.test.ts`, `logger.test.ts`, `notification-queue.test.ts`, `observability.test.ts`, `phash.test.ts`, `points-engine.test.ts`, `rate-limit.test.ts`, `response.test.ts`, `session-cache.test.ts`, `sms.test.ts`, `state-machine.test.ts`, `sync-lock.test.ts`, `web-push.test.ts`, `workers-ai.test.ts` |
+| Local docs       | 1     | `AGENTS.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## CURRENT FACTS
 
-- Every main utility module has a corresponding test file here.
-- Tests are pure vitest unit tests; no full Hono app bootstrapping in this directory.
-- Common patterns include DB chain mocks, queue/push stubs, and logger mock assertions.
+- Tests here are module-level Vitest suites, not full Hono integration tests.
+- Queue, push, sync, and lock behaviors are validated through controlled mock boundaries.
+- `response.test.ts` acts as a contract guard for the API envelope helpers.
 
 ## CONVENTIONS
 
-- Keep deterministic fixture values for timestamps, IDs, and hashes when asserting exact objects.
-- Mock module boundaries (`vi.mock`) instead of private function internals.
-- Assert both positive path and degraded path (retry, removal, fallback, partial failure).
-- Reset mocks per suite (`beforeEach`) to avoid cross-file leakage.
+- Keep fixtures deterministic for timestamps, IDs, hashes, and ordering-sensitive arrays.
+- Mock external boundaries (`DB`, queue, crypto, fetch/network) rather than private internals.
+- Cover both success and degraded/error flows for high-impact modules.
+- Reset and isolate mocks per suite to prevent cross-suite leakage.
 
 ## ANTI-PATTERNS
 
-- Do not weaken `response.test.ts` envelope assertions; routes depend on exact shape.
-- Do not share mutable singleton fixtures across multiple suites.
-- Do not test route/middleware concerns in this directory.
-- Do not skip failure-path assertions for queue, push, and sync utilities.
+- Do not weaken response envelope assertions to partial checks.
+- Do not place route or middleware integration concerns in this directory.
+- Do not skip retry/remove/failure-path assertions for async orchestration modules.
+- Do not rely on mutable shared singletons across test files.

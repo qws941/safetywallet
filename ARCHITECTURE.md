@@ -55,7 +55,7 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 
 | Binding                                   | Type                  | Purpose                                          |
 | ----------------------------------------- | --------------------- | ------------------------------------------------ |
-| `DB`                                      | D1                    | Primary database (32 tables, SQLite via Drizzle) |
+| `DB`                                      | D1                    | Primary database (34 tables, SQLite via Drizzle) |
 | `FAS_HYPERDRIVE`                          | Hyperdrive            | External FAS employee database                   |
 | `ASSETS`                                  | Workers Static Assets | Static frontend files (worker + admin SPAs)      |
 | `R2`                                      | R2                    | User-uploaded images and videos                  |
@@ -69,7 +69,7 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 
 ## Database Schema
 
-32 tables in 5 domains defined in `apps/api/src/db/schema.ts`:
+34 tables in 5 domains defined in `apps/api/src/db/schema.ts`:
 
 - **Identity** (7): users, sites, siteMemberships, sessions, userProfiles, userDevices, userNotificationPreferences.
 - **Safety** (8): posts, postImages, actions, reviews, disputes, approvals, recommendations, announcements.
@@ -110,6 +110,6 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 ## Notes
 
 - `docs/cloudflare-operations.md` references `apps/api-worker` — the current path is `apps/api`.
-- Root `AGENTS.md` is synced from `qws941/.github` — project-specific content belongs here in `ARCHITECTURE.md`.
+- Root `AGENTS.md` contains safetywallet project knowledge base. Note: synced from `qws941/.github` — update sync config if project-specific content should persist.
 - FAS integration env vars (`FAS_DB_NAME`, `FAS_SITE_CD`, `FAS_SITE_NAME`) are in wrangler.toml vars section.
 - i18n is worker-only with custom runtime (not next-intl): ko, en, vi, zh locales.

@@ -16,9 +16,11 @@ e2e/
 │   ├── admin-setup.ts         # Playwright setup: admin login → storageState
 │   └── worker-setup.ts        # Playwright setup: worker login → storageState
 ├── admin/
-│   └── dashboard.spec.ts      # Admin dashboard authenticated tests
+│   ├── dashboard.spec.ts      # Admin dashboard authenticated tests
+│   └── smoke.spec.ts          # Admin unauthenticated smoke tests
 ├── worker/
-│   └── home.spec.ts           # Worker home authenticated tests
+│   ├── home.spec.ts           # Worker home authenticated tests
+│   └── smoke.spec.ts          # Worker unauthenticated smoke tests
 └── .auth/                     # Generated auth state (gitignored)
     ├── admin.json
     └── worker.json
@@ -60,6 +62,8 @@ Credentials are stored in 1Password and injected via `op run --env-file=.env.e2e
 - webServer config auto-starts worker (port 3000) and admin (port 3001) dev servers.
 - CI mode: `retries: 2`, `workers: 1`, `reporter: github`.
 - Smoke tests require no credentials — test page load only.
+- Keep auth setup logic isolated in `e2e/auth/*-setup.ts` only.
+- Keep smoke specs side-effect free so they run as fast health checks.
 
 ## Anti-Patterns
 

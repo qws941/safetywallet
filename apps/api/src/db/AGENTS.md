@@ -2,36 +2,34 @@
 
 ## PURPOSE
 
-Database contract for API worker runtime.
-Owns table definitions, relations, enums, and batch-write helpers.
+Database contract layer for the API worker runtime.
+Owns Drizzle table/enum/relation definitions and D1 batch helper behavior.
 
-## FILES/STRUCTURE
+## FILE INVENTORY
 
-- `schema.ts` - full Drizzle schema catalog.
-- `helpers.ts` - D1 batch execution helpers.
-- `__tests__/schema.test.ts` and `__tests__/helpers.test.ts` validate schema and batching semantics.
+| File                        | Role                                                   |
+| --------------------------- | ------------------------------------------------------ |
+| `schema.ts`                 | Canonical Drizzle schema and relation definitions      |
+| `helpers.ts`                | Batch execution wrappers (`dbBatch`, `dbBatchChunked`) |
+| `__tests__/schema.test.ts`  | Schema contract coverage                               |
+| `__tests__/helpers.test.ts` | Batch helper behavior coverage                         |
 
 ## CURRENT FACTS
 
-- `schema.ts` currently defines 33 `sqliteTable(...)` tables.
-- Primary domain groups in file:
-  - identity/access: `users`, `sites`, `siteMemberships`, `accessPolicies`, `manualApprovals`, `joinCodeHistory`, `deviceRegistrations`
-  - safety lifecycle: `posts`, `postImages`, `reviews`, `actions`, `actionImages`, `disputes`, `auditLogs`, `announcements`
-  - points/votes: `pointsLedger`, `pointPolicies`, `votes`, `voteCandidates`, `votePeriods`, `recommendations`
-  - attendance/sync: `attendance`, `syncErrors`, `apiMetrics`, `pushSubscriptions`
-  - education: `educationContents`, `educationCompletions`, `quizzes`, `quizQuestions`, `quizAttempts`, `statutoryTrainings`, `tbmRecords`, `tbmAttendees`
-- `helpers.ts` exposes `dbBatch` and `dbBatchChunked`; chunk limit constant is `D1_BATCH_LIMIT = 100`.
+- `schema.ts` currently contains 34 `sqliteTable(...)` declarations.
+- Domain groups remain identity/access, safety lifecycle, points/voting, attendance/sync, and education.
+- `helpers.ts` keeps chunked-write fallback with `D1_BATCH_LIMIT = 100`.
 
 ## CONVENTIONS
 
-- Keep table, indexes, and relation declarations close together in `schema.ts`.
-- Keep enum values in sync with route validators and shared type usage.
-- Use `dbBatchChunked` for large mutation sets; inspect returned failed chunk metadata when partial success is unacceptable.
-- Prefer additive schema changes; leave compatibility columns/enums until migrations remove them.
+- Keep related table, index, and relation declarations adjacent in `schema.ts`.
+- Keep enum constraints aligned with validator and route expectations.
+- Use chunked batch helpers when mutation volume may exceed D1 per-batch constraints.
+- Apply additive schema evolution and retire compatibility fields through migrations.
 
 ## ANTI-PATTERNS
 
-- Do not scatter table definitions across unrelated files.
-- Do not bump table count in docs without verifying `sqliteTable(...)` usage in source.
-- Do not use single huge `db.batch` calls that can exceed D1 operation limits.
-- Do not remove deprecated enum values unless all route and migration paths are updated.
+- Do not split table definitions across unrelated runtime layers.
+- Do not update documented table counts without checking source declarations.
+- Do not run oversized unchunked `db.batch` operations in high-volume paths.
+- Do not remove enum/column compatibility paths before migration rollout.

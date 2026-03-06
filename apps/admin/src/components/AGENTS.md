@@ -1,48 +1,37 @@
-# AGENTS: COMPONENTS
+# Components
 
-## SCOPE
+## PURPOSE
 
-- Shared admin components in `src/components`.
-- Includes shell/nav, reusable primitives, and feature component subtrees.
+- Document shared admin component boundaries under `src/components`.
 
-## DIRECTORY SNAPSHOT
+## FILE INVENTORY
 
-- `admin-shell.tsx` - protected frame + auth gate.
-- `sidebar.tsx` - desktop/sidebar rail, mobile header label, site switch.
-- `providers.tsx` - QueryClient provider + bootstrap/hydration guard + toaster.
-- `data-table.tsx` - reusable searchable/sortable/paginated table shell.
-- `image-lightbox.tsx` - image preview overlay component.
-- `rich-text-editor.tsx` - Tiptap-based editor surface.
-- `review-actions.tsx` - review workflow action widget.
-- `stats-card.tsx` - dashboard metric card.
-- `approvals/` - approvals-specific dialog/list/history/reject components.
-- `review-actions/` - split review action UI pieces.
-- `votes/` - vote-specific shared dialog/components.
-- `ui/` - local UI primitives (including table variant).
-- `__tests__/` - component unit tests.
+- Root components:
+  - `admin-shell.tsx`
+  - `sidebar.tsx`
+  - `providers.tsx`
+  - `data-table.tsx`
+  - `image-lightbox.tsx`
+  - `rich-text-editor.tsx`
+  - `stats-card.tsx`
+- Feature component folders:
+  - `approvals/` (dialog/list/history/reject set)
+  - `review-actions/` (7 review action modules)
+  - `votes/` (`candidate-dialog.tsx`)
+  - `ui/` (`table.tsx`)
+- Test folder:
+  - `__tests__/` with `14` component test files.
 
-## COMPOSITION PATTERNS
+## CONVENTIONS
 
-- `AdminShell` wraps protected pages and redirects unauthenticated users.
-- `Providers` centralizes React Query bootstrap and app-level providers.
-- Sidebar handles navigation and site context switching; query cache hygiene occurs at this boundary.
-- Feature pages compose cards/panels from this folder instead of embedding large JSX in route files.
+- `admin-shell.tsx` owns auth gate + app frame composition.
+- `providers.tsx` is the single app-level provider mount (QueryClient/bootstrap/toast).
+- `sidebar.tsx` owns nav + site switching UI and stays mounted in mobile/desktop layouts.
+- Route pages should compose from this folder instead of embedding large repeated JSX blocks.
+- Generic visual primitives should be reused from `@safetywallet/ui` unless admin-only behavior is required.
 
-## CURRENT NAV MODEL
+## ANTI-PATTERNS
 
-- No drawer-based mobile sidebar in current architecture.
-- Sidebar always mounted:
-  - mobile: icon rail (`w-16`)
-  - desktop: expandable pane (`md:w-64`)
-- `MobileHeader` is label/header only; menu toggle state removed.
-
-## CONSTRAINTS
-
-- Keep route-specific business logic in hooks/pages; components stay presentation + interaction shell.
-- Avoid duplicating primitives from `@safetywallet/ui` unless admin-specific behavior is required.
-- Do not reintroduce removed `MobileSidebar` patterns.
-
-## TEST NOTES
-
-- Component behavior tests live in `src/components/__tests__`.
-- Hook/network assertions belong to hook test suites, not component tests.
+- Referencing deleted root modules (for example `review-actions.tsx`, no longer present).
+- Adding hook-level business logic directly inside reusable components.
+- Reintroducing old mobile drawer patterns that conflict with current always-mounted sidebar model.

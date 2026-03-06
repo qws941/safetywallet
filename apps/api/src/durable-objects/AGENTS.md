@@ -2,39 +2,33 @@
 
 ## PURPOSE
 
-Stateful worker components for rate limiting and scheduled job orchestration.
-This directory contains only Durable Object classes and their direct tests.
+Stateful Worker components for throttling and scheduled job orchestration.
+This directory is limited to Durable Object runtime classes and direct tests.
 
-## FILES/STRUCTURE
+## FILE INVENTORY
 
-- Runtime DO files: 2
-  - `RateLimiter.ts`
-  - `JobScheduler.ts`
-- Tests currently present: `__tests__/RateLimiter.test.ts`
+| Type                   | Count | Files                               |
+| ---------------------- | ----- | ----------------------------------- |
+| Durable Object classes | 2     | `RateLimiter.ts`, `JobScheduler.ts` |
+| Tests                  | 1     | `__tests__/RateLimiter.test.ts`     |
 
 ## CURRENT FACTS
 
-- `RateLimiter.ts` supports request actions:
-  - `checkLimit`
-  - `recordFailure`
-  - `resetFailures`
-  - `checkOtpLimit`
-  - `resetOtpLimit`
-- OTP limits in `RateLimiter.ts`: hourly `5`, daily `10`, lock duration `15m`.
-- `RateLimiter` persists OTP keys with `otp:{key}` prefix and schedules cleanup alarms every 7 days.
-- `JobScheduler.ts` supports actions: `status`, `list`, `trigger`, `enable`, `disable`.
-- `JobScheduler` ticks every 60 seconds and dispatches due jobs from `src/jobs/registry.ts`.
+- `RateLimiter` handles actions `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`.
+- OTP policy in `RateLimiter`: hourly 5, daily 10, lock window 15 minutes.
+- `RateLimiter` uses persistent storage key prefixes (`otp:*` and limiter keys) with periodic cleanup alarms.
+- `JobScheduler` handles `status`, `list`, `trigger`, `enable`, `disable` and dispatches from `src/jobs/registry.ts` on a 60-second tick.
 
 ## CONVENTIONS
 
-- Keep `fetch()` payload handling strict and reject unknown actions with `400`.
-- Keep response payloads stable because middleware/admin callers parse them directly.
-- Keep DO storage key format unchanged (`job:*`, `otp:*`, limiter keys) to avoid orphaned state.
-- Keep alarm bootstrap in constructors via `blockConcurrencyWhile` so fresh instances self-schedule.
+- Keep action parsing strict; unknown actions must return explicit client errors.
+- Keep response shape stable because middleware/admin callers parse DO responses.
+- Keep storage key namespaces stable to avoid orphaned state.
+- Keep alarm bootstrap logic deterministic in constructor lifecycle.
 
 ## ANTI-PATTERNS
 
-- Do not rename action strings without coordinated updates in all callers.
-- Do not silently swallow invalid JSON/action payloads.
-- Do not add cross-domain business logic here; dispatch to `src/jobs`/`src/lib` modules.
-- Do not assume a `JobScheduler` unit test exists in this directory today; only `RateLimiter` test file is present.
+- Do not rename action names without synchronized caller changes.
+- Do not swallow malformed payload failures.
+- Do not add domain business orchestration directly in DO classes.
+- Do not claim `JobScheduler` unit-test coverage here unless a test file is added.

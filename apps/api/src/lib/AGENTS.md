@@ -2,40 +2,45 @@
 
 ## PURPOSE
 
-Shared domain/service utilities used by routes, middleware, durable objects, and jobs.
-Contains business helpers, adapter clients, and cross-cutting utilities.
+Shared service and utility layer consumed by routes, middleware, durable objects, and scheduler jobs.
+This directory owns reusable business logic and adapters, not route wiring.
 
-## FILES/STRUCTURE
+## FILE INVENTORY
 
-- Top-level runtime `.ts` files: 23.
-- Local type shims: `piexifjs.d.ts`, `sql-js.d.ts`.
-- Subdirectories:
-  - `fas/` - FAS adapter functions/config.
-  - `fas-mariadb/` - MariaDB connector internals.
-  - `__tests__/` - per-module unit tests.
-- High-impact modules:
-  - `fas-sync.ts` - FAS -> D1 sync, PII hash/encrypt flow, collision-safe upsert logic.
-  - `notification-queue.ts` - queue enqueue + batch processor.
-  - `web-push.ts` - push encryption and delivery primitives.
-  - `response.ts` - canonical JSON envelope helpers.
+| Group                              | Count | Files                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Top-level runtime modules (`*.ts`) | 25    | `alerting.ts`, `audit.ts`, `auto-issue.ts`, `crypto.ts`, `device-registrations.ts`, `face-blur.ts`, `fas-sync.ts`, `gcp-auth.ts`, `gemini-ai.ts`, `image-privacy.ts`, `jwt.ts`, `key-manager.ts`, `logger.ts`, `notification-queue.ts`, `observability.ts`, `phash.ts`, `points-engine.ts`, `rate-limit.ts`, `response.ts`, `session-cache.ts`, `sms.ts`, `state-machine.ts`, `sync-lock.ts`, `web-push.ts`, `workers-ai.ts` |
+| Type shims                         | 2     | `piexifjs.d.ts`, `sql-js.d.ts`                                                                                                                                                                                                                                                                                                                                                                                               |
+| Subdirectories                     | 3     | `fas/`, `fas-mariadb/`, `__tests__/`                                                                                                                                                                                                                                                                                                                                                                                         |
+
+## SUBDIR SNAPSHOT
+
+| Subdir         | Files                                                                                                                                                                                                          |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fas/`         | `attendance-extra-queries.ts`, `attendance-helpers.ts`, `attendance-list-query.ts`, `attendance-ops.ts`, `attendance-queries.ts`, `connection.ts`, `employee-queries.ts`, `index.ts`, `mappers.ts`, `types.ts` |
+| `fas-mariadb/` | `index.ts`                                                                                                                                                                                                     |
 
 ## CURRENT FACTS
 
-- `notification-queue.ts` exports `enqueueNotification` and `processNotificationBatch`.
-- `fas-sync.ts` exports `socialNoToDob`, `syncSingleFasEmployee`, `syncFasEmployeesToD1`, `deactivateRetiredEmployees`.
-- `rate-limit.ts` here is library-side helper logic (distinct from middleware wrapper file).
-- `logger.ts` and `observability.ts` are the shared logging/telemetry surface consumed by multiple modules.
+- `notification-queue.ts` provides queue producer/consumer functions used by entrypoint queue handling.
+- `fas-sync.ts` performs FAS-to-D1 synchronization and handles active/retired employee reconciliation.
+- `rate-limit.ts` is library helper logic and is distinct from middleware wrapper behavior.
+- `response.ts`, `logger.ts`, and `jwt.ts` are high fan-in modules used across route and middleware layers.
+
+## CHILD AGENTS
+
+- `__tests__/AGENTS.md`
 
 ## CONVENTIONS
 
-- Keep side-effect-free helpers separated from binding-dependent adapter code.
-- PII transforms remain ordered: normalize -> `hmac` -> `encrypt` -> persist hash/ciphertext pair.
-- Keep response helper schema stable for route tests and client parsers.
-- Keep queue processing idempotent per message and classify failures as retry/remove/increment-failcount.
+- Keep side-effect boundaries clear: pure transforms separate from env/binding adapters.
+- Preserve PII pipeline order: normalize -> hash/HMAC -> encrypt -> persist controlled fields.
+- Keep response envelope helpers stable because route tests and clients depend on exact shape.
+- Keep queue handling idempotent and explicit about retry/remove/fail-count outcomes.
 
 ## ANTI-PATTERNS
 
-- Do not move route-specific validation or auth logic into this directory.
-- Do not alter `fas-sync.ts` to overwrite app-managed user role/permission fields.
-- Do not change `notification-queue.ts` message shape without updating producer and consumer call sites.
-- Do not introduce circular imports from `src/lib` back into route module internals.
+- Do not move route-specific auth/validation concerns into `src/lib`.
+- Do not change queue message contracts without updating producers and consumers.
+- Do not introduce circular imports from route internals back into shared library code.
+- Do not silently broaden PII field handling in `fas-sync.ts`.

@@ -1,50 +1,31 @@
-# AGENTS: STORES
+# Stores
 
-## SCOPE
+## PURPOSE
 
-- Admin Zustand store layer (`src/stores`).
-- Current runtime store surface: `auth.ts` only.
+- Define runtime store contracts for admin client state.
 
-## FILES
+## FILE INVENTORY
 
-- `auth.ts` - persisted auth/session/site-context store.
-- `__tests__/auth.test.ts` - store contract tests.
+- Runtime store: `auth.ts`.
+- Store tests: `__tests__/auth.test.ts`.
+- Scope is intentionally narrow (single store module today).
 
-## STATE CONTRACT (`auth.ts`)
+## CONVENTIONS
 
-- `user: User | null`.
-- `tokens: Tokens | null` (access + refresh).
-- `currentSiteId: string | null`.
-- `isAdmin: boolean`.
-- `_hasHydrated: boolean` (persist hydration readiness flag).
+- Store implementation uses Zustand persist and keeps key `safetywallet-admin-auth` stable.
+- `auth.ts` owns all token/session state:
+  - `user`
+  - `tokens`
+  - `currentSiteId`
+  - `isAdmin`
+  - `_hasHydrated`
+- `login` derives admin role flags from auth payload.
+- `logout` clears local auth state even if backend logout request fails.
+- `setTokens` is the refresh/update path used by `apiFetch`.
+- `_hasHydrated` gates startup flows for static-export client hydration.
 
-## ACTION CONTRACT
+## ANTI-PATTERNS
 
-- `login(user, tokens)`:
-  - sets user + tokens.
-  - derives `isAdmin` from role (`SITE_ADMIN`/`SUPER_ADMIN`).
-- `logout()`:
-  - clears auth state.
-  - best-effort logout POST to `${API_BASE}/auth/logout` when refresh token exists.
-  - network failure is non-fatal.
-- `setTokens(tokens)`:
-  - updates token pair after refresh/login transitions.
-- `setSiteId(siteId)`:
-  - updates active site context consumed by site-scoped hooks.
-
-## HYDRATION BEHAVIOR
-
-- Uses Zustand persist with hydration callback.
-- `_hasHydrated` is explicit gate for app bootstrap logic.
-- Static-export client hydration relies on this signal; do not remove.
-
-## CONSTRAINTS
-
-- Keep token lifecycle centralized here; no duplicate token state in hooks/components.
-- Keep logout resilient: clear local auth state even when backend logout call fails.
-- New stores should be documented here only after runtime adoption.
-
-## TEST NOTES
-
-- `auth.test.ts` validates login/logout, token updates, site switching, hydration handling.
-- Store tests should remain fast, isolated, no network dependency.
+- Duplicating token/session state in hooks or route components.
+- Removing `_hasHydrated` checks and causing pre-hydration API calls.
+- Renaming persist key without explicit migration handling.

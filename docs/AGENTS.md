@@ -1,27 +1,30 @@
 # Docs
 
-Project documentation, runbooks, and redirect stubs.
+Project documentation index, runbooks, and redirect stubs.
 
-## Files
+## Inventory
 
-- `README.md` — docs index with canonical redirect targets.
-- `cloudflare-operations.md` — Cloudflare deployment and operations runbook.
-- `FEATURE_CHECKLIST.md` — feature implementation tracker.
-- `deployment.md` — redirect to `cloudflare-operations.md`.
-- `rollback.md` — redirect to `cloudflare-operations.md`.
-- `REQUIREMENTS_REVIEW.md` — redirect to `requirements/REQUIREMENTS_CHECKLIST.md`.
-- `requirements/` — requirements and PRD subtree (see `requirements/AGENTS.md`).
-- `requirements/archived/` — deprecated documents (legacy architecture plans).
+- `AGENTS.md` — this directory-level documentation contract.
+- `README.md` — docs landing index and navigation pointers.
+- `cloudflare-operations.md` — operational source of truth (deploy/ops/incident guidance).
+- `FEATURE_CHECKLIST.md` — implementation checklist by feature area.
+- `deployment.md` — redirect stub to `cloudflare-operations.md`.
+- `rollback.md` — redirect stub to `cloudflare-operations.md`.
+- `REQUIREMENTS_REVIEW.md` — redirect stub to `requirements/REQUIREMENTS_CHECKLIST.md`.
+- `requirements/` — PRD/requirements subtree with its own local AGENTS contract.
 
 ## Conventions
 
-- Operational source of truth: `cloudflare-operations.md`.
-- Requirements source of truth: `requirements/REQUIREMENTS_CHECKLIST.md`.
-- Redirect files are minimal stubs pointing to canonical targets.
-- Keep secret references as variable names only, never values.
-- Keep docs index (`README.md`) synchronized on file add/remove/move.
+- Keep operational procedures centralized in `cloudflare-operations.md`.
+- Keep requirement tracking centralized in `requirements/REQUIREMENTS_CHECKLIST.md`.
+- Redirect docs remain short and point to canonical docs only.
+- Keep `README.md` synchronized whenever docs are added, moved, or retired.
+- Never include plaintext secrets; refer to env variable names only.
 
-## Anti-patterns
+## Drift Guards
 
-- No primary guidance in redirect stubs.
-- No duplicate source-of-truth text across multiple docs.
+- No duplicate long-form source-of-truth content across sibling docs.
+- No substantive guidance embedded in redirect-only files.
+- No stale file references in `README.md` or this inventory.
+- Keep `requirements/` ownership delegated to its local `docs/requirements/AGENTS.md`.
+- Update this file when top-level docs file count or purpose changes.

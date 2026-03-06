@@ -1,23 +1,31 @@
 # UI
 
-Shared React component library and theme primitives for `@safetywallet/ui`.
+Shared component primitives and styling contracts for `@safetywallet/ui`.
 
-## Files
+## Inventory
 
-- `src/index.ts` — public barrel: `cn`, `Button`, `Card*`, `Input`, `Badge`, `Skeleton`, `Avatar*`, `AlertDialog*`, `Dialog*`, `Sheet*`, `Select*`, `Toast*`, `useToast`, `toast`, `Toaster`, `Switch`, `ErrorBoundary`.
-- `src/globals.css` — HSL token system (background/foreground/surface/action/status) with `success` + `warning` custom tokens beyond shadcn defaults.
-- `src/lib/utils.ts` — `cn()` helper (`clsx` + `twMerge`).
-- `src/components/` — 15 component files (see `src/components/AGENTS.md`).
-- `src/__tests__/` — 8 test files (7 test suites + setup).
+- `src/index.ts` — public barrel for all exported primitives/hooks/utilities.
+- `src/globals.css` — HSL token layer (`background`, `foreground`, `surface`, `action`, `status`, including `success`/`warning`).
+- `src/lib/utils.ts` — `cn()` class-merging helper (`clsx` + `tailwind-merge`).
+- `src/components/` — 15 component modules (documented in `src/components/AGENTS.md`).
+- `src/__tests__/` — 8 files (7 component/behavior test suites + test setup).
+
+## Export Surface
+
+- Public exports include primitives and compounds: `Button`, `Badge`, `Card*`, `Input`,
+  `Skeleton`, `Avatar*`, `AlertDialog*`, `Dialog*`, `Sheet*`, `Select*`, `Toast*`,
+  `Toaster`, `Switch`, `ErrorBoundary`, plus `cn`, `useToast`, and `toast`.
+- `src/index.ts` is the only supported import surface for apps.
 
 ## Conventions
 
-- Add/remove component file → update `src/index.ts` in same commit.
-- Class merging via `cn()` only; no ad-hoc class concatenation.
-- Token rename/removal requires consuming app migration.
-- Keep components free of app-specific business strings.
+- Component file add/remove requires synchronized barrel update in `src/index.ts`.
+- Use `cn()` for all class composition; avoid string concatenation helpers.
+- Token rename/removal is a contract migration and must be coordinated with consuming apps.
+- Keep package domain-agnostic: no business copy or API calls inside UI primitives.
 
-## Anti-patterns
+## Drift Guards
 
-- No undocumented public exports from component files.
-- No duplicate `cn` helpers outside `lib/utils.ts`.
+- No undeclared public exports from internal files.
+- No duplicate utility functions replacing `src/lib/utils.ts`.
+- No app-specific Tailwind tokens in shared `globals.css`.

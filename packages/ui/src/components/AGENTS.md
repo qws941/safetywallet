@@ -1,35 +1,35 @@
 # Components
 
-React UI component files for `@safetywallet/ui`.
+Shared React UI component modules for `@safetywallet/ui`.
 
-## Files
+## Inventory (15 files)
 
-- `alert-dialog.tsx` — `AlertDialog*` compound wrappers (Radix).
-- `avatar.tsx` — `Avatar`, `AvatarImage`, `AvatarFallback` (Radix).
-- `badge.tsx` — `Badge`, `badgeVariants` (CVA).
-- `button.tsx` — `Button`, `buttonVariants` (CVA).
-- `card.tsx` — `Card*` layout primitives.
-- `dialog.tsx` — `Dialog*` compound wrappers (Radix).
-- `error-boundary.tsx` — `ErrorBoundary` (React class component).
-- `input.tsx` — `Input`.
-- `select.tsx` — `Select*` with scroll controls (Radix).
-- `sheet.tsx` — `Sheet*` compound wrappers (Radix + CVA).
-- `skeleton.tsx` — `Skeleton`.
-- `switch.tsx` — `Switch` (Radix).
-- `toast.tsx` — `Toast*` primitives + typed toast props (Radix + CVA).
-- `toaster.tsx` — `Toaster` host renderer.
-- `use-toast.tsx` — `useToast`, `toast`, reducer/state helpers.
+- `alert-dialog.tsx` — `AlertDialog*` wrappers over Radix dialog primitives.
+- `avatar.tsx` — `Avatar`, `AvatarImage`, `AvatarFallback`.
+- `badge.tsx` — badge variants via CVA.
+- `button.tsx` — button variants and size/intent contract.
+- `card.tsx` — card layout primitives (`Card*`).
+- `dialog.tsx` — modal dialog compound components.
+- `error-boundary.tsx` — class-based `ErrorBoundary` fallback boundary.
+- `input.tsx` — text input primitive.
+- `select.tsx` — Radix select with trigger/content/item wrappers.
+- `sheet.tsx` — side-sheet/drawer wrappers with variant support.
+- `skeleton.tsx` — loading placeholder primitive.
+- `switch.tsx` — toggle switch primitive.
+- `toast.tsx` — toast primitives, viewport, and style variants.
+- `toaster.tsx` — singleton toast host renderer.
+- `use-toast.tsx` — state/reducer hook and `toast` dispatch helper.
 
-## Conventions
+## Implementation Patterns
 
 - Radix wrapper modules: `alert-dialog`, `dialog`, `select`, `sheet`, `switch`, `toast`.
-- CVA variant modules: `button`, `badge`, `toast`, `sheet`.
-- DOM primitives use `React.forwardRef`.
-- Export changes require matching `src/index.ts` barrel update.
-- Class merging via `cn()` only.
-- Toast queue constants (`TOAST_LIMIT`, `TOAST_REMOVE_DELAY`) are stable API.
+- CVA variant modules: `badge`, `button`, `sheet`, `toast`.
+- Forward refs for DOM-facing primitives to preserve composability.
+- Class composition must route through `cn()`.
+- `TOAST_LIMIT` and `TOAST_REMOVE_DELAY` are behavior contracts for toast UX.
 
-## Anti-patterns
+## Drift Guards
 
-- No business-domain defaults in UI primitives.
-- No hidden exports bypassing the barrel.
+- Export changes here require synchronized update in `packages/ui/src/index.ts`.
+- No business-domain text, API wiring, or app store usage in shared primitives.
+- No hidden exports that bypass barrel-level API governance.

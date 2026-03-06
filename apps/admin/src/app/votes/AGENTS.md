@@ -1,51 +1,40 @@
-# AGENTS: VOTES
+# Votes
 
-## SCOPE
+## PURPOSE
 
-- Admin voting module pages and local vote components.
-- Covers month/period setup, candidate management, vote results, detail flows.
+- Define month-period voting workflows in the admin route tree.
 
-## FILE MAP
+## FILE INVENTORY
 
-- `page.tsx` - main monthly vote dashboard.
-- `components/vote-period-card.tsx` - period open/close controls.
-- `components/candidates-card.tsx` - month candidate snapshot.
-- `components/results-card.tsx` - aggregated voting results.
-- `new/page.tsx` - period creation/start flow.
-- `candidates/page.tsx` - candidate CRUD surface.
-- `[id]/page.tsx` - dynamic wrapper route for static export.
-- `[id]/vote-detail.tsx` - month detail client page.
-- `[id]/candidates/new/page.tsx` - nested dynamic wrapper.
-- `[id]/candidates/new/add-candidate.tsx` - add-candidate form UI.
-- `votes-helpers.ts` - month/status/UI helper derivations.
-- `error.tsx` - votes-scoped error fallback.
+- Main route files:
+  - `page.tsx`, `error.tsx`, `votes-helpers.ts`
+  - `new/page.tsx`
+  - `candidates/page.tsx`
+  - `[id]/page.tsx`, `[id]/vote-detail.tsx`
+  - `[id]/candidates/new/page.tsx`, `[id]/candidates/new/add-candidate.tsx`
+- Shared vote cards (`components/`):
+  - `vote-period-card.tsx`
+  - `candidates-card.tsx`
+  - `results-card.tsx`
+  - `components/__tests__/`
+- Route tests in subtree:
+  - `__tests__/page.test.tsx`
+  - `new/__tests__/`
+  - `candidates/__tests__/`
+  - `[id]/__tests__/`
+  - `[id]/candidates/new/__tests__/`
 
-## DOMAIN MODEL
+## CONVENTIONS
 
-- Primary context key: vote month (`YYYY-MM`).
-- Month key drives period status, candidate set, and result queries.
-- Detail route path parameter (`[id]`) represents month/period identifier.
+- Vote month (`YYYY-MM`) is the primary workflow key.
+- `votes/page.tsx` is the dashboard shell and composes period/candidate/result cards.
+- New flow (`new/page.tsx`) creates a period and transitions into month detail.
+- Dynamic routes (`[id]`, nested candidate-new) keep wrapper/client split for static export.
+- Candidate CRUD and period controls use explicit confirmation UX for destructive actions.
+- API orchestration and invalidation rules stay in `use-votes.ts`.
 
-## UI PATTERNS
+## ANTI-PATTERNS
 
-- Dashboard card composition: period + candidates + results.
-- Candidate CRUD in dialog/confirmation flows (`AlertDialog` for destructive action).
-- New-period flow writes period, then routes into month detail workflow.
-- Dynamic pages use wrapper/client split for static-export compatibility.
-
-## CONSTRAINTS
-
-- Do not reintroduce obsolete `periods/page.tsx` or `results/page.tsx` routes; current design keeps both as cards on `votes/page.tsx`.
-- Keep wrapper routes thin (`generateStaticParams` placeholder + client handoff).
-- `use-votes.ts` is intentionally direct-imported (not re-exported by `use-api.ts`).
-- CSV download helper in hook uses direct `fetch` by design.
-
-## TEST SURFACE
-
-- `votes/__tests__/*` contains module-level tests for helpers/components.
-- Hook behavior validated in `src/hooks/__tests__/use-votes.test.ts`.
-
-## BOUNDARY NOTES
-
-- This file documents route/component behavior only.
-- API contract and query invalidation live in `src/hooks/use-votes.ts`.
+- Reintroducing split historical routes like `periods/page.tsx` or `results/page.tsx`.
+- Expanding wrapper routes with business logic beyond param handoff.
+- Moving CSV download/export behavior out of the vote hook without documenting parity.

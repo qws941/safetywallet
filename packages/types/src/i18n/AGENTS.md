@@ -1,22 +1,32 @@
 # I18n
 
-Typed locale catalog contracts for `@safetywallet/types`.
+Typed locale catalog contracts for shared UI text.
 
-## Files
+## Inventory (2 files)
 
-- `ko.ts` — Korean catalog (`as const`, dot-notated `section.key` format, 27 section groups).
-- `index.ts` — locale registry (`const i18n = { ko }`) + exported types (`I18n`, `Ko`).
+- `ko.ts` — canonical Korean locale dictionary exported `as const`.
+- `index.ts` — locale registry (`const i18n = { ko }`) and type exports (`I18n`, `Ko`).
+
+## Keyspace Model
+
+- Key format is flat dot notation: `section.key`.
+- Current section-group prefixes (27):
+  `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`, `points`, `votes`,
+  `actions`, `actionsCreate`, `actionsView`, `announcements`, `education`,
+  `educationQuizTake`, `educationView`, `profile`, `nav`, `common`, `unsafeWarning`,
+  `authGuard`, `attendanceGuard`, `layout`, `providers`, `header`, `pointsCard`,
+  `postCard`, `rankingCard`.
 
 ## Conventions
 
-- `ko.ts` exports `export const ko = { ... } as const` and `export type Ko = typeof ko`.
-- `index.ts` exports `I18n = typeof i18n` for type-safe locale access.
-- Flat key structure: `section.key` format, no nested locale objects.
-- Section groups (27): `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`, `points`, `votes`, `actions`, `actionsCreate`, `actionsView`, `announcements`, `education`, `educationQuizTake`, `educationView`, `profile`, `nav`, `common`, `unsafeWarning`, `authGuard`, `attendanceGuard`, `layout`, `providers`, `header`, `pointsCard`, `postCard`, `rankingCard`.
-- New keys go under existing semantic sections when possible.
-- New section prefix is a contract change; update consumers and tests.
+- Keep `ko.ts` as the contract source for key completeness and naming.
+- `index.ts` must remain the single typed registry surface for locale consumers.
+- Add new keys under existing section prefixes whenever semantics allow.
+- Introducing a new section prefix is a contract-level change and requires coordinated app updates.
+- Preserve key naming stability to avoid runtime translation misses.
 
-## Anti-patterns
+## Drift Guards
 
-- No nested key hierarchy beyond `section.key`.
-- No alias locale objects with divergent keys.
+- No nested locale object trees; keep flat `section.key` keys.
+- No duplicate aliases that point to different text for the same semantic key.
+- No app-local key creation that bypasses this shared catalog.

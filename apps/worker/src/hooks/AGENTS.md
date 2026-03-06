@@ -1,47 +1,45 @@
 # Worker Hooks
 
-Client hook layer for API access, auth/i18n adapters, PWA behaviors.
+Client hook layer for API, auth, i18n, and PWA behaviors.
 
 ## Purpose
 
-- Centralize React Query usage and cache invalidation rules
-- Expose stable hooks to pages/components; hide fetch/store internals
-- Domain-specific API hooks with offline support
+- Centralize React Query usage and cache invalidation policy
+- Hide fetch/store details behind stable hook interfaces
+- Keep route/components thin and domain-focused
 
-## Files
+## Files (14 modules)
 
-- `use-actions-api.ts` — corrective action CRUD queries/mutations
-- `use-api-base.ts` — shared query/mutation factories with `apiFetch`
-- `use-api.ts` — barrel re-export (no logic)
-- `use-attendance-api.ts` — attendance check-in with 5-min polling
-- `use-auth.ts` — thin selector facade over `useAuthStore`
-- `use-education-api.ts` — education content + quiz attempt queries
-- `use-install-prompt.ts` — PWA install prompt with dismissal tracking
-- `use-leaderboard.ts` — leaderboard/ranking queries
-- `use-locale.ts` — locale state adapter over `I18nProvider`
-- `use-posts-api.ts` — safety report CRUD with offline queue support
-- `use-push-subscription.ts` — push notification subscription management
-- `use-recommendations-api.ts` — AI recommendation queries
-- `use-system-api.ts` — system announcements/banners
-- `use-translation.ts` — `t()` function adapter over `useI18n`
-- `__tests__/` — hook behavior and regression tests
+- `use-actions-api.ts` - corrective action queries/mutations
+- `use-api-base.ts` - shared exports (`useQuery`, `useMutation`, `apiFetch`, DTO types)
+- `use-api.ts` - barrel re-export surface (no logic)
+- `use-attendance-api.ts` - attendance status/checkin hooks, polling behavior
+- `use-auth.ts` - selector facade over `useAuthStore`
+- `use-education-api.ts` - education list/detail/quiz hooks
+- `use-install-prompt.ts` - install prompt lifecycle + dismissal behavior
+- `use-leaderboard.ts` - ranking/leaderboard queries
+- `use-locale.ts` - locale setter/getter adapter over i18n context
+- `use-posts-api.ts` - posts list/detail/create/resubmit hooks
+- `use-push-subscription.ts` - push subscription checks and registration
+- `use-recommendations-api.ts` - recommendation fetch hooks
+- `use-system-api.ts` - system banner/message hooks
+- `use-translation.ts` - translator factory hook from `useI18n`
 
 ## Conventions
 
-- `use-api.ts` re-exports domain hooks; no logic in barrel
-- Query keys are tuple-style, domain-prefixed (`["posts", siteId]`)
-- Mutations invalidate related domain keys explicitly
-- Offline-safe mutations use `offlineQueue: true`
-- `useAttendanceToday` polls every 5 min (`staleTime` + `refetchInterval`)
-- `useAuth` is thin selector over `useAuthStore`
-- `useLocale` and `I18nProvider` both persist `i18n-locale`
-- `usePushSubscription` requires authenticated state before subscription check
-- `useInstallPrompt` stores dismissal at `safetywallet-install-dismissed`
+- Query keys use tuple form with domain prefixes (for example `["posts", siteId]`)
+- Mutations explicitly invalidate related keys using `queryClient.invalidateQueries`
+- Site/ID-dependent hooks keep `enabled` guards
+- Offline-safe mutations pass `offlineQueue: true` to `apiFetch`
+- `useAttendanceToday` uses 5-minute `staleTime` and `refetchInterval`
+- `useAuth` stays a thin store adapter, not a second auth state source
+- Locale persistence key is `i18n-locale` (`use-locale` and provider both sync it)
+- Install prompt dismissal key is `safetywallet-install-dismissed`
 
 ## Anti-Patterns
 
-- Do not add API calls directly in pages when equivalent hook exists
-- Do not collapse tuple query keys to strings; invalidation precision degrades
-- Do not remove `enabled` guards on site/ID-dependent hooks
-- Do not replace `apiFetch` with raw `fetch` in domain API hooks
-- Do not return untyped `any` from hook payloads; keep DTO/shape explicit
+- Do not duplicate domain API calls inside route/component files
+- Do not flatten query keys into string constants
+- Do not replace `apiFetch` with raw `fetch` in domain hooks
+- Do not drop `enabled` gates for parameter-dependent queries
+- Do not widen hook return types to `any`

@@ -1,36 +1,36 @@
 # Worker App Routes
 
-Next App Router page layer for worker flows.
+App Router page layer for worker flows (`src/app`).
 
 ## Purpose
 
-- Route topology, page composition, redirect behavior
-- Per-route logic in route folders; shared logic in `src/components`/`src/hooks`
-- 16 route pages total
+- Own route topology, root layout shell, route-level boundaries, and redirects
+- Keep API/business logic in hooks/lib; route files compose UI and invoke hooks
+- Current route surface: 16 `page.tsx` routes across 11 route/test directories
 
 ## Files
 
-- `layout.tsx` — root shell (`html lang="ko"`, fixed mobile viewport, provider mount)
-- `page.tsx` — entry redirect (`/` → `/login/` or `/home/` after hydration)
-- `error.tsx` — error boundary
-- `globals.css` — global styles, Tailwind v4 imports
-- `actions/` — corrective action list + detail view
-- `announcements/` — company announcements
-- `education/` — education content + quiz-take + detail view
-- `home/` — authenticated landing page
-- `login/` — login form (route-local `login-client.tsx`)
-- `points/` — points history
-- `posts/` — safety reports list + new post + detail view
-- `profile/` — user profile
-- `register/` — redirects to `/login/`
-- `votes/` — voting interface
-- `__tests__/` — route-level tests
+- `layout.tsx` - root shell (`html lang="ko"`, viewport, `Providers`, `ErrorBoundary`)
+- `page.tsx` - hydration-aware root redirect to `/login/` or `/home/`
+- `error.tsx` - app-level route error boundary
+- `globals.css` - global styles and Tailwind imports
+- `actions/` - list + detail route (`view`) and route-local helpers/error boundary
+- `announcements/` - announcements list page + tests
+- `education/` - list, `quiz-take`, and `view` routes + route-local boundary
+- `home/` - authenticated landing route
+- `login/` - login page + route-local `login-client.tsx`
+- `points/` - points history route
+- `posts/` - list, `new`, and `view` routes + route-local boundary
+- `profile/` - profile route + route-local boundary
+- `register/` - redirect-only route to `/login/`
+- `votes/` - voting route + route-local boundary
+- `__tests__/` - root route tests
 
 ## Route Map (16 pages)
 
 | Route                  | File                           |
 | ---------------------- | ------------------------------ |
-| `/`                    | `page.tsx` (redirect)          |
+| `/`                    | `page.tsx`                     |
 | `/actions`             | `actions/page.tsx`             |
 | `/actions/view`        | `actions/view/page.tsx`        |
 | `/announcements`       | `announcements/page.tsx`       |
@@ -49,16 +49,16 @@ Next App Router page layer for worker flows.
 
 ## Conventions
 
-- Protected screens compose `Header` + page body + `BottomNav`
-- Detail routes use query string IDs (`/posts/view?id=...`, `/actions/view?id=...`)
-- Redirect paths use trailing slash targets (`/login/`, `/home/`)
-- Login flow is route-local (`login-client.tsx`): `/auth/login` then `/auth/me`
-- New post supports offline create (`offlineQueue: true`) + post-create media upload
-- Post draft retention: 24h; key pattern `safetywallet_post_draft_<siteId>`
+- Protected pages typically compose `Header` + content + `BottomNav`
+- Detail pages use query string IDs (for example `?id=...`)
+- Redirect targets stay slash-normalized (`/login/`, `/home/`)
+- Login flow remains route-local in `login/login-client.tsx`
+- Post create route supports offline queue create and deferred media upload
+- Route-local boundaries exist for volatile domains (`actions`, `education`, `posts`, `profile`, `votes`)
 
 ## Anti-Patterns
 
-- Do not add registration UI under `/register`; intentional redirect to `/login/`
-- Do not remove hydration guard before redirect in `page.tsx`
-- Do not assume media upload success equals post create success in `posts/new`
-- Do not hardcode Korean/English text; use translation keys via `useTranslation`
+- Do not add registration form UI under `/register`; it is redirect-only
+- Do not remove hydration guard before root redirect execution
+- Do not move domain API calls directly into route files when a hook exists
+- Do not hardcode locale text in route UI; use translation keys

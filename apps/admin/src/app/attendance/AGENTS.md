@@ -1,50 +1,42 @@
 # Attendance
 
-## Scope
+## PURPOSE
 
-Attendance admin pages: logs, unmatched record review, FAS sync diagnostics.
+- Own attendance admin workflows: logs, unmatched records, and sync diagnostics.
 
-## Files
+## FILE INVENTORY
 
-- `page.tsx` — primary attendance page; logs/unmatched tab orchestration.
-- `page.test.tsx` — route behavior tests.
-- `attendance-helpers.ts` — KST/date/status helper utilities.
-- `attendance-helpers.test.ts` — helper unit tests.
-- `error.tsx` — feature-scoped error fallback.
-- `components/attendance-logs-tab.tsx` — logs table + filter surface.
-- `components/unmatched-tab.tsx` — unresolved attendance records table.
-- `components/attendance-stats.tsx` — summary counters/cards.
-- `sync/page.tsx` — sync dashboard route.
-- `sync/sync-helpers.ts` — sync health/format normalization helpers.
-- `sync/components/status-cards.tsx` — sync status overview.
-- `sync/components/manual-sync-card.tsx` — manual sync trigger.
-- `sync/components/fas-search-card.tsx` — FAS search interface.
-- `sync/components/sync-errors-card.tsx` — sync error display.
-- `sync/components/sync-logs-card.tsx` — sync log viewer.
-- `sync/components/__tests__/` — sync component tests.
-- `sync/__tests__/` — sync route tests.
-- `unmatched/page.tsx` — direct deep-link unmatched view.
-- `unmatched/__tests__/` — unmatched route tests.
+- Route files:
+  - `page.tsx`, `page.test.tsx`, `error.tsx`
+  - `unmatched/page.tsx`
+  - `sync/page.tsx`
+- Helpers:
+  - `attendance-helpers.ts`, `attendance-helpers.test.ts`
+  - `sync/sync-helpers.ts`
+- Components:
+  - `components/attendance-logs-tab.tsx`
+  - `components/unmatched-tab.tsx`
+  - `components/attendance-stats.tsx`
+  - `sync/components/status-cards.tsx`
+  - `sync/components/manual-sync-card.tsx`
+  - `sync/components/fas-search-card.tsx`
+  - `sync/components/sync-errors-card.tsx`
+  - `sync/components/sync-logs-card.tsx`
+- Tests in subtree:
+  - `sync/__tests__/`
+  - `sync/components/__tests__/`
+  - `unmatched/__tests__/`
 
-## Operation Flow
+## CONVENTIONS
 
-- Logs tab: query + filter + anomaly review for attendance events.
-- Unmatched tab: detect records lacking worker/site linkage.
-- Sync page: inspect health, run manual sync, review recent sync errors.
+- `page.tsx` is the main tab shell (logs + unmatched) and keeps state local to route.
+- `unmatched/page.tsx` remains as a direct-link route and mirrors unmatched tab behavior.
+- Sync route (`sync/page.tsx`) is diagnostics-first: health, manual trigger, errors, logs.
+- Date and status formatting goes through helper modules (KST-aware display assumptions).
+- Data calls stay in hooks (`use-attendance`, `use-fas-sync`), not component files.
 
-## Patterns
+## ANTI-PATTERNS
 
-- In-page tab switching for logs/unmatched avoids full route transition.
-- Derived anomaly flags on log rows (timing irregularities, duplicate-name suspicion).
-- Sync health normalization treats multiple backend variants as healthy.
-- Helper utilities centralize display labels and timezone/date shaping.
-
-## Constraints
-
-- `useAttendanceLogs` uses high limit (`2000`) by design for admin-side filtering.
-- `unmatched/page.tsx` and unmatched tab in `page.tsx` must stay behavior-aligned.
-- Date partitioning logic assumes KST operational context.
-
-## Boundary
-
-- API behavior in `src/hooks/use-attendance.ts` and `src/hooks/use-fas-sync.ts`.
+- Splitting unmatched behavior across tabs/routes with divergent filter logic.
+- Duplicating sync normalization logic outside `sync/sync-helpers.ts`.
+- Pulling large API data transforms into JSX components.

@@ -5,7 +5,7 @@
 - Own workflow inventory, trigger/coupling notes, and workflow-specific drift guards.
 - Parent `.github/AGENTS.md` owns top-level `.github` config inventory.
 
-## WORKFLOW INVENTORY (22)
+## WORKFLOW INVENTORY (23)
 
 - `auto-approve-runs.yml` - Auto-approve gated runs
 - `auto-merge.yml` - Auto-merge orchestration
@@ -21,6 +21,7 @@
 - `commitlint.yml` - Conventional commit/PR title checks
 - `dependabot-auto-fix.yml` - Dependabot to Codex automation
 - `deploy-monitoring.yml` - Post-CI deployment health + incident lifecycle
+- `issue-label.yml` - Issue form-driven label automation
 - `issue-lifecycle.yml` - Issue lifecycle automation
 - `labeler.yml` - Path-based PR labeling
 - `lock-threads.yml` - Auto-lock closed threads
@@ -35,6 +36,7 @@
 - `ci.yml` is the primary verify pipeline for lint/typecheck/test/build/guards.
 - `ci-notify-failure.yml` and `deploy-monitoring.yml` are downstream `workflow_run` consumers of CI results.
 - `codex-*` workflows coordinate issue triage, PR review, and timeout/normalization automation.
+- `issue-label.yml` and `labeler.yml` split issue-vs-PR labeling responsibilities.
 - Deploy remains Git-ref driven; no direct manual deploy workflow is the source of truth.
 
 ## MODULE RULES

@@ -1,45 +1,35 @@
-# AGENTS: EDUCATION
+# Education
 
-## SCOPE
+## PURPOSE
 
-- Education admin hub under one route: `education/page.tsx`.
-- Covers tabbed UI for contents, quizzes, statutory training, TBM.
+- Own the single-route education admin hub (`education/page.tsx`).
 
-## FILE MAP
+## FILE INVENTORY
 
-- `page.tsx` - tab shell and section switching.
-- `education-helpers.ts` - tab metadata (`tabItems`) + `TabId` typing.
-- `components/contents-tab.tsx` - content/material management tab.
-- `components/quizzes-tab.tsx` - quiz/question management tab.
-- `components/statutory-tab.tsx` - statutory education management tab.
-- `components/tbm-tab.tsx` - toolbox meeting management tab.
-- `components/education-types.ts` - local tab/domain UI types.
+- Route files:
+  - `page.tsx`
+  - `education-helpers.ts`
+  - `__tests__/page.test.tsx`
+- Component root files:
+  - `components/content-completions.tsx`
+  - `components/education-types.ts`
+- Tab modules (`4`):
+  - `components/contents-tab/` (9 files)
+  - `components/quizzes-tab/` (9 files)
+  - `components/statutory-tab/` (3 files)
+  - `components/tbm-tab/` (5 files)
+- Tab tests: `components/__tests__/`.
 
-## ARCHITECTURE
+## CONVENTIONS
 
-- Single-route, multi-tab design (no per-tab route trees).
-- Tab switch state lives in page shell; each tab component owns its own UI data lifecycle.
-- Strongly typed tab IDs keep render switch exhaustive and predictable.
+- One page hosts all education workflows via tab switching.
+- `education-helpers.ts` owns tab ids/labels metadata for the shell.
+- Each tab folder is domain-scoped and keeps local constants/types/utils with UI.
+- Content completions render as a standalone component but stay inside education scope.
+- Data lifecycle and API effects stay in hook layer (`use-education-*` modules).
 
-## TAB RESPONSIBILITIES
+## ANTI-PATTERNS
 
-- Contents tab: material listing/create/update/delete flows.
-- Quizzes tab: quiz catalog + question CRUD flows.
-- Statutory tab: legal training templates/records management.
-- TBM tab: toolbox meeting content and schedule/record handling.
-
-## CONSTRAINTS
-
-- Do not split into nested routes unless export strategy changes; current static export favors one tabbed page.
-- Keep tab components domain-focused; avoid cross-tab shared mutable state.
-- Older route references like `materials/page.tsx` or quiz detail routes are obsolete in current structure.
-
-## TEST SURFACE
-
-- `education/__tests__/*` covers helpers and tab behavior.
-- Hook/API behaviors validated in `src/hooks/use-education-*.ts` tests.
-
-## BOUNDARY NOTES
-
-- This doc is route/component scoped.
-- API orchestration is in hooks (`use-education-api.ts` and split modules).
+- Splitting tabs into nested routes without static-export strategy changes.
+- Cross-tab shared mutable state that bypasses tab-local boundaries.
+- Re-introducing obsolete route assumptions from older materials/quiz route trees.
