@@ -446,6 +446,8 @@ export const actionImages = sqliteTable(
     fileUrl: text("file_url").notNull(),
     thumbnailUrl: text("thumbnail_url"),
     imageType: text("image_type", { enum: ["BEFORE", "AFTER"] }),
+    aiAnalysis: text("ai_analysis"),
+    aiAnalyzedAt: text("ai_analyzed_at"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),

@@ -93,3 +93,24 @@ export interface PostFilterDto {
   page?: number;
   limit?: number;
 }
+
+export interface ActionImageAiAnalysisResult {
+  complianceStatus:
+    | "compliant"
+    | "non_compliant"
+    | "partial"
+    | "not_applicable";
+  ppeDetected: string[];
+  ppeMissing: string[];
+  safetyObservations: string[];
+  improvementAreas: string[];
+  beforeAfterComparison: string | null;
+  overallAssessment: string;
+  confidence: number;
+  modelVersion: string;
+}
+
+export interface ActionImageAiAnalysisDto {
+  aiAnalysis: ActionImageAiAnalysisResult | null;
+  aiAnalyzedAt: string | null;
+}

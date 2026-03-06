@@ -2,10 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge, Button, Card, Skeleton } from "@safetywallet/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Skeleton,
+} from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import { useActionItems } from "@/hooks/use-api";
-import { AlertTriangle, Clock, CheckCircle, ExternalLink } from "lucide-react";
+import { useActionImages } from "@/hooks/use-action-ai-analysis";
+import { ActionImageAiAnalysis } from "./components/action-image-ai-analysis";
+import {
+  AlertTriangle,
+  Bot,
+  Clock,
+  CheckCircle,
+  ExternalLink,
+} from "lucide-react";
 
 interface ActionItem {
   id: string;
@@ -76,6 +94,11 @@ function getDaysUntilDue(dueDate: string): number {
 export default function ActionsPage() {
   const { data: actions = [], isLoading } = useActionItems();
   const [filter, setFilter] = useState<FilterStatus>("");
+  const [selectedActionForAi, setSelectedActionForAi] = useState<string | null>(
+    null,
+  );
+  const { data: selectedActionImages = [], isLoading: isActionImagesLoading } =
+    useActionImages(selectedActionForAi);
 
   const allActions = actions as ActionItem[];
   const filteredActions = filter
@@ -183,6 +206,22 @@ export default function ActionsPage() {
       sortable: true,
       render: (item) => new Date(item.createdAt).toLocaleDateString("ko-KR"),
     },
+    {
+      key: "ai",
+      header: "AI",
+      render: (item) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1"
+          onClick={() => setSelectedActionForAi(item.id)}
+        >
+          <Bot className="h-3.5 w-3.5" />
+          분석
+        </Button>
+      ),
+    },
   ];
 
   if (isLoading) {
@@ -190,8 +229,8 @@ export default function ActionsPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">조치 현황</h1>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={`stat-${i}`} className="h-24 rounded-lg" />
+          {["overdue", "progress", "completed"].map((statKey) => (
+            <Skeleton key={statKey} className="h-24 rounded-lg" />
           ))}
         </div>
         <Skeleton className="h-64 rounded-lg" />
@@ -274,6 +313,51 @@ export default function ActionsPage() {
         searchPlaceholder="내용, 담당자 검색..."
         emptyMessage="조치 항목이 없습니다"
       />
+
+      <Dialog
+        open={!!selectedActionForAi}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedActionForAi(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              조치 사진 AI 분석
+            </DialogTitle>
+            <DialogDescription>
+              조치 이미지별 PPE 감지 및 안전 준수 분석 결과를 확인하고 재분석할
+              수 있습니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!selectedActionForAi ? null : isActionImagesLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : selectedActionImages.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              등록된 조치 이미지가 없습니다.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {selectedActionImages.map((image) => (
+                <ActionImageAiAnalysis
+                  key={image.id}
+                  actionId={selectedActionForAi}
+                  imageId={image.id}
+                  fileUrl={image.fileUrl}
+                  imageType={image.imageType}
+                />
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
