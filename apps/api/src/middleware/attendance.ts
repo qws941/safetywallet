@@ -50,11 +50,30 @@ export async function attendanceMiddleware(
 
   if (c.env.REQUIRE_ATTENDANCE_FOR_POST === "false") {
     if (resolvedSiteId) {
-      const policy = await db
-        .select({ requireCheckin: accessPolicies.requireCheckin })
-        .from(accessPolicies)
-        .where(eq(accessPolicies.siteId, resolvedSiteId))
-        .get();
+      const kvKey = `access-policy:${resolvedSiteId}`;
+      let policy: { requireCheckin: boolean | null } | undefined;
+      try {
+        const cached = await c.env.KV.get(kvKey);
+        if (cached !== null) {
+          policy = JSON.parse(cached);
+        }
+      } catch {
+        // KV read failure — fall through to D1
+      }
+      if (policy === undefined) {
+        policy = await db
+          .select({ requireCheckin: accessPolicies.requireCheckin })
+          .from(accessPolicies)
+          .where(eq(accessPolicies.siteId, resolvedSiteId))
+          .get();
+        try {
+          await c.env.KV.put(kvKey, JSON.stringify(policy ?? null), {
+            expirationTtl: 300,
+          });
+        } catch {
+          // KV write failure is non-critical
+        }
+      }
 
       if (!policy?.requireCheckin) {
         return next();

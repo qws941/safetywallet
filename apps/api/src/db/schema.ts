@@ -235,6 +235,7 @@ export const siteMemberships = sqliteTable(
       table.status,
     ),
     userIdx: index("site_memberships_user_idx").on(table.userId),
+    roleIdx: index("site_memberships_role_idx").on(table.role),
   }),
 );
 
