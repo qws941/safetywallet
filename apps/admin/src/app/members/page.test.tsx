@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MembersPage from "./page";
@@ -8,6 +9,14 @@ import { useAuthStore } from "@/stores/auth";
 const pushMock = vi.fn();
 
 type TableRow = { id: string };
+
+let queryClient: QueryClient;
+
+function Wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
 
 interface MockDataTableProps {
   data: TableRow[];
@@ -72,6 +81,9 @@ const toMembersResult = (value: unknown): ReturnType<typeof useMembers> =>
 describe("MembersPage", () => {
   beforeEach(() => {
     pushMock.mockReset();
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     latestTableProps = null;
 
     mockUseMembers.mockReturnValue(
@@ -95,7 +107,7 @@ describe("MembersPage", () => {
   });
 
   it("renders heading and empty state when no members", () => {
-    render(<MembersPage />);
+    render(<MembersPage />, { wrapper: Wrapper });
 
     expect(screen.getByText("회원 관리")).toBeInTheDocument();
     expect(screen.getByText("회원이 없습니다")).toBeInTheDocument();
@@ -111,7 +123,7 @@ describe("MembersPage", () => {
       } as Parameters<typeof selector>[0]),
     );
 
-    render(<MembersPage />);
+    render(<MembersPage />, { wrapper: Wrapper });
 
     expect(
       screen.getByText("현장 정보를 준비하는 중입니다..."),
@@ -134,7 +146,7 @@ describe("MembersPage", () => {
       }),
     );
 
-    render(<MembersPage />);
+    render(<MembersPage />, { wrapper: Wrapper });
 
     fireEvent.click(screen.getByRole("button", { name: "row-click" }));
     expect(pushMock).toHaveBeenCalledWith("/members/member-1");
