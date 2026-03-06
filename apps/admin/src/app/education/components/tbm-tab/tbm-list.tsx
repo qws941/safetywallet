@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Bot, Pencil, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,7 @@ import { useTbmRecord } from "@/hooks/use-api";
 import { DataTable, type Column } from "@/components/data-table";
 import { getErrorMessage, formatUnixDate } from "../../education-helpers";
 import type { TbmRecordItem, TbmDetail } from "../education-types";
+import { TbmAiAnalysis } from "./tbm-ai-analysis";
 
 interface Props {
   tbmRecords: TbmRecordItem[];
@@ -44,6 +45,8 @@ export function TbmList({
   const { toast } = useToast();
   const [expandedTbmId, setExpandedTbmId] = useState<string | null>(null);
   const [deleteTbmId, setDeleteTbmId] = useState<string | null>(null);
+  const [aiTbmId, setAiTbmId] = useState<string | null>(null);
+  const aiTbm = aiTbmId ? tbmRecords.find((r) => r.tbm.id === aiTbmId) : null;
 
   const { data: tbmDetail } = useTbmRecord(expandedTbmId || "");
   const typedTbmDetail: TbmDetail | undefined = tbmDetail;
@@ -108,6 +111,24 @@ export function TbmList({
       key: "tbm.weatherCondition",
       header: "날씨",
       render: (item) => <span>{item.tbm.weatherCondition || "-"}</span>,
+    },
+    {
+      key: "_ai",
+      header: "AI 분석",
+      render: (item) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAiTbmId(item.tbm.id);
+          }}
+        >
+          <Bot className="h-3.5 w-3.5" />
+          AI 분석
+        </Button>
+      ),
     },
     {
       key: "_actions",
@@ -204,6 +225,18 @@ export function TbmList({
               ))}
             </ul>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!aiTbm} onOpenChange={(open) => !open && setAiTbmId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{aiTbm?.tbm.topic} - AI 분석</DialogTitle>
+            <DialogDescription>
+              AI가 TBM 회의 내용을 분석한 결과입니다.
+            </DialogDescription>
+          </DialogHeader>
+          {aiTbm && <TbmAiAnalysis tbmId={aiTbm.tbm.id} />}
         </DialogContent>
       </Dialog>
 
