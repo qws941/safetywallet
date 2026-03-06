@@ -476,3 +476,172 @@ ${options.textContent}`,
     return null;
   }
 }
+
+const TBM_RISK_LEVELS = ["high", "medium", "low"] as const;
+
+export interface TbmAnalysisResult {
+  riskLevel: string;
+  summary: string;
+  identifiedRisks: string[];
+  safetyChecklist: string[];
+  precautions: string[];
+  relatedRegulations: string[];
+  confidence: number;
+  modelVersion: string;
+}
+
+function isValidTbmAnalysisShape(
+  value: unknown,
+): value is Omit<TbmAnalysisResult, "modelVersion"> {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const c = value as Record<string, unknown>;
+  return (
+    typeof c.riskLevel === "string" &&
+    TBM_RISK_LEVELS.includes(c.riskLevel as (typeof TBM_RISK_LEVELS)[number]) &&
+    typeof c.summary === "string" &&
+    isStringArray(c.identifiedRisks) &&
+    isStringArray(c.safetyChecklist) &&
+    isStringArray(c.precautions) &&
+    isStringArray(c.relatedRegulations) &&
+    typeof c.confidence === "number" &&
+    c.confidence >= 0 &&
+    c.confidence <= 1
+  );
+}
+
+const TBM_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    riskLevel: {
+      type: "STRING" as const,
+      enum: [...TBM_RISK_LEVELS],
+    },
+    summary: { type: "STRING" as const },
+    identifiedRisks: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    safetyChecklist: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    precautions: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    relatedRegulations: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    confidence: { type: "NUMBER" as const },
+  },
+  required: [
+    "riskLevel",
+    "summary",
+    "identifiedRisks",
+    "safetyChecklist",
+    "precautions",
+    "relatedRegulations",
+    "confidence",
+  ],
+};
+
+export async function analyzeTbmRecord(
+  apiKey: string,
+  options: {
+    topic: string;
+    content?: string | null;
+    weatherCondition?: string | null;
+    specialNotes?: string | null;
+  },
+): Promise<TbmAnalysisResult | null> {
+  try {
+    if (!apiKey || !options.topic) {
+      return null;
+    }
+
+    const prompt = `당신은 산업안전보건 전문가입니다. TBM(Tool Box Meeting) 회의 내용을 분석하여 위험요소를 식별하고 안전 체크리스트를 생성하세요.
+
+You are an occupational safety expert. Analyze the TBM meeting content and return strict JSON only.
+
+Requirements:
+1) riskLevel: choose one of [high, medium, low] based on overall risk assessment.
+2) summary: Korean summary of the TBM meeting analysis (2-3 sentences).
+3) identifiedRisks: identified workplace hazards/risks in Korean (3-7 items).
+4) safetyChecklist: safety checklist items workers should verify before starting work in Korean (5-10 items).
+5) precautions: specific precautions and safety measures in Korean (3-5 items).
+6) relatedRegulations: related Korean OSHA regulations (산업안전보건법 관련 법규/고시/안전보건규칙).
+7) confidence: number between 0 and 1.
+
+Output must be valid JSON and match the schema exactly.`;
+
+    const textParts: string[] = [prompt];
+    textParts.push(`\n\nTBM 주제: ${options.topic}`);
+    if (options.content) {
+      textParts.push(`\nTBM 내용: ${options.content}`);
+    }
+    if (options.weatherCondition) {
+      textParts.push(`\n날씨 상태: ${options.weatherCondition}`);
+    }
+    if (options.specialNotes) {
+      textParts.push(`\n특이사항: ${options.specialNotes}`);
+    }
+
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: textParts.join("") }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: TBM_RESPONSE_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Gemini TBM analysis failed", {
+        error: {
+          name: "GeminiApiError",
+          message: `Gemini API returned status ${response.status}`,
+        },
+      });
+      return null;
+    }
+
+    const payload = (await response.json()) as GeminiApiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidTbmAnalysisShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini TBM analysis failed", {
+      error: {
+        name: "GeminiTbmAnalysisError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}

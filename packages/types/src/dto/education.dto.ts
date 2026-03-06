@@ -297,3 +297,19 @@ export interface EducationAiAnalysisDto {
   analysis: EducationAiAnalysisResult | null;
   analyzedAt: string | null;
 }
+
+export interface TbmAiAnalysisResult {
+  riskLevel: "high" | "medium" | "low";
+  summary: string;
+  identifiedRisks: string[];
+  safetyChecklist: string[];
+  precautions: string[];
+  relatedRegulations: string[];
+  confidence: number;
+  modelVersion: string;
+}
+
+export interface TbmAiAnalysisDto {
+  analysis: TbmAiAnalysisResult | null;
+  analyzedAt: string | null;
+}

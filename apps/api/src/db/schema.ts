@@ -1385,6 +1385,8 @@ export const tbmRecords = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     weatherCondition: text("weather_condition"),
     specialNotes: text("special_notes"),
+    aiAnalysis: text("ai_analysis"),
+    aiAnalyzedAt: text("ai_analyzed_at"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),
