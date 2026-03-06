@@ -348,7 +348,5 @@ export async function deactivateRetiredEmployees(
 // ─── 이름 마스킹 ────────────────────────────────────────────────
 
 function maskName(name: string): string {
-  if (!name || name.length <= 1) return name;
-  if (name.length === 2) return name[0] + "*";
-  return name[0] + "*".repeat(name.length - 2) + name[name.length - 1];
+  return name;
 }
