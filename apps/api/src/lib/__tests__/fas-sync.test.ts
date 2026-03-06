@@ -294,17 +294,17 @@ describe("fas-sync", () => {
       });
 
       getQueue.push({ id: "user-1", externalWorkerId: "E-EXIST" });
-      getQueue.push({ id: "user-1", nameMasked: "이*" });
+      getQueue.push({ id: "user-1", nameMasked: "이순" });
 
       const result = await syncSingleFasEmployee(employee, db as never, env);
 
-      expect(result).toEqual({ id: "user-1", nameMasked: "이*" });
+      expect(result).toEqual({ id: "user-1", nameMasked: "이순" });
       expect(vi.mocked(hmac)).toHaveBeenCalledTimes(1);
       expect(vi.mocked(hmac)).toHaveBeenCalledWith("hmac-secret", "19900101");
       expect(updatedValues).toHaveLength(1);
       expect(updatedValues[0]).toMatchObject({
         name: "이순",
-        nameMasked: "이*",
+        nameMasked: "이순",
         dobHash: "hmac:19900101",
         dobEncrypted: "enc:19900101",
         companyName: null,
@@ -395,7 +395,7 @@ describe("fas-sync", () => {
       expect(updatedValues).toHaveLength(1);
       expect(updatedValues[0]).toMatchObject({
         name: "박철",
-        nameMasked: "박*",
+        nameMasked: "박철",
         phoneHash: "hmac:01012345678",
         phoneEncrypted: "enc:01012345678",
         dobHash: "hmac:19900101",
@@ -446,7 +446,7 @@ describe("fas-sync", () => {
       expect(insertedValues).toHaveLength(1);
       expect(insertedValues[0]).toMatchObject({
         id: expect.stringMatching(/^uuid-/),
-        nameMasked: "강*동",
+        nameMasked: "강호동",
         phoneHash: null,
         phoneEncrypted: null,
         dobHash: null,
@@ -472,7 +472,7 @@ describe("fas-sync", () => {
       expect(updatedValues).toHaveLength(1);
       expect(updatedValues[0]).toMatchObject({
         name: "정민",
-        nameMasked: "정*",
+        nameMasked: "정민",
       });
       expect(updatedValues[0]).not.toHaveProperty("phoneHash");
       expect(updatedValues[0]).not.toHaveProperty("dobHash");
