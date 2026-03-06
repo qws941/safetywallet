@@ -19,6 +19,9 @@ import {
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { requireAdmin, buildCsv, csvResponse } from "./helpers";
+import { createLogger } from "../../lib/logger";
+
+const logger = createLogger("admin/votes");
 
 const app = new Hono<{
   Bindings: Env;
@@ -120,7 +123,9 @@ app.post(
         targetId: newCandidate.id,
         reason: `Added candidate ${body.userId} for ${body.month}`,
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write candidate-add audit log", error);
+    }
 
     return success(c, { candidate: newCandidate }, 201);
   },
@@ -238,7 +243,9 @@ app.delete("/votes/candidates/:id", requireAdmin, async (c) => {
       targetId: id,
       reason: `Removed candidate ${existing.userId} from ${existing.month}`,
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write candidate-remove audit log", error);
+  }
 
   return success(c, { success: true });
 });
@@ -346,7 +353,9 @@ app.put(
         targetId: period.id,
         reason: `Set vote period for ${month}: ${body.startDate} ~ ${body.endDate}`,
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write vote-period audit log", error);
+    }
 
     return success(c, { period });
   },
@@ -414,7 +423,9 @@ app.patch(
         targetId: body.siteId,
         reason: `Updated auto-nomination topN to ${body.topN}`,
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write auto-nomination audit log", error);
+    }
 
     return success(c, { siteId: body.siteId, autoNominationTopN: body.topN });
   },

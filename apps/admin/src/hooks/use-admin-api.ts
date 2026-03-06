@@ -11,6 +11,7 @@ export {
   useMembers,
   useMember,
   useSetMemberActiveStatus,
+  useToggleLoginExempt,
 } from "./use-admin-members-api";
 
 // Announcements

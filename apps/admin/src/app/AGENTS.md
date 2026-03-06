@@ -2,54 +2,55 @@
 
 ## PURPOSE
 
-- Document the App Router surface in `src/app`.
-- Track route-page and wrapper patterns used by the admin frontend.
+- Contract for App Router tree under `src/app`.
+- Keep route inventories and wrapper boundaries current.
 
-## FILE INVENTORY
+## INVENTORY
 
-- Shared app files:
-  - `layout.tsx`, `error.tsx`, `global-error.tsx`, `not-found.tsx`
-  - `globals.css`, root `page.tsx`
-  - `page.test.tsx`, `not-found.test.tsx`
-- Top-level route directories (`18`):
+- Root files (`9` files, `7` TS/TSX):
+  - `layout.tsx`
+  - `error.tsx`
+  - `global-error.tsx`
+  - `not-found.tsx`
+  - `globals.css`
+  - `page.tsx`
+  - `page.test.tsx`
+  - `not-found.test.tsx`
+  - `AGENTS.md`
+- Top-level route directories (`19`):
   - `actions`, `announcements`, `approvals`, `attendance`, `audit`
-  - `dashboard`, `education`, `issues`, `login`, `members`
+  - `ai-insights`, `dashboard`, `education`, `issues`, `login`, `members`
   - `monitoring`, `points`, `posts`, `recommendations`, `rewards`
   - `settings`, `sync-errors`, `votes`
-- Route page count: `31` (`**/page.tsx`).
-
-## PAGE GROUPS
-
-- Core dashboards: `dashboard`, `dashboard/analytics`, `dashboard/recommendations`.
-- Operations: `attendance`, `attendance/sync`, `attendance/unmatched`, `monitoring`, `sync-errors`.
-- Review/content: `posts`, `posts/[id]`, `actions`, `announcements`, `issues`.
-- Voting: `votes`, `votes/new`, `votes/candidates`, `votes/[id]`, `votes/[id]/candidates/new`.
-- Governance/admin: `approvals`, `audit`, `recommendations`, `settings`.
-- Members/rewards: `members`, `members/[id]`, `rewards`.
-- Points: `points`, `points/policies`, `points/settlement`.
-- Education and auth: `education`, `login`.
+- Page entry count: `32` (`**/page.tsx` under `src/app`).
+- Module contracts in subtree:
+  - `attendance/AGENTS.md`
+  - `posts/AGENTS.md`
+  - `votes/AGENTS.md`
+  - `education/AGENTS.md`
 
 ## CONVENTIONS
 
 - Root `page.tsx` redirects to `/dashboard`.
-- Dynamic routes are thin wrappers for static export:
+- Dynamic wrapper routes stay thin:
   - `posts/[id]/page.tsx`
   - `votes/[id]/page.tsx`
   - `votes/[id]/candidates/new/page.tsx`
   - `members/[id]/page.tsx`
-- Wrapper pages keep params extraction + client handoff only.
-- Route-local helper modules stay near the owning route tree.
-- Feature-heavy routes split JSX into local `components/` folders.
+- Keep params extraction + client handoff only in wrapper pages.
+- Keep route-local helpers/types beside owning route.
+- Keep feature-heavy pages split into local `components/` subfolders.
 
 ## ANTI-PATTERNS
 
-- Moving data fetching logic into shared route wrappers.
-- Collapsing route-local helper files into unrelated global modules.
-- Introducing server-only dependencies in wrapper routes intended for static export.
+- Adding business logic to dynamic wrapper pages.
+- Moving route-specific helpers to unrelated global locations.
+- Leaving orphan route directories undocumented in this file.
+- Mixing cross-feature constants into `src/app/page.tsx` shell logic.
 
-## CHILD AGENT LINKS
+## DRIFT GUARDS
 
-- `attendance/AGENTS.md`
-- `posts/AGENTS.md`
-- `votes/AGENTS.md`
-- `education/AGENTS.md`
+- On new top-level route folder, update top-level list and page count.
+- On adding/removing `page.tsx`, re-count `**/page.tsx` before merge.
+- On adding nested feature docs, add AGENTS link in `INVENTORY`.
+- Ensure dynamic route wrappers still delegate to client component files.

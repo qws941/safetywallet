@@ -1,32 +1,34 @@
 # I18n
 
-Typed locale catalog contracts for shared UI text.
+## PURPOSE
 
-## Inventory (2 files)
+- Shared typed locale contract for package-level translations.
+- Canonical key source used by app-level i18n runtime.
 
-- `ko.ts` — canonical Korean locale dictionary exported `as const`.
-- `index.ts` — locale registry (`const i18n = { ko }`) and type exports (`I18n`, `Ko`).
+## INVENTORY
 
-## Keyspace Model
+- `AGENTS.md` — local i18n contract notes.
+- `ko.ts` — canonical Korean catalog exported `as const`.
+- `index.ts` — registry (`i18n`) and exported key/value types.
 
-- Key format is flat dot notation: `section.key`.
-- Current section-group prefixes (27):
-  `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`, `points`, `votes`,
-  `actions`, `actionsCreate`, `actionsView`, `announcements`, `education`,
-  `educationQuizTake`, `educationView`, `profile`, `nav`, `common`, `unsafeWarning`,
-  `authGuard`, `attendanceGuard`, `layout`, `providers`, `header`, `pointsCard`,
-  `postCard`, `rankingCard`.
+## CONVENTIONS
 
-## Conventions
+- Keep key format flat: `section.key`.
+- Keep section prefixes stable; append keys before creating new prefix groups.
+- Keep `ko.ts` as baseline completeness source for typed keys.
+- Keep `index.ts` as single registry/type export surface.
+- Apply key rename/removal only with coordinated consumer updates.
 
-- Keep `ko.ts` as the contract source for key completeness and naming.
-- `index.ts` must remain the single typed registry surface for locale consumers.
-- Add new keys under existing section prefixes whenever semantics allow.
-- Introducing a new section prefix is a contract-level change and requires coordinated app updates.
-- Preserve key naming stability to avoid runtime translation misses.
+## ANTI-PATTERNS
 
-## Drift Guards
+- Nested locale object trees.
+- Duplicate keys with divergent meaning.
+- App-local ad hoc keys not represented in this catalog.
+- Untyped string indexing that bypasses exported key types.
 
-- No nested locale object trees; keep flat `section.key` keys.
-- No duplicate aliases that point to different text for the same semantic key.
-- No app-local key creation that bypasses this shared catalog.
+## DRIFT GUARDS
+
+- Confirm directory remains 3 files (2 TS + `AGENTS.md`).
+- Confirm registry still exports `ko` and derived types from `index.ts`.
+- Confirm parent `packages/types/AGENTS.md` i18n counts match.
+- Confirm new keys preserve established section namespace shape.

@@ -1,43 +1,50 @@
 # Worker Components
 
-Reusable component and guard/provider layer for worker screens.
+## PURPOSE
 
-## Purpose
+- Shared UI, guard, and provider composition boundary for worker routes.
+- Keep route pages thin by centralizing reusable client presentation/guard logic.
 
-- Provide shared route shell UI and cards/modals
-- Enforce auth/attendance gating behavior in client runtime
-- Centralize app provider composition in one entrypoint (`providers.tsx`)
+## INVENTORY
 
-## Files (13 components)
+- `AGENTS.md` - components-layer contract.
+- `providers.tsx` - root provider composition + QueryClient defaults.
+- `auth-guard.tsx` - public/protected route gate + post-logout query cache clear.
+- `attendance-guard.tsx` - attendance prerequisite guard wrapper.
+- `offline-queue-indicator.tsx` - queued request count + manual replay action.
+- `install-banner.tsx` - install CTA + local dismissal policy.
+- `locale-switcher.tsx` - locale chooser bound to i18n config/context.
+- `header.tsx` - common route header.
+- `bottom-nav.tsx` - bottom navigation shell.
+- `post-card.tsx` - post list card.
+- `points-card.tsx` - points summary card.
+- `ranking-card.tsx` - ranking card.
+- `system-banner.tsx` - system state banner.
+- `unsafe-warning-modal.tsx` - unsafe-condition dialog.
+- `__tests__/` - component and guard contract tests.
 
-- `attendance-guard.tsx` - attendance gate wrapper with loading/fallback behavior
-- `auth-guard.tsx` - auth redirect guard with public-path checks
-- `bottom-nav.tsx` - bottom navigation and center post CTA
-- `header.tsx` - page header with locale/system widgets
-- `install-banner.tsx` - PWA install CTA with dismissal window
-- `locale-switcher.tsx` - locale selector using i18n config
-- `offline-queue-indicator.tsx` - queued request indicator + replay trigger
-- `points-card.tsx` - points summary UI card
-- `post-card.tsx` - post list card with status/urgent markers
-- `providers.tsx` - authoritative provider stack for app root
-- `ranking-card.tsx` - leaderboard ranking card UI
-- `system-banner.tsx` - system severity banner UI
-- `unsafe-warning-modal.tsx` - unsafe-condition modal dialog
+## CONVENTIONS
 
-## Conventions
+- Provider order remains: `QueryClientProvider -> I18nProvider -> AuthGuard -> children + OfflineQueueIndicator + Toaster + InstallBanner`.
+- Query defaults in `providers.tsx`: `staleTime` 2m, `retry` 1, `refetchOnWindowFocus` false.
+- Auth public-path allowlist in `auth-guard.tsx`: `/`, `/login`, `/login/*`.
+- Logout flow in guard clears query cache to avoid stale cross-session UI.
+- Offline indicator polls queue length and listens to `online/offline/storage` events.
+- Install banner key remains `safetywallet-install-dismissed` with 7-day suppression window.
+- Locale options come from i18n config/context; no component-local locale registries.
 
-- Provider order in `providers.tsx` is fixed:
-  `QueryClientProvider -> I18nProvider -> AuthGuard -> children + OfflineQueueIndicator + Toaster + InstallBanner`
-- `AuthGuard` public paths are strictly `/`, `/login`, `/login/*`
-- `AuthGuard` clears React Query cache when hydrated and logged out
-- `OfflineQueueIndicator` reflects `lib/api` queue length and replay state
-- `InstallBanner` uses `safetywallet-install-dismissed` 7-day suppression
-- `LocaleSwitcher` uses `i18n/config` locale source, not hardcoded options
+## ANTI-PATTERNS
 
-## Anti-Patterns
+- No direct API transport calls inside presentational components.
+- No widening of `AuthGuard` public-path rules without auth-flow review.
+- No removal of query-cache clear on logout.
+- No hardcoded locale option lists inside component files.
+- No disabling offline queue listeners/polling without replacement visibility path.
 
-- Do not perform raw API calls directly in components
-- Do not widen public-route allowlist in `auth-guard.tsx` casually
-- Do not remove query cache clear-on-logout behavior
-- Do not inline locale constants in component files
-- Do not remove offline queue state/listener behavior from indicators
+## DRIFT GUARDS
+
+- Recheck provider order on any provider insertion/removal.
+- Recheck `AuthGuard` path normalization logic when adding auth-related routes.
+- Verify queue indicator still reflects `getOfflineQueueLength()` and replay action.
+- Verify install prompt dismissal key/TTL stays aligned with hook implementation.
+- Recount component modules/tests whenever files are added or retired.

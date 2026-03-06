@@ -273,7 +273,7 @@ export async function handleWorkerLogin(
     }
   }
 
-  if (c.env.REQUIRE_ATTENDANCE_FOR_LOGIN !== "false") {
+  if (c.env.REQUIRE_ATTENDANCE_FOR_LOGIN !== "false" && !user.loginExempt) {
     let attended = false;
     if (c.env.FAS_HYPERDRIVE && user.externalWorkerId) {
       try {

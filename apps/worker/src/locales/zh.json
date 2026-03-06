@@ -200,7 +200,19 @@
       "createdAt": "创建日期",
       "submittedAt": "提交日期",
       "approvedAt": "批准日期",
-      "rejectedAt": "拒绝日期"
+      "rejectedAt": "拒绝日期",
+      "status": {
+        "pending": "待审核",
+        "inReview": "审核中",
+        "approved": "已批准",
+        "rejected": "已拒绝"
+      },
+      "resubmitButton": "提交补充信息",
+      "resubmitPlaceholder": "请输入补充信息",
+      "resubmitSubmit": "提交",
+      "resubmitCancel": "取消",
+      "resubmitSuccess": "补充信息已提交",
+      "resubmitError": "提交补充信息失败"
     },
     "rejectReasons": {
       "duplicate": "重复帖子",
@@ -435,7 +447,10 @@
       "backToListButton": "返回列表",
       "submitting": "提交中...",
       "submitButton": "提交答案",
-      "maximumLabel": "最多"
+      "maximumLabel": "最多",
+      "score": "分数",
+      "scorePoints": "分",
+      "passingScoreWithPoints": "及格标准: {score}分"
     },
     "tbm": "TBM",
     "form": {
@@ -717,7 +732,8 @@
     "confirmDelete": "确定要删除吗？",
     "confirmLogout": "确定要退出登录吗？",
     "score": "分数",
-    "home": "首页"
+    "home": "首页",
+    "language": "语言"
   },
   "components": {
     "appTitle": "安全钱包",
@@ -741,10 +757,25 @@
     "unsafeWarningImprovementNote": "不安全行为举报用于改进目的，而非个人处罚。",
     "unsafeWarningPrivacyNote": "举报时请注意不要暴露面部或个人信息。",
     "unsafeWarningAdminNote": "此举报仅管理员可见。",
-    "unsafeWarningConfirm": "确认并提交"
+    "unsafeWarningConfirm": "确认并提交",
+    "attendanceCheckingLabel": "正在确认出勤...",
+    "attendanceRequiredTitle": "签到后才能使用",
+    "attendanceRequiredDescription": "需要在该工地有确认的出勤记录才能使用此功能。"
   },
   "postCard": {
     "reviewStatusNeedInfo": "需补充信息",
     "actionStatusVerified": "已确认"
+  },
+  "pointsCard": {
+    "myPoints": "我的积分",
+    "thisMonth": "本月",
+    "monthlyChange": "较上月"
+  },
+  "rankingCard": {
+    "monthlyRank": "本月排名",
+    "participants": "人",
+    "challengeRank1": "继续收集冲击第一!",
+    "noRank": "还没有排名",
+    "collectPoints": "开始收集积分吧!"
   }
 }

@@ -2,33 +2,32 @@
 
 ## PURPOSE
 
-Stateful Worker components for throttling and scheduled job orchestration.
-This directory is limited to Durable Object runtime classes and direct tests.
+Durable Object runtime classes for rate limiting and scheduler orchestration.
+Owns DO action protocols, persistent state keys, and alarm-driven loops.
 
-## FILE INVENTORY
+## INVENTORY
 
-| Type                   | Count | Files                               |
-| ---------------------- | ----- | ----------------------------------- |
-| Durable Object classes | 2     | `RateLimiter.ts`, `JobScheduler.ts` |
-| Tests                  | 1     | `__tests__/RateLimiter.test.ts`     |
-
-## CURRENT FACTS
-
-- `RateLimiter` handles actions `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`.
-- OTP policy in `RateLimiter`: hourly 5, daily 10, lock window 15 minutes.
-- `RateLimiter` uses persistent storage key prefixes (`otp:*` and limiter keys) with periodic cleanup alarms.
-- `JobScheduler` handles `status`, `list`, `trigger`, `enable`, `disable` and dispatches from `src/jobs/registry.ts` on a 60-second tick.
+- `RateLimiter.ts` - action protocol for generic + OTP limit/failure state.
+- `JobScheduler.ts` - action protocol for job status/list/trigger/enable/disable.
+- `__tests__/RateLimiter.test.ts` - limiter behavior coverage.
 
 ## CONVENTIONS
 
-- Keep action parsing strict; unknown actions must return explicit client errors.
-- Keep response shape stable because middleware/admin callers parse DO responses.
-- Keep storage key namespaces stable to avoid orphaned state.
-- Keep alarm bootstrap logic deterministic in constructor lifecycle.
+- Keep action names explicit and backward-compatible for caller modules.
+- Keep storage key prefixes stable (`otp:*` and limiter namespaces).
+- Keep alarm lifecycle deterministic and idempotent.
+- Keep payload validation strict before state mutation.
 
 ## ANTI-PATTERNS
 
-- Do not rename action names without synchronized caller changes.
-- Do not swallow malformed payload failures.
-- Do not add domain business orchestration directly in DO classes.
-- Do not claim `JobScheduler` unit-test coverage here unless a test file is added.
+- Do not rename or remove DO actions without synchronized caller updates.
+- Do not silently accept malformed payloads.
+- Do not move business-domain orchestration into DO classes.
+- Do not claim unimplemented test coverage for `JobScheduler`.
+
+## DRIFT GUARDS
+
+- Check `RateLimiter.ts` action union includes `checkLimit`, `recordFailure`, `resetFailures`, `checkOtpLimit`, `resetOtpLimit`.
+- Check OTP policy constants remain documented (hourly 5, daily 10, lock 15m).
+- Check `JobScheduler.ts` action surface still matches admin/job callers.
+- Check DO file count and `__tests__` contents before inventory edits.

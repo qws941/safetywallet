@@ -2,33 +2,32 @@
 
 ## PURPOSE
 
-Central request validation schemas for API handlers.
-This directory defines Zod contracts only; handler control flow belongs in routes/middleware.
+Request validation contract layer using Zod.
+Owns schema definitions and exported validator types only.
 
-## FILE INVENTORY
+## INVENTORY
 
-| Group                       | Count | Files                                                                                 |
-| --------------------------- | ----- | ------------------------------------------------------------------------------------- |
-| Top-level validator modules | 3     | `export.ts`, `fas-sync.ts`, `query.ts`                                                |
-| Shared schema modules       | 4     | `schemas/auth.ts`, `schemas/domain.ts`, `schemas/index.ts`, `schemas/shared.ts`       |
-| Tests                       | 3     | `__tests__/export.test.ts`, `__tests__/fas-sync.test.ts`, `__tests__/schemas.test.ts` |
-
-## CURRENT FACTS
-
-- `fas-sync.ts` enforces FAS timestamp format (`YYYY-MM-DD HH:MM:SS`) and supports compatibility parsing for attendance timestamps.
-- `export.ts` validates export date boundaries and query defaults, including page normalization.
-- `schemas/index.ts` intentionally re-exports only `auth` and `domain`; shared primitives remain internal.
+- Top-level validator files (3): `export.ts`, `fas-sync.ts`, `query.ts`.
+- Shared schemas dir `schemas/` (4): `auth.ts`, `domain.ts`, `index.ts`, `shared.ts`.
+- Test files (3): `export.test.ts`, `fas-sync.test.ts`, `schemas.test.ts` in `__tests__/`.
 
 ## CONVENTIONS
 
-- Keep reusable primitives and regexes in `schemas/shared.ts`.
-- Keep schema names explicit and type exports aligned with route usage.
-- Keep strict bounds (`min`, `max`, `regex`, `refine`) on externally supplied fields.
-- Keep validator behavior deterministic and side-effect-free.
+- Keep reusable primitives, regexes, and bounds in `schemas/shared.ts`.
+- Keep export surface intentional in `schemas/index.ts`; avoid accidental broad re-export.
+- Keep date/time and numeric constraints strict and deterministic.
+- Keep validator modules side-effect-free and transport-focused.
 
 ## ANTI-PATTERNS
 
-- Do not add route/business side effects in validator modules.
-- Do not relax date/time validation into ambiguous free-form parsing.
-- Do not expose internal shared schema primitives without coordinated import updates.
-- Do not let enum/value constraints drift from DB and route expectations.
+- Do not place route control flow or DB logic in validator files.
+- Do not relax timestamp parsing into ambiguous free-form acceptance.
+- Do not expose internal schema pieces without import contract review.
+- Do not drift enum constraints from route and schema consumers.
+
+## DRIFT GUARDS
+
+- Check `src/validators` and `src/validators/schemas` file lists before inventory edits.
+- Check every exported validator/type has coverage in `src/validators/__tests__/`.
+- Check `schemas/index.ts` export list after adding schema modules.
+- Check route imports after validator file rename/move.

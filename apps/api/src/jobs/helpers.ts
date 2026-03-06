@@ -113,7 +113,10 @@ export async function persistSyncFailure(
     try {
       await env.KV.put("fas-status", "down", { expirationTtl: 600 });
     } catch (e) {
-      console.error("[sync] Failed to set fas-status in KV:", e);
+      log.error(
+        "[sync] Failed to set fas-status in KV:",
+        e instanceof Error ? e : undefined,
+      );
     }
   }
 
@@ -130,7 +133,10 @@ export async function persistSyncFailure(
       }),
     });
   } catch (e) {
-    console.error("[sync] Failed to insert sync error record:", e);
+    log.error(
+      "[sync] Failed to insert sync error record:",
+      e instanceof Error ? e : undefined,
+    );
   }
 }
 

@@ -2,45 +2,34 @@
 
 ## PURPOSE
 
-Shared service and utility layer consumed by routes, middleware, durable objects, and scheduler jobs.
-This directory owns reusable business logic and adapters, not route wiring.
+Shared runtime service layer for API internals.
+Owns adapters, transforms, queue/sync helpers, and reusable contracts.
 
-## FILE INVENTORY
+## INVENTORY
 
-| Group                              | Count | Files                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ---------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Top-level runtime modules (`*.ts`) | 25    | `alerting.ts`, `audit.ts`, `auto-issue.ts`, `crypto.ts`, `device-registrations.ts`, `face-blur.ts`, `fas-sync.ts`, `gcp-auth.ts`, `gemini-ai.ts`, `image-privacy.ts`, `jwt.ts`, `key-manager.ts`, `logger.ts`, `notification-queue.ts`, `observability.ts`, `phash.ts`, `points-engine.ts`, `rate-limit.ts`, `response.ts`, `session-cache.ts`, `sms.ts`, `state-machine.ts`, `sync-lock.ts`, `web-push.ts`, `workers-ai.ts` |
-| Type shims                         | 2     | `piexifjs.d.ts`, `sql-js.d.ts`                                                                                                                                                                                                                                                                                                                                                                                               |
-| Subdirectories                     | 3     | `fas/`, `fas-mariadb/`, `__tests__/`                                                                                                                                                                                                                                                                                                                                                                                         |
-
-## SUBDIR SNAPSHOT
-
-| Subdir         | Files                                                                                                                                                                                                          |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fas/`         | `attendance-extra-queries.ts`, `attendance-helpers.ts`, `attendance-list-query.ts`, `attendance-ops.ts`, `attendance-queries.ts`, `connection.ts`, `employee-queries.ts`, `index.ts`, `mappers.ts`, `types.ts` |
-| `fas-mariadb/` | `index.ts`                                                                                                                                                                                                     |
-
-## CURRENT FACTS
-
-- `notification-queue.ts` provides queue producer/consumer functions used by entrypoint queue handling.
-- `fas-sync.ts` performs FAS-to-D1 synchronization and handles active/retired employee reconciliation.
-- `rate-limit.ts` is library helper logic and is distinct from middleware wrapper behavior.
-- `response.ts`, `logger.ts`, and `jwt.ts` are high fan-in modules used across route and middleware layers.
-
-## CHILD AGENTS
-
-- `__tests__/AGENTS.md`
+- Top-level `.ts` runtime modules (25): `alerting.ts`, `audit.ts`, `auto-issue.ts`, `crypto.ts`, `device-registrations.ts`, `face-blur.ts`, `fas-sync.ts`, `gcp-auth.ts`, `gemini-ai.ts`, `image-privacy.ts`, `jwt.ts`, `key-manager.ts`, `logger.ts`, `notification-queue.ts`, `observability.ts`, `phash.ts`, `points-engine.ts`, `rate-limit.ts`, `response.ts`, `session-cache.ts`, `sms.ts`, `state-machine.ts`, `sync-lock.ts`, `web-push.ts`, `workers-ai.ts`.
+- Type declarations (2): `piexifjs.d.ts`, `sql-js.d.ts`.
+- `fas/` query/mapper package (10 files): attendance queries/helpers, connection, employee queries, mappers, types.
+- `fas-mariadb/` adapter package (1 file): `index.ts`.
+- Child tests dir: `__tests__/` with 24 module suites.
 
 ## CONVENTIONS
 
-- Keep side-effect boundaries clear: pure transforms separate from env/binding adapters.
-- Preserve PII pipeline order: normalize -> hash/HMAC -> encrypt -> persist controlled fields.
-- Keep response envelope helpers stable because route tests and clients depend on exact shape.
-- Keep queue handling idempotent and explicit about retry/remove/fail-count outcomes.
+- Keep env/binding access isolated from pure transforms.
+- Keep cross-module contracts explicit (`response`, `jwt`, queue payloads, sync locks).
+- Keep heavy-side-effect modules (`fas-sync`, `notification-queue`, `workers-ai`) idempotent at boundaries.
+- Keep file names capability-scoped; avoid generic catch-all helper files.
 
 ## ANTI-PATTERNS
 
-- Do not move route-specific auth/validation concerns into `src/lib`.
-- Do not change queue message contracts without updating producers and consumers.
-- Do not introduce circular imports from route internals back into shared library code.
-- Do not silently broaden PII field handling in `fas-sync.ts`.
+- Do not move route-specific middleware/handler logic into `src/lib`.
+- Do not mutate response envelope shape without updating dependent tests.
+- Do not break producer/consumer payload compatibility in queue or sync flows.
+- Do not introduce route-layer imports into lib internals.
+
+## DRIFT GUARDS
+
+- Check `src/lib` top-level file list before updating module inventory.
+- Check `fas/` and `fas-mariadb/` subdir entries for adapter/query additions.
+- Check one-to-one parity between top-level runtime modules and test suites in `src/lib/__tests__`.
+- Check high fan-in modules (`response.ts`, `jwt.ts`, `logger.ts`) for signature changes.

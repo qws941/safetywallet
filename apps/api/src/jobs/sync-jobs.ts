@@ -19,6 +19,9 @@ import {
   chunkArray,
   ensureSiteMemberships,
 } from "./helpers";
+import { createLogger } from "../lib/logger";
+
+const logger = createLogger("sync-jobs");
 
 export async function runFasFullSync(env: Env): Promise<void> {
   if (!env.FAS_HYPERDRIVE) {
@@ -187,7 +190,10 @@ export async function runFasSyncIncremental(env: Env): Promise<void> {
         try {
           await env.KV.delete("fas-status");
         } catch (e) {
-          console.error("[sync] Failed to delete fas-status from KV:", e);
+          logger.error(
+            "[sync] Failed to delete fas-status from KV:",
+            e instanceof Error ? e : undefined,
+          );
         }
       }
       return;

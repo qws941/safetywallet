@@ -1,30 +1,39 @@
 # Docs
 
-Project documentation index, runbooks, and redirect stubs.
+## PURPOSE
 
-## Inventory
+- Top-level docs index for runbooks, checklists, and redirect stubs.
+- Ownership boundary for `docs/*` except `docs/requirements/*` internals.
 
-- `AGENTS.md` — this directory-level documentation contract.
-- `README.md` — docs landing index and navigation pointers.
-- `cloudflare-operations.md` — operational source of truth (deploy/ops/incident guidance).
-- `FEATURE_CHECKLIST.md` — implementation checklist by feature area.
-- `deployment.md` — redirect stub to `cloudflare-operations.md`.
-- `rollback.md` — redirect stub to `cloudflare-operations.md`.
-- `REQUIREMENTS_REVIEW.md` — redirect stub to `requirements/REQUIREMENTS_CHECKLIST.md`.
-- `requirements/` — PRD/requirements subtree with its own local AGENTS contract.
+## INVENTORY
 
-## Conventions
+- `AGENTS.md` — local docs governance.
+- `README.md` — docs landing map.
+- `cloudflare-operations.md` — operations runbook source.
+- `FEATURE_CHECKLIST.md` — feature completion checklist.
+- `deployment.md` — redirect to operations runbook.
+- `rollback.md` — redirect to operations runbook.
+- `REQUIREMENTS_REVIEW.md` — redirect to requirements checklist.
+- `requirements/` — requirements subtree with local `AGENTS.md`.
 
-- Keep operational procedures centralized in `cloudflare-operations.md`.
-- Keep requirement tracking centralized in `requirements/REQUIREMENTS_CHECKLIST.md`.
-- Redirect docs remain short and point to canonical docs only.
-- Keep `README.md` synchronized whenever docs are added, moved, or retired.
-- Never include plaintext secrets; refer to env variable names only.
+## CONVENTIONS
 
-## Drift Guards
+- Keep canonical ops procedure text in one file (`cloudflare-operations.md`).
+- Keep redirects short; no duplicated normative content inside redirect stubs.
+- Keep `README.md` links synchronized with actual docs tree.
+- Keep requirement-specific policy text in `docs/requirements/`.
+- Use relative links that resolve in GitHub and local editors.
 
-- No duplicate long-form source-of-truth content across sibling docs.
-- No substantive guidance embedded in redirect-only files.
-- No stale file references in `README.md` or this inventory.
-- Keep `requirements/` ownership delegated to its local `docs/requirements/AGENTS.md`.
-- Update this file when top-level docs file count or purpose changes.
+## ANTI-PATTERNS
+
+- Parallel source-of-truth docs for same operational procedure.
+- Redirect files accumulating standalone guidance.
+- Broken or stale links in docs index files.
+- Requirement status trackers outside `docs/requirements/` scope.
+
+## DRIFT GUARDS
+
+- Confirm top-level docs directory remains 8 entries.
+- Confirm `requirements/` subtree delegation still explicit here.
+- Confirm every inventory entry maps to an existing file/dir.
+- Confirm redirects still target active canonical documents.

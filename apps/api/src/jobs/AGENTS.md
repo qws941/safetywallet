@@ -2,33 +2,32 @@
 
 ## PURPOSE
 
-Scheduled job implementations and registry consumed by the `JobScheduler` Durable Object.
-This directory owns cron-like policy, retries, and scheduler-oriented helper utilities.
+Scheduler job definitions and implementations consumed by `JobScheduler`.
+Owns cron metadata, dispatch registry, and job helper side effects.
 
-## FILE INVENTORY
+## INVENTORY
 
-| Type            | Count | Files                                                                                       |
-| --------------- | ----- | ------------------------------------------------------------------------------------------- |
-| Runtime modules | 5     | `registry.ts`, `daily-jobs.ts`, `monthly-jobs.ts`, `sync-jobs.ts`, `helpers.ts`             |
-| Test suites     | 3     | `__tests__/helpers.test.ts`, `__tests__/orchestrator.test.ts`, `__tests__/registry.test.ts` |
-
-## CURRENT FACTS
-
-- `registry.ts` defines `JobDefinition` and currently registers 10 jobs.
-- Registered jobs: `fas-sync`, `publish-scheduled-announcements`, `metrics-alert-check`, `fas-full-sync-daily`, `overdue-action-check`, `pii-lifecycle-cleanup`, `vote-reward-distribution`, `data-retention`, `month-end-snapshot`, `auto-nomination`.
-- `sync-jobs.ts` runs full/incremental FAS sync and updates `KV["fas-status"]` based on sync health.
-- `helpers.ts` owns scheduler logging namespace and sync-failure persistence helpers.
+- Runtime job files (5): `daily-jobs.ts`, `helpers.ts`, `monthly-jobs.ts`, `registry.ts`, `sync-jobs.ts`.
+- Registry job names (10): `fas-sync`, `publish-scheduled-announcements`, `metrics-alert-check`, `fas-full-sync-daily`, `overdue-action-check`, `pii-lifecycle-cleanup`, `vote-reward-distribution`, `data-retention`, `month-end-snapshot`, `auto-nomination`.
+- Test files (3): `helpers.test.ts`, `orchestrator.test.ts`, `registry.test.ts` in `__tests__/`.
 
 ## CONVENTIONS
 
-- Keep schedule metadata centralized in `registry.ts` (`intervalMs`, `kstHour`, `dayOfWeek`, `dayOfMonth`).
-- Keep lock-scoped critical jobs protected by sync-lock helpers.
-- Keep retry semantics explicit at call sites (attempt count/base delay).
-- Keep failure persistence and alert trigger paths consistent through shared helper APIs.
+- Keep schedule metadata centralized in `registry.ts`.
+- Keep sync-critical flows lock-protected and idempotent.
+- Keep retry strategy explicit at call sites, not implicit in helper defaults.
+- Keep operational side effects (`KV` status, alerts, failure records) through shared helpers.
 
 ## ANTI-PATTERNS
 
-- Do not add scheduler dispatch logic outside registry + `JobScheduler` contract.
-- Do not change lock key names casually in sync-critical jobs.
-- Do not bypass failure persistence for FAS-related job errors.
-- Do not duplicate alert/failure side effects when shared helpers exist.
+- Do not add ad-hoc scheduler dispatch paths outside registry + DO flow.
+- Do not rename registry `name` values without updating trigger callers.
+- Do not bypass sync failure persistence on FAS-related errors.
+- Do not duplicate alert dispatch logic between job modules.
+
+## DRIFT GUARDS
+
+- Check `registry.ts` `name:` list before inventory update.
+- Check new job files have registry entries and test coverage updates.
+- Check helper API changes against all job call sites.
+- Check `JobScheduler` action dispatch compatibility after registry changes.

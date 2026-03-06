@@ -5,17 +5,12 @@
 - Own the admin data-access layer in `src/hooks`.
 - Define query/mutation boundaries and module grouping.
 
-## FILE INVENTORY
+## INVENTORY
 
-- Hook module files: `42` (`use-*.ts`).
-- Test/util docs in this folder: `AGENTS.md`, `__tests__/`.
-- Barrel/transport boundary files:
+- Root files (`44` files, `43` TS/TSX):
+  - `AGENTS.md`
   - `use-api.ts`
   - `use-api-base.ts`
-
-## MODULE GROUPS
-
-- Admin API split:
   - `use-admin-api.ts`
   - `use-admin-dashboard-api.ts`
   - `use-admin-members-api.ts`
@@ -23,18 +18,34 @@
   - `use-admin-approvals-api.ts`
   - `use-admin-audit-api.ts`
   - `use-admin-sites-api.ts`
-- Route domain hooks:
-  - posts/actions/issues: `use-posts-api.ts`, `use-actions-api.ts`, `use-issues-api.ts`
-  - attendance/sync: `use-attendance.ts`, `use-fas-sync.ts`, `use-sync-errors.ts`
-  - votes/recommendations/rewards: `use-votes.ts`, `use-recommendations.ts`, `use-rewards.ts`
-  - monitoring/stats: `use-monitoring-api.ts`, `use-trends.ts`, `use-stats.ts`
-  - points: `use-points-api.ts`, `use-points-ledger-api.ts`, `use-points-policies-api.ts`, `use-points-settlement-api.ts`
-  - education: `use-education-api.ts`, `use-education-api-types.ts`, `use-education-completions.ts`, `use-education-contents-api.ts`, `use-education-quizzes-api.ts`, `use-education-statutory-api.ts`, `use-education-tbm-api.ts`
-  - site lookup: `use-sites-api.ts`
-- AI-assisted modules (admin tooling):
-  - `use-ai-analysis.ts`, `use-action-ai-analysis.ts`, `use-announcement-ai-draft.ts`
-  - `use-before-after-comparison.ts`, `use-post-classification.ts`, `use-quiz-generation.ts`
-  - `use-education-ai-analysis.ts`, `use-tbm-ai-analysis.ts`, `use-tbm-meeting-minutes.ts`
+  - `use-ai-insights-api.ts`
+  - `use-attendance.ts`
+  - `use-fas-sync.ts`
+  - `use-sync-errors.ts`
+  - `use-posts-api.ts`
+  - `use-actions-api.ts`
+  - `use-issues-api.ts`
+  - `use-votes.ts`
+  - `use-recommendations.ts`
+  - `use-rewards.ts`
+  - `use-monitoring-api.ts`
+  - `use-stats.ts`
+  - `use-trends.ts`
+  - `use-sites-api.ts`
+  - `use-points-api.ts`
+  - `use-points-ledger-api.ts`
+  - `use-points-policies-api.ts`
+  - `use-points-settlement-api.ts`
+  - `use-education-api.ts`
+  - `use-education-api-types.ts`
+  - `use-education-completions.ts`
+  - `use-education-contents-api.ts`
+  - `use-education-quizzes-api.ts`
+  - `use-education-statutory-api.ts`
+  - `use-education-tbm-api.ts`
+  - AI analysis hooks: `use-ai-analysis.ts`, `use-action-ai-analysis.ts`, `use-announcement-ai-draft.ts`, `use-before-after-comparison.ts`, `use-post-classification.ts`, `use-quiz-generation.ts`, `use-education-ai-analysis.ts`, `use-tbm-ai-analysis.ts`, `use-tbm-meeting-minutes.ts`
+- Subdirs (`1`):
+  - `__tests__/`
 
 ## CONVENTIONS
 
@@ -43,13 +54,18 @@
 - API transport is centralized through `apiFetch` from `src/lib/api.ts`.
 - Query keys are domain-first and invalidated narrowly.
 - `use-api.ts` remains a compatibility barrel, not a required import path for every module.
+- Keep API DTO typing in hook files or hook-local types; avoid route-level type drift.
 
 ## ANTI-PATTERNS
 
 - Duplicating auth refresh, API base, or token handling inside hook modules.
 - Adding hidden side effects in selector hooks that bypass explicit mutations.
 - Expanding barrel exports without checking tree-shaking and existing direct-import contracts.
+- Leaving new hook modules untested in `__tests__/` when behavior is non-trivial.
 
-## TEST LINK
+## DRIFT GUARDS
 
-- `__tests__/AGENTS.md` documents the `19` hook test files and shared harness.
+- On adding/removing a `use-*.ts` file, update root file count and list.
+- Keep `use-ai-insights-api.ts` aligned with `src/app/ai-insights/` route usage.
+- Ensure query key naming remains domain-first after refactors.
+- Keep `__tests__/AGENTS.md` test inventory synchronized with hook changes.

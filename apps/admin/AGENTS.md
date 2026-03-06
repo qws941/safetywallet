@@ -1,63 +1,54 @@
 # Admin Dashboard
 
-Next.js 15 admin dashboard app (App Router, static export), served from `admin.*` via R2 `ASSETS`.
-
 ## PURPOSE
 
-- Define admin app boundaries and current folder ownership.
-- Keep route/component/data-layer inventories aligned with the live tree.
+- Workspace map for admin frontend ownership.
+- Keep subtree inventories aligned to live files.
 
-## FILE INVENTORY
+## INVENTORY
 
-- `src/app/` - route layer with `31` route pages (`**/page.tsx`) across `18` top-level route directories.
-- `src/components/` - shared shell, providers, sidebar, table, and feature component packs.
-- `src/hooks/` - `42` hook modules (`use-*.ts`) including TanStack Query domain hooks and AI helper hooks.
-- `src/stores/` - Zustand auth store (`auth.ts`) with persisted key `safetywallet-admin-auth`.
-- `src/lib/` - API wrapper (`api.ts`) and utility boundary (`utils.ts`).
-- Entry integration points:
-  - `src/app/layout.tsx`
-  - `src/components/admin-shell.tsx`
-  - `src/components/providers.tsx`
-  - `src/components/sidebar.tsx`
-  - `src/stores/auth.ts`
-  - `src/lib/api.ts`
-
-## ROUTE GROUPS
-
-- Core dashboard: `dashboard`, `dashboard/analytics`, `dashboard/recommendations`.
-- Operations: `attendance`, `attendance/sync`, `attendance/unmatched`, `monitoring`, `sync-errors`.
-- Reviews/content: `posts`, `posts/[id]`, `actions`, `announcements`, `issues`.
-- Voting: `votes`, `votes/new`, `votes/candidates`, `votes/[id]`, `votes/[id]/candidates/new`.
-- Governance/admin: `approvals`, `audit`, `recommendations`, `settings`, `login`.
-- Members/rewards: `members`, `members/[id]`, `rewards`.
-- Points: `points`, `points/policies`, `points/settlement`.
-- Education: `education` (single-page tabbed hub).
+- Root config/runtime files:
+  - `package.json`
+  - `next.config.js`
+  - `tailwind.config.js`
+  - `tsconfig.json`
+  - `vitest.config.ts`
+- Application source root: `src/`.
+- Route layer: `src/app/` (`9` files, `19` subdirs, `7` TS/TSX at root).
+- Shared component layer: `src/components/` (`8` files, `5` subdirs, `7` TS/TSX at root).
+- Hook layer: `src/hooks/` (`44` files, `1` subdir, `43` TS/TSX at root).
+- Store layer: `src/stores/` (`2` files, `1` subdir, `1` TS at root).
+- Utility/transport layer: `src/lib/` (`3` files, `1` subdir, `2` TS at root).
+- Local contracts:
+  - `src/app/AGENTS.md`
+  - `src/components/AGENTS.md`
+  - `src/hooks/AGENTS.md`
+  - `src/hooks/__tests__/AGENTS.md`
+  - `src/stores/AGENTS.md`
+  - `src/lib/AGENTS.md`
+  - `src/app/attendance/AGENTS.md`
+  - `src/app/posts/AGENTS.md`
+  - `src/app/votes/AGENTS.md`
+  - `src/app/education/AGENTS.md`
 
 ## CONVENTIONS
 
-- Route pages are client-first and use `"use client"` where browser state or hooks are required.
-- Dynamic route wrappers keep static export compatibility with minimal `generateStaticParams` placeholders.
-- Data fetching/mutations flow through hooks (TanStack Query); page files orchestrate layout/state only.
-- API requests use `apiFetch` from `src/lib/api.ts`; authenticated flows rely on centralized 401 refresh/retry.
-- Site-scoped behavior reads `currentSiteId` from `useAuthStore`.
-- Sidebar stays mounted (`w-16` mobile rail, `md:w-64` desktop expansion).
+- Keep route orchestration in `src/app/*`; move request lifecycle into hooks.
+- Keep reusable UI in `src/components/*`; keep route-local UI inside route subtrees.
+- Keep token/session state in `src/stores/auth.ts`; do not mirror in hooks.
+- Keep transport and error normalization in `src/lib/api.ts`.
+- Update child AGENTS docs in same change when adding/removing modules.
 
 ## ANTI-PATTERNS
 
-- Duplicating auth refresh or token lifecycle logic outside `src/lib/api.ts` and `src/stores/auth.ts`.
-- Adding route-level server dependencies that break static export wrappers.
-- Re-implementing query invalidation in page components instead of hook mutation layers.
-- Mixing non-admin scopes (`apps/api`, `apps/worker`) into this subtree documentation.
+- Adding admin module files without updating nearest subtree AGENTS inventory.
+- Cross-importing route-local helpers into unrelated feature directories.
+- Storing API side effects inside presentational components.
+- Keeping stale route counts after tree changes (for example new top-level route dirs).
 
-## CHILD AGENTS
+## DRIFT GUARDS
 
-- `src/app/AGENTS.md` - route topology, wrapper pattern, and page grouping.
-- `src/app/attendance/AGENTS.md` - attendance logs/unmatched/sync surfaces.
-- `src/app/education/AGENTS.md` - education tab hub internals.
-- `src/app/posts/AGENTS.md` - post list/detail review workflow.
-- `src/app/votes/AGENTS.md` - month-period vote lifecycle.
-- `src/components/AGENTS.md` - shared component inventory.
-- `src/hooks/AGENTS.md` - hook-module ownership and boundaries.
-- `src/hooks/__tests__/AGENTS.md` - hook verification inventory.
-- `src/stores/AGENTS.md` - auth store contract.
-- `src/lib/AGENTS.md` - API wrapper contract.
+- Verify root subtree counts before merge: `src/app`, `src/components`, `src/hooks`, `src/stores`, `src/lib`.
+- Verify `src/app/AGENTS.md` route list includes all current top-level route folders.
+- Verify every child AGENTS section set exists: `PURPOSE`, `INVENTORY`, `CONVENTIONS`, `ANTI-PATTERNS`, `DRIFT GUARDS`.
+- Verify removed files are removed from inventories in the same commit.

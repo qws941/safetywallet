@@ -60,3 +60,19 @@ export function useSetMemberActiveStatus() {
     },
   });
 }
+
+export function useToggleLoginExempt() {
+  return useMutation({
+    mutationFn: ({
+      userId,
+      loginExempt,
+    }: {
+      userId: string;
+      loginExempt: boolean;
+    }) =>
+      apiFetch(`/admin/users/${userId}/login-exempt`, {
+        method: "PATCH",
+        body: JSON.stringify({ loginExempt }),
+      }),
+  });
+}

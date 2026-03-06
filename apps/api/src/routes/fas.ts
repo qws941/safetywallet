@@ -229,6 +229,11 @@ app.post(
 );
 
 app.delete("/workers/:externalWorkerId", authMiddleware, async (c) => {
+  const auth = c.get("auth");
+  if (auth.user.role !== "SITE_ADMIN" && auth.user.role !== "SUPER_ADMIN") {
+    return error(c, "ADMIN_ACCESS_REQUIRED", "Admin access required", 403);
+  }
+
   const db = drizzle(c.env.DB);
   const externalWorkerId = c.req.param("externalWorkerId");
 

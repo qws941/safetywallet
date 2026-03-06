@@ -55,6 +55,7 @@ vi.mock("@safetywallet/ui", async (importOriginal) => {
 vi.mock("@/hooks/use-api", () => ({
   useMembers: vi.fn(),
   useSetMemberActiveStatus: vi.fn(),
+  useToggleLoginExempt: vi.fn(),
 }));
 
 vi.mock("@/stores/auth", () => ({

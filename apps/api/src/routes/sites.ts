@@ -163,6 +163,7 @@ app.get(
         user: {
           id: users.id,
           name: users.nameMasked,
+          loginExempt: users.loginExempt,
         },
       })
       .from(siteMemberships)

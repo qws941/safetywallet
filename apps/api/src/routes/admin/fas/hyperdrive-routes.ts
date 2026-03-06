@@ -81,7 +81,9 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
           source: source.dbName,
         }),
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write sync-trigger audit log", error);
+    }
 
     const { employees, total } = await fasGetAllEmployeesPaginated(
       c.env.FAS_HYPERDRIVE,
@@ -132,7 +134,9 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
           source: source.dbName,
         }),
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write sync-completion audit log", error);
+    }
 
     return success(c, {
       message: "Hyperdrive sync completed",

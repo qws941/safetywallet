@@ -200,7 +200,19 @@
       "createdAt": "Ngày tạo",
       "submittedAt": "Ngày gửi",
       "approvedAt": "Ngày duyệt",
-      "rejectedAt": "Ngày từ chối"
+      "rejectedAt": "Ngày từ chối",
+      "status": {
+        "pending": "Chờ xem xét",
+        "inReview": "Đang xem xét",
+        "approved": "Đã duyệt",
+        "rejected": "Bị từ chối"
+      },
+      "resubmitButton": "Gửi thông tin bổ sung",
+      "resubmitPlaceholder": "Vui lòng nhập thông tin bổ sung",
+      "resubmitSubmit": "Gửi",
+      "resubmitCancel": "Hủy",
+      "resubmitSuccess": "Thông tin bổ sung đã được gửi",
+      "resubmitError": "Gửi thông tin bổ sung thất bại"
     },
     "rejectReasons": {
       "duplicate": "Bài đăng trùng lặp",
@@ -419,7 +431,10 @@
       "backToListButton": "Quay lại danh sách",
       "submitting": "Đang nộp...",
       "submitButton": "Nộp bài",
-      "maximumLabel": "Tối đa"
+      "maximumLabel": "Tối đa",
+      "score": "Điểm",
+      "scorePoints": "điểm",
+      "passingScoreWithPoints": "Điểm đạt: {score} điểm"
     },
     "tbm": "TBM",
     "form": {
@@ -474,7 +489,23 @@
     "requiredEducation": "Đào tạo bắt buộc",
     "details": "Chi tiết",
     "documentDownload": "Tải tài liệu",
-    "backToList": "Quay lại danh sách"
+    "backToList": "Quay lại danh sách",
+    "signature": {
+      "title": "Chữ ký hoàn thành",
+      "subtitle": "Sau khi hoàn thành đào tạo, hãy ký tên để xác nhận.",
+      "open": "Ký và đánh dấu hoàn thành",
+      "resign": "Ký lại",
+      "clear": "Xóa",
+      "submit": "Lưu chữ ký",
+      "submitting": "Đang lưu chữ ký...",
+      "needStroke": "Vui lòng ký tên.",
+      "toastSaved": "Chữ ký đã được lưu.",
+      "toastError": "Lưu chữ ký thất bại. Vui lòng thử lại.",
+      "notCompleted": "Chưa có chữ ký hoàn thành.",
+      "completedAt": "Đã ký lúc",
+      "previewAlt": "Xem trước chữ ký",
+      "modalHint": "Ký trong khung để xác nhận hoàn thành."
+    }
   },
   "actions": {
     "title": "Khắc phục",
@@ -701,7 +732,8 @@
     "confirmDelete": "Bạn có muốn xóa không?",
     "confirmLogout": "Bạn có muốn đăng xuất không?",
     "score": "Điểm",
-    "home": "Trang chủ"
+    "home": "Trang chủ",
+    "language": "Ngôn ngữ"
   },
   "components": {
     "appTitle": "Ví An Toàn",
@@ -725,10 +757,25 @@
     "unsafeWarningImprovementNote": "Báo cáo hành vi không an toàn được sử dụng nhằm mục đích cải thiện, không phải xử phạt cá nhân.",
     "unsafeWarningPrivacyNote": "Vui lòng chú ý không để lộ khuôn mặt hoặc thông tin cá nhân khi báo cáo.",
     "unsafeWarningAdminNote": "Báo cáo này chỉ quản trị viên mới có thể xem.",
-    "unsafeWarningConfirm": "Xác nhận và gửi"
+    "unsafeWarningConfirm": "Xác nhận và gửi",
+    "attendanceCheckingLabel": "Đang kiểm tra chấm công...",
+    "attendanceRequiredTitle": "Chỉ sử dụng được sau khi chấm công",
+    "attendanceRequiredDescription": "Bạn cần có bản ghi chấm công tại công trường này để sử dụng tính năng này."
   },
   "postCard": {
     "reviewStatusNeedInfo": "Cần thêm thông tin",
     "actionStatusVerified": "Đã xác nhận"
+  },
+  "pointsCard": {
+    "myPoints": "Điểm của tôi",
+    "thisMonth": "Tháng này",
+    "monthlyChange": "So với tháng trước"
+  },
+  "rankingCard": {
+    "monthlyRank": "Xếp hạng tháng",
+    "participants": " người",
+    "challengeRank1": "Thu thập thêm để đạt hạng 1!",
+    "noRank": "Chưa có xếp hạng",
+    "collectPoints": "Hãy thu thập điểm!"
   }
 }

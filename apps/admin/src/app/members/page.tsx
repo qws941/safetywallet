@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -13,16 +14,21 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Switch,
   toast,
 } from "@safetywallet/ui";
 import { ShieldX } from "lucide-react";
 import { DataTable, type Column } from "@/components/data-table";
-import { useMembers, useSetMemberActiveStatus } from "@/hooks/use-api";
+import {
+  useMembers,
+  useSetMemberActiveStatus,
+  useToggleLoginExempt,
+} from "@/hooks/use-api";
 import { useAuthStore } from "@/stores/auth";
 
 interface Member {
   id: string;
-  user: { id: string; name: string };
+  user: { id: string; name: string; loginExempt?: boolean };
   status: string;
   role: string;
   joinedAt: string;
@@ -40,6 +46,8 @@ export default function MembersPage() {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const { data: members = [], isLoading } = useMembers();
   const setMemberActiveStatus = useSetMemberActiveStatus();
+  const toggleLoginExempt = useToggleLoginExempt();
+  const queryClient = useQueryClient();
   const [targetMember, setTargetMember] = useState<Member | null>(null);
 
   const columns: Column<Member>[] = [
@@ -68,6 +76,38 @@ export default function MembersPage() {
       header: "가입일",
       sortable: true,
       render: (item) => new Date(item.joinedAt).toLocaleDateString("ko-KR"),
+    },
+    {
+      key: "loginExempt",
+      header: "출석 예외",
+      render: (item) => (
+        <Switch
+          checked={item.user.loginExempt ?? false}
+          onCheckedChange={(checked) => {
+            toggleLoginExempt.mutate(
+              { userId: item.user.id, loginExempt: checked },
+              {
+                onSuccess: () => {
+                  queryClient.invalidateQueries({
+                    queryKey: ["admin", "members"],
+                  });
+                  toast({
+                    description: `${item.user.name} 출석 예외가 ${checked ? "활성화" : "비활성화"}되었습니다.`,
+                  });
+                },
+                onError: (error: unknown) => {
+                  const message =
+                    error instanceof Error ? error.message : "알 수 없는 오류";
+                  toast({
+                    variant: "destructive",
+                    description: `출석 예외 변경 실패: ${message}`,
+                  });
+                },
+              },
+            );
+          }}
+        />
+      ),
     },
     {
       key: "id",

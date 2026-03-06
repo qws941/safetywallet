@@ -1,31 +1,39 @@
 # UI
 
-Shared component primitives and styling contracts for `@safetywallet/ui`.
+## PURPOSE
 
-## Inventory
+- Shared UI primitives package consumed by admin and worker apps.
+- Stable export barrel for shadcn/Radix wrappers plus style tokens.
 
-- `src/index.ts` — public barrel for all exported primitives/hooks/utilities.
-- `src/globals.css` — HSL token layer (`background`, `foreground`, `surface`, `action`, `status`, including `success`/`warning`).
-- `src/lib/utils.ts` — `cn()` class-merging helper (`clsx` + `tailwind-merge`).
-- `src/components/` — 15 component modules (documented in `src/components/AGENTS.md`).
-- `src/__tests__/` — 8 files (7 component/behavior test suites + test setup).
+## INVENTORY
 
-## Export Surface
+- `src/index.ts` — sole public export surface for components/hooks/utils.
+- `src/components/` — 16 files total: `AGENTS.md` + 15 TS/TSX component modules.
+- `src/globals.css` — Tailwind v4 token layer used by shared primitives.
+- `src/lib/utils.ts` — `cn()` utility (`clsx` + `tailwind-merge`).
+- `src/__tests__/` — 8 files: setup + component behavior suites.
+- `package.json` — package scripts/deps/exports.
+- `tsconfig.json` — package compiler settings.
+- `vitest.config.ts` — package test runner config.
 
-- Public exports include primitives and compounds: `Button`, `Badge`, `Card*`, `Input`,
-  `Skeleton`, `Avatar*`, `AlertDialog*`, `Dialog*`, `Sheet*`, `Select*`, `Toast*`,
-  `Toaster`, `Switch`, `ErrorBoundary`, plus `cn`, `useToast`, and `toast`.
-- `src/index.ts` is the only supported import surface for apps.
+## CONVENTIONS
 
-## Conventions
+- Export changes happen through `src/index.ts` only.
+- Keep component modules domain-agnostic; UI behavior only.
+- Compose classes via `cn()`; no duplicate merge helpers.
+- Keep token names in `globals.css` stable across package updates.
+- Mirror added/removed component modules in barrel exports immediately.
 
-- Component file add/remove requires synchronized barrel update in `src/index.ts`.
-- Use `cn()` for all class composition; avoid string concatenation helpers.
-- Token rename/removal is a contract migration and must be coordinated with consuming apps.
-- Keep package domain-agnostic: no business copy or API calls inside UI primitives.
+## ANTI-PATTERNS
 
-## Drift Guards
+- Deep imports from `src/components/*` in consuming apps.
+- Business copy, API calls, or app store coupling inside shared primitives.
+- Duplicate utility functions replacing `src/lib/utils.ts`.
+- Token removals without synchronized consumer updates.
 
-- No undeclared public exports from internal files.
-- No duplicate utility functions replacing `src/lib/utils.ts`.
-- No app-specific Tailwind tokens in shared `globals.css`.
+## DRIFT GUARDS
+
+- Confirm `src/components` count remains accurate in this file.
+- Confirm `src/index.ts` export list matches actual component modules.
+- Confirm test setup still covers changed primitives.
+- Confirm parent-child split: file-level details stay in `src/components/AGENTS.md`.

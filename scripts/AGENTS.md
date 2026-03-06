@@ -1,32 +1,43 @@
 # Scripts
 
-Operational/developer scripts and one-off migration utilities.
+## PURPOSE
 
-## Inventory
+- Operational tooling for verification, policy checks, and utility generation.
+- Mixed Go/JS/TS/SQL script set used by local and CI flows.
 
-- `AGENTS.md` — local script governance and drift rules.
-- `verify.go` — umbrella verifier (lint, type-check, unit tests, build).
-- `git-preflight.go` — commit/push readiness checks.
-- `check-anti-patterns.go` — scans staged/changed code for forbidden patterns.
-- `build-static.go` — static build pipeline helper for worker app assets.
-- `create-cf-token.go` — Cloudflare token creation helper.
-- `check-wrangler-sync.js` — validates `wrangler.toml` binding parity across root/app configs.
-- `lint-naming.js` — monorepo naming policy linter.
-- `create-test-user.ts` — emits SQL for test worker user bootstrap.
-- `hash-admin-password.ts` — PBKDF2 password hash generator for admin secret provisioning.
-- `create-test-user.sql` — generated SQL seed artifact used in local test setup.
-- `migrate-s4-enums.sql` — D1 migration script for S4 post state enum normalization.
+## INVENTORY
 
-## Conventions
+- `AGENTS.md` — local scripts governance.
+- `verify.go` — end-to-end verification runner.
+- `git-preflight.go` — pre-push/preflight gate checks.
+- `check-anti-patterns.go` — anti-pattern detector for changed files.
+- `build-static.go` — static asset build helper.
+- `create-cf-token.go` — Cloudflare token helper.
+- `check-wrangler-sync.js` — wrangler binding parity checker.
+- `lint-naming.js` — naming convention validator wrapper.
+- `create-test-user.ts` — SQL generation utility for test user.
+- `hash-admin-password.ts` — password hash utility.
+- `create-test-user.sql` — generated SQL artifact.
+- `migrate-s4-enums.sql` — manual SQL migration helper.
 
-- Keep operational automation in Go by default.
-- JS/TS scripts are allowed only for ecosystem-coupled tooling or utility generation flows.
-- CI-executed scripts must be deterministic, non-interactive, and strict on non-zero exits.
-- Secrets must be supplied through env vars/flags, never embedded literals.
-- Utility scripts that generate artifacts should document output target and overwrite behavior.
+## CONVENTIONS
 
-## Drift Guards
+- Prefer Go for operational automation and CI-executed logic.
+- Keep JS/TS scripts for ecosystem-coupled tasks only.
+- Keep CI scripts deterministic and non-interactive.
+- Pass secrets via env vars/flags; never embed literals.
+- Keep generated artifact scripts explicit about overwrite/output path.
 
-- No hardcoded local absolute paths in scripts used by CI.
-- No plaintext credential defaults in script source.
-- No stale script entries in this inventory.
+## ANTI-PATTERNS
+
+- Hardcoded absolute local paths in reusable scripts.
+- Interactive prompts in CI-referenced scripts.
+- Credential defaults or plaintext secrets in source.
+- Stale helpers not referenced by package scripts/workflows.
+
+## DRIFT GUARDS
+
+- Confirm directory remains 12 entries.
+- Confirm inventory names match exact filenames/extensions.
+- Confirm script language mix (Go/JS/TS/SQL) remains intentional.
+- Confirm renamed scripts are updated in callers (`package.json`, workflows, docs).

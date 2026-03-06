@@ -7,12 +7,15 @@ import { hmac, encrypt } from "../../../lib/crypto";
 import { success, error } from "../../../lib/response";
 import { AdminSyncWorkersSchema } from "../../../validators/schemas";
 import { requireAdmin } from "../helpers";
+import { createLogger } from "../../../lib/logger";
 import { chunkArray, IN_QUERY_CHUNK_SIZE } from "./helpers";
 import type {
   AdminFasBindings,
   AdminFasVariables,
   SyncFasWorkersBody,
 } from "./types";
+
+const logger = createLogger("admin/fas/sync-workers");
 
 const app = new Hono<{
   Bindings: AdminFasBindings;
@@ -234,7 +237,13 @@ app.post(
               })
               .where(eq(users.id, userToUpdate.id))
               .run();
-          } catch {
+          } catch (error) {
+            logger.warn("User update with phone/dob failed, retrying without", {
+              error:
+                error instanceof Error
+                  ? { name: error.name, message: error.message }
+                  : { name: "UnknownError", message: String(error) },
+            });
             await db
               .update(users)
               .set({
@@ -310,7 +319,9 @@ app.post(
         targetId: body.siteId,
         reason: `Synced ${results.created} created, ${results.updated} updated, ${results.membershipCreated} memberships`,
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write workers-sync audit log", error);
+    }
 
     return success(c, { results });
   },

@@ -4,14 +4,11 @@
 
 - Document ownership of hook-level test coverage in `src/hooks/__tests__`.
 
-## FILE INVENTORY
+## INVENTORY
 
-- Total entries: `21`.
-- Test files: `19` (`*.test.ts`).
-- Non-test support files:
-  - `test-utils.tsx`
+- Root files (`21` files, `20` TS/TSX):
   - `AGENTS.md`
-- Test suites present:
+  - `test-utils.tsx`
   - `use-actions-api.test.ts`
   - `use-admin-api.test.ts`
   - `use-api-base.test.ts`
@@ -36,12 +33,20 @@
 
 - Use `test-utils.tsx` QueryClient wrapper for `renderHook` consistency.
 - Mock transport at `@/lib/api` or `@/hooks/use-api-base` boundary.
-- Stub auth-store state (`currentSiteId`, hydration, role flags) explicitly per suite.
-- Verify mutation side effects via query invalidation assertions.
-- Keep barrel tests (`use-api.test.ts`) focused on export contract only.
+- Stub auth-store state (`currentSiteId`, hydration, role flags) per suite.
+- Assert mutation invalidation/query key interactions when mutation exists.
+- Keep barrel test (`use-api.test.ts`) export-contract focused.
 
 ## ANTI-PATTERNS
 
 - Treating barrel tests as replacement for domain behavior tests.
-- Using real network/time dependencies in unit tests.
-- Skipping query-key assertions in mutation-heavy suites.
+- Using real network/timer dependencies in unit suites.
+- Skipping key state assertions in mutation-heavy test files.
+- Adding broad snapshot-only tests for data hooks.
+
+## DRIFT GUARDS
+
+- On new hook module, add or update matching test suite.
+- Keep root file count accurate (`21` files, `0` subdirs).
+- Keep `test-utils.tsx` API stable; update callers together when changing wrapper.
+- Remove stale tests when corresponding hook modules are deleted.

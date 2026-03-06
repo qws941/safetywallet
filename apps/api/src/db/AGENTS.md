@@ -2,34 +2,33 @@
 
 ## PURPOSE
 
-Database contract layer for the API worker runtime.
-Owns Drizzle table/enum/relation definitions and D1 batch helper behavior.
+Drizzle schema and D1 helper contract layer.
+Owns table/relations definitions and batch helper behavior.
 
-## FILE INVENTORY
+## INVENTORY
 
-| File                        | Role                                                   |
-| --------------------------- | ------------------------------------------------------ |
-| `schema.ts`                 | Canonical Drizzle schema and relation definitions      |
-| `helpers.ts`                | Batch execution wrappers (`dbBatch`, `dbBatchChunked`) |
-| `__tests__/schema.test.ts`  | Schema contract coverage                               |
-| `__tests__/helpers.test.ts` | Batch helper behavior coverage                         |
-
-## CURRENT FACTS
-
-- `schema.ts` currently contains 34 `sqliteTable(...)` declarations.
-- Domain groups remain identity/access, safety lifecycle, points/voting, attendance/sync, and education.
-- `helpers.ts` keeps chunked-write fallback with `D1_BATCH_LIMIT = 100`.
+- `schema.ts` - canonical table/index/relation definitions.
+- `helpers.ts` - `dbBatch` and `dbBatchChunked` wrappers for D1 limits.
+- `__tests__/schema.test.ts` - schema contract tests.
+- `__tests__/helpers.test.ts` - batch helper tests.
 
 ## CONVENTIONS
 
-- Keep related table, index, and relation declarations adjacent in `schema.ts`.
-- Keep enum constraints aligned with validator and route expectations.
-- Use chunked batch helpers when mutation volume may exceed D1 per-batch constraints.
-- Apply additive schema evolution and retire compatibility fields through migrations.
+- Keep table declaration, indexes, and relations adjacent per model block.
+- Keep enum value changes synchronized with validators and route handlers.
+- Keep bulk mutation paths routed through chunked helper when batch risk exists.
+- Keep schema evolution additive; deprecations via explicit migrations.
 
 ## ANTI-PATTERNS
 
-- Do not split table definitions across unrelated runtime layers.
-- Do not update documented table counts without checking source declarations.
-- Do not run oversized unchunked `db.batch` operations in high-volume paths.
-- Do not remove enum/column compatibility paths before migration rollout.
+- Do not split schema ownership into route/lib modules.
+- Do not hardcode stale table counts without reading `schema.ts`.
+- Do not bypass chunking for large write batches.
+- Do not remove compatibility columns before migration rollout state is complete.
+
+## DRIFT GUARDS
+
+- Check `schema.ts` for `sqliteTable(` count changes before doc updates.
+- Check `helpers.ts` constants/signatures when D1 limits or call sites change.
+- Check both db test files still map to `schema.ts` and `helpers.ts` ownership.
+- Check migration additions are reflected in schema assumptions.

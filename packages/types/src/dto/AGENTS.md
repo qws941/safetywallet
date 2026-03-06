@@ -1,33 +1,44 @@
 # DTO
 
-Domain DTO contracts shared by API and app clients.
+## PURPOSE
 
-## Inventory (12 files)
+- Domain DTO contract layer under `@safetywallet/types`.
+- Single DTO module split by feature domain; no runtime logic.
 
-- `index.ts` — barrel that re-exports all domain DTO modules.
-- `action.dto.ts` — action create/read/update status/image payload contracts.
-- `analytics.dto.ts` — trend and points-distribution chart DTOs.
-- `announcement.dto.ts` — announcement create/update/list payload contracts.
-- `auth.dto.ts` — OTP, token refresh, session payload, and registration DTOs.
-- `education.dto.ts` — education content/quiz/attempt/statutory/TBM DTO families.
-- `points.dto.ts` — points ledger/history/balance and policy mutation DTOs.
-- `post.dto.ts` — post create/list/detail/filter and media DTOs.
-- `review.dto.ts` — moderation review action/result DTOs.
-- `site.dto.ts` — site/member management and dashboard stats DTOs.
-- `user.dto.ts` — user profile and profile update DTOs.
-- `vote.dto.ts` — vote candidate/result/summary/export DTOs.
+## INVENTORY
 
-## Contract Rules
+- `AGENTS.md` — local DTO documentation contract.
+- `index.ts` — DTO barrel re-exporting all domain modules.
+- `action.dto.ts` — action create/detail/list/update payloads.
+- `analytics.dto.ts` — dashboard trend and distribution payloads.
+- `announcement.dto.ts` — announcement CRUD/list payloads.
+- `auth.dto.ts` — login/session/refresh/register payloads.
+- `education.dto.ts` — education content/quiz/attempt/statutory/TBM payloads.
+- `points.dto.ts` — ledger/history/balance/policy payloads.
+- `post.dto.ts` — post list/detail/create/filter/media payloads.
+- `review.dto.ts` — moderation review commands/results payloads.
+- `site.dto.ts` — site/member/admin dashboard payloads.
+- `user.dto.ts` — user profile and profile update payloads.
+- `vote.dto.ts` — vote period/candidate/result/export payloads.
 
-- Enum-backed fields must import enums from `../enums`; do not inline string unions that duplicate canonical enums.
-- File add/remove in this directory must be mirrored in `index.ts` within the same change.
-- Preserve API nullability and optional semantics exactly (`?` vs nullable union).
-- Prefer explicit interface names over generic `Payload` naming.
-- Keep domain module boundaries stable (`post.*` DTOs stay in `post.dto.ts`, etc.).
+## CONVENTIONS
 
-## Drift Guards
+- Keep each domain in its matching `*.dto.ts` file.
+- Import shared enums from `../enums` for enum-backed fields.
+- Keep optional (`?`) vs nullable (`| null`) semantics exact.
+- Add/remove DTO files only with synchronized `index.ts` export updates.
+- Prefer explicit interface/type names with domain prefix.
 
-- No `any`, `unknown` escape hatches, or loose record maps for API contracts.
-- No nested object copies of enum literals when enum type already exists.
-- No cross-domain DTO dumping into unrelated files.
-- No export-only dead DTOs that are not consumed by API or apps.
+## ANTI-PATTERNS
+
+- Cross-domain dumping into unrelated DTO module.
+- Inline enum string unions duplicating canonical enums.
+- Contract widening via `any`, broad `Record<string, unknown>`, or cast escapes.
+- Dead DTO exports not referenced by API/apps/tests.
+
+## DRIFT GUARDS
+
+- Confirm directory still has 13 files (12 TypeScript + `AGENTS.md`).
+- Confirm barrel exports every domain module exactly once.
+- Confirm new DTO fields preserve backward compatibility expectations.
+- Confirm parent `packages/types/AGENTS.md` counts stay aligned.

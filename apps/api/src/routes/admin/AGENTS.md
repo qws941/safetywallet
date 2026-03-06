@@ -2,41 +2,35 @@
 
 ## PURPOSE
 
-Admin API layer mounted at `/api/admin`.
-Owns operational endpoints for export, monitoring, sync errors, moderation, policy/access control, and admin analytics.
+Admin route module set under `src/routes/admin`.
+Owns admin-only read/write and operational route handlers.
 
-## FILE INVENTORY
+## INVENTORY
 
-| Group                  | Count | Files/dirs                                                                                                                                                                                                                                                                            |
-| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Top-level route files  | 18    | `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `education.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `issues.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts` |
-| Feature subdirectories | 3     | `fas/`, `posts/`, `users/`                                                                                                                                                                                                                                                            |
-| Integration tests      | 20    | `__tests__/` contains 20 `*.test.ts` files                                                                                                                                                                                                                                            |
-
-## SUBDIR SNAPSHOT
-
-| Subdir   | Files                                                                                                     |
-| -------- | --------------------------------------------------------------------------------------------------------- |
-| `fas/`   | `helpers.ts`, `hyperdrive-routes.ts`, `index.ts`, `query-routes.ts`, `sync-workers-routes.ts`, `types.ts` |
-| `posts/` | `delete-handlers.ts`, `index.ts`, `list-routes.ts`, `moderation-routes.ts`, `review-handlers.ts`          |
-| `users/` | `index.ts`, `routes.ts`                                                                                   |
-
-## CURRENT FACTS
-
-- `index.ts` applies `authMiddleware` globally, then mounts 19 admin apps (`users`, `export`, `fas`, `posts`, and 15 top-level domain routers).
-- `alerting.ts` owns maintenance-message endpoints; `maintenance.test.ts` validates that behavior via alerting routes.
-- `export.ts` relies on admin helpers and export validators for guarded data extraction flows.
+- Top-level route files (18): `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `education.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `issues.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts`.
+- Feature subdirs (3): `fas/`, `posts/`, `users/`.
+- `fas/` files (6): `helpers.ts`, `hyperdrive-routes.ts`, `index.ts`, `query-routes.ts`, `sync-workers-routes.ts`, `types.ts`.
+- `posts/` files (5): `delete-handlers.ts`, `index.ts`, `list-routes.ts`, `moderation-routes.ts`, `review-handlers.ts`.
+- `users/` files (2): `index.ts`, `routes.ts`.
+- Admin tests dir: `__tests__/` with 21 `*.test.ts` files.
 
 ## CONVENTIONS
 
-- Keep shared admin query/response helpers centralized in `helpers.ts`.
-- Preserve global auth gate in `index.ts`; per-endpoint permission checks are additive.
-- Keep sync error status transitions explicit and auditable in `sync-errors.ts`.
-- Keep monitoring/statistical read models scoped to admin routes.
+- Keep `index.ts` as mount-only composition; keep domain logic in per-module files.
+- Keep global `authMiddleware` gate first; module permissions remain additive.
+- Keep shared admin utilities in `helpers.ts` or feature-local helpers, not duplicated across modules.
+- Keep route module names aligned with mounted domain names.
 
 ## ANTI-PATTERNS
 
-- Do not bypass `authMiddleware` for any new admin route mount.
-- Do not duplicate shared helper logic inside `fas/`, `posts/`, or `users/`.
-- Do not create a standalone `maintenance.ts`; alerting owns that surface.
-- Do not diverge mounted route paths from module responsibility names.
+- Do not add unresolved mounts/imports in `index.ts` without a real file.
+- Do not bypass auth gate by direct unguarded app export.
+- Do not copy logic between `posts/`, `fas/`, and top-level admin files.
+- Do not place non-admin route handlers in this directory.
+
+## DRIFT GUARDS
+
+- Check `ls src/routes/admin` against top-level file inventory.
+- Check `index.ts` mount list against existing module files and imports.
+- Check `__tests__/` count and file names after new admin route additions.
+- Check each feature subdir (`fas`, `posts`, `users`) for added or removed handlers.

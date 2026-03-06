@@ -4,8 +4,10 @@ import { parse } from "yaml";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
 import { requireAdmin } from "./helpers";
+import { createLogger } from "../../lib/logger";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
+const logger = createLogger("admin/issues");
 
 const GITHUB_OWNER = "qws941";
 const GITHUB_REPO = "safetywallet";
@@ -24,7 +26,14 @@ function getGitHubErrorMessage(raw: string, fallback: string): string {
     if (typeof parsed.message === "string" && parsed.message.trim()) {
       return parsed.message.trim();
     }
-  } catch {}
+  } catch (error) {
+    logger.warn("Failed to parse GitHub error JSON", {
+      error:
+        error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { name: "UnknownError", message: String(error) },
+    });
+  }
   return raw.slice(0, 300);
 }
 
@@ -85,7 +94,9 @@ app.get("/issues/templates", requireAdmin, async (c) => {
     try {
       const cached = await kv.get(KV_CACHE_KEY, "json");
       if (cached) return success(c, cached);
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to read KV cache for issue templates", error);
+    }
   }
 
   const headers: Record<string, string> = {
@@ -147,7 +158,9 @@ app.get("/issues/templates", requireAdmin, async (c) => {
         await kv.put(KV_CACHE_KEY, JSON.stringify(templates), {
           expirationTtl: KV_CACHE_TTL,
         });
-      } catch {}
+      } catch (error) {
+        logger.error("Failed to write KV cache for issue templates", error);
+      }
     }
 
     return success(c, templates);
@@ -309,8 +322,14 @@ app.post("/issues", requireAdmin, async (c) => {
             },
           }),
         });
-      } catch {
+      } catch (error) {
         // Bot assignee may fail — non-blocking
+        logger.warn("Failed to assign Codex bot via GraphQL", {
+          error:
+            error instanceof Error
+              ? { name: error.name, message: error.message }
+              : { name: "UnknownError", message: String(error) },
+        });
       }
 
       // Post @codex comment so Codex agent picks it up
@@ -333,7 +352,9 @@ app.post("/issues", requireAdmin, async (c) => {
             body: JSON.stringify({ body: commentBody }),
           },
         );
-      } catch {}
+      } catch (error) {
+        logger.error("Failed to post @codex comment", error);
+      }
     }
 
     return success(c, issue, 201);

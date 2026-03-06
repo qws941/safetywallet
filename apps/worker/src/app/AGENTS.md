@@ -1,64 +1,50 @@
-# Worker App Routes
+# Worker Route Layer
 
-App Router page layer for worker flows (`src/app`).
+## PURPOSE
 
-## Purpose
+- App Router route tree contract for `src/app`.
+- Keep route composition, redirects, and route boundaries consistent.
 
-- Own route topology, root layout shell, route-level boundaries, and redirects
-- Keep API/business logic in hooks/lib; route files compose UI and invoke hooks
-- Current route surface: 16 `page.tsx` routes across 11 route/test directories
+## INVENTORY
 
-## Files
+- `AGENTS.md` - route-layer contract.
+- `layout.tsx` - root HTML/body shell + skip link + providers wrapper.
+- `page.tsx` - hydration-gated root redirect.
+- `error.tsx` - app-level route error fallback.
+- `globals.css` - app-wide CSS entry.
+- `actions/` - actions list + detail routes + segment boundary.
+- `announcements/` - announcements list route.
+- `education/` - education list/view/quiz routes + segment boundary.
+- `home/` - post-login landing route.
+- `login/` - login route + route-local client component.
+- `points/` - point history route.
+- `posts/` - post list/new/view routes + segment boundary.
+- `profile/` - profile route + segment boundary.
+- `register/` - legacy registration entry route.
+- `votes/` - voting route + segment boundary.
+- `__tests__/` - route-level tests.
 
-- `layout.tsx` - root shell (`html lang="ko"`, viewport, `Providers`, `ErrorBoundary`)
-- `page.tsx` - hydration-aware root redirect to `/login/` or `/home/`
-- `error.tsx` - app-level route error boundary
-- `globals.css` - global styles and Tailwind imports
-- `actions/` - list + detail route (`view`) and route-local helpers/error boundary
-- `announcements/` - announcements list page + tests
-- `education/` - list, `quiz-take`, and `view` routes + route-local boundary
-- `home/` - authenticated landing route
-- `login/` - login page + route-local `login-client.tsx`
-- `points/` - points history route
-- `posts/` - list, `new`, and `view` routes + route-local boundary
-- `profile/` - profile route + route-local boundary
-- `register/` - redirect-only route to `/login/`
-- `votes/` - voting route + route-local boundary
-- `__tests__/` - root route tests
+## CONVENTIONS
 
-## Route Map (16 pages)
+- Route page surface currently includes 16 `page.tsx` files.
+- Error boundary files currently exist at app root + `actions` + `education` + `posts` + `profile` + `votes`.
+- Root redirect waits for store hydration; unauthenticated -> `/login/`, authenticated -> `/home/`.
+- Redirect targets remain trailing-slash normalized in root/login/register flow.
+- Detail routes use query params (`?id=...`) instead of path params in current design.
+- Route files compose hooks/components; transport and cache logic stay outside this directory.
 
-| Route                  | File                           |
-| ---------------------- | ------------------------------ |
-| `/`                    | `page.tsx`                     |
-| `/actions`             | `actions/page.tsx`             |
-| `/actions/view`        | `actions/view/page.tsx`        |
-| `/announcements`       | `announcements/page.tsx`       |
-| `/education`           | `education/page.tsx`           |
-| `/education/quiz-take` | `education/quiz-take/page.tsx` |
-| `/education/view`      | `education/view/page.tsx`      |
-| `/home`                | `home/page.tsx`                |
-| `/login`               | `login/page.tsx`               |
-| `/points`              | `points/page.tsx`              |
-| `/posts`               | `posts/page.tsx`               |
-| `/posts/new`           | `posts/new/page.tsx`           |
-| `/posts/view`          | `posts/view/page.tsx`          |
-| `/profile`             | `profile/page.tsx`             |
-| `/register`            | `register/page.tsx`            |
-| `/votes`               | `votes/page.tsx`               |
+## ANTI-PATTERNS
 
-## Conventions
+- No data-fetching client duplication inside pages when domain hook exists.
+- No registration form implementation under `register/`; route stays redirect-only.
+- No removal of root hydration gate before redirect logic.
+- No segment-level error boundary deletion for volatile domains.
+- No hardcoded copy in pages; use translation keys.
 
-- Protected pages typically compose `Header` + content + `BottomNav`
-- Detail pages use query string IDs (for example `?id=...`)
-- Redirect targets stay slash-normalized (`/login/`, `/home/`)
-- Login flow remains route-local in `login/login-client.tsx`
-- Post create route supports offline queue create and deferred media upload
-- Route-local boundaries exist for volatile domains (`actions`, `education`, `posts`, `profile`, `votes`)
+## DRIFT GUARDS
 
-## Anti-Patterns
-
-- Do not add registration form UI under `/register`; it is redirect-only
-- Do not remove hydration guard before root redirect execution
-- Do not move domain API calls directly into route files when a hook exists
-- Do not hardcode locale text in route UI; use translation keys
+- Recount `**/page.tsx` and segment folders when route surface changes.
+- Recheck boundary placement whenever a new volatile domain route is added.
+- Verify `layout.tsx` still wraps children with global error boundary + providers.
+- Verify root/login/register redirects remain consistent after auth flow changes.
+- Keep this file route-layer only; provider/store/lib rules belong in sibling modules.

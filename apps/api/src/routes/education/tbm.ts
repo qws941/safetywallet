@@ -21,6 +21,9 @@ import {
   getGcpCredentials,
 } from "../../lib/gemini-ai";
 import type { AppType, CreateTbmBody } from "./helpers";
+import { createLogger } from "../../lib/logger";
+
+const logger = createLogger("tbm");
 
 const app = new Hono<AppType>();
 
@@ -132,7 +135,12 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
               })
               .where(eq(tbmRecords.id, tbm.id));
           }
-        } catch {}
+        } catch (error) {
+          logger.error(
+            "TBM AI analysis failed",
+            error instanceof Error ? error : undefined,
+          );
+        }
       })(),
     );
 
@@ -155,7 +163,10 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
               .where(eq(tbmRecords.id, tbm.id));
           }
         } catch (e) {
-          console.error("TBM meeting minutes generation failed:", e);
+          logger.error(
+            "TBM meeting minutes generation failed:",
+            e instanceof Error ? e : undefined,
+          );
         }
       })(),
     );

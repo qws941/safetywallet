@@ -98,7 +98,9 @@ export async function deletePostHandler(c: AppContext) {
       targetId: postId,
       reason: body.reason,
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write post-delete audit log", error);
+  }
 
   return success(c, { deleted: true, postId });
 }
@@ -196,7 +198,9 @@ export async function emergencyPurgePostHandler(c: AppContext) {
       targetId: postId,
       reason: body.reason,
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write emergency-purge audit log", error);
+  }
 
   return success(c, {
     deleted: true,
@@ -273,7 +277,9 @@ export async function emergencyPurgeActionHandler(c: AppContext) {
       targetId: actionId,
       reason: body.reason,
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write action-purge audit log", error);
+  }
 
   return success(c, {
     deleted: true,

@@ -1,6 +1,9 @@
 import { drizzle } from "drizzle-orm/d1";
 import { auditLogs } from "../db/schema";
 import type { Context } from "hono";
+import { createLogger } from "./logger";
+
+const logger = createLogger("audit");
 
 /**
  * Audit log action types as defined in PRD Appendix B
@@ -188,11 +191,14 @@ export async function logAudit(
       userAgent,
     });
   } catch (e) {
-    console.warn("[audit] Failed to write audit log", {
+    logger.warn("[audit] Failed to write audit log", {
       action,
       targetType,
       targetId,
-      error: e instanceof Error ? e.message : String(e),
+      error:
+        e instanceof Error
+          ? { name: e.name, message: e.message, stack: e.stack }
+          : { name: "UnknownError", message: String(e) },
     });
   }
 }

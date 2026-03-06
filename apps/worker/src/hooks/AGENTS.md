@@ -1,45 +1,52 @@
 # Worker Hooks
 
-Client hook layer for API, auth, i18n, and PWA behaviors.
+## PURPOSE
 
-## Purpose
+- Client hook boundary for query/mutation orchestration and domain API access.
+- Keep components/pages free of transport/cache/store wiring.
 
-- Centralize React Query usage and cache invalidation policy
-- Hide fetch/store details behind stable hook interfaces
-- Keep route/components thin and domain-focused
+## INVENTORY
 
-## Files (14 modules)
+- `AGENTS.md` - hooks-layer contract.
+- `use-api-base.ts` - shared React Query + `apiFetch` + DTO exports.
+- `use-api.ts` - barrel export entry.
+- `use-auth.ts` - auth-store selector facade.
+- `use-actions-api.ts` - actions domain hooks.
+- `use-attendance-api.ts` - attendance domain hooks.
+- `use-education-api.ts` - education domain hooks.
+- `use-posts-api.ts` - posts list/detail/create/resubmit hooks.
+- `use-recommendations-api.ts` - recommendations hooks.
+- `use-system-api.ts` - system status/banner hooks.
+- `use-leaderboard.ts` - leaderboard hooks.
+- `use-push-subscription.ts` - push registration/permission hooks.
+- `use-install-prompt.ts` - install prompt lifecycle hooks.
+- `use-locale.ts` - locale selector hook.
+- `use-translation.ts` - translation helper hook.
+- `__tests__/` - hook contract tests.
 
-- `use-actions-api.ts` - corrective action queries/mutations
-- `use-api-base.ts` - shared exports (`useQuery`, `useMutation`, `apiFetch`, DTO types)
-- `use-api.ts` - barrel re-export surface (no logic)
-- `use-attendance-api.ts` - attendance status/checkin hooks, polling behavior
-- `use-auth.ts` - selector facade over `useAuthStore`
-- `use-education-api.ts` - education list/detail/quiz hooks
-- `use-install-prompt.ts` - install prompt lifecycle + dismissal behavior
-- `use-leaderboard.ts` - ranking/leaderboard queries
-- `use-locale.ts` - locale setter/getter adapter over i18n context
-- `use-posts-api.ts` - posts list/detail/create/resubmit hooks
-- `use-push-subscription.ts` - push subscription checks and registration
-- `use-recommendations-api.ts` - recommendation fetch hooks
-- `use-system-api.ts` - system banner/message hooks
-- `use-translation.ts` - translator factory hook from `useI18n`
+## CONVENTIONS
 
-## Conventions
+- Query keys use tuple arrays with domain prefixes.
+- Parameter-dependent queries keep `enabled` guards.
+- Mutations invalidate or clear related keys via `queryClient` APIs.
+- Offline-safe mutations pass `offlineQueue: true` into `apiFetch`.
+- `useAttendanceToday` keeps 5-minute `staleTime` + `refetchInterval`.
+- `useAuth` remains adapter-only; source of truth stays in Zustand store.
+- Locale persistence key stays `i18n-locale`.
+- Install prompt dismissal key stays `safetywallet-install-dismissed`.
 
-- Query keys use tuple form with domain prefixes (for example `["posts", siteId]`)
-- Mutations explicitly invalidate related keys using `queryClient.invalidateQueries`
-- Site/ID-dependent hooks keep `enabled` guards
-- Offline-safe mutations pass `offlineQueue: true` to `apiFetch`
-- `useAttendanceToday` uses 5-minute `staleTime` and `refetchInterval`
-- `useAuth` stays a thin store adapter, not a second auth state source
-- Locale persistence key is `i18n-locale` (`use-locale` and provider both sync it)
-- Install prompt dismissal key is `safetywallet-install-dismissed`
+## ANTI-PATTERNS
 
-## Anti-Patterns
+- No raw `fetch` in domain hooks when `apiFetch` fits.
+- No string-flattened cache keys for domain queries.
+- No dropping `enabled` guards for null/empty IDs.
+- No hook return `any` expansion.
+- No route/component-level duplication of domain hook logic.
 
-- Do not duplicate domain API calls inside route/component files
-- Do not flatten query keys into string constants
-- Do not replace `apiFetch` with raw `fetch` in domain hooks
-- Do not drop `enabled` gates for parameter-dependent queries
-- Do not widen hook return types to `any`
+## DRIFT GUARDS
+
+- Recount top-level hook modules when adding/removing files.
+- Verify query keys remain stable across hooks sharing invalidation boundaries.
+- Verify offline queue usage remains only where operation is replay-safe.
+- Verify `use-api.ts` barrel keeps parity with exported hook modules.
+- Keep hook docs scoped to hook behavior; lib/store internals stay in sibling AGENTS files.

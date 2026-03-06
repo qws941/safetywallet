@@ -1,43 +1,40 @@
 # AGENTS: .GITHUB
 
-## SCOPE DELTA
+## PURPOSE
 
-- Own top-level GitHub metadata/config files only.
-- Workflow-level inventory and coupling live in `.github/workflows/AGENTS.md`.
+- Governance for top-level GitHub repository metadata/configuration files.
+- Delegates workflow-level detail to `.github/workflows/AGENTS.md`.
 
-## TOP-LEVEL INVENTORY (CURRENT)
+## INVENTORY
 
-- `CODEOWNERS`
-- `dependabot.yml`
-- `labeler.yml`
-- `release-drafter.yml`
-- `FUNDING.yml`
-- `PULL_REQUEST_TEMPLATE.md`
-- `ISSUE_TEMPLATE/` (4 templates: `bug_report.yml`, `feature_request.yml`, `task.yml`, `config.yml`)
-- `workflows/` (23 workflow files + local `AGENTS.md`)
+- `AGENTS.md` — local `.github` governance.
+- `CODEOWNERS` — code ownership routing.
+- `dependabot.yml` — dependency update automation policy.
+- `FUNDING.yml` — sponsor metadata.
+- `labeler.yml` — PR path-based labels.
+- `PULL_REQUEST_TEMPLATE.md` — PR template contract.
+- `release-drafter.yml` — release notes drafting rules.
+- `ISSUE_TEMPLATE/` — 5 issue form files (`bug_report.yml`, `config.yml`, `feature_request.yml`, `issue-form.yml`, `task.yml`).
+- `workflows/` — workflow directory (24 files including local `AGENTS.md`).
 
-## CONFIG SNAPSHOT
+## CONVENTIONS
 
-- `dependabot.yml`
-  - ecosystems: `npm`, `github-actions`
-  - cadence: weekly
-  - grouped patch/minor updates
-- `labeler.yml`
-  - path-based labels (docs/ci/terraform/docker/python/typescript/shell/config)
-- `release-drafter.yml`
-  - release category mapping and changelog policy
+- Keep top-level metadata path-driven and secret-free.
+- Keep workflow internals documented only in child workflows AGENTS file.
+- Keep issue template inventory synchronized with actual directory contents.
+- Keep count-sensitive statements updated with add/remove operations.
+- Keep config filenames stable to match GitHub conventions.
 
-## MODULE RULES
+## ANTI-PATTERNS
 
-- Keep metadata/config secret-free and path-driven.
-- Keep top-level inventory synchronized with actual file tree.
-- Keep workflow details delegated to `.github/workflows/AGENTS.md`.
-- On workflow add/remove, update both workflow AGENTS and top-level counts.
-- Keep issue template inventory and counts synchronized with `ISSUE_TEMPLATE/` tree.
+- Stale counts for templates/workflows.
+- Workflow trigger/coupling details duplicated at this level.
+- Runtime artifacts or generated files committed under `.github/`.
+- File references in docs that do not match real tree names.
 
-## ANTI-DRIFT
+## DRIFT GUARDS
 
-- No stale template/workflow counts.
-- No duplication of repo-root conventions already covered in root `AGENTS.md`.
-- No runtime artifacts committed under `.github/`.
-- No top-level config references that disagree with actual file names.
+- Confirm `.github/` remains 9 top-level entries.
+- Confirm `ISSUE_TEMPLATE/` remains 5 files.
+- Confirm workflows count here matches child workflows AGENTS.
+- Confirm all inventory items exist after workflow/template churn.

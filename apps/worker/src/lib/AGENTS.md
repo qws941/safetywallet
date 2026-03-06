@@ -1,38 +1,42 @@
-# AGENTS: WORKER LIB
+# Worker Lib
 
 ## PURPOSE
 
-- Shared client utility boundary used by hooks, routes, and components.
-- Owns API transport + refresh, offline queue replay, image processing, and HTML sanitization.
-- Keeps reliability and security-sensitive behavior centralized in one layer.
+- Shared client utility boundary for transport, offline replay, media prep, and HTML sanitization.
+- Keep reliability/security-sensitive helper logic centralized under `src/lib`.
 
-## FILES/STRUCTURE
+## INVENTORY
 
-- `api.ts`: `apiFetch`, `flushOfflineQueue`, `getOfflineQueueLength`, `ApiError`, queue item types.
-- `image-compress.ts`: `compressImage`, `compressImages` with canvas/offscreen JPEG pipeline.
-- `sanitize-html.ts`: sanitize + render helpers for announcement HTML.
-- `utils.ts`: `cn` re-export from `@safetywallet/ui`.
-- `__tests__/api.test.ts`: transport/offline queue/refresh behavior.
-- `__tests__/image-compress.test.ts`: compression/size handling behavior.
-- `__tests__/sanitize-html.test.ts`: allowlist and sanitization behavior.
-- `__tests__/utils.test.ts`: utility bridge contract.
+- `AGENTS.md` - lib-layer contract.
+- `api.ts` - `apiFetch`, refresh mutex, offline queue/replay helpers, queue length helper, `ApiError`.
+- `image-compress.ts` - image compression + resize + EXIF strip pipeline.
+- `sanitize-html.ts` - sanitize + render helpers for announcement content.
+- `utils.ts` - shared `cn` utility re-export.
+- `__tests__/` - lib-layer contract tests.
 
 ## CONVENTIONS
 
-- API base resolves as `NEXT_PUBLIC_API_URL || "/api"`.
-- `apiFetch` injects `Authorization` header unless `skipAuth: true`.
-- 401 path uses a refresh mutex (`refreshPromise`) and retries once after refresh.
-- Offline queue key is localStorage-backed: `safetywallet_offline_queue`.
-- Legacy queue migration runs once from `safework2_offline_queue`.
-- Offline-safe calls use `offlineQueue: true` and receive queued sentinel payload.
-- Replay drops an item after 5 failed attempts (`retryCount < 5`).
-- `window` online event triggers `flushOfflineQueue()` automatically.
-- Image policy: reject over 10MB, max dimension 1920, JPEG conversion, EXIF stripped.
-- Sanitizer allowlist is strict (`p,strong,em,ul,li,blockquote,code,pre,a,img`) with safe URL checks.
+- Base URL: `NEXT_PUBLIC_API_URL || "/api"`.
+- `apiFetch` attaches bearer token unless `skipAuth: true`.
+- 401 retry path uses single refresh mutex (`refreshPromise`) then one retry.
+- Offline queue key: `safetywallet_offline_queue`; legacy key migration from `safework2_offline_queue`.
+- Offline enqueue path returns queued sentinel payload when `offlineQueue: true` and browser is offline.
+- Replay keeps failed items until `retryCount` reaches 5; online event triggers replay.
+- Compression policy: reject image >10MB; max dimension 1920; JPEG output.
+- Sanitizer tag allowlist: `p,strong,em,ul,li,blockquote,code,pre,a,img`; unsafe schemes blocked.
 
 ## ANTI-PATTERNS
 
-- Do not introduce parallel fetch wrappers for standard worker API calls.
-- Do not rename queue keys without migration logic in the same change.
-- Do not run sanitization helpers outside browser DOM contexts.
-- Do not bypass `compressImage`/`compressImages` for user-uploaded images.
+- No parallel transport abstraction beside `apiFetch`.
+- No queue-key rename without migration code and backward read path.
+- No raw announcement HTML render without sanitize/render helper.
+- No direct upload path that bypasses compression helpers.
+- No token refresh logic copied into hooks/components.
+
+## DRIFT GUARDS
+
+- Verify queue keys remain aligned with hooks/components docs and behavior.
+- Verify refresh path still updates Zustand tokens and logs out on terminal failure.
+- Verify sanitizer allowlist/safe URL rules on any HTML feature change.
+- Verify image limits (size/dimension/quality) when upload constraints change.
+- Recheck tests in `src/lib/__tests__/` when helper signatures move.

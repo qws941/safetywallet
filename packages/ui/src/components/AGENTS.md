@@ -1,35 +1,47 @@
 # Components
 
-Shared React UI component modules for `@safetywallet/ui`.
+## PURPOSE
 
-## Inventory (15 files)
+- File-level catalog for shared UI component modules.
+- Tracks module ownership under `@safetywallet/ui` component surface.
 
-- `alert-dialog.tsx` — `AlertDialog*` wrappers over Radix dialog primitives.
-- `avatar.tsx` — `Avatar`, `AvatarImage`, `AvatarFallback`.
+## INVENTORY
+
+- `AGENTS.md` — local component catalog rules.
+- `alert-dialog.tsx` — Radix alert dialog wrappers.
+- `avatar.tsx` — avatar primitive triplet.
 - `badge.tsx` — badge variants via CVA.
-- `button.tsx` — button variants and size/intent contract.
-- `card.tsx` — card layout primitives (`Card*`).
-- `dialog.tsx` — modal dialog compound components.
-- `error-boundary.tsx` — class-based `ErrorBoundary` fallback boundary.
+- `button.tsx` — button variants and sizes.
+- `card.tsx` — card layout primitive set.
+- `dialog.tsx` — modal dialog compound wrappers.
+- `error-boundary.tsx` — class error boundary fallback.
 - `input.tsx` — text input primitive.
-- `select.tsx` — Radix select with trigger/content/item wrappers.
-- `sheet.tsx` — side-sheet/drawer wrappers with variant support.
+- `select.tsx` — Radix select compound wrappers.
+- `sheet.tsx` — side panel wrappers + variants.
 - `skeleton.tsx` — loading placeholder primitive.
-- `switch.tsx` — toggle switch primitive.
-- `toast.tsx` — toast primitives, viewport, and style variants.
-- `toaster.tsx` — singleton toast host renderer.
-- `use-toast.tsx` — state/reducer hook and `toast` dispatch helper.
+- `switch.tsx` — Radix switch wrapper.
+- `toast.tsx` — toast primitives, viewport, style variants.
+- `toaster.tsx` — toast host renderer.
+- `use-toast.tsx` — toast state/reducer hook and dispatcher.
 
-## Implementation Patterns
+## CONVENTIONS
 
-- Radix wrapper modules: `alert-dialog`, `dialog`, `select`, `sheet`, `switch`, `toast`.
-- CVA variant modules: `badge`, `button`, `sheet`, `toast`.
-- Forward refs for DOM-facing primitives to preserve composability.
-- Class composition must route through `cn()`.
-- `TOAST_LIMIT` and `TOAST_REMOVE_DELAY` are behavior contracts for toast UX.
+- Keep component file names kebab-case aligned to exported symbol family.
+- Use `cn()` for all class composition.
+- Keep Radix wrappers thin; no business branching.
+- Keep CVA variant names stable to avoid caller churn.
+- Keep `TOAST_LIMIT` and `TOAST_REMOVE_DELAY` as explicit behavior contracts.
 
-## Drift Guards
+## ANTI-PATTERNS
 
-- Export changes here require synchronized update in `packages/ui/src/index.ts`.
-- No business-domain text, API wiring, or app store usage in shared primitives.
-- No hidden exports that bypass barrel-level API governance.
+- Cross-module side effects between unrelated component files.
+- App-specific state/store dependencies inside shared components.
+- Hidden exports not wired through package barrel.
+- Breaking prop shape changes without synchronized caller updates.
+
+## DRIFT GUARDS
+
+- Confirm directory remains 16 files (15 TS/TSX + `AGENTS.md`).
+- Confirm every module has matching export mapping in `packages/ui/src/index.ts`.
+- Confirm variant-bearing modules still use CVA where established.
+- Confirm no module introduces package-external runtime coupling.

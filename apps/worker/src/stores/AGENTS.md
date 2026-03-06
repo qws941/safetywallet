@@ -1,30 +1,38 @@
-# AGENTS: WORKER STORES
+# Worker Stores
 
 ## PURPOSE
 
-- Zustand state boundary for worker client runtime.
-- Current scope is a single auth/session store.
-- Guarantees hydration-aware route gating in static-export environments.
+- Zustand state contract for worker client runtime.
+- Current scope: auth/session state only.
 
-## FILES/STRUCTURE
+## INVENTORY
 
-- `auth.ts` - `useAuthStore`, `AuthState`, persistence setup, hydration flags.
-- `__tests__/auth.test.ts` - store contract tests for login/logout/persist behavior.
+- `AGENTS.md` - stores-layer contract.
+- `auth.ts` - `useAuthStore`, persist config, hydration flags, auth actions.
+- `__tests__/auth.test.ts` - store behavior regression tests.
 
 ## CONVENTIONS
 
-- Persist key is `safetywallet-auth`.
+- Persist key remains `safetywallet-auth`.
 - Persisted fields (`partialize`): `user`, `accessToken`, `refreshToken`, `isAuthenticated`, `currentSiteId`.
-- Runtime-only field: `_hasHydrated` (never persisted).
-- Action surface: `setUser`, `setTokens`, `setCurrentSite`, `login`, `logout`.
-- `logout` performs best-effort `POST /auth/logout` then clears client auth state.
-- Hydration state is set from both `persist.onFinishHydration` and `persist.hasHydrated()`.
-- Storage is browser-guarded via `createJSONStorage(() => localStorage)`.
+- Runtime-only field `_hasHydrated` stays non-persisted.
+- Action surface remains `setUser`, `setTokens`, `setCurrentSite`, `login`, `logout`.
+- `logout` performs best-effort `POST /auth/logout` using direct `fetch`, then clears store.
+- Hydration completion set through both `persist.onFinishHydration` and `persist.hasHydrated()` paths.
+- Storage adapter stays browser-guarded via `createJSONStorage(() => localStorage)`.
 
 ## ANTI-PATTERNS
 
-- Do not persist `_hasHydrated`.
-- Do not move `logout` onto `apiFetch`; refresh recursion risk.
-- Do not remove hydration completion callbacks.
-- Do not expand this store with unrelated feature state.
-- Do not bypass store actions by mutating auth state from outside `auth.ts`.
+- No persistence of `_hasHydrated`.
+- No `logout` migration to `apiFetch` (refresh recursion risk).
+- No direct outside mutation of auth state bypassing store actions.
+- No feature/domain state expansion into this store.
+- No removal of hydration callbacks used by route guards.
+
+## DRIFT GUARDS
+
+- Verify persist key/partialized fields when auth payload shape changes.
+- Verify route guards still rely on `_hasHydrated` contract.
+- Verify logout still clears tokens/user/current site even if network fails.
+- Keep store module count aligned: one runtime store + one test file.
+- Recheck this file whenever new store modules are introduced under `src/stores`.

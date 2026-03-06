@@ -15,6 +15,9 @@ import {
   AdminManualApprovalSchema,
 } from "../../../validators/schemas";
 import { AppContext, getTodayRange } from "../helpers";
+import { createLogger } from "../../../lib/logger";
+
+const logger = createLogger("admin/posts/review");
 
 export async function reviewPostHandler(c: AppContext) {
   const db = drizzle(c.env.DB);
@@ -233,7 +236,9 @@ export async function reviewPostHandler(c: AppContext) {
       targetId: postId,
       reason: `Action: ${body.action}, Points: ${pointsToAward}`,
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write post-review audit log", error);
+  }
 
   return success(c, { review });
 }
@@ -288,7 +293,9 @@ export async function manualApprovalHandler(c: AppContext) {
       targetId: approval.id,
       reason: `User: ${body.userId}, Site: ${body.siteId}`,
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write manual-approval audit log", error);
+  }
 
   return success(c, { approval }, 201);
 }

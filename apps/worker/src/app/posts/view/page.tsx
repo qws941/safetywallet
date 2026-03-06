@@ -18,7 +18,13 @@ import {
   useToast,
 } from "@safetywallet/ui";
 import { cn } from "@/lib/utils";
-import { Category, ReviewStatus, RejectReason } from "@safetywallet/types";
+import {
+  Category,
+  ReviewStatus,
+  RejectReason,
+  PostDto,
+  PostImageDto,
+} from "@safetywallet/types";
 import { AlertCircle, HelpCircle, Send } from "lucide-react";
 
 function LoadingState() {
@@ -46,7 +52,8 @@ function PostDetailContent() {
   const [showResubmitForm, setShowResubmitForm] = useState(false);
   const [supplementaryContent, setSupplementaryContent] = useState("");
 
-  const post = data?.data?.post;
+  const post =
+    data?.data?.post ?? (data as { post?: PostDto } | undefined)?.post;
 
   // API 응답에 reviews가 포함될 수 있으나 PostDto에 미정의
   interface ReviewEntry {
@@ -61,7 +68,8 @@ function PostDetailContent() {
   const postWithReviews = post as typeof post & { reviews?: ReviewEntry[] };
   const reviews = postWithReviews?.reviews;
   const latestReview = reviews?.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a: ReviewEntry, b: ReviewEntry) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   )[0];
   const isResubmittable =
     post?.reviewStatus === ReviewStatus.NEED_INFO ||
@@ -294,7 +302,7 @@ function PostDetailContent() {
           <Card>
             <CardContent className="p-0">
               <div className="grid grid-cols-2 gap-1">
-                {post.images.map((img, idx) => {
+                {post.images.map((img: PostImageDto, idx: number) => {
                   const src = img.fileUrl.startsWith("/r2/")
                     ? img.fileUrl
                     : `/r2/${img.fileUrl}`;

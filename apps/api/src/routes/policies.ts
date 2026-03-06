@@ -55,7 +55,27 @@ policies.get("/site/:siteId", authMiddleware, async (c) => {
   if (!siteId) {
     return error(c, "BAD_REQUEST", "Site ID is required", 400);
   }
+
   const db = drizzle(c.env.DB);
+
+  // Verify user has membership in the requested site
+  if (authContext.user.role !== "SUPER_ADMIN") {
+    const membership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, authContext.user.id),
+          eq(siteMemberships.siteId, siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
+
+    if (!membership) {
+      return error(c, "FORBIDDEN", "Site access denied", 403);
+    }
+  }
 
   const policyList = await db
     .select()

@@ -9,6 +9,9 @@ import {
   compareBeforeAfterImages,
   getGcpCredentials,
 } from "../../lib/gemini-ai";
+import { createLogger } from "../../lib/logger";
+
+const logger = createLogger("image-routes");
 
 const app = new Hono<{
   Bindings: Env;
@@ -163,7 +166,10 @@ app.post("/:id/images", async (c) => {
               .where(eq(actionImages.id, inserted.id));
           }
         } catch (e) {
-          console.error("Action image AI analysis failed:", e);
+          logger.error(
+            "Action image AI analysis failed:",
+            e instanceof Error ? e : undefined,
+          );
         }
       })(),
     );
@@ -220,9 +226,9 @@ app.post("/:id/images", async (c) => {
             })
             .where(eq(actions.id, actionId));
         } catch (e) {
-          console.error(
+          logger.error(
             "Action before/after comparison auto-trigger failed:",
-            e,
+            e instanceof Error ? e : undefined,
           );
         }
       })(),

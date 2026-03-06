@@ -52,7 +52,9 @@ router.get("/unlock-user/:phoneHash", requireAdmin, async (c) => {
       targetId: phoneHash,
       reason: "Admin unlock",
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write unlock-user audit log", error);
+  }
 
   return success(c, { unlocked: true });
 });
@@ -87,7 +89,9 @@ router.post(
         targetId: phoneHash,
         reason: "Admin unlock by phone",
       });
-    } catch {}
+    } catch (error) {
+      logger.error("Failed to write unlock-user-by-phone audit log", error);
+    }
 
     if (c.env.RATE_LIMITER) {
       const rateLimiterId = c.env.RATE_LIMITER.idFromName(`login:${phoneHash}`);
@@ -260,7 +264,9 @@ router.post("/users/:id/restriction/clear", requireAdmin, async (c) => {
       targetId: userId,
       reason: "False report restriction cleared",
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write restriction-clear audit log", error);
+  }
 
   return success(c, { user: updated });
 });
@@ -448,8 +454,9 @@ router.delete(
     try {
       await c.env.KV.delete(`user:${userId}`);
       await c.env.KV.delete(`session:${userId}`);
-    } catch {
+    } catch (error) {
       // non-blocking: KV cleanup is best-effort
+      logger.error("Failed to clean up KV entries during user purge", error);
     }
 
     await logAuditWithContext(
@@ -510,7 +517,9 @@ router.post("/users/:id/lock", requireAdmin, async (c) => {
       targetId: userId,
       reason: "Admin manual lock",
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write user-lock audit log", error);
+  }
 
   return success(c, { userId, locked: true });
 });
@@ -547,7 +556,39 @@ router.post("/users/:id/unlock", requireAdmin, async (c) => {
       targetId: userId,
       reason: "Admin manual unlock",
     });
-  } catch {}
+  } catch (error) {
+    logger.error("Failed to write user-unlock audit log", error);
+  }
 
   return success(c, { userId, locked: false });
 });
+// PATCH /users/:id/login-exempt
+router.patch(
+  "/users/:id/login-exempt",
+  requireAdmin,
+  zValidator("json", z.object({ loginExempt: z.boolean() })),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user: currentUser } = c.get("auth");
+    const targetId = c.req.param("id");
+    const { loginExempt } = c.req.valid("json");
+
+    await db.update(users).set({ loginExempt }).where(eq(users.id, targetId));
+
+    try {
+      await db.insert(auditLogs).values({
+        action: loginExempt
+          ? "USER_LOGIN_EXEMPT_ENABLED"
+          : "USER_LOGIN_EXEMPT_DISABLED",
+        actorId: currentUser.id,
+        targetType: "USER",
+        targetId: targetId,
+        reason: `Admin toggled login exempt: ${loginExempt}`,
+      });
+    } catch (error) {
+      logger.error("Failed to write login-exempt audit log", error);
+    }
+
+    return success(c, { updated: true, loginExempt });
+  },
+);

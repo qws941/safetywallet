@@ -114,6 +114,9 @@ export const users = sqliteTable(
     canExportData: integer("can_export_data", { mode: "boolean" })
       .default(false)
       .notNull(),
+    loginExempt: integer("login_exempt", { mode: "boolean" })
+      .default(false)
+      .notNull(),
     falseReportCount: integer("false_report_count").default(0).notNull(),
     restrictedUntil: integer("restricted_until", { mode: "timestamp" }),
     otpCode: text("otp_code"),

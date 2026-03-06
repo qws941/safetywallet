@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Bug,
   Award,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,6 +46,7 @@ const navItems = [
   { href: "/recommendations", label: "우수근로자 추천 내역", icon: Award },
   { href: "/settings", label: "설정", icon: Settings },
   { href: "/monitoring", label: "운영 모니터링", icon: Activity },
+  { href: "/ai-insights", label: "AI 인사이트", icon: Sparkles },
   { href: "/audit", label: "감사 로그", icon: ScrollText },
   { href: "/issues", label: "이슈 관리", icon: Bug },
 ];

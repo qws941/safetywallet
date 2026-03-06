@@ -1,53 +1,46 @@
 # AGENTS: .GITHUB/WORKFLOWS
 
-## SCOPE DELTA
+## PURPOSE
 
-- Own workflow inventory, trigger/coupling notes, and workflow-specific drift guards.
-- Parent `.github/AGENTS.md` owns top-level `.github` config inventory.
+- Workflow-level inventory, coupling notes, and CI automation drift controls.
+- Child scope of `.github`; no top-level metadata duplication.
 
-## WORKFLOW INVENTORY (23)
+## INVENTORY
 
-- `auto-approve-runs.yml` - Auto-approve gated runs
-- `auto-merge.yml` - Auto-merge orchestration
-- `branch-cleanup.yml` - Branch cleanup on PR close
-- `ci-notify-failure.yml` - CI failure notification fan-out
-- `ci.yml` - Primary monorepo CI gate
-- `codex-approve-runs.yml` - Codex run approval workflow
-- `codex-auto-issue.yml` - Codex issue invocation on label
-- `codex-issue-timeout.yml` - Codex issue timeout handling
-- `codex-pr-normalize.yml` - Codex PR normalization
-- `codex-pr-review.yml` - Codex PR review trigger
-- `codex-triage.yml` - Codex issue triage
-- `commitlint.yml` - Conventional commit/PR title checks
-- `dependabot-auto-fix.yml` - Dependabot to Codex automation
-- `deploy-monitoring.yml` - Post-CI deployment health + incident lifecycle
-- `issue-label.yml` - Issue form-driven label automation
-- `issue-lifecycle.yml` - Issue lifecycle automation
-- `labeler.yml` - Path-based PR labeling
-- `lock-threads.yml` - Auto-lock closed threads
-- `pr-size.yml` - PR size labeling
-- `release-drafter.yml` - Release notes drafting
-- `ssl-fix.yml` - Manual SSL diagnosis/remediation helper
-- `stale.yml` - Stale issue/PR cleanup
-- `welcome.yml` - First-time contributor welcome
+- `AGENTS.md` — workflow governance file.
+- `ci.yml` — primary CI verification pipeline.
+- `ci-notify-failure.yml` — CI failure fan-out notifications.
+- `deploy-monitoring.yml` — post-CI deployment monitoring lifecycle.
+- `commitlint.yml` — commit/PR title lint policy.
+- `labeler.yml` — PR path label sync.
+- `issue-label.yml` — issue form label automation.
+- `issue-lifecycle.yml` — issue state automation.
+- `release-drafter.yml` — release notes draft automation.
+- `stale.yml` / `lock-threads.yml` / `welcome.yml` — community hygiene automation.
+- `pr-size.yml` / `branch-cleanup.yml` / `auto-merge.yml` / `auto-approve-runs.yml` — PR lifecycle automation.
+- `dependabot-auto-fix.yml` — Dependabot remediation automation.
+- `ssl-fix.yml` — manual SSL remediation helper.
+- `codex-approve-runs.yml` / `codex-auto-issue.yml` / `codex-issue-timeout.yml` / `codex-pr-normalize.yml` / `codex-pr-review.yml` / `codex-triage.yml` — Codex automation set.
+- Workflow file count: 23 YAML workflows + this `AGENTS.md` = 24 files.
 
-## FLOW LINKS
+## CONVENTIONS
 
-- `ci.yml` is the primary verify pipeline for lint/typecheck/test/build/guards.
-- `ci-notify-failure.yml` and `deploy-monitoring.yml` are downstream `workflow_run` consumers of CI results.
-- `codex-*` workflows coordinate issue triage, PR review, and timeout/normalization automation.
-- `issue-label.yml` and `labeler.yml` split issue-vs-PR labeling responsibilities.
-- Deploy remains Git-ref driven; no direct manual deploy workflow is the source of truth.
+- SHA-pin every action in `uses:` with version comment.
+- Keep workflow `name:` stable when used by `workflow_run`/status checks.
+- Keep `ci.yml` as upstream gate for notify/monitoring workflows.
+- Keep permissions scoped minimally per workflow.
+- Keep YAML file names kebab-case and purpose-specific.
 
-## MODULE RULES
+## ANTI-PATTERNS
 
-- SHA-pin all action `uses:` entries; avoid mutable tags.
-- Keep workflow `name:` values stable when downstream automation depends on them.
-- Preserve `workflow_run` coupling between CI, notifications, and monitoring.
-- Keep workflow behavior repository-accurate (remove stale references quickly).
+- Mutable action tags (`@v*`, `@main`) without SHA pinning.
+- Renaming workflow `name:` fields without downstream update.
+- Stale workflow inventory after add/remove.
+- Privileged default token scopes when narrower scopes suffice.
 
-## ANTI-DRIFT
+## DRIFT GUARDS
 
-- No stale workflow names/counts in inventory.
-- No references to removed workflows.
-- No mutable action tags or unscoped token permissions.
+- Confirm directory remains 24 entries with 23 `.yml` workflows.
+- Confirm `ci-notify-failure.yml` and `deploy-monitoring.yml` still align to CI trigger contracts.
+- Confirm Codex workflow set list matches on-disk filenames.
+- Confirm parent `.github/AGENTS.md` counts match this file.

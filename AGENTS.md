@@ -39,16 +39,6 @@ Field workers use a mobile PWA to report hazards, log attendance, and earn safet
 └── playwright.config.ts     # 6 Playwright projects
 ```
 
-## HOSTING MODEL
-
-A single Cloudflare Worker handles all traffic via hostname-based routing:
-
-- `safetywallet.jclee.me/api/*` → Hono API routes.
-- `safetywallet.jclee.me/r2/*` → R2 media files (user-uploaded images and videos).
-- `safetywallet.jclee.me/*` → Worker PWA static assets from Workers Static Assets (`ASSETS`).
-- `admin.safetywallet.jclee.me/*` → Admin SPA static assets from Workers Static Assets (`ASSETS` at `/admin/*` prefix).
-- Static frontends are built with `next export` and aggregated into `dist/` via `build:static`.
-
 ## AUTHENTICATION & AUTHORIZATION
 
 - **Auth flow**: Login → JWT issued with KST same-day midnight expiry → stored in client Zustand.
@@ -140,16 +130,6 @@ A single Cloudflare Worker handles all traffic via hostname-based routing:
 - Never create long-lived feature branches — trunk-based development.
 - Never hardcode UI strings — use i18n keys from `packages/types/src/i18n/`.
 
-## UNIQUE STYLES
-
-- Single CF Worker serves API + 2 static frontends via hostname routing and `ASSETS` binding.
-- Offline-first worker PWA with IndexedDB queue (`safetywallet_offline_queue`) and sync-on-reconnect.
-- Workers AI integration for face blur and content analysis on uploaded media.
-- Perceptual hash dedup on R2 image uploads.
-- FAS external database integration via Hyperdrive (MariaDB → PostgreSQL wire protocol).
-- Korean-primary platform: KST timezone logic throughout auth and attendance.
-- Notification pipeline: Queue → consumer → DLQ fallback pattern.
-
 ## COMMANDS
 
 ```bash
@@ -167,13 +147,6 @@ npm run git:preflight      # Pre-push verification (Go script)
 
 ## Review guidelines
 
-- Enforce conventional commit format in PR titles: `type(scope): summary`.
-- All GitHub Actions must be SHA-pinned with `# vN` version comment.
-- Never approve PRs that add `as any`, `@ts-ignore`, `@ts-expect-error`, or empty `catch {}`.
-- Never approve PRs that hardcode IPs, secrets, or credentials.
-- PR size ~200 LOC max. Flag PRs exceeding 400 LOC.
-- Squash merge only — flag merge commits or rebase merges.
-- Verify i18n: no hardcoded Korean/English UI strings — use translation keys.
 - Verify auth changes maintain triple-layer validation and KST expiry logic.
 - Verify D1 schema changes have corresponding migration files.
 - For workflow changes: verify SHA-pinned actions, correct permissions scoping.
@@ -182,7 +155,5 @@ npm run git:preflight      # Pre-push verification (Go script)
 
 - `ARCHITECTURE.md` contains the same architecture details as above — kept in sync as secondary reference.
 - `CODE_STYLE.md` contains naming conventions, import patterns, and testing standards.
-- Subdirectory `AGENTS.md` files exist throughout the monorepo for module-level context.
 - FAS integration env vars (`FAS_DB_NAME`, `FAS_SITE_CD`, `FAS_SITE_NAME`) are in `wrangler.toml` vars.
 - `docs/cloudflare-operations.md` references `apps/api-worker` — current path is `apps/api`.
-- i18n is worker-only with custom runtime (not next-intl): ko, en, vi, zh locales.

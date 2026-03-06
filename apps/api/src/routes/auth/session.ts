@@ -97,7 +97,11 @@ sessionRoute.post(
 
     const requireAttendanceOnRefresh =
       c.env.REQUIRE_ATTENDANCE_FOR_LOGIN !== "false";
-    if (requireAttendanceOnRefresh && user.role === "WORKER") {
+    if (
+      requireAttendanceOnRefresh &&
+      user.role === "WORKER" &&
+      !user.loginExempt
+    ) {
       let attended = false;
 
       if (c.env.FAS_HYPERDRIVE && user.externalWorkerId) {

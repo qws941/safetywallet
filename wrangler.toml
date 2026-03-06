@@ -12,7 +12,7 @@ routes = [
 
 [vars]
 ENVIRONMENT = "production"
-REQUIRE_ATTENDANCE_FOR_LOGIN = "false"
+REQUIRE_ATTENDANCE_FOR_LOGIN = "true"
 REQUIRE_ATTENDANCE_FOR_POST = "false"
 ELASTICSEARCH_INDEX_PREFIX = "safetywallet-logs"
 ALLOWED_ORIGINS = "https://safetywallet.jclee.me,https://admin.safetywallet.jclee.me"

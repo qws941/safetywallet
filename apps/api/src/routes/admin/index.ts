@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../types";
 import { authMiddleware } from "../../middleware/auth";
+import { requireRole } from "../../middleware/permission";
 import usersApp from "./users";
 import exportApp from "./export";
 import fasApp from "./fas";
@@ -23,8 +24,9 @@ import educationApp from "./education";
 
 const app = new Hono<{ Bindings: Env }>();
 
-// Auth middleware for all admin routes
+// Auth + role middleware for all admin routes
 app.use("*", authMiddleware);
+app.use("*", requireRole("SITE_ADMIN", "SUPER_ADMIN"));
 
 // Mount sub-routers
 app.route("/", usersApp);
