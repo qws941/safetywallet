@@ -22,6 +22,7 @@ import { PostContentCard } from "./components/post-content-card";
 import { AssignmentForm } from "./components/assignment-form";
 import { ReviewHistoryCard } from "./components/review-history-card";
 import { MetadataCard } from "./components/metadata-card";
+import { AiAnalysisCard } from "./components/ai-analysis-card";
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -105,10 +106,12 @@ export default function PostDetailPage() {
           canReview={canReview}
           onRefresh={() => refetch()}
         />
+        <AiAnalysisCard postId={postId} />
         {canReview && (
           <AssignmentForm postId={postId} onRefresh={() => refetch()} />
         )}
         <ReviewHistoryCard reviews={post.reviews} />
+        <AiAnalysisCard postId={postId} />
         {post.metadata && <MetadataCard metadata={post.metadata} />}
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Bot, Pencil, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import { useEducationCompletions } from "@/hooks/use-education-completions";
 import { DataTable, type Column } from "@/components/data-table";
 import { getContentTypeLabel, getErrorMessage } from "../../education-helpers";
 import type { EducationContentItem } from "../education-types";
+import { ContentAiAnalysis } from "./content-ai-analysis";
 
 interface Props {
   isLoading: boolean;
@@ -42,6 +43,10 @@ export function ContentList({
   const [deleteContentId, setDeleteContentId] = useState<string | null>(null);
   const [selectedContent, setSelectedContent] =
     useState<EducationContentItem | null>(null);
+  const [aiContentId, setAiContentId] = useState<string | null>(null);
+  const aiContent = aiContentId
+    ? contents.find((c) => c.id === aiContentId)
+    : null;
   const deleteMutation = useDeleteEducationContent();
   const { data: completionsData, isLoading: completionsLoading } =
     useEducationCompletions(selectedContent?.id);
@@ -148,6 +153,23 @@ export function ContentList({
       ),
     },
     {
+      key: "_ai",
+      header: "AI",
+      render: (item) =>
+        item.contentType !== "VIDEO" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAiContentId(item.id);
+            }}
+          >
+            <Bot className="h-4 w-4" />
+          </Button>
+        ) : null,
+    },
+    {
       key: "_actions",
       header: "관리",
       render: (item) => (
@@ -233,6 +255,26 @@ export function ContentList({
                 </tbody>
               </table>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!aiContent}
+        onOpenChange={(open) => !open && setAiContentId(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{aiContent?.title} - AI 분석</DialogTitle>
+            <DialogDescription>
+              AI가 교육 콘텐츠를 분석한 결과입니다.
+            </DialogDescription>
+          </DialogHeader>
+          {aiContent && (
+            <ContentAiAnalysis
+              contentId={aiContent.id}
+              contentType={aiContent.contentType}
+            />
           )}
         </DialogContent>
       </Dialog>

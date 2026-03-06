@@ -1169,6 +1169,8 @@ export const educationContents = sqliteTable(
     externalId: text("external_id"),
     sourceUrl: text("source_url"),
     viewCount: integer("view_count").notNull().default(0),
+    aiAnalysis: text("ai_analysis"),
+    aiAnalyzedAt: text("ai_analyzed_at"),
   },
   (table) => ({
     siteIdx: index("education_contents_site_idx").on(table.siteId),
@@ -1614,5 +1616,44 @@ export const apiMetrics = sqliteTable(
       "api_metrics_bucket_endpoint_method_idx",
     ).on(table.bucket, table.endpoint, table.method),
     bucketIdx: index("api_metrics_bucket_idx").on(table.bucket),
+  }),
+);
+
+// ============================================================================
+// IMAGE AI ANALYSIS — Gemini multimodal hazard analysis results
+// ============================================================================
+
+export const imageAiAnalysis = sqliteTable(
+  "image_ai_analysis",
+  {
+    id: text("id").primaryKey(),
+    postImageId: text("post_image_id")
+      .notNull()
+      .references(() => postImages.id),
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id),
+    hazardType: text("hazard_type").notNull(),
+    severity: text("severity").notNull(),
+    description: text("description").notNull(),
+    recommendations: text("recommendations", { mode: "json" }).$type<
+      string[]
+    >(),
+    detectedObjects: text("detected_objects", { mode: "json" }).$type<
+      string[]
+    >(),
+    confidence: integer("confidence"), // stored as 0-100 integer
+    relatedRegulations: text("related_regulations", { mode: "json" }).$type<
+      string[]
+    >(),
+    rawResponse: text("raw_response", { mode: "json" }),
+    modelVersion: text("model_version").notNull().default("gemini-2.0-flash"),
+    analyzedAt: text("analyzed_at").notNull(),
+  },
+  (table) => ({
+    postImageIdIdx: uniqueIndex("image_ai_analysis_post_image_id_idx").on(
+      table.postImageId,
+    ),
+    postIdIdx: index("image_ai_analysis_post_id_idx").on(table.postId),
   }),
 );

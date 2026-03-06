@@ -7,6 +7,7 @@ import { CreateCourseSchema } from "../../validators/schemas";
 import { educationContents, siteMemberships } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
+import { analyzeEducationContent } from "../../lib/gemini-ai";
 import type { AppType, CreateContentBody } from "./helpers";
 
 const app = new Hono<AppType>();
@@ -94,6 +95,60 @@ app.post("/", zValidator("json", CreateCourseSchema), async (c) => {
       contentType: content.contentType,
     },
   );
+
+  // Fire-and-forget AI analysis for non-VIDEO content
+  if (content.contentType !== "VIDEO" && c.env.GEMINI_API_KEY) {
+    const analyzePromise = (async () => {
+      try {
+        let imageData: ArrayBuffer | undefined;
+        let mimeType: string | undefined;
+        let textContent: string | undefined;
+
+        if (content.contentType === "IMAGE" && content.contentUrl) {
+          const obj = await c.env.R2.get(content.contentUrl);
+          if (obj) {
+            imageData = await obj.arrayBuffer();
+            mimeType = obj.httpMetadata?.contentType ?? "image/jpeg";
+          }
+        } else if (content.contentType === "DOCUMENT" && content.contentUrl) {
+          const obj = await c.env.R2.get(content.contentUrl);
+          if (obj) {
+            imageData = await obj.arrayBuffer();
+            mimeType = obj.httpMetadata?.contentType ?? "application/pdf";
+          }
+        } else if (content.contentType === "TEXT") {
+          textContent = [content.title, content.description]
+            .filter(Boolean)
+            .join("\n\n");
+        }
+
+        const result = await analyzeEducationContent(
+          c.env.GEMINI_API_KEY!,
+          content.contentType as "IMAGE" | "TEXT" | "DOCUMENT",
+          { imageData, mimeType, textContent },
+        );
+
+        if (result) {
+          const bgDb = drizzle(c.env.DB);
+          await bgDb
+            .update(educationContents)
+            .set({
+              aiAnalysis: JSON.stringify(result),
+              aiAnalyzedAt: new Date().toISOString(),
+            })
+            .where(eq(educationContents.id, content.id))
+            .run();
+        }
+      } catch {
+        // AI analysis is best-effort; silently ignore failures
+      }
+    })();
+    try {
+      c.executionCtx.waitUntil(analyzePromise);
+    } catch {
+      void analyzePromise;
+    }
+  }
 
   return success(c, content, 201);
 });
@@ -363,5 +418,137 @@ app.delete(
     return success(c, { deleted: true });
   },
 );
+
+// Manual AI analysis trigger
+app.post("/:id/analyze", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  if (!c.env.GEMINI_API_KEY) {
+    return error(c, "AI_NOT_CONFIGURED", "Gemini API key not configured", 503);
+  }
+
+  const content = await db
+    .select()
+    .from(educationContents)
+    .where(eq(educationContents.id, id))
+    .get();
+
+  if (!content) {
+    return error(c, "CONTENT_NOT_FOUND", "Education content not found", 404);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, content.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  if (content.contentType === "VIDEO") {
+    return error(
+      c,
+      "VIDEO_NOT_SUPPORTED",
+      "VIDEO 콘텐츠는 AI 분석을 지원하지 않습니다",
+      400,
+    );
+  }
+
+  let imageData: ArrayBuffer | undefined;
+  let mimeType: string | undefined;
+  let textContent: string | undefined;
+
+  if (content.contentType === "IMAGE" && content.contentUrl) {
+    const obj = await c.env.R2.get(content.contentUrl);
+    if (obj) {
+      imageData = await obj.arrayBuffer();
+      mimeType = obj.httpMetadata?.contentType ?? "image/jpeg";
+    }
+  } else if (content.contentType === "DOCUMENT" && content.contentUrl) {
+    const obj = await c.env.R2.get(content.contentUrl);
+    if (obj) {
+      imageData = await obj.arrayBuffer();
+      mimeType = obj.httpMetadata?.contentType ?? "application/pdf";
+    }
+  } else if (content.contentType === "TEXT") {
+    textContent = [content.title, content.description]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
+  const result = await analyzeEducationContent(
+    c.env.GEMINI_API_KEY,
+    content.contentType as "IMAGE" | "TEXT" | "DOCUMENT",
+    { imageData, mimeType, textContent },
+  );
+
+  if (!result) {
+    return error(c, "AI_ANALYSIS_FAILED", "AI 분석에 실패했습니다", 500);
+  }
+
+  const analyzedAt = new Date().toISOString();
+
+  await db
+    .update(educationContents)
+    .set({
+      aiAnalysis: JSON.stringify(result),
+      aiAnalyzedAt: analyzedAt,
+    })
+    .where(eq(educationContents.id, id))
+    .run();
+
+  return success(c, { analysis: result, analyzedAt });
+});
+
+// Get AI analysis result
+app.get("/:id/ai-analysis", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const content = await db
+    .select()
+    .from(educationContents)
+    .where(eq(educationContents.id, id))
+    .get();
+
+  if (!content) {
+    return error(c, "CONTENT_NOT_FOUND", "Education content not found", 404);
+  }
+
+  const membership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, content.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .get();
+  if (!membership && user.role !== "SUPER_ADMIN") {
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
+  }
+
+  if (!content.aiAnalysis) {
+    return success(c, { analysis: null, analyzedAt: null });
+  }
+
+  return success(c, {
+    analysis: JSON.parse(content.aiAnalysis),
+    analyzedAt: content.aiAnalyzedAt,
+  });
+});
 
 export default app;

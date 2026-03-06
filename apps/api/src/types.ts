@@ -59,6 +59,8 @@ export interface Env {
   VAPID_SUBJECT?: string;
   // GitHub API token for issue management
   GITHUB_TOKEN?: string;
+  // Gemini API for advanced hazard image analysis
+  GEMINI_API_KEY?: string;
 }
 
 export interface User {

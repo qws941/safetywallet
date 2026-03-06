@@ -16,6 +16,7 @@ import {
   filterPersonDetections,
 } from "../lib/workers-ai";
 import { blurPersonRegions } from "../lib/face-blur";
+import { analyzeHazardImage } from "../lib/gemini-ai";
 
 const app = new Hono<{
   Bindings: Env;
@@ -281,6 +282,46 @@ app.post("/upload", uploadRateLimit, async (c) => {
         });
       if (c.executionCtx?.waitUntil) {
         c.executionCtx.waitUntil(aiPromise);
+      }
+    }
+
+    // Gemini multimodal hazard analysis (best-effort, background)
+    if (c.env.GEMINI_API_KEY) {
+      const geminiPromise = analyzeHazardImage(
+        c.env.GEMINI_API_KEY,
+        publicBuffer,
+        file.type,
+      )
+        .then(async (result) => {
+          if (result) {
+            // Store full analysis as separate R2 object
+            await c.env.R2.put(
+              `ai-analysis/${filename}.json`,
+              JSON.stringify(result),
+              {
+                httpMetadata: { contentType: "application/json" },
+              },
+            );
+            // Store summary in image's R2 customMetadata
+            const obj = await c.env.R2.head(filename);
+            if (obj) {
+              await c.env.R2.put(filename, publicBuffer, {
+                httpMetadata: { contentType: file.type },
+                customMetadata: {
+                  ...obj.customMetadata,
+                  "ai-gemini-hazard-type": result.hazardType,
+                  "ai-gemini-severity": result.severity,
+                  "ai-gemini-confidence": String(result.confidence),
+                },
+              });
+            }
+          }
+        })
+        .catch(() => {
+          // Gemini analysis is best-effort; silently ignore failures
+        });
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(geminiPromise);
       }
     }
 

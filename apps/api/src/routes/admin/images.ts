@@ -3,6 +3,9 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
 import { requireAdmin } from "./helpers";
+import { requireManagerOrAdmin } from "./helpers";
+import { eq } from "drizzle-orm";
+import { postImages } from "../../db/schema";
 import { log } from "../../lib/observability";
 import { logAuditWithContext } from "../../lib/audit";
 
@@ -127,6 +130,80 @@ app.get("/list", requireAdmin, async (c) => {
     images,
     truncated: listed.truncated,
     cursor: listed.truncated ? listed.cursor : undefined,
+  });
+});
+
+/**
+ * GET /admin/images/ai-analysis/:key
+ *
+ * Retrieve Gemini AI hazard analysis result for a specific image.
+ * The analysis JSON is stored in R2 at `ai-analysis/{key}.json`
+ * during the image upload pipeline.
+ */
+app.get("/ai-analysis/:key", requireManagerOrAdmin, async (c) => {
+  const key = c.req.param("key");
+
+  if (!key) {
+    return error(c, "MISSING_KEY", "Image key is required", 400);
+  }
+
+  const analysisKey = `ai-analysis/${key}.json`;
+  const object = await c.env.R2.get(analysisKey);
+
+  if (!object) {
+    return error(c, "NOT_FOUND", "AI analysis not found for this image", 404);
+  }
+
+  const analysis = await object.json();
+
+  return success(c, { analysis });
+});
+
+/**
+ * GET /admin/images/ai-analysis-by-post/:postId
+ *
+ * Retrieve Gemini AI hazard analysis results for all images of a post.
+ * Looks up image filenames from D1 postImages table, then fetches
+ * corresponding AI analysis JSON from R2.
+ */
+app.get("/ai-analysis-by-post/:postId", requireManagerOrAdmin, async (c) => {
+  const postId = c.req.param("postId");
+
+  if (!postId) {
+    return error(c, "MISSING_POST_ID", "Post ID is required", 400);
+  }
+
+  const db = drizzle(c.env.DB);
+  const images = await db
+    .select({ fileUrl: postImages.fileUrl })
+    .from(postImages)
+    .where(eq(postImages.postId, postId));
+
+  if (images.length === 0) {
+    return success(c, { analyses: [] });
+  }
+
+  const analyses = await Promise.all(
+    images.map(async (img) => {
+      // Extract filename from fileUrl (last path segment)
+      const filename = img.fileUrl.split("/").pop();
+      if (!filename) return null;
+
+      const analysisKey = `ai-analysis/${filename}.json`;
+      const object = await c.env.R2.get(analysisKey);
+      if (!object) return null;
+
+      const analysis = await object.json();
+      return {
+        imageUrl: img.fileUrl,
+        filename,
+        analysis,
+      };
+    }),
+  );
+
+  return success(c, {
+    analyses: analyses.filter(Boolean),
   });
 });
 

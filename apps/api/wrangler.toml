@@ -28,6 +28,7 @@ FAS_SITE_NAME = "송도세브란스"
 #   ALERT_WEBHOOK_URL   — Webhook URL for operational alerts (cron failures, FAS down)
 #   FAS_SYNC_SECRET     — Bearer secret for POST /fas-sync admin endpoint
 #   ELASTICSEARCH_URL   — Elasticsearch endpoint (production only)
+#   GEMINI_API_KEY      — Gemini API key for AI hazard image analysis
 
 # D1 Database
 [[d1_databases]]

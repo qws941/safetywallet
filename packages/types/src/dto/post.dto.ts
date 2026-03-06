@@ -52,6 +52,20 @@ export interface PostImageDto {
   fileUrl: string;
   mediaType: string;
   thumbnailUrl: string | null;
+  aiAnalysis?: AiAnalysisDto | null;
+}
+
+export interface AiAnalysisDto {
+  id: string;
+  hazardType: string;
+  severity: string;
+  description: string;
+  recommendations: string[];
+  detectedObjects: string[];
+  confidence: number;
+  relatedRegulations: string[];
+  modelVersion: string;
+  analyzedAt: string;
 }
 
 export interface PostListDto {

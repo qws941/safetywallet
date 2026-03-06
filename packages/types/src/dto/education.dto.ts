@@ -265,3 +265,35 @@ export interface TbmRecordFilterDto {
   page?: number;
   limit?: number;
 }
+
+// Education AI Analysis
+export interface EducationAiAnalysisResult {
+  category:
+    | "safety_training"
+    | "equipment_operation"
+    | "emergency_response"
+    | "hazard_awareness"
+    | "ppe_usage"
+    | "regulatory_compliance"
+    | "health_wellness"
+    | "general_safety";
+  qualityLevel:
+    | "excellent"
+    | "good"
+    | "adequate"
+    | "needs_improvement"
+    | "poor";
+  summary: string;
+  keyLearningPoints: string[];
+  safetyRelevance: string;
+  relatedStatutoryTraining: string[];
+  improvements: string[];
+  targetAudience: string;
+  confidence: number;
+  modelVersion: string;
+}
+
+export interface EducationAiAnalysisDto {
+  analysis: EducationAiAnalysisResult | null;
+  analyzedAt: string | null;
+}
