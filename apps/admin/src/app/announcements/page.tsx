@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Pin, Edit2, Trash2, Clock } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Plus, Pin, Edit2, Trash2, Clock, Bot } from "lucide-react";
 import {
   Button,
   Card,
@@ -24,6 +24,8 @@ import {
   useUpdateAnnouncement,
   useDeleteAnnouncement,
 } from "@/hooks/use-api";
+import { useGenerateAnnouncementDraft } from "@/hooks/use-announcement-ai-draft";
+import { useAuthStore } from "@/stores/auth";
 
 interface Announcement {
   id: string;
@@ -35,11 +37,73 @@ interface Announcement {
   createdAt: string;
 }
 
+function renderAnnouncementHtml(content: string): ReactNode {
+  if (typeof DOMParser === "undefined") {
+    return content;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, "text/html");
+
+  const renderNode = (node: ChildNode, key: string): ReactNode => {
+    if (node.nodeType === 3) {
+      return node.textContent;
+    }
+
+    if (node.nodeType !== 1) {
+      return null;
+    }
+
+    const element = node as HTMLElement;
+    const children = Array.from(element.childNodes).map((child, index) =>
+      renderNode(child, `${key}-${index}`),
+    );
+
+    switch (element.tagName.toLowerCase()) {
+      case "h3":
+        return (
+          <h3
+            key={key}
+            className="mb-2 text-base font-semibold text-foreground"
+          >
+            {children}
+          </h3>
+        );
+      case "p":
+        return (
+          <p key={key} className="mb-2 leading-6">
+            {children}
+          </p>
+        );
+      case "ul":
+        return (
+          <ul key={key} className="mb-2 list-inside list-disc space-y-1">
+            {children}
+          </ul>
+        );
+      case "li":
+        return <li key={key}>{children}</li>;
+      case "strong":
+        return <strong key={key}>{children}</strong>;
+      case "br":
+        return <br key={key} />;
+      default:
+        return <span key={key}>{children}</span>;
+    }
+  };
+
+  return Array.from(doc.body.childNodes).map((node, index) =>
+    renderNode(node, `node-${index}`),
+  );
+}
+
 export default function AnnouncementsPage() {
   const { data: announcements = [], isLoading } = useAdminAnnouncements();
   const createMutation = useCreateAnnouncement();
   const updateMutation = useUpdateAnnouncement();
   const deleteMutation = useDeleteAnnouncement();
+  const generateDraft = useGenerateAnnouncementDraft();
+  const currentSiteId = useAuthStore((state) => state.currentSiteId);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -47,6 +111,8 @@ export default function AnnouncementsPage() {
   const [content, setContent] = useState("");
   const [isPinned, setIsPinned] = useState(false);
   const [scheduledAt, setScheduledAt] = useState<string>("");
+  const [aiKeywords, setAiKeywords] = useState("");
+  const [showAiInput, setShowAiInput] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const resetForm = () => {
@@ -56,6 +122,33 @@ export default function AnnouncementsPage() {
     setContent("");
     setIsPinned(false);
     setScheduledAt("");
+    setAiKeywords("");
+    setShowAiInput(false);
+  };
+
+  const handleGenerateDraft = async () => {
+    if (!aiKeywords.trim() || !currentSiteId) {
+      return;
+    }
+
+    try {
+      const result = await generateDraft.mutateAsync({
+        keywords: aiKeywords,
+        siteId: currentSiteId,
+      });
+
+      setTitle(result.title);
+      setContent(result.content);
+      setShowAiInput(false);
+      setAiKeywords("");
+      toast({ description: "AI 초안이 생성되었습니다." });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        description:
+          err instanceof Error ? err.message : "초안 생성에 실패했습니다.",
+      });
+    }
   };
 
   const handleSubmit = () => {
@@ -139,10 +232,46 @@ export default function AnnouncementsPage() {
 
       {showForm && (
         <Card className="p-6">
-          <h2 className="mb-4 text-lg font-semibold">
-            {editingId ? "공지 수정" : "새 공지 작성"}
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
+              {editingId ? "공지 수정" : "새 공지 작성"}
+            </h2>
+            {!editingId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setShowAiInput((prev) => !prev)}
+                disabled={generateDraft.isPending}
+              >
+                <Bot className="h-4 w-4" />
+                AI 초안 생성
+              </Button>
+            )}
+          </div>
           <div className="space-y-4">
+            {showAiInput && !editingId && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="키워드 입력 (예: 하절기 안전, 폭염 대비, 작업 중지)"
+                  value={aiKeywords}
+                  onChange={(e) => setAiKeywords(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleGenerateDraft();
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  disabled={generateDraft.isPending || !aiKeywords.trim()}
+                  onClick={() => void handleGenerateDraft()}
+                >
+                  {generateDraft.isPending ? "생성 중..." : "생성"}
+                </Button>
+              </div>
+            )}
             <Input
               placeholder="제목"
               value={title}
@@ -163,10 +292,14 @@ export default function AnnouncementsPage() {
               <span className="text-sm">상단 고정</span>
             </label>
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label
+                htmlFor="announcement-scheduled-at"
+                className="mb-1 block text-sm font-medium"
+              >
                 예약 발행
               </label>
               <input
+                id="announcement-scheduled-at"
                 type="datetime-local"
                 value={scheduledAt}
                 onChange={(e) => setScheduledAt(e.target.value)}
@@ -232,10 +365,9 @@ export default function AnnouncementsPage() {
                       </Badge>
                     )}
                   </div>
-                  <div
-                    className="prose prose-sm max-w-none text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: announcement.content }}
-                  />
+                  <div className="prose prose-sm max-w-none text-muted-foreground">
+                    {renderAnnouncementHtml(announcement.content)}
+                  </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {new Date(announcement.createdAt).toLocaleString("ko-KR")}
                     {announcement.scheduledAt && (

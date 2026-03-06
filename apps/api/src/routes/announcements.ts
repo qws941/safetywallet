@@ -9,6 +9,7 @@ import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { announcements, siteMemberships, users } from "../db/schema";
 import { success, error } from "../lib/response";
+import { generateAnnouncementDraft } from "../lib/gemini-ai";
 import {
   CreateAnnouncementSchema,
   UpdateAnnouncementSchema,
@@ -41,6 +42,45 @@ async function getActiveMembership(
     )
     .get();
 }
+
+app.post("/generate-draft", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const body = await c.req.json<{ keywords: string; siteId: string }>();
+
+  if (!body.keywords || !body.siteId) {
+    return error(c, "INVALID_INPUT", "키워드와 사이트 ID가 필요합니다", 400);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, body.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  const apiKey = c.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return error(c, "AI_UNAVAILABLE", "AI not configured", 503);
+  }
+
+  const result = await generateAnnouncementDraft(apiKey, body.keywords);
+  if (!result) {
+    return error(c, "AI_FAILED", "초안 생성에 실패했습니다", 500);
+  }
+
+  return success(c, { title: result.title, content: result.content });
+});
 
 app.get("/", async (c) => {
   const db = drizzle(c.env.DB);
