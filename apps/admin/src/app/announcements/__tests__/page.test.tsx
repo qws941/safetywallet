@@ -8,6 +8,7 @@ import {
   useDeleteAnnouncement,
   useUpdateAnnouncement,
 } from "@/hooks/use-api";
+import { useGenerateAnnouncementDraft } from "@/hooks/use-announcement-ai-draft";
 
 const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }));
 const createMutateMock = vi.fn();
@@ -25,6 +26,10 @@ vi.mock("@/hooks/use-api", () => ({
   useCreateAnnouncement: vi.fn(),
   useUpdateAnnouncement: vi.fn(),
   useDeleteAnnouncement: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-announcement-ai-draft", () => ({
+  useGenerateAnnouncementDraft: vi.fn(),
 }));
 
 vi.mock("@/components/rich-text-editor", () => ({
@@ -122,6 +127,9 @@ const mockUseAdminAnnouncements = vi.mocked(useAdminAnnouncements);
 const mockUseCreateAnnouncement = vi.mocked(useCreateAnnouncement);
 const mockUseUpdateAnnouncement = vi.mocked(useUpdateAnnouncement);
 const mockUseDeleteAnnouncement = vi.mocked(useDeleteAnnouncement);
+const mockUseGenerateAnnouncementDraft = vi.mocked(
+  useGenerateAnnouncementDraft,
+);
 
 const toAnnouncementsResult = (
   value: unknown,
@@ -133,6 +141,10 @@ describe("AnnouncementsPage", () => {
     createMutateMock.mockReset();
     updateMutateMock.mockReset();
     deleteMutateMock.mockReset();
+    mockUseGenerateAnnouncementDraft.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as never);
 
     mockUseAdminAnnouncements.mockReturnValue(
       toAnnouncementsResult({ data: [], isLoading: false }),

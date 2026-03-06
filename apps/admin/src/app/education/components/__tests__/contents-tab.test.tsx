@@ -10,6 +10,7 @@ import {
   useYouTubeOembed,
 } from "@/hooks/use-api";
 import { useEducationCompletions } from "@/hooks/use-education-completions";
+import { useGenerateQuizFromContent } from "@/hooks/use-quiz-generation";
 
 const toastMock = vi.fn();
 const createAsyncMock = vi.fn();
@@ -39,6 +40,10 @@ vi.mock("@/hooks/use-api", () => ({
 
 vi.mock("@/hooks/use-education-completions", () => ({
   useEducationCompletions: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-quiz-generation", () => ({
+  useGenerateQuizFromContent: vi.fn(),
 }));
 
 vi.mock("@safetywallet/ui", () => ({
@@ -119,6 +124,7 @@ const mockUseDeleteEducationContent = vi.mocked(useDeleteEducationContent);
 const mockUseUpdateEducationContent = vi.mocked(useUpdateEducationContent);
 const mockUseYouTubeOembed = vi.mocked(useYouTubeOembed);
 const mockUseEducationCompletions = vi.mocked(useEducationCompletions);
+const mockUseGenerateQuizFromContent = vi.mocked(useGenerateQuizFromContent);
 
 describe("contents tab", () => {
   beforeEach(() => {
@@ -166,6 +172,11 @@ describe("contents tab", () => {
         pagination: { page: 1, total: 0, limit: 20, totalPages: 0 },
       },
       isLoading: false,
+    } as never);
+    mockUseGenerateQuizFromContent.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+      isPending: false,
     } as never);
   });
 
