@@ -7,7 +7,7 @@ import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { createLogger } from "../../lib/logger";
 import { hammingDistance, DUPLICATE_THRESHOLD } from "../../lib/phash";
-import { classifyPost, getGcpCredentials } from "../../lib/gemini-ai";
+import { classifyPost, getAiCredentials } from "../../lib/gemini-ai";
 import { CreatePostSchema } from "../../validators/schemas";
 import {
   posts,
@@ -294,8 +294,8 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
           });
         }
 
-        const gcpCreds = getGcpCredentials(c.env);
-        if (gcpCreds) {
+        const aiConfig = getAiCredentials(c.env);
+        if (aiConfig) {
           c.executionCtx.waitUntil(
             (async () => {
               try {
@@ -318,7 +318,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
                 }
 
                 const classification = await classifyPost(
-                  gcpCreds,
+                  aiConfig,
                   data.content,
                   imageData,
                   imageMimeType,
@@ -540,8 +540,8 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
       return error(c, "NOT_FOUND", "Post not found", 404);
     }
 
-    const gcpCreds = getGcpCredentials(c.env);
-    if (!gcpCreds) {
+    const aiConfig = getAiCredentials(c.env);
+    if (!aiConfig) {
       return error(c, "AI_NOT_CONFIGURED", "AI service not configured", 503);
     }
 
@@ -564,7 +564,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
     }
 
     const classification = await classifyPost(
-      gcpCreds,
+      aiConfig,
       post.content,
       imageData,
       imageMimeType,

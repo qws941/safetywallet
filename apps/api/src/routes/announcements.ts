@@ -9,7 +9,7 @@ import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { announcements, siteMemberships, users } from "../db/schema";
 import { success, error } from "../lib/response";
-import { generateAnnouncementDraft, getGcpCredentials } from "../lib/gemini-ai";
+import { generateAnnouncementDraft, getAiCredentials } from "../lib/gemini-ai";
 import {
   CreateAnnouncementSchema,
   UpdateAnnouncementSchema,
@@ -69,12 +69,12 @@ app.post("/generate-draft", async (c) => {
     return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
   }
 
-  const gcpCreds = getGcpCredentials(c.env);
-  if (!gcpCreds) {
+  const aiConfig = getAiCredentials(c.env);
+  if (!aiConfig) {
     return error(c, "AI_UNAVAILABLE", "AI not configured", 503);
   }
 
-  const result = await generateAnnouncementDraft(gcpCreds, body.keywords);
+  const result = await generateAnnouncementDraft(aiConfig, body.keywords);
   if (!result) {
     return error(c, "AI_FAILED", "초안 생성에 실패했습니다", 500);
   }
