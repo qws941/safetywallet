@@ -18,7 +18,7 @@ import { logAuditWithContext } from "../../lib/audit";
 import {
   analyzeTbmRecord,
   generateTbmMeetingMinutes,
-  getGcpCredentials,
+  getAiCredentials,
 } from "../../lib/gemini-ai";
 import type { AppType, CreateTbmBody } from "./helpers";
 import { createLogger } from "../../lib/logger";
@@ -115,12 +115,12 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
     },
   );
 
-  const gcpCreds = getGcpCredentials(c.env);
-  if (gcpCreds) {
+  const aiConfig = getAiCredentials(c.env);
+  if (aiConfig) {
     c.executionCtx.waitUntil(
       (async () => {
         try {
-          const result = await analyzeTbmRecord(gcpCreds, {
+          const result = await analyzeTbmRecord(aiConfig, {
             topic: tbm.topic,
             content: tbm.content,
             weatherCondition: tbm.weatherCondition,
@@ -147,7 +147,7 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
     c.executionCtx.waitUntil(
       (async () => {
         try {
-          const result = await generateTbmMeetingMinutes(gcpCreds, {
+          const result = await generateTbmMeetingMinutes(aiConfig, {
             topic: tbm.topic,
             content: tbm.content,
             weatherCondition: tbm.weatherCondition,
@@ -518,8 +518,8 @@ app.post("/:id/analyze", async (c) => {
   const { user } = c.get("auth");
   const id = c.req.param("id");
 
-  const gcpCreds = getGcpCredentials(c.env);
-  if (!gcpCreds) {
+  const aiConfig = getAiCredentials(c.env);
+  if (!aiConfig) {
     return error(c, "AI_NOT_CONFIGURED", "AI 분석이 설정되지 않았습니다", 503);
   }
 
@@ -549,7 +549,7 @@ app.post("/:id/analyze", async (c) => {
     return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
   }
 
-  const result = await analyzeTbmRecord(gcpCreds, {
+  const result = await analyzeTbmRecord(aiConfig, {
     topic: tbm.topic,
     content: tbm.content,
     weatherCondition: tbm.weatherCondition,
@@ -615,8 +615,8 @@ app.post("/:id/generate-minutes", async (c) => {
   const { user } = c.get("auth");
   const id = c.req.param("id");
 
-  const gcpCreds = getGcpCredentials(c.env);
-  if (!gcpCreds) {
+  const aiConfig = getAiCredentials(c.env);
+  if (!aiConfig) {
     return error(c, "AI_NOT_CONFIGURED", "AI 분석이 설정되지 않았습니다", 503);
   }
 
@@ -651,7 +651,7 @@ app.post("/:id/generate-minutes", async (c) => {
     return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
   }
 
-  const result = await generateTbmMeetingMinutes(gcpCreds, {
+  const result = await generateTbmMeetingMinutes(aiConfig, {
     topic: tbm.record.topic,
     content: tbm.record.content,
     weatherCondition: tbm.record.weatherCondition,
