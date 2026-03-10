@@ -28,10 +28,11 @@ FAS_SITE_NAME = "송도세브란스"
 #   ALERT_WEBHOOK_URL   — Webhook URL for operational alerts (cron failures, FAS down)
 #   FAS_SYNC_SECRET     — Bearer secret for POST /fas-sync admin endpoint
 #   ELASTICSEARCH_URL   — Elasticsearch endpoint (production only)
-#   GCP_PROJECT_ID               — GCP project ID for Vertex AI
-#   GCP_SERVICE_ACCOUNT_EMAIL    — Service Account email
-#   GCP_PRIVATE_KEY              — Service Account private key (PEM)
-#   GCP_LOCATION                 — Vertex AI location (default: us-central1)
+#   OPENROUTER_API_KEY           — API key for OpenRouter
+#   OPENROUTER_MODEL_TEXT        — Text-only model (default: openrouter/free)
+#   OPENROUTER_MODEL_MULTIMODAL  — Image/PDF-capable model (default: openrouter/free)
+#   OPENROUTER_SITE_URL          — Optional HTTP-Referer header value
+#   OPENROUTER_APP_NAME          — Optional X-OpenRouter-Title header value
 
 # D1 Database
 [[d1_databases]]

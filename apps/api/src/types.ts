@@ -59,10 +59,11 @@ export interface Env {
   VAPID_SUBJECT?: string;
   // GitHub API token for issue management
   GITHUB_TOKEN?: string;
-  GCP_PROJECT_ID?: string;
-  GCP_SERVICE_ACCOUNT_EMAIL?: string;
-  GCP_PRIVATE_KEY?: string;
-  GCP_LOCATION?: string;
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL_TEXT?: string;
+  OPENROUTER_MODEL_MULTIMODAL?: string;
+  OPENROUTER_SITE_URL?: string;
+  OPENROUTER_APP_NAME?: string;
 }
 
 export interface User {

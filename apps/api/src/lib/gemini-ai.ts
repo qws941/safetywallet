@@ -1,13 +1,269 @@
 import { createLogger } from "./logger";
-import {
-  getVertexAccessToken,
-  getVertexEndpoint,
-  type GcpCredentials,
-} from "./gcp-auth";
 
 const logger = createLogger("gemini-ai");
 
-export const GEMINI_MODEL = "gemini-2.0-flash";
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_TEXT_MODEL = "openrouter/free";
+const DEFAULT_MULTIMODAL_MODEL = "openrouter/free";
+
+interface OpenRouterTextPart {
+  type: "text";
+  text: string;
+}
+
+interface OpenRouterImagePart {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+}
+
+interface OpenRouterFilePart {
+  type: "file";
+  file: {
+    filename: string;
+    file_data: string;
+  };
+}
+
+type OpenRouterContentPart =
+  | OpenRouterTextPart
+  | OpenRouterImagePart
+  | OpenRouterFilePart;
+
+interface OpenRouterApiResponse {
+  model?: string;
+  choices?: Array<{
+    message?: {
+      content?:
+        | string
+        | Array<{
+            type?: string;
+            text?: string;
+          }>;
+    };
+  }>;
+}
+
+export interface AiCredentials {
+  apiKey: string;
+  textModel?: string;
+  multimodalModel?: string;
+  siteUrl?: string;
+  appName?: string;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function toDataUrl(mimeType: string, base64: string): string {
+  return `data:${mimeType};base64,${base64}`;
+}
+
+function buildTextPart(text: string): OpenRouterTextPart {
+  return { type: "text", text };
+}
+
+function buildImagePart(mimeType: string, base64: string): OpenRouterImagePart {
+  return {
+    type: "image_url",
+    image_url: {
+      url: toDataUrl(mimeType, base64),
+    },
+  };
+}
+
+function buildFilePart(
+  filename: string,
+  mimeType: string,
+  base64: string,
+): OpenRouterFilePart {
+  return {
+    type: "file",
+    file: {
+      filename,
+      file_data: toDataUrl(mimeType, base64),
+    },
+  };
+}
+
+function extractTextContent(
+  content:
+    | string
+    | Array<{
+        type?: string;
+        text?: string;
+      }>
+    | undefined,
+): string | null {
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (!Array.isArray(content)) {
+    return null;
+  }
+
+  const text = content
+    .map((part) => (typeof part?.text === "string" ? part.text : null))
+    .filter((part): part is string => Boolean(part))
+    .join("\n")
+    .trim();
+
+  return text.length > 0 ? text : null;
+}
+
+function normalizeJsonText(text: string): string {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenced?.[1]) {
+    return fenced[1].trim();
+  }
+
+  const objectStart = trimmed.indexOf("{");
+  const objectEnd = trimmed.lastIndexOf("}");
+  if (objectStart >= 0 && objectEnd > objectStart) {
+    return trimmed.slice(objectStart, objectEnd + 1);
+  }
+
+  const arrayStart = trimmed.indexOf("[");
+  const arrayEnd = trimmed.lastIndexOf("]");
+  if (arrayStart >= 0 && arrayEnd > arrayStart) {
+    return trimmed.slice(arrayStart, arrayEnd + 1);
+  }
+
+  return trimmed;
+}
+
+function injectSchemaReference(
+  content: OpenRouterContentPart[],
+  responseSchema: Record<string, unknown>,
+): OpenRouterContentPart[] {
+  const schemaText = `\n\nJSON schema reference:\n${JSON.stringify(responseSchema)}`;
+  const firstTextIndex = content.findIndex((part) => part.type === "text");
+
+  if (firstTextIndex === -1) {
+    return [
+      buildTextPart(
+        `Return valid JSON matching this schema exactly.\n${JSON.stringify(responseSchema)}`,
+      ),
+      ...content,
+    ];
+  }
+
+  return content.map((part, index) =>
+    index === firstTextIndex && part.type === "text"
+      ? { ...part, text: `${part.text}${schemaText}` }
+      : part,
+  );
+}
+
+export function getAiCredentials(env: {
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL_TEXT?: string;
+  OPENROUTER_MODEL_MULTIMODAL?: string;
+  OPENROUTER_SITE_URL?: string;
+  OPENROUTER_APP_NAME?: string;
+}): AiCredentials | null {
+  if (!env.OPENROUTER_API_KEY) {
+    return null;
+  }
+
+  return {
+    apiKey: env.OPENROUTER_API_KEY,
+    textModel: env.OPENROUTER_MODEL_TEXT,
+    multimodalModel: env.OPENROUTER_MODEL_MULTIMODAL,
+    siteUrl: env.OPENROUTER_SITE_URL,
+    appName: env.OPENROUTER_APP_NAME,
+  };
+}
+
+async function callOpenRouterJson<T>(
+  credentials: AiCredentials,
+  options: {
+    content: OpenRouterContentPart[];
+    responseSchema: Record<string, unknown>;
+    multimodal?: boolean;
+  },
+): Promise<{ parsed: T; modelVersion: string } | null> {
+  const content = injectSchemaReference(
+    options.content,
+    options.responseSchema,
+  );
+  const usesFiles = content.some((part) => part.type === "file");
+  const needsMultimodal =
+    options.multimodal || content.some((part) => part.type !== "text");
+  const requestedModel = needsMultimodal
+    ? (credentials.multimodalModel ?? DEFAULT_MULTIMODAL_MODEL)
+    : (credentials.textModel ?? DEFAULT_TEXT_MODEL);
+
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${credentials.apiKey}`,
+      "Content-Type": "application/json",
+      ...(credentials.siteUrl ? { "HTTP-Referer": credentials.siteUrl } : {}),
+      ...(credentials.appName
+        ? { "X-OpenRouter-Title": credentials.appName }
+        : {}),
+    },
+    body: JSON.stringify({
+      model: requestedModel,
+      messages: [
+        {
+          role: "user",
+          content,
+        },
+      ],
+      ...(usesFiles
+        ? {
+            plugins: [
+              {
+                id: "file-parser",
+                pdf: {
+                  engine: "pdf-text",
+                },
+              },
+            ],
+          }
+        : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    logger.error("OpenRouter AI call failed", {
+      error: {
+        name: "OpenRouterApiError",
+        message: `OpenRouter API returned status ${response.status}: ${details}`,
+      },
+    });
+    return null;
+  }
+
+  const payload = (await response.json()) as OpenRouterApiResponse;
+  const text = extractTextContent(payload.choices?.[0]?.message?.content);
+
+  if (!text) {
+    return null;
+  }
+
+  const parsed = JSON.parse(normalizeJsonText(text)) as T;
+
+  return {
+    parsed,
+    modelVersion:
+      typeof payload.model === "string" ? payload.model : requestedModel,
+  };
+}
 
 const HAZARD_TYPES = [
   "fall_hazard",
@@ -59,36 +315,6 @@ export interface PostClassificationResult {
   modelVersion: string;
 }
 
-interface GeminiApiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>;
-    };
-  }>;
-}
-
-export function getGcpCredentials(env: {
-  GCP_PROJECT_ID?: string;
-  GCP_SERVICE_ACCOUNT_EMAIL?: string;
-  GCP_PRIVATE_KEY?: string;
-  GCP_LOCATION?: string;
-}): GcpCredentials | null {
-  if (
-    !env.GCP_PROJECT_ID ||
-    !env.GCP_SERVICE_ACCOUNT_EMAIL ||
-    !env.GCP_PRIVATE_KEY
-  ) {
-    return null;
-  }
-
-  return {
-    projectId: env.GCP_PROJECT_ID,
-    clientEmail: env.GCP_SERVICE_ACCOUNT_EMAIL,
-    privateKey: env.GCP_PRIVATE_KEY,
-    location: env.GCP_LOCATION,
-  };
-}
-
 function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((item) => typeof item === "string")
@@ -132,7 +358,7 @@ function isValidAnalysisResultShape(
 }
 
 export async function analyzeHazardImage(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   imageData: ArrayBuffer,
   mimeType: string,
 ): Promise<GeminiAnalysisResult | null> {
@@ -141,13 +367,7 @@ export async function analyzeHazardImage(
       return null;
     }
 
-    const bytes = new Uint8Array(imageData);
-    let binary = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-    }
-    const base64 = btoa(binary);
+    const base64 = arrayBufferToBase64(imageData);
 
     const prompt = `당신은 산업안전보건 관리자입니다. 작업 현장 이미지를 분석해 위험요소를 식별하고 한국 산업안전보건법 관점에서 개선 조치를 제안하세요.
 
@@ -164,103 +384,65 @@ Requirements:
 
 Output must be valid JSON and match the schema exactly.`;
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64,
-                },
-              },
-            ],
+    const result = await callOpenRouterJson<
+      Omit<GeminiAnalysisResult, "modelVersion">
+    >(credentials, {
+      content: [buildTextPart(prompt), buildImagePart(mimeType, base64)],
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          hazardType: {
+            type: "STRING",
+            enum: [...HAZARD_TYPES],
           },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              hazardType: {
-                type: "STRING",
-                enum: [...HAZARD_TYPES],
-              },
-              severity: {
-                type: "STRING",
-                enum: [...SEVERITY_LEVELS],
-              },
-              description: {
-                type: "STRING",
-              },
-              recommendations: {
-                type: "ARRAY",
-                items: { type: "STRING" },
-              },
-              detectedObjects: {
-                type: "ARRAY",
-                items: { type: "STRING" },
-              },
-              confidence: {
-                type: "NUMBER",
-              },
-              relatedRegulations: {
-                type: "ARRAY",
-                items: { type: "STRING" },
-              },
-            },
-            required: [
-              "hazardType",
-              "severity",
-              "description",
-              "recommendations",
-              "detectedObjects",
-              "confidence",
-              "relatedRegulations",
-            ],
+          severity: {
+            type: "STRING",
+            enum: [...SEVERITY_LEVELS],
+          },
+          description: {
+            type: "STRING",
+          },
+          recommendations: {
+            type: "ARRAY",
+            items: { type: "STRING" },
+          },
+          detectedObjects: {
+            type: "ARRAY",
+            items: { type: "STRING" },
+          },
+          confidence: {
+            type: "NUMBER",
+          },
+          relatedRegulations: {
+            type: "ARRAY",
+            items: { type: "STRING" },
           },
         },
-      }),
+        required: [
+          "hazardType",
+          "severity",
+          "description",
+          "recommendations",
+          "detectedObjects",
+          "confidence",
+          "relatedRegulations",
+        ],
+      },
+      multimodal: true,
     });
 
-    if (!response.ok) {
-      logger.error("Gemini hazard analysis failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidAnalysisResultShape(parsed)) {
+    if (!result || !isValidAnalysisResultShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini hazard analysis failed", {
+    logger.error("AI hazard analysis failed", {
       error: {
-        name: "GeminiAnalysisError",
+        name: "AiHazardAnalysisError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -344,7 +526,7 @@ const POST_CLASSIFICATION_RESPONSE_SCHEMA = {
 };
 
 export async function classifyPost(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   content: string,
   imageData?: ArrayBuffer,
   mimeType?: string,
@@ -368,80 +550,39 @@ Requirements:
 
 Output must be valid JSON and match the schema exactly.`;
 
-    const parts: Array<
-      { text: string } | { inline_data: { mime_type: string; data: string } }
-    > = [
-      {
-        text: `${prompt}\n\n제보 내용:\n${content}`,
-      },
+    const parts: OpenRouterContentPart[] = [
+      buildTextPart(`${prompt}\n\n제보 내용:\n${content}`),
     ];
 
     if (imageData && imageData.byteLength > 0) {
-      const bytes = new Uint8Array(imageData);
-      let binary = "";
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      const base64 = btoa(binary);
-      parts.push({
-        inline_data: {
-          mime_type: mimeType || "image/jpeg",
-          data: base64,
-        },
-      });
+      parts.push(
+        buildImagePart(
+          mimeType || "image/jpeg",
+          arrayBufferToBase64(imageData),
+        ),
+      );
     }
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts,
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: POST_CLASSIFICATION_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<PostClassificationResult, "modelVersion">
+    >(credentials, {
+      content: parts,
+      responseSchema: POST_CLASSIFICATION_RESPONSE_SCHEMA,
+      multimodal: parts.some((part) => part.type !== "text"),
     });
 
-    if (!response.ok) {
-      logger.error("Gemini post classification failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidPostClassificationShape(parsed)) {
+    if (!result || !isValidPostClassificationShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini post classification failed", {
+    logger.error("AI post classification failed", {
       error: {
-        name: "GeminiPostClassificationError",
+        name: "AiPostClassificationError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -588,7 +729,7 @@ const EDUCATION_RESPONSE_SCHEMA = {
 };
 
 export async function analyzeEducationContent(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   contentType: "IMAGE" | "TEXT" | "DOCUMENT",
   options: {
     imageData?: ArrayBuffer;
@@ -599,14 +740,12 @@ export async function analyzeEducationContent(
 ): Promise<EducationAnalysisResult | null> {
   try {
     const prompt = buildEducationPrompt(contentType);
-    const parts: Array<
-      { text: string } | { inline_data: { mime_type: string; data: string } }
-    > = [];
+    const parts: OpenRouterContentPart[] = [];
 
     if (options.title) {
-      parts.push({ text: `교육 콘텐츠 제목: ${options.title}` });
+      parts.push(buildTextPart(`교육 콘텐츠 제목: ${options.title}`));
     }
-    parts.push({ text: prompt });
+    parts.push(buildTextPart(prompt));
 
     if (
       (contentType === "IMAGE" || contentType === "DOCUMENT") &&
@@ -616,83 +755,41 @@ export async function analyzeEducationContent(
       if (options.imageData.byteLength === 0) {
         return null;
       }
-      const bytes = new Uint8Array(options.imageData);
-      let binary = "";
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      const base64 = btoa(binary);
-      parts.push({
-        inline_data: {
-          mime_type: options.mimeType,
-          data: base64,
-        },
-      });
+      const base64 = arrayBufferToBase64(options.imageData);
+      parts.push(
+        options.mimeType.startsWith("image/")
+          ? buildImagePart(options.mimeType, base64)
+          : buildFilePart("education-content.pdf", options.mimeType, base64),
+      );
     } else if (contentType === "TEXT") {
       if (!options.textContent) {
         return null;
       }
-      parts.push({
-        text: `
-
-교육 내용:
-${options.textContent}`,
-      });
+      parts.push(buildTextPart(`\n\n교육 내용:\n${options.textContent}`));
     } else {
       return null;
     }
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts,
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: EDUCATION_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<EducationAnalysisResult, "modelVersion">
+    >(credentials, {
+      content: parts,
+      responseSchema: EDUCATION_RESPONSE_SCHEMA,
+      multimodal: parts.some((part) => part.type !== "text"),
     });
 
-    if (!response.ok) {
-      logger.error("Gemini education analysis failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidEducationAnalysisShape(parsed)) {
+    if (!result || !isValidEducationAnalysisShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini education analysis failed", {
+    logger.error("AI education analysis failed", {
       error: {
-        name: "GeminiEducationAnalysisError",
+        name: "AiEducationAnalysisError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -772,7 +869,7 @@ const TBM_RESPONSE_SCHEMA = {
 };
 
 export async function analyzeTbmRecord(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   options: {
     topic: string;
     content?: string | null;
@@ -812,56 +909,25 @@ Output must be valid JSON and match the schema exactly.`;
       textParts.push(`\n특이사항: ${options.specialNotes}`);
     }
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: textParts.join("") }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: TBM_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<TbmAnalysisResult, "modelVersion">
+    >(credentials, {
+      content: [buildTextPart(textParts.join(""))],
+      responseSchema: TBM_RESPONSE_SCHEMA,
     });
 
-    if (!response.ok) {
-      logger.error("Gemini TBM analysis failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidTbmAnalysisShape(parsed)) {
+    if (!result || !isValidTbmAnalysisShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini TBM analysis failed", {
+    logger.error("AI TBM analysis failed", {
       error: {
-        name: "GeminiTbmAnalysisError",
+        name: "AiTbmAnalysisError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -962,7 +1028,7 @@ const QUIZ_GENERATION_RESPONSE_SCHEMA = {
 };
 
 export async function generateQuizFromContent(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   options: {
     contentTitle: string;
     contentAnalysis: string;
@@ -988,60 +1054,29 @@ Requirements:
 
 Output must be valid JSON and match the schema exactly.`;
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: `${prompt}\n\n교육 콘텐츠 제목: ${options.contentTitle}\n\n교육 콘텐츠 분석 결과(JSON):\n${options.contentAnalysis}`,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: QUIZ_GENERATION_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<QuizGenerationResult, "modelVersion">
+    >(credentials, {
+      content: [
+        buildTextPart(
+          `${prompt}\n\n교육 콘텐츠 제목: ${options.contentTitle}\n\n교육 콘텐츠 분석 결과(JSON):\n${options.contentAnalysis}`,
+        ),
+      ],
+      responseSchema: QUIZ_GENERATION_RESPONSE_SCHEMA,
     });
 
-    if (!response.ok) {
-      logger.error("Gemini quiz generation failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidQuizGenerationShape(parsed)) {
+    if (!result || !isValidQuizGenerationShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini quiz generation failed", {
+    logger.error("AI quiz generation failed", {
       error: {
-        name: "GeminiQuizGenerationError",
+        name: "AiQuizGenerationError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -1215,7 +1250,7 @@ const ACTION_IMAGE_RESPONSE_SCHEMA = {
 };
 
 export async function analyzeActionImage(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   imageData: string,
   mimeType: string,
 ): Promise<ActionImageAnalysisResult | null> {
@@ -1237,64 +1272,26 @@ export async function analyzeActionImage(
 
 모든 응답은 한국어로 작성하세요.`;
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: imageData,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: ACTION_IMAGE_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<ActionImageAnalysisResult, "modelVersion">
+    >(credentials, {
+      content: [buildTextPart(prompt), buildImagePart(mimeType, imageData)],
+      responseSchema: ACTION_IMAGE_RESPONSE_SCHEMA,
+      multimodal: true,
     });
 
-    if (!response.ok) {
-      logger.error("Gemini action image analysis failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidActionImageAnalysisShape(parsed)) {
+    if (!result || !isValidActionImageAnalysisShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini action image analysis failed", {
+    logger.error("AI action image analysis failed", {
       error: {
-        name: "GeminiActionImageAnalysisError",
+        name: "AiActionImageAnalysisError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -1303,7 +1300,7 @@ export async function analyzeActionImage(
 }
 
 export async function compareBeforeAfterImages(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   beforeImageData: string,
   afterImageData: string,
   mimeType: string,
@@ -1343,70 +1340,30 @@ export async function compareBeforeAfterImages(
 
 You are comparing BEFORE and AFTER safety images. Return strict JSON only.`;
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: beforeImageData,
-                },
-              },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: afterImageData,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: BEFORE_AFTER_COMPARISON_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<BeforeAfterComparisonResult, "modelVersion">
+    >(credentials, {
+      content: [
+        buildTextPart(prompt),
+        buildImagePart(mimeType, beforeImageData),
+        buildImagePart(mimeType, afterImageData),
+      ],
+      responseSchema: BEFORE_AFTER_COMPARISON_RESPONSE_SCHEMA,
+      multimodal: true,
     });
 
-    if (!response.ok) {
-      logger.error("Gemini before/after comparison failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidBeforeAfterComparisonShape(parsed)) {
+    if (!result || !isValidBeforeAfterComparisonShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini before/after comparison failed", {
+    logger.error("AI before/after comparison failed", {
       error: {
-        name: "GeminiBeforeAfterComparisonError",
+        name: "AiBeforeAfterComparisonError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -1440,7 +1397,7 @@ const ANNOUNCEMENT_DRAFT_RESPONSE_SCHEMA = {
 };
 
 export async function generateAnnouncementDraft(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   keywords: string,
 ): Promise<AnnouncementDraftResult | null> {
   try {
@@ -1466,56 +1423,25 @@ Requirements:
 
 공지사항은 현장 근로자가 이해하기 쉽게 작성하세요.`;
 
-    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: ANNOUNCEMENT_DRAFT_RESPONSE_SCHEMA,
-        },
-      }),
+    const result = await callOpenRouterJson<
+      Omit<AnnouncementDraftResult, "modelVersion">
+    >(credentials, {
+      content: [buildTextPart(prompt)],
+      responseSchema: ANNOUNCEMENT_DRAFT_RESPONSE_SCHEMA,
     });
 
-    if (!response.ok) {
-      logger.error("Gemini announcement draft generation failed", {
-        error: {
-          name: "GeminiApiError",
-          message: `Gemini API returned status ${response.status}`,
-        },
-      });
-      return null;
-    }
-
-    const payload = (await response.json()) as GeminiApiResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(text);
-    if (!isValidAnnouncementDraftShape(parsed)) {
+    if (!result || !isValidAnnouncementDraftShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini announcement draft generation failed", {
+    logger.error("AI announcement draft generation failed", {
       error: {
-        name: "GeminiAnnouncementDraftGenerationError",
+        name: "AiAnnouncementDraftGenerationError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
@@ -1523,49 +1449,15 @@ Requirements:
   }
 }
 
-async function callVertexAI(
-  credentials: GcpCredentials,
+async function callAiJson(
+  credentials: AiCredentials,
   prompt: string,
   responseSchema: Record<string, unknown>,
-): Promise<unknown | null> {
-  const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema,
-      },
-    }),
+): Promise<{ parsed: unknown; modelVersion: string } | null> {
+  return callOpenRouterJson<unknown>(credentials, {
+    content: [buildTextPart(prompt)],
+    responseSchema,
   });
-
-  if (!response.ok) {
-    logger.error("Gemini Vertex AI call failed", {
-      error: {
-        name: "GeminiApiError",
-        message: `Gemini API returned status ${response.status}`,
-      },
-    });
-    return null;
-  }
-
-  const payload = (await response.json()) as GeminiApiResponse;
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    return null;
-  }
-
-  return JSON.parse(text) as unknown;
 }
 
 export interface TbmMeetingMinutesResult {
@@ -1681,7 +1573,7 @@ const TBM_MEETING_MINUTES_RESPONSE_SCHEMA = {
 };
 
 export async function generateTbmMeetingMinutes(
-  credentials: GcpCredentials,
+  credentials: AiCredentials,
   options: {
     topic: string;
     content?: string | null;
@@ -1726,24 +1618,24 @@ TBM 내용: ${options.content ?? ""}
 참석 인원: ${options.attendeeCount ?? 0}
 회의 일시: ${options.date ?? ""}`;
 
-    const parsed = await callVertexAI(
+    const result = await callAiJson(
       credentials,
       prompt,
       TBM_MEETING_MINUTES_RESPONSE_SCHEMA,
     );
 
-    if (!parsed || !isValidTbmMeetingMinutesShape(parsed)) {
+    if (!result || !isValidTbmMeetingMinutesShape(result.parsed)) {
       return null;
     }
 
     return {
-      ...parsed,
-      modelVersion: GEMINI_MODEL,
+      ...result.parsed,
+      modelVersion: result.modelVersion,
     };
   } catch (err) {
-    logger.error("Gemini TBM meeting minutes generation failed", {
+    logger.error("AI TBM meeting minutes generation failed", {
       error: {
-        name: "GeminiTbmMeetingMinutesGenerationError",
+        name: "AiTbmMeetingMinutesGenerationError",
         message: err instanceof Error ? err.message : String(err),
       },
     });
