@@ -136,7 +136,7 @@ app.get("/list", requireAdmin, async (c) => {
 /**
  * GET /admin/images/ai-analysis/:key
  *
- * Retrieve Gemini AI hazard analysis result for a specific image.
+ * Retrieve stored AI hazard analysis result for a specific image.
  * The analysis JSON is stored in R2 at `ai-analysis/{key}.json`
  * during the image upload pipeline.
  */
@@ -162,7 +162,7 @@ app.get("/ai-analysis/:key", requireManagerOrAdmin, async (c) => {
 /**
  * GET /admin/images/ai-analysis-by-post/:postId
  *
- * Retrieve Gemini AI hazard analysis results for all images of a post.
+ * Retrieve stored AI hazard analysis results for all images of a post.
  * Looks up image filenames from D1 postImages table, then fetches
  * corresponding AI analysis JSON from R2.
  */

@@ -7,7 +7,7 @@ import { actions, actionImages, posts, siteMemberships } from "../../db/schema";
 import {
   analyzeActionImage,
   compareBeforeAfterImages,
-  getGcpCredentials,
+  getAiCredentials,
 } from "../../lib/gemini-ai";
 import { createLogger } from "../../lib/logger";
 
@@ -139,8 +139,8 @@ app.post("/:id/images", async (c) => {
         .get()
     : null;
 
-  const gcpCreds = getGcpCredentials(c.env);
-  if (gcpCreds && file) {
+  const aiConfig = getAiCredentials(c.env);
+  if (aiConfig && file) {
     const mimeType = file.type || "image/jpeg";
     c.executionCtx.waitUntil(
       (async () => {
@@ -154,7 +154,7 @@ app.post("/:id/images", async (c) => {
           }
           const base64 = btoa(binary);
 
-          const result = await analyzeActionImage(gcpCreds, base64, mimeType);
+          const result = await analyzeActionImage(aiConfig, base64, mimeType);
 
           if (result) {
             await db
@@ -175,7 +175,7 @@ app.post("/:id/images", async (c) => {
     );
   }
 
-  if (gcpCreds && shouldAutoCompare && beforeImageForComparison) {
+  if (aiConfig && shouldAutoCompare && beforeImageForComparison) {
     c.executionCtx.waitUntil(
       (async () => {
         try {
@@ -207,7 +207,7 @@ app.post("/:id/images", async (c) => {
             "image/jpeg";
 
           const comparison = await compareBeforeAfterImages(
-            gcpCreds,
+            aiConfig,
             beforeBase64,
             afterBase64,
             mimeType,
@@ -247,8 +247,8 @@ app.post("/:id/compare-images", async (c) => {
   const db = drizzle(c.env.DB);
   const actionId = c.req.param("id");
 
-  const credentials = getGcpCredentials(c.env);
-  if (!credentials) {
+  const aiConfig = getAiCredentials(c.env);
+  if (!aiConfig) {
     return error(c, "AI_NOT_CONFIGURED", "AI service not configured", 503);
   }
 
@@ -322,7 +322,7 @@ app.post("/:id/compare-images", async (c) => {
   ]);
 
   const comparison = await compareBeforeAfterImages(
-    credentials,
+    aiConfig,
     arrayBufferToBase64(beforeBuffer),
     arrayBufferToBase64(afterBuffer),
     afterObject.httpMetadata?.contentType ||
@@ -416,14 +416,9 @@ app.post("/:id/images/:imageId/analyze", async (c) => {
   const actionId = c.req.param("id");
   const imageId = c.req.param("imageId");
 
-  const gcpCreds = getGcpCredentials(c.env);
-  if (!gcpCreds) {
-    return error(
-      c,
-      "AI_NOT_CONFIGURED",
-      "Vertex AI credentials not configured",
-      503,
-    );
+  const aiConfig = getAiCredentials(c.env);
+  if (!aiConfig) {
+    return error(c, "AI_NOT_CONFIGURED", "AI service not configured", 503);
   }
 
   const action = await db
@@ -492,7 +487,7 @@ app.post("/:id/images/:imageId/analyze", async (c) => {
   const base64 = btoa(binary);
   const mimeType = object.httpMetadata?.contentType ?? "image/jpeg";
 
-  const result = await analyzeActionImage(gcpCreds, base64, mimeType);
+  const result = await analyzeActionImage(aiConfig, base64, mimeType);
 
   if (!result) {
     return error(c, "AI_ANALYSIS_FAILED", "AI 분석에 실패했습니다", 500);

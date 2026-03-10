@@ -16,7 +16,7 @@ import {
   filterPersonDetections,
 } from "../lib/workers-ai";
 import { blurPersonRegions } from "../lib/face-blur";
-import { analyzeHazardImage, getGcpCredentials } from "../lib/gemini-ai";
+import { analyzeHazardImage, getAiCredentials } from "../lib/gemini-ai";
 
 const app = new Hono<{
   Bindings: Env;
@@ -285,11 +285,10 @@ app.post("/upload", uploadRateLimit, async (c) => {
       }
     }
 
-    // Gemini multimodal hazard analysis (best-effort, background)
-    const gcpCreds = getGcpCredentials(c.env);
-    if (gcpCreds) {
-      const geminiPromise = analyzeHazardImage(
-        gcpCreds,
+    const aiConfig = getAiCredentials(c.env);
+    if (aiConfig) {
+      const analysisPromise = analyzeHazardImage(
+        aiConfig,
         publicBuffer,
         file.type,
       )
@@ -310,19 +309,17 @@ app.post("/upload", uploadRateLimit, async (c) => {
                 httpMetadata: { contentType: file.type },
                 customMetadata: {
                   ...obj.customMetadata,
-                  "ai-gemini-hazard-type": result.hazardType,
-                  "ai-gemini-severity": result.severity,
-                  "ai-gemini-confidence": String(result.confidence),
+                  "ai-hazard-analysis-type": result.hazardType,
+                  "ai-hazard-analysis-severity": result.severity,
+                  "ai-hazard-analysis-confidence": String(result.confidence),
                 },
               });
             }
           }
         })
-        .catch(() => {
-          // Gemini analysis is best-effort; silently ignore failures
-        });
+        .catch(() => undefined);
       if (c.executionCtx?.waitUntil) {
-        c.executionCtx.waitUntil(geminiPromise);
+        c.executionCtx.waitUntil(analysisPromise);
       }
     }
 
