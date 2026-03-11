@@ -23,6 +23,10 @@
 - `register/` - legacy registration entry route.
 - `votes/` - voting route + segment boundary.
 - `__tests__/` - route-level tests.
+- Route contracts in subtree:
+  - `actions/AGENTS.md`
+  - `education/AGENTS.md`
+  - `posts/AGENTS.md`
 
 ## CONVENTIONS
 
@@ -44,6 +48,7 @@
 ## DRIFT GUARDS
 
 - Recount `**/page.tsx` and segment folders when route surface changes.
+- Update route-contract list when dense feature subtrees gain or lose local `AGENTS.md` files.
 - Recheck boundary placement whenever a new volatile domain route is added.
 - Verify `layout.tsx` still wraps children with global error boundary + providers.
 - Verify root/login/register redirects remain consistent after auth flow changes.
