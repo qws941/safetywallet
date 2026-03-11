@@ -24,7 +24,9 @@
   - `settings`, `sync-errors`, `votes`
 - Page entry count: `32` (`**/page.tsx` under `src/app`).
 - Module contracts in subtree:
+  - `dashboard/AGENTS.md`
   - `attendance/AGENTS.md`
+  - `points/AGENTS.md`
   - `posts/AGENTS.md`
   - `votes/AGENTS.md`
   - `education/AGENTS.md`

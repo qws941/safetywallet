@@ -21,6 +21,8 @@
 - Utility/transport layer: `src/lib/` (`3` files, `1` subdir, `2` TS at root).
 - Local contracts:
   - `src/app/AGENTS.md`
+  - `src/app/dashboard/AGENTS.md`
+  - `src/app/points/AGENTS.md`
   - `src/components/AGENTS.md`
   - `src/hooks/AGENTS.md`
   - `src/hooks/__tests__/AGENTS.md`
