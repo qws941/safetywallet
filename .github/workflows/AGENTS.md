@@ -9,6 +9,8 @@
 
 - `AGENTS.md` — workflow governance file.
 - `ci.yml` — primary CI verification pipeline.
+- `automation-health.yml` — repository automation health checks.
+- `android-release.yml` — Android release build/publish workflow.
 - `ci-notify-failure.yml` — CI failure fan-out notifications.
 - `deploy-monitoring.yml` — post-CI deployment monitoring lifecycle.
 - `commitlint.yml` — commit/PR title lint policy.
@@ -21,7 +23,7 @@
 - `dependabot-auto-fix.yml` — Dependabot remediation automation.
 - `ssl-fix.yml` — manual SSL remediation helper.
 - `codex-approve-runs.yml` / `codex-auto-issue.yml` / `codex-issue-timeout.yml` / `codex-pr-normalize.yml` / `codex-pr-review.yml` / `codex-triage.yml` — Codex automation set.
-- Workflow file count: 23 YAML workflows + this `AGENTS.md` = 24 files.
+- Workflow file count: 25 YAML workflows + this `AGENTS.md` = 26 files.
 
 ## CONVENTIONS
 
@@ -40,7 +42,7 @@
 
 ## DRIFT GUARDS
 
-- Confirm directory remains 24 entries with 23 `.yml` workflows.
+- Confirm directory remains 26 entries with 25 `.yml` workflows.
 - Confirm `ci-notify-failure.yml` and `deploy-monitoring.yml` still align to CI trigger contracts.
 - Confirm Codex workflow set list matches on-disk filenames.
 - Confirm parent `.github/AGENTS.md` counts match this file.
