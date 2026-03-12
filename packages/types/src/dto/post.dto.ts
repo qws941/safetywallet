@@ -1,5 +1,6 @@
 import type {
   Category,
+  HazardSubcategory,
   RiskLevel,
   Visibility,
   ReviewStatus,
@@ -11,6 +12,7 @@ export interface CreatePostDto {
   category: Category;
   hazardType?: string;
   riskLevel?: RiskLevel;
+  hazardSubcategory?: HazardSubcategory;
   locationFloor?: string;
   locationZone?: string;
   locationDetail?: string;
@@ -28,6 +30,7 @@ export interface PostDto {
   siteId: string;
   category: Category;
   hazardType: string | null;
+  hazardSubcategory: HazardSubcategory | null;
   riskLevel: RiskLevel | null;
   locationFloor: string | null;
   locationZone: string | null;
@@ -88,6 +91,7 @@ export interface PostFilterDto {
   reviewStatus?: ReviewStatus;
   actionStatus?: ActionStatus;
   isUrgent?: boolean;
+  hazardSubcategory?: HazardSubcategory;
   fromDate?: string;
   toDate?: string;
   page?: number;
@@ -143,6 +147,7 @@ export interface PostClassificationResult {
   suggestedCategory: string;
   suggestedHazardType: string | null;
   suggestedRiskLevel: string;
+  suggestedHazardSubcategory: string | null;
   classificationReason: string;
   keyFindings: string[];
   confidence: number;

@@ -276,6 +276,18 @@ const fixtures: Record<string, Fixture> = {
       topic: "",
     },
   },
+  PostFilterSchema: {
+    valid: { siteId: "site-1", category: "HAZARD" },
+    invalid: { category: "INVALID_CATEGORY" },
+  },
+  UpdateTbmInputSchema: {
+    valid: { topic: "Updated briefing" },
+    invalid: {},
+  },
+  TbmRecordFilterSchema: {
+    valid: { siteId: "site-1" },
+    invalid: {},
+  },
   AttendTbmSchema: {
     valid: { tbmRecordId: "tbm-1" },
     invalid: { tbmRecordId: "" },

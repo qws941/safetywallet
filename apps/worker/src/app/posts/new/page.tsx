@@ -19,7 +19,7 @@ import {
 } from "@safetywallet/ui";
 import { UnsafeWarningModal } from "@/components/unsafe-warning-modal";
 import { Category, RiskLevel, Visibility } from "@safetywallet/types";
-import type { CreatePostDto } from "@safetywallet/types";
+import type { CreatePostDto, HazardSubcategory } from "@safetywallet/types";
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -30,6 +30,8 @@ export default function NewPostPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [category, setCategory] = useState<Category | null>(null);
+  const [hazardSubcategory, setHazardSubcategory] =
+    useState<HazardSubcategory | null>(null);
   const [riskLevel, setRiskLevel] = useState<RiskLevel | null>(null);
   const [content, setContent] = useState("");
   const [locationFloor, setLocationFloor] = useState("");
@@ -92,10 +94,46 @@ export default function NewPostPage() {
     },
   ];
 
+  const hazardSubcategoryOptions = [
+    {
+      value: "FALL" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_FALL",
+    },
+    {
+      value: "COLLAPSE" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_COLLAPSE",
+    },
+    {
+      value: "STRUCK_BY" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_STRUCK_BY",
+    },
+    {
+      value: "CAUGHT_IN" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_CAUGHT_IN",
+    },
+    {
+      value: "ELECTROCUTION" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_ELECTROCUTION",
+    },
+    {
+      value: "FIRE" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_FIRE",
+    },
+    {
+      value: "CHEMICAL" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_CHEMICAL",
+    },
+    {
+      value: "OTHER" as HazardSubcategory,
+      label: "posts.new.hazardSubcategory_OTHER",
+    },
+  ];
+
   const saveDraft = useCallback(() => {
     if (!category && !content) return;
     const draft = {
       category,
+      hazardSubcategory,
       riskLevel,
       content,
       locationFloor,
@@ -111,6 +149,7 @@ export default function NewPostPage() {
   }, [
     DRAFT_KEY,
     category,
+    hazardSubcategory,
     riskLevel,
     content,
     locationFloor,
@@ -128,6 +167,8 @@ export default function NewPostPage() {
         return;
       }
       if (draft.category) setCategory(draft.category);
+      if (draft.hazardSubcategory)
+        setHazardSubcategory(draft.hazardSubcategory);
       if (draft.riskLevel) setRiskLevel(draft.riskLevel);
       if (draft.content) setContent(draft.content);
       if (draft.locationFloor) setLocationFloor(draft.locationFloor);
@@ -203,6 +244,10 @@ export default function NewPostPage() {
       const postData: CreatePostDto = {
         siteId: currentSiteId,
         category,
+        hazardSubcategory:
+          category === Category.HAZARD
+            ? (hazardSubcategory ?? undefined)
+            : undefined,
         riskLevel: riskLevel || undefined,
         content,
         locationFloor: locationFloor || undefined,
@@ -295,6 +340,9 @@ export default function NewPostPage() {
                     type="button"
                     onClick={() => {
                       setCategory(opt.value);
+                      if (opt.value !== Category.HAZARD) {
+                        setHazardSubcategory(null);
+                      }
                       if (opt.value === Category.INCONVENIENCE) {
                         setLocationFloor("");
                         setLocationZone("");
@@ -321,6 +369,34 @@ export default function NewPostPage() {
               </p>
               <p>{t("posts.new.unsafeBehaviorWarning")}</p>
             </div>
+          )}
+
+          {category === Category.HAZARD && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">
+                  {t("posts.new.hazardSubcategory")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2">
+                  {hazardSubcategoryOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setHazardSubcategory(opt.value)}
+                      className={`p-3 rounded-lg border text-center transition-colors ${
+                        hazardSubcategory === opt.value
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-border"
+                      }`}
+                    >
+                      <div className="text-xs">{t(opt.label)}</div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {(category === Category.HAZARD ||

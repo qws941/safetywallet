@@ -18,6 +18,7 @@ import { TbmList } from "./tbm-list";
 const INITIAL_FORM: TbmFormState = {
   date: "",
   topic: "",
+  topicCategory: undefined,
   content: "",
   weatherCondition: "",
   specialNotes: "",
@@ -43,6 +44,7 @@ export function TbmTab() {
     setTbmForm({
       date: item.tbm.date,
       topic: item.tbm.topic,
+      topicCategory: item.tbm.topicCategory ?? undefined,
       content: "",
       weatherCondition: item.tbm.weatherCondition || "",
       specialNotes: "",
@@ -56,6 +58,7 @@ export function TbmTab() {
       siteId: currentSiteId,
       date: tbmForm.date,
       topic: tbmForm.topic,
+      topicCategory: tbmForm.topicCategory,
       content: tbmForm.content || undefined,
       weatherCondition: tbmForm.weatherCondition || undefined,
       specialNotes: tbmForm.specialNotes || undefined,
@@ -68,6 +71,7 @@ export function TbmTab() {
           data: {
             date: payload.date,
             topic: payload.topic,
+            topicCategory: payload.topicCategory,
             content: payload.content,
             weatherCondition: payload.weatherCondition,
             specialNotes: payload.specialNotes,

@@ -31,7 +31,13 @@ export interface CreateQuizQuestionBody {
   question?: string;
   options?: string[];
   correctAnswer?: number;
-  questionType?: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+  questionType?:
+    | "SINGLE_CHOICE"
+    | "OX"
+    | "MULTI_CHOICE"
+    | "SHORT_ANSWER"
+    | "IMAGE";
+  imageUrl?: string;
   correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
@@ -41,7 +47,13 @@ export interface UpdateQuizQuestionBody {
   question?: string;
   options?: string[];
   correctAnswer?: number;
-  questionType?: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+  questionType?:
+    | "SINGLE_CHOICE"
+    | "OX"
+    | "MULTI_CHOICE"
+    | "SHORT_ANSWER"
+    | "IMAGE";
+  imageUrl?: string;
   correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
@@ -52,6 +64,7 @@ interface ExistingQuizQuestionForUpdate {
   options: string[];
   correctAnswer: number;
   correctAnswerText: string | null;
+  imageUrl: string | null;
 }
 
 interface QuizQuestionValidationError {
@@ -60,7 +73,8 @@ interface QuizQuestionValidationError {
     | "INVALID_QUESTION_TYPE"
     | "INVALID_OPTIONS"
     | "INVALID_CORRECT_ANSWER"
-    | "INVALID_CORRECT_ANSWER_TEXT";
+    | "INVALID_CORRECT_ANSWER_TEXT"
+    | "INVALID_IMAGE_URL";
   message: string;
 }
 
@@ -71,6 +85,7 @@ interface QuizQuestionValidationSuccess {
     options: string[];
     correctAnswer: number;
     correctAnswerText: string | null;
+    imageUrl: string | null;
   };
 }
 
@@ -88,22 +103,38 @@ export type QuizQuestionType =
   | "SINGLE_CHOICE"
   | "OX"
   | "MULTI_CHOICE"
-  | "SHORT_ANSWER";
+  | "SHORT_ANSWER"
+  | "IMAGE";
 
 export const QUIZ_QUESTION_TYPES: QuizQuestionType[] = [
   "SINGLE_CHOICE",
   "OX",
   "MULTI_CHOICE",
   "SHORT_ANSWER",
+  "IMAGE",
 ];
+
+const isValidImageUrl = (value: string): boolean => {
+  if (value.startsWith("/r2/")) {
+    return value.length > 4;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 export const CreateQuizQuestionRequestSchema = z.object({
   question: z.string().min(1),
   options: z.array(z.string()).optional(),
   correctAnswer: z.number().int().optional(),
   questionType: z
-    .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER"])
+    .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER", "IMAGE"])
     .default("SINGLE_CHOICE"),
+  imageUrl: z.string().optional(),
   correctAnswerText: z.string().optional(),
   explanation: z.string().optional(),
   orderIndex: z.number().int().optional(),
@@ -114,8 +145,9 @@ export const UpdateQuizQuestionRequestSchema = z.object({
   options: z.array(z.string()).optional(),
   correctAnswer: z.number().int().optional(),
   questionType: z
-    .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER"])
+    .enum(["SINGLE_CHOICE", "OX", "MULTI_CHOICE", "SHORT_ANSWER", "IMAGE"])
     .optional(),
+  imageUrl: z.string().optional(),
   correctAnswerText: z.string().optional(),
   explanation: z.string().optional(),
   orderIndex: z.number().int().optional(),
@@ -167,7 +199,11 @@ export const isQuizAnswerCorrect = (
     ? (question.questionType as QuizQuestionType)
     : "SINGLE_CHOICE";
 
-  if (questionType === "SINGLE_CHOICE" || questionType === "OX") {
+  if (
+    questionType === "SINGLE_CHOICE" ||
+    questionType === "OX" ||
+    questionType === "IMAGE"
+  ) {
     return typeof answer === "number" && answer === question.correctAnswer;
   }
 
@@ -222,6 +258,7 @@ export const validateCreateQuizQuestion = (
     : [];
   let correctAnswer = body.correctAnswer;
   let correctAnswerText = body.correctAnswerText?.trim() || null;
+  let imageUrl = body.imageUrl?.trim() || null;
 
   if (questionType === "OX") {
     options = ["O", "X"];
@@ -237,9 +274,10 @@ export const validateCreateQuizQuestion = (
       };
     }
     correctAnswerText = null;
+    imageUrl = null;
   }
 
-  if (questionType === "SINGLE_CHOICE") {
+  if (questionType === "SINGLE_CHOICE" || questionType === "IMAGE") {
     if (options.length < 2) {
       return {
         ok: false,
@@ -260,6 +298,25 @@ export const validateCreateQuizQuestion = (
       };
     }
     correctAnswerText = null;
+
+    if (questionType === "IMAGE") {
+      if (!imageUrl) {
+        return {
+          ok: false,
+          code: "INVALID_IMAGE_URL",
+          message: "imageUrl is required for IMAGE",
+        };
+      }
+      if (!isValidImageUrl(imageUrl)) {
+        return {
+          ok: false,
+          code: "INVALID_IMAGE_URL",
+          message: "imageUrl must be a valid URL or /r2/ path",
+        };
+      }
+    } else {
+      imageUrl = null;
+    }
   }
 
   if (questionType === "MULTI_CHOICE") {
@@ -290,6 +347,7 @@ export const validateCreateQuizQuestion = (
     }
     correctAnswer = parsedAnswers[0];
     correctAnswerText = JSON.stringify(parsedAnswers);
+    imageUrl = null;
   }
 
   if (questionType === "SHORT_ANSWER") {
@@ -303,6 +361,7 @@ export const validateCreateQuizQuestion = (
     options = [];
     correctAnswer = 0;
     correctAnswerText = correctAnswerText.trim();
+    imageUrl = null;
   }
 
   return {
@@ -312,6 +371,7 @@ export const validateCreateQuizQuestion = (
       options,
       correctAnswer: correctAnswer ?? 0,
       correctAnswerText,
+      imageUrl,
     },
   };
 };
@@ -335,6 +395,10 @@ export const validateUpdateQuizQuestion = (
     body.correctAnswerText !== undefined
       ? body.correctAnswerText?.trim() || null
       : existingQuestion.correctAnswerText;
+  let imageUrl =
+    body.imageUrl !== undefined
+      ? body.imageUrl?.trim() || null
+      : existingQuestion.imageUrl;
 
   if (questionType === "OX") {
     options = ["O", "X"];
@@ -349,9 +413,10 @@ export const validateUpdateQuizQuestion = (
       };
     }
     correctAnswerText = null;
+    imageUrl = null;
   }
 
-  if (questionType === "SINGLE_CHOICE") {
+  if (questionType === "SINGLE_CHOICE" || questionType === "IMAGE") {
     if (options.length < 2) {
       return {
         ok: false,
@@ -371,6 +436,25 @@ export const validateUpdateQuizQuestion = (
       };
     }
     correctAnswerText = null;
+
+    if (questionType === "IMAGE") {
+      if (!imageUrl) {
+        return {
+          ok: false,
+          code: "INVALID_IMAGE_URL",
+          message: "imageUrl is required for IMAGE",
+        };
+      }
+      if (!isValidImageUrl(imageUrl)) {
+        return {
+          ok: false,
+          code: "INVALID_IMAGE_URL",
+          message: "imageUrl must be a valid URL or /r2/ path",
+        };
+      }
+    } else {
+      imageUrl = null;
+    }
   }
 
   if (questionType === "MULTI_CHOICE") {
@@ -401,6 +485,7 @@ export const validateUpdateQuizQuestion = (
     }
     correctAnswer = parsedAnswers[0];
     correctAnswerText = JSON.stringify(parsedAnswers);
+    imageUrl = null;
   }
 
   if (questionType === "SHORT_ANSWER") {
@@ -414,6 +499,7 @@ export const validateUpdateQuizQuestion = (
     options = [];
     correctAnswer = 0;
     correctAnswerText = correctAnswerText.trim();
+    imageUrl = null;
   }
 
   return {
@@ -423,6 +509,7 @@ export const validateUpdateQuizQuestion = (
       options,
       correctAnswer,
       correctAnswerText,
+      imageUrl,
     },
   };
 };
