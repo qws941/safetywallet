@@ -156,6 +156,10 @@ vi.mock("../../db/schema", () => ({
     options: "options",
     correctAnswer: "correctAnswer",
     orderIndex: "orderIndex",
+    questionType: "questionType",
+    correctAnswerText: "correctAnswerText",
+    explanation: "explanation",
+    imageUrl: "imageUrl",
   },
   quizAttempts: {
     id: "id",
@@ -470,7 +474,13 @@ describe("education", () => {
     it("creates quiz question", async () => {
       mockGet
         .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
-        .mockResolvedValueOnce({ id: "qq1", question: "Q?" });
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          id: "qq1",
+          question: "Q?",
+          questionType: "SINGLE_CHOICE",
+          imageUrl: null,
+        });
       const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
       const res = await app.request(
         "/quizzes/q1/questions",
@@ -871,7 +881,12 @@ describe("education", () => {
     it("creates OX question", async () => {
       mockGet
         .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
-        .mockResolvedValueOnce({ id: "qq-ox", questionType: "OX" });
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          id: "qq-ox",
+          questionType: "OX",
+          imageUrl: null,
+        });
       const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
       const res = await app.request(
         "/quizzes/q1/questions",

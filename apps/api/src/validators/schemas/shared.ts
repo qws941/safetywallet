@@ -16,6 +16,16 @@ export const Category = [
   "BEST_PRACTICE",
 ] as const;
 export const RiskLevel = ["HIGH", "MEDIUM", "LOW"] as const;
+export const HazardSubcategory = [
+  "FALL",
+  "COLLAPSE",
+  "STRUCK_BY",
+  "CAUGHT_IN",
+  "ELECTROCUTION",
+  "FIRE",
+  "CHEMICAL",
+  "OTHER",
+] as const;
 export const Visibility = ["WORKER_PUBLIC", "ADMIN_ONLY"] as const;
 export const ReviewAction = [
   "APPROVE",
@@ -63,6 +73,20 @@ export const TrainingCompletionStatus = [
   "SCHEDULED",
   "COMPLETED",
   "EXPIRED",
+] as const;
+export const TbmTopicCategory = [
+  "FALL_PREVENTION",
+  "SCAFFOLD_SAFETY",
+  "EXCAVATION",
+  "CRANE_OPERATION",
+  "ELECTRICAL",
+  "FIRE_PREVENTION",
+  "PPE",
+  "CHEMICAL_HANDLING",
+  "CONFINED_SPACE",
+  "TRAFFIC",
+  "WEATHER",
+  "GENERAL",
 ] as const;
 
 // Schema-only enums (not in packages/types)

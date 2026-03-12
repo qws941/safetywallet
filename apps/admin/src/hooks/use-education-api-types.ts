@@ -1,3 +1,5 @@
+import type { TbmTopicCategory } from "@safetywallet/types";
+
 export interface EducationContent {
   id: string;
   siteId: string;
@@ -62,7 +64,13 @@ export interface QuizQuestion {
   id: string;
   quizId: string;
   question: string;
-  questionType: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+  questionType:
+    | "SINGLE_CHOICE"
+    | "OX"
+    | "MULTI_CHOICE"
+    | "SHORT_ANSWER"
+    | "IMAGE";
+  imageUrl: string | null;
   options: string[];
   correctAnswer: number;
   correctAnswerText: string | null;
@@ -98,6 +106,7 @@ export interface CreateQuizQuestionInput {
   options: string[];
   correctAnswer: number;
   questionType?: string;
+  imageUrl?: string;
   correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
@@ -108,6 +117,7 @@ export interface UpdateQuizQuestionInput {
   options?: string[];
   correctAnswer?: number;
   questionType?: string;
+  imageUrl?: string;
   correctAnswerText?: string;
   explanation?: string;
   orderIndex?: number;
@@ -174,6 +184,7 @@ export interface TbmRecord {
   siteId: string;
   date: string;
   topic: string;
+  topicCategory: TbmTopicCategory | null;
   content: string | null;
   leaderId: string;
   weatherCondition: string | null;
@@ -238,6 +249,7 @@ export interface CreateTbmRecordInput {
   siteId: string;
   date: string;
   topic: string;
+  topicCategory?: TbmTopicCategory;
   content?: string;
   leaderId?: string;
   weatherCondition?: string;
@@ -267,6 +279,7 @@ export interface UpdateQuizInput {
 export interface UpdateTbmRecordInput {
   date?: string;
   topic?: string;
+  topicCategory?: TbmTopicCategory;
   content?: string;
   weatherCondition?: string;
   specialNotes?: string;

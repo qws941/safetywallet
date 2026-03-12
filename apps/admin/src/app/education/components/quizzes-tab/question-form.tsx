@@ -94,8 +94,24 @@ export function QuestionForm({
         />
       </div>
 
-      {questionForm.questionType === "SINGLE_CHOICE" && (
+      {(questionForm.questionType === "SINGLE_CHOICE" ||
+        questionForm.questionType === "IMAGE") && (
         <>
+          {questionForm.questionType === "IMAGE" && (
+            <div className="space-y-1">
+              <div className="text-sm font-medium">이미지 URL</div>
+              <Input
+                placeholder="https://... 또는 /r2/..."
+                value={questionForm.imageUrl}
+                onChange={(e) =>
+                  setQuestionForm((prev) => ({
+                    ...prev,
+                    imageUrl: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          )}
           <div className="grid gap-2 md:grid-cols-2">
             {(["option1", "option2", "option3", "option4"] as const).map(
               (key, idx) => (

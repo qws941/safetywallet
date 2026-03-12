@@ -304,10 +304,21 @@ const POST_CATEGORIES = [
 ] as const;
 
 const POST_RISK_LEVELS = ["HIGH", "MEDIUM", "LOW"] as const;
+const POST_HAZARD_SUBCATEGORIES = [
+  "FALL",
+  "COLLAPSE",
+  "STRUCK_BY",
+  "CAUGHT_IN",
+  "ELECTROCUTION",
+  "FIRE",
+  "CHEMICAL",
+  "OTHER",
+] as const;
 
 export interface PostClassificationResult {
   suggestedCategory: string;
   suggestedHazardType: string | null;
+  suggestedHazardSubcategory: string | null;
   suggestedRiskLevel: string;
   classificationReason: string;
   keyFindings: string[];
@@ -460,6 +471,7 @@ function isValidPostClassificationShape(
   const candidate = value as Record<string, unknown>;
   const category = candidate.suggestedCategory;
   const hazardType = candidate.suggestedHazardType;
+  const hazardSubcategory = candidate.suggestedHazardSubcategory;
 
   if (
     typeof category !== "string" ||
@@ -472,7 +484,17 @@ function isValidPostClassificationShape(
     if (typeof hazardType !== "string" || hazardType.length === 0) {
       return false;
     }
+    if (
+      typeof hazardSubcategory !== "string" ||
+      !POST_HAZARD_SUBCATEGORIES.includes(
+        hazardSubcategory as (typeof POST_HAZARD_SUBCATEGORIES)[number],
+      )
+    ) {
+      return false;
+    }
   } else if (hazardType !== null) {
+    return false;
+  } else if (hazardSubcategory !== null && hazardSubcategory !== undefined) {
     return false;
   }
 
@@ -500,6 +522,11 @@ const POST_CLASSIFICATION_RESPONSE_SCHEMA = {
       type: "STRING" as const,
       nullable: true,
     },
+    suggestedHazardSubcategory: {
+      type: "STRING" as const,
+      enum: [...POST_HAZARD_SUBCATEGORIES],
+      nullable: true,
+    },
     suggestedRiskLevel: {
       type: "STRING" as const,
       enum: [...POST_RISK_LEVELS],
@@ -518,6 +545,7 @@ const POST_CLASSIFICATION_RESPONSE_SCHEMA = {
   required: [
     "suggestedCategory",
     "suggestedHazardType",
+    "suggestedHazardSubcategory",
     "suggestedRiskLevel",
     "classificationReason",
     "keyFindings",
@@ -543,10 +571,11 @@ You are an occupational safety manager for construction sites. Analyze the repor
 Requirements:
 1) suggestedCategory: choose exactly one from [HAZARD, UNSAFE_BEHAVIOR, INCONVENIENCE, SUGGESTION, BEST_PRACTICE].
 2) suggestedHazardType: Korean/English hazard type label only when category is HAZARD, otherwise null.
-3) suggestedRiskLevel: choose one of [HIGH, MEDIUM, LOW].
-4) classificationReason: Korean explanation of why this category/risk was selected (1-3 sentences).
-5) keyFindings: Korean bullet-style findings (2-5 items).
-6) confidence: number between 0 and 1.
+3) suggestedHazardSubcategory: choose one of [FALL, COLLAPSE, STRUCK_BY, CAUGHT_IN, ELECTROCUTION, FIRE, CHEMICAL, OTHER] only when category is HAZARD, otherwise null.
+4) suggestedRiskLevel: choose one of [HIGH, MEDIUM, LOW].
+5) classificationReason: Korean explanation of why this category/risk was selected (1-3 sentences).
+6) keyFindings: Korean bullet-style findings (2-5 items).
+7) confidence: number between 0 and 1.
 
 Output must be valid JSON and match the schema exactly.`;
 
@@ -577,6 +606,8 @@ Output must be valid JSON and match the schema exactly.`;
 
     return {
       ...result.parsed,
+      suggestedHazardSubcategory:
+        result.parsed.suggestedHazardSubcategory ?? null,
       modelVersion: result.modelVersion,
     };
   } catch (err) {

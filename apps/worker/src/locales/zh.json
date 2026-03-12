@@ -105,7 +105,16 @@
       "anonymous": "匿名举报",
       "title": "新报告",
       "unsafeBehaviorWarning": "举报不安全行为时，请注意不要包含个人信息。",
-      "zone": "区域"
+      "zone": "区域",
+      "hazardSubcategory": "危险细分类",
+      "hazardSubcategory_FALL": "坠落",
+      "hazardSubcategory_COLLAPSE": "坍塌",
+      "hazardSubcategory_STRUCK_BY": "物体打击",
+      "hazardSubcategory_CAUGHT_IN": "夹卷",
+      "hazardSubcategory_ELECTROCUTION": "触电",
+      "hazardSubcategory_FIRE": "火灾",
+      "hazardSubcategory_CHEMICAL": "化学品",
+      "hazardSubcategory_OTHER": "其他"
     },
     "createReport": "创建报告",
     "selectCategory": "请选择类别",
