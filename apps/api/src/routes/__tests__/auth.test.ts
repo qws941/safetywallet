@@ -761,8 +761,22 @@ describe("auth", () => {
     });
 
     it("logs out successfully", async () => {
-      mockRun.mockResolvedValueOnce(undefined);
-      const { app, env } = await createApp();
+      mockLimit
+        .mockReturnValueOnce([
+          {
+            id: "user-1",
+            refreshToken: "valid-token",
+          },
+        ])
+        .mockReturnValueOnce([]);
+      const kvDelete = vi.fn();
+      const { app, env } = await createApp(undefined, {
+        KV: {
+          get: vi.fn().mockResolvedValue(null),
+          put: vi.fn(),
+          delete: kvDelete,
+        },
+      });
       const res = await app.request(
         "/logout",
         {
@@ -773,6 +787,7 @@ describe("auth", () => {
         env,
       );
       expect(res.status).toBe(200);
+      expect(kvDelete).toHaveBeenCalledWith("session:user-1");
     });
   });
 

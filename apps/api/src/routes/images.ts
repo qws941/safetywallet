@@ -6,10 +6,15 @@ import { authMiddleware } from "../middleware/auth";
 import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { success, error } from "../lib/response";
 import { processImageForPrivacy, isJpegImage } from "../lib/image-privacy";
+import {
+  ALLOWED_MIME_TYPES,
+  validateUploadedFile,
+} from "../lib/file-validation";
 import { computeImageHash, hammingDistance } from "../lib/phash";
 import { log, startTimer } from "../lib/observability";
 import { trackEvent } from "../middleware/analytics";
 import { postImages, posts, siteMemberships } from "../db/schema";
+import { generateSignedPath } from "../lib/signed-url";
 import {
   classifyHazard,
   detectObjects,
@@ -28,6 +33,7 @@ app.use("*", authMiddleware);
 const uploadRateLimit = rateLimitMiddleware({
   maxRequests: 20,
   windowMs: 60_000,
+  prefix: "api:upload",
 });
 
 const DUPLICATE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -83,19 +89,20 @@ app.post("/upload", uploadRateLimit, async (c) => {
       );
     }
 
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(file.type)) {
+    // Read file buffer
+    const arrayBuffer = await file.arrayBuffer();
+
+    const fileValidation = validateUploadedFile(arrayBuffer, file.type);
+    if (!fileValidation.valid) {
       return error(
         c,
         "INVALID_FILE_TYPE",
-        `File type must be one of: ${allowedTypes.join(", ")}`,
+        `Invalid file type. Detected: ${fileValidation.detectedType}, expected one of: ${ALLOWED_MIME_TYPES.join(", ")}`,
         400,
       );
     }
 
-    // Read file buffer
-    const arrayBuffer = await file.arrayBuffer();
+    const contentType = fileValidation.detectedType;
 
     const { buffer: exifStrippedBuffer, metadata: privacyMetadata } =
       await processImageForPrivacy(arrayBuffer, file.name);
@@ -116,7 +123,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
 
         if (persons.length > 0) {
           await c.env.R2.put(`original/${filename}`, exifStrippedBuffer, {
-            httpMetadata: { contentType: file.type },
+            httpMetadata: { contentType },
             customMetadata: {
               ...privacyMetadata,
               "access-level": "admin-only",
@@ -245,7 +252,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
 
     await c.env.R2.put(filename, publicBuffer, {
       httpMetadata: {
-        contentType: file.type,
+        contentType,
       },
       customMetadata: {
         ...privacyMetadata,
@@ -257,7 +264,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
       },
     });
 
-    const fileUrl = `/r2/${filename}`;
+    const fileUrl = await generateSignedPath(filename, c.env.JWT_SECRET);
 
     if (c.env.AI) {
       const aiPromise = classifyHazard(c.env.AI, publicBuffer)
@@ -266,7 +273,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
             const obj = await c.env.R2.head(filename);
             if (obj) {
               await c.env.R2.put(filename, publicBuffer, {
-                httpMetadata: { contentType: file.type },
+                httpMetadata: { contentType },
                 customMetadata: {
                   ...obj.customMetadata,
                   "ai-hazard-type": result.hazardType,
@@ -290,7 +297,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
       const analysisPromise = analyzeHazardImage(
         aiConfig,
         publicBuffer,
-        file.type,
+        contentType,
       )
         .then(async (result) => {
           if (result) {
@@ -306,7 +313,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
             const obj = await c.env.R2.head(filename);
             if (obj) {
               await c.env.R2.put(filename, publicBuffer, {
-                httpMetadata: { contentType: file.type },
+                httpMetadata: { contentType },
                 customMetadata: {
                   ...obj.customMetadata,
                   "ai-hazard-analysis-type": result.hazardType,
@@ -389,7 +396,7 @@ app.get("/info/:filename{.+}", async (c) => {
 
     return success(c, {
       filename,
-      url: `/r2/${filename}`,
+      url: await generateSignedPath(filename, c.env.JWT_SECRET),
       size: object.size,
       contentType: object.httpMetadata?.contentType,
       uploadedAt: object.customMetadata?.["uploaded-at"],

@@ -42,7 +42,7 @@ async function requireSiteAdmin(
   }
 }
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 policies.use("*", defaultRateLimit);
 
 policies.get("/site/:siteId", authMiddleware, async (c) => {

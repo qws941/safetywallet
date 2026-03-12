@@ -46,7 +46,7 @@ interface QueryPointsParams {
 
 app.use("*", authMiddleware);
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 app.use("*", defaultRateLimit);
 
 app.post("/award", zValidator("json", AwardPointsSchema), async (c) => {

@@ -7,6 +7,7 @@ import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { createLogger } from "../../lib/logger";
 import { hammingDistance, DUPLICATE_THRESHOLD } from "../../lib/phash";
+import { signR2PathIfNeeded, toUnsignedR2Path } from "../../lib/signed-url";
 import { classifyPost, getAiCredentials } from "../../lib/gemini-ai";
 import { CreatePostSchema, PostFilterSchema } from "../../validators/schemas";
 import {
@@ -36,6 +37,7 @@ function extractR2Key(fileUrl: string): string {
 const postRateLimit = rateLimitMiddleware({
   maxRequests: 10,
   windowMs: 60_000,
+  prefix: "api:posts",
 });
 
 export const registerCrudRoutes = (app: PostsRouteApp): void => {
@@ -234,7 +236,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
               .map((fileUrl: string, idx: number) =>
                 db.insert(postImages).values({
                   postId,
-                  fileUrl,
+                  fileUrl: toUnsignedR2Path(fileUrl),
                   thumbnailUrl: null,
                   imageHash: hashes[idx] ?? null,
                 }),
@@ -522,6 +524,18 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
       );
     }
 
+    const signedImages = await Promise.all(
+      images.map(async (image) => ({
+        ...image,
+        fileUrl:
+          (await signR2PathIfNeeded(image.fileUrl, c.env.JWT_SECRET)) ??
+          image.fileUrl,
+        thumbnailUrl:
+          (await signR2PathIfNeeded(image.thumbnailUrl, c.env.JWT_SECRET)) ??
+          image.thumbnailUrl,
+      })),
+    );
+
     return success(c, {
       post: {
         ...post,
@@ -531,7 +545,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
               id: author?.id,
               name: author?.nameMasked,
             },
-        images,
+        images: signedImages,
         reviews: postReviews,
       },
     });

@@ -21,7 +21,7 @@ const app = new Hono<{
 
 app.use("*", authMiddleware);
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 app.use("*", defaultRateLimit);
 
 app.get("/", zValidator("query", SitesListQuerySchema), async (c) => {

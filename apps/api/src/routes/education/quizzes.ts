@@ -12,6 +12,7 @@ import {
 } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
+import { signR2PathIfNeeded, toUnsignedR2Path } from "../../lib/signed-url";
 import type {
   AppType,
   CreateQuizBody,
@@ -223,11 +224,14 @@ app.get("/:id", async (c) => {
     .orderBy(quizQuestions.orderIndex)
     .all();
 
-  const mappedQuestions = questions.map((question) => ({
-    ...question,
-    questionType: question.questionType ?? "SINGLE_CHOICE",
-    imageUrl: question.imageUrl ?? null,
-  }));
+  const mappedQuestions = await Promise.all(
+    questions.map(async (question) => ({
+      ...question,
+      questionType: question.questionType ?? "SINGLE_CHOICE",
+      imageUrl:
+        (await signR2PathIfNeeded(question.imageUrl, c.env.JWT_SECRET)) ?? null,
+    })),
+  );
 
   return success(c, { ...quiz, questions: mappedQuestions });
 });
@@ -405,7 +409,9 @@ app.post(
         options: validated.data.options,
         correctAnswer: validated.data.correctAnswer,
         questionType: validated.data.questionType,
-        imageUrl: validated.data.imageUrl,
+        imageUrl: validated.data.imageUrl
+          ? toUnsignedR2Path(validated.data.imageUrl)
+          : null,
         correctAnswerText: validated.data.correctAnswerText,
         explanation: body.explanation ?? null,
         orderIndex: body.orderIndex ?? 0,
@@ -418,7 +424,9 @@ app.post(
       {
         ...question,
         questionType: question.questionType ?? "SINGLE_CHOICE",
-        imageUrl: question.imageUrl ?? null,
+        imageUrl:
+          (await signR2PathIfNeeded(question.imageUrl, c.env.JWT_SECRET)) ??
+          null,
       },
       201,
     );
@@ -486,7 +494,9 @@ app.put(
         options: validated.data.options,
         correctAnswer: validated.data.correctAnswer,
         questionType: validated.data.questionType,
-        imageUrl: validated.data.imageUrl,
+        imageUrl: validated.data.imageUrl
+          ? toUnsignedR2Path(validated.data.imageUrl)
+          : null,
         correctAnswerText: validated.data.correctAnswerText,
         ...(body.explanation !== undefined && {
           explanation: body.explanation,
@@ -502,7 +512,8 @@ app.put(
     return success(c, {
       ...updated,
       questionType: updated.questionType ?? "SINGLE_CHOICE",
-      imageUrl: updated.imageUrl ?? null,
+      imageUrl:
+        (await signR2PathIfNeeded(updated.imageUrl, c.env.JWT_SECRET)) ?? null,
     });
   },
 );

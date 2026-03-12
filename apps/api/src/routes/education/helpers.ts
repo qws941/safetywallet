@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Env, AuthContext } from "../../types";
+import { toUnsignedR2Path } from "../../lib/signed-url";
 
 export type AppType = { Bindings: Env; Variables: { auth: AuthContext } };
 
@@ -314,6 +315,7 @@ export const validateCreateQuizQuestion = (
           message: "imageUrl must be a valid URL or /r2/ path",
         };
       }
+      imageUrl = toUnsignedR2Path(imageUrl);
     } else {
       imageUrl = null;
     }
@@ -452,6 +454,7 @@ export const validateUpdateQuizQuestion = (
           message: "imageUrl must be a valid URL or /r2/ path",
         };
       }
+      imageUrl = toUnsignedR2Path(imageUrl);
     } else {
       imageUrl = null;
     }

@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { postImages } from "../../db/schema";
 import { log } from "../../lib/observability";
 import { logAuditWithContext } from "../../lib/audit";
+import { signR2PathIfNeeded } from "../../lib/signed-url";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
@@ -195,7 +196,9 @@ app.get("/ai-analysis-by-post/:postId", requireManagerOrAdmin, async (c) => {
 
       const analysis = await object.json();
       return {
-        imageUrl: img.fileUrl,
+        imageUrl:
+          (await signR2PathIfNeeded(img.fileUrl, c.env.JWT_SECRET)) ??
+          img.fileUrl,
         filename,
         analysis,
       };

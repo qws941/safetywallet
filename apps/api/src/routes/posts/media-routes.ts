@@ -5,6 +5,7 @@ import { attendanceMiddleware } from "../../middleware/attendance";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { canResubmit } from "../../lib/state-machine";
+import { signR2PathIfNeeded } from "../../lib/signed-url";
 import { ResubmitPostSchema } from "../../validators/schemas";
 import { posts, postImages, reviews, pointsLedger } from "../../db/schema";
 import { validateJson, type PostsRouteApp } from "./helpers";
@@ -83,7 +84,19 @@ export const registerMediaRoutes = (app: PostsRouteApp): void => {
       .returning()
       .get();
 
-    return success(c, { image: imageRecord }, 201);
+    const signedImage = {
+      ...imageRecord,
+      fileUrl:
+        (await signR2PathIfNeeded(imageRecord.fileUrl, c.env.JWT_SECRET)) ??
+        imageRecord.fileUrl,
+      thumbnailUrl:
+        (await signR2PathIfNeeded(
+          imageRecord.thumbnailUrl,
+          c.env.JWT_SECRET,
+        )) ?? imageRecord.thumbnailUrl,
+    };
+
+    return success(c, { image: signedImage }, 201);
   });
 
   app.post(
