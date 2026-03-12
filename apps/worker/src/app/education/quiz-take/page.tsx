@@ -433,6 +433,19 @@ function QuizTakeContent() {
                         src={q.imageUrl}
                         alt={`문항 이미지 ${idx + 1}`}
                         className="w-full max-h-80 rounded-lg border object-contain bg-background"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          el.onerror = null;
+                          el.style.display = "none";
+                          const p = el.parentElement;
+                          if (p) {
+                            const d = document.createElement("div");
+                            d.className =
+                              "w-full h-40 rounded-lg border bg-muted flex items-center justify-center text-sm text-muted-foreground";
+                            d.textContent = "이미지를 불러올 수 없습니다";
+                            p.appendChild(d);
+                          }
+                        }}
                       />
                     </div>
                   )}

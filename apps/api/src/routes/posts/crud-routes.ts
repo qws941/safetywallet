@@ -215,7 +215,8 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
           content: data.content,
           category: data.category,
           hazardType: data.hazardType,
-          hazardSubcategory: data.hazardSubcategory,
+          hazardSubcategory:
+            data.category === "HAZARD" ? data.hazardSubcategory : null,
           riskLevel: data.riskLevel,
           visibility: data.visibility,
           locationFloor: data.locationFloor,

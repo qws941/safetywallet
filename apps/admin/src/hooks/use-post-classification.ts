@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/auth";
 interface PostClassificationResult {
   suggestedCategory: string;
   suggestedHazardType: string | null;
+  suggestedHazardSubcategory: string | null;
   suggestedRiskLevel: string;
   classificationReason: string;
   keyFindings: string[];
