@@ -159,7 +159,14 @@ const fixtures: Record<string, Fixture> = {
   AdminSyncWorkersSchema: {
     valid: {
       siteId: "site-1",
-      workers: [{ externalWorkerId: "ext-1", name: "Lee" }],
+      workers: [
+        {
+          externalWorkerId: "ext-1",
+          name: "Lee",
+          phone: "010-1234-5678",
+          dob: "1990-01-01",
+        },
+      ],
     },
     invalid: { siteId: "site-1", workers: [] },
   },

@@ -192,6 +192,8 @@ export const AdminSyncWorkersSchema = z.object({
       z.object({
         externalWorkerId: z.string().min(1),
         name: nonEmptyStr,
+        phone: z.string().min(1),
+        dob: z.string().min(1),
         nationality: z.string().optional(),
         trade: z.string().optional(),
         company: z.string().optional(),

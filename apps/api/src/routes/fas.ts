@@ -30,35 +30,9 @@ app.post(
     }
     const db = drizzle(c.env.DB);
 
-    let data = c.req.valid("json") as
-      | {
-          siteId?: string;
-          workers?: Array<{
-            externalWorkerId?: string;
-            name?: string;
-            phone?: string;
-            dob?: string;
-            companyName?: string;
-            tradeType?: string;
-          }>;
-        }
-      | undefined;
+    const data = c.req.valid("json");
     if (!data) {
-      try {
-        data = JSON.parse(await c.req.text()) as {
-          siteId?: string;
-          workers?: Array<{
-            externalWorkerId?: string;
-            name?: string;
-            phone?: string;
-            dob?: string;
-            companyName?: string;
-            tradeType?: string;
-          }>;
-        };
-      } catch {
-        return error(c, "INVALID_JSON", "Invalid JSON", 400);
-      }
+      return error(c, "INVALID_JSON", "Invalid JSON", 400);
     }
 
     if (!data.workers || !Array.isArray(data.workers)) {
@@ -83,8 +57,8 @@ app.post(
       name: string;
       phone: string;
       dob: string;
-      companyName: string | null;
-      tradeType: string | null;
+      company: string | null;
+      trade: string | null;
     }> = [];
 
     for (const worker of data.workers) {
@@ -106,8 +80,8 @@ app.post(
         name: worker.name,
         phone: worker.phone,
         dob: worker.dob,
-        companyName: worker.companyName ?? null,
-        tradeType: worker.tradeType ?? null,
+        company: worker.company ?? null,
+        trade: worker.trade ?? null,
       });
     }
 
@@ -168,8 +142,8 @@ app.post(
                 phoneEncrypted: w.phoneEncrypted,
                 dobHash: w.dobHash,
                 dobEncrypted: w.dobEncrypted,
-                companyName: w.companyName,
-                tradeType: w.tradeType,
+                companyName: w.company,
+                tradeType: w.trade,
                 updatedAt: new Date(),
               })
               .where(eq(users.id, existingId)),
@@ -186,8 +160,8 @@ app.post(
               phoneEncrypted: w.phoneEncrypted,
               dobHash: w.dobHash,
               dobEncrypted: w.dobEncrypted,
-              companyName: w.companyName,
-              tradeType: w.tradeType,
+              companyName: w.company,
+              tradeType: w.trade,
               role: "WORKER",
             }),
           );

@@ -56,19 +56,13 @@ export async function handleSync(c: AppContext) {
     }
   }
 
-  let body = c.req.valid("json" as never) as
+  const body = c.req.valid("json" as never) as
     | {
         events?: AttendanceSyncEvent[];
       }
     | undefined;
   if (!body) {
-    try {
-      body = JSON.parse(await c.req.text()) as {
-        events?: AttendanceSyncEvent[];
-      };
-    } catch {
-      return error(c, "INVALID_JSON", "Invalid JSON body", 400);
-    }
+    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
   }
 
   if (!body.events || !Array.isArray(body.events)) {
