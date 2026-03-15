@@ -3,8 +3,11 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { parse } from "yaml";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
+import { sanitizeErrorMessage } from "../../lib/error-sanitizer";
 import { requireAdmin } from "./helpers";
 import { createLogger } from "../../lib/logger";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 const logger = createLogger("admin/issues");
@@ -21,10 +24,12 @@ function toStatusCode(status: number): ContentfulStatusCode {
 
 function getGitHubErrorMessage(raw: string, fallback: string): string {
   if (!raw) return fallback;
+  let candidate = fallback;
+
   try {
     const parsed = JSON.parse(raw) as { message?: unknown };
     if (typeof parsed.message === "string" && parsed.message.trim()) {
-      return parsed.message.trim();
+      candidate = parsed.message.trim();
     }
   } catch (error) {
     logger.warn("Failed to parse GitHub error JSON", {
@@ -33,8 +38,11 @@ function getGitHubErrorMessage(raw: string, fallback: string): string {
           ? { name: error.name, message: error.message }
           : { name: "UnknownError", message: String(error) },
     });
+    candidate = raw.slice(0, 300);
   }
-  return raw.slice(0, 300);
+
+  const sanitized = sanitizeErrorMessage(candidate);
+  return sanitized || fallback;
 }
 
 /* ------------------------------------------------------------------ */
@@ -229,143 +237,141 @@ app.get("/issues", requireAdmin, async (c) => {
 });
 
 /** POST /issues — create GitHub issue with optional codex assignment */
-app.post("/issues", requireAdmin, async (c) => {
-  const token = c.env.GITHUB_TOKEN;
-  if (!token) {
-    return error(c, "MISSING_TOKEN", "GITHUB_TOKEN not configured", 503);
-  }
-
-  let body: {
-    title: string;
-    body?: string;
-    labels?: string[];
-    assignCodex?: boolean;
-  };
-
-  try {
-    body = await c.req.json<{
-      title: string;
-      body?: string;
-      labels?: string[];
-      assignCodex?: boolean;
-    }>();
-  } catch {
-    return error(c, "INVALID_JSON", "Request body must be valid JSON", 400);
-  }
-
-  if (!body.title?.trim()) {
-    return error(c, "INVALID_INPUT", "title is required");
-  }
-
-  const labels = body.labels || [];
-  if (body.assignCodex && !labels.includes("codex")) {
-    labels.push("codex");
-  }
-
-  try {
-    // Create issue
-    const createRes = await fetch(
-      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "safetywallet-admin",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: body.title.trim(),
-          body: body.body?.trim() || "",
-          labels,
-        }),
-      },
-    );
-
-    if (!createRes.ok) {
-      const errText = await createRes.text();
-      const message = getGitHubErrorMessage(
-        errText,
-        "GitHub issue creation failed",
-      );
-      return error(c, "GITHUB_ERROR", message, toStatusCode(createRes.status));
+app.post(
+  "/issues",
+  requireAdmin,
+  zValidator(
+    "json",
+    z.object({
+      title: z.string().min(1),
+      body: z.string().optional(),
+      labels: z.array(z.string()).optional(),
+      assignCodex: z.boolean().optional(),
+    }),
+  ),
+  async (c) => {
+    const token = c.env.GITHUB_TOKEN;
+    if (!token) {
+      return error(c, "MISSING_TOKEN", "GITHUB_TOKEN not configured", 503);
     }
 
-    const issue = (await createRes.json()) as {
-      number: number;
-      node_id: string;
-      title: string;
-      body: string;
-    };
+    const body = c.req.valid("json");
 
-    // If codex assigned, assign Codex user + post @codex comment
-    if (body.assignCodex) {
-      // Assign Codex via GraphQL (REST API silently ignores bot assignees)
-      try {
-        await fetch("https://api.github.com/graphql", {
+    const labels = body.labels || [];
+    if (body.assignCodex && !labels.includes("codex")) {
+      labels.push("codex");
+    }
+
+    try {
+      // Create issue
+      const createRes = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues`,
+        {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": "safetywallet-admin",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            query: `mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
+            title: body.title.trim(),
+            body: body.body?.trim() || "",
+            labels,
+          }),
+        },
+      );
+
+      if (!createRes.ok) {
+        const errText = await createRes.text();
+        const message = getGitHubErrorMessage(
+          errText,
+          "GitHub issue creation failed",
+        );
+        return error(
+          c,
+          "GITHUB_ERROR",
+          message,
+          toStatusCode(createRes.status),
+        );
+      }
+
+      const issue = (await createRes.json()) as {
+        number: number;
+        node_id: string;
+        title: string;
+        body: string;
+      };
+
+      // If codex assigned, assign Codex user + post @codex comment
+      if (body.assignCodex) {
+        // Assign Codex via GraphQL (REST API silently ignores bot assignees)
+        try {
+          await fetch("https://api.github.com/graphql", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              "User-Agent": "safetywallet-admin",
+            },
+            body: JSON.stringify({
+              query: `mutation($assignableId: ID!, $assigneeIds: [ID!]!) {
             addAssigneesToAssignable(input: { assignableId: $assignableId, assigneeIds: $assigneeIds }) {
               assignable { ... on Issue { number } }
             }
           }`,
-            variables: {
-              assignableId: issue.node_id,
-              assigneeIds: ["BOT_kgDODnSAjQ"],
+              variables: {
+                assignableId: issue.node_id,
+                assigneeIds: ["BOT_kgDODnSAjQ"],
+              },
+            }),
+          });
+        } catch (error) {
+          // Bot assignee may fail — non-blocking
+          logger.warn("Failed to assign Codex bot via GraphQL", {
+            error:
+              error instanceof Error
+                ? { name: error.name, message: error.message }
+                : { name: "UnknownError", message: String(error) },
+          });
+        }
+
+        // Post @codex comment so Codex agent picks it up
+        const commentBody = [`@codex ${issue.title}`, "", issue.body || ""]
+          .join("\n")
+          .trim();
+
+        try {
+          await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${issue.number}/comments`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "safetywallet-admin",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ body: commentBody }),
             },
-          }),
-        });
-      } catch (error) {
-        // Bot assignee may fail — non-blocking
-        logger.warn("Failed to assign Codex bot via GraphQL", {
-          error:
-            error instanceof Error
-              ? { name: error.name, message: error.message }
-              : { name: "UnknownError", message: String(error) },
-        });
+          );
+        } catch (error) {
+          logger.error("Failed to post @codex comment", error);
+        }
       }
 
-      // Post @codex comment so Codex agent picks it up
-      const commentBody = [`@codex ${issue.title}`, "", issue.body || ""]
-        .join("\n")
-        .trim();
-
-      try {
-        await fetch(
-          `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${issue.number}/comments`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28",
-              "User-Agent": "safetywallet-admin",
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ body: commentBody }),
-          },
-        );
-      } catch (error) {
-        logger.error("Failed to post @codex comment", error);
-      }
+      return success(c, issue, 201);
+    } catch {
+      return error(
+        c,
+        "GITHUB_UPSTREAM_UNAVAILABLE",
+        "Failed to reach GitHub API",
+        502,
+      );
     }
-
-    return success(c, issue, 201);
-  } catch {
-    return error(
-      c,
-      "GITHUB_UPSTREAM_UNAVAILABLE",
-      "Failed to reach GitHub API",
-      502,
-    );
-  }
-});
+  },
+);
 
 export default app;

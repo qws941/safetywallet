@@ -148,6 +148,16 @@ vi.mock("../../../db/schema", () => ({
   reviews: { postId: "postId" },
   pointsLedger: { postId: "postId" },
   siteMemberships: { id: "id", userId: "userId" },
+  tokenFamilies: { userId: "userId", revokedAt: "revokedAt" },
+}));
+
+vi.mock("../../../lib/token-revocation", () => ({
+  addToRevocationList: vi.fn(async () => undefined),
+  removeFromRevocationList: vi.fn(async () => undefined),
+}));
+
+vi.mock("../../../lib/session-cache", () => ({
+  invalidateCachedUser: vi.fn(async () => undefined),
 }));
 
 vi.mock("../../../lib/crypto", () => ({
@@ -164,6 +174,7 @@ vi.mock("../../../lib/response", async () => {
 
 vi.mock("../../../lib/audit", () => ({
   logAuditWithContext: vi.fn(),
+  logPiiAccess: vi.fn(),
 }));
 
 vi.mock("../../../lib/logger", () => ({
@@ -338,7 +349,7 @@ describe("admin/users", () => {
 
     it("returns decrypted pii and logs audit when piiViewFull enabled", async () => {
       const { decrypt } = await import("../../../lib/crypto");
-      const { logAuditWithContext } = await import("../../../lib/audit");
+      const { logPiiAccess } = await import("../../../lib/audit");
 
       vi.mocked(decrypt)
         .mockResolvedValueOnce("01012345678")
@@ -369,7 +380,7 @@ describe("admin/users", () => {
       };
       expect(body.data.users[0].phone).toBe("01012345678");
       expect(body.data.users[0].dob).toBe("19900101");
-      expect(logAuditWithContext).toHaveBeenCalled();
+      expect(logPiiAccess).toHaveBeenCalled();
     });
   });
 

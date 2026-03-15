@@ -105,7 +105,16 @@
       "anonymous": "Report anonymously",
       "title": "New Report",
       "unsafeBehaviorWarning": "When reporting unsafe behavior, make sure no personal information is included.",
-      "zone": "Zone"
+      "zone": "Zone",
+      "hazardSubcategory": "Hazard Subcategory",
+      "hazardSubcategory_FALL": "Fall",
+      "hazardSubcategory_COLLAPSE": "Collapse",
+      "hazardSubcategory_STRUCK_BY": "Struck-by Object",
+      "hazardSubcategory_CAUGHT_IN": "Caught In/Between",
+      "hazardSubcategory_ELECTROCUTION": "Electrocution",
+      "hazardSubcategory_FIRE": "Fire",
+      "hazardSubcategory_CHEMICAL": "Chemical",
+      "hazardSubcategory_OTHER": "Other"
     },
     "createReport": "Create Report",
     "selectCategory": "Select a category",

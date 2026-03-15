@@ -1,7 +1,12 @@
 import type { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq } from "drizzle-orm";
-import { attendance, deviceRegistrations, users } from "../../db/schema";
+import {
+  attendance,
+  deviceRegistrations,
+  tokenFamilies,
+  users,
+} from "../../db/schema";
 import { decrypt, encrypt, hmac } from "../../lib/crypto";
 import { signJwt } from "../../lib/jwt";
 import { logAuditWithContext } from "../../lib/audit";
@@ -332,11 +337,21 @@ export async function handleWorkerLogin(
     c.env.JWT_SECRET,
   );
   const refreshToken = crypto.randomUUID();
+  const refreshTokenHash = await hmac(c.env.HMAC_SECRET, refreshToken);
+  const familyId = crypto.randomUUID();
   const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await db
     .update(users)
     .set({ refreshToken, refreshTokenExpiresAt, updatedAt: new Date() })
     .where(eq(users.id, user.id));
+
+  await db.insert(tokenFamilies).values({
+    userId: user.id,
+    familyId,
+    tokenHash: refreshTokenHash,
+    used: false,
+    expiresAt: refreshTokenExpiresAt,
+  });
 
   const loginDeviceId = resolveDeviceId(c);
   if (loginDeviceId) {

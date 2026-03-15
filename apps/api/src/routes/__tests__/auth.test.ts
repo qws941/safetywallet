@@ -149,6 +149,16 @@ vi.mock("../../db/schema", () => ({
   auditLogs: { id: "id", action: "action", actorId: "actorId" },
   deviceRegistrations: { id: "id", userId: "userId", deviceId: "deviceId" },
   sites: { id: "id", active: "active" },
+  tokenFamilies: {
+    id: "id",
+    userId: "userId",
+    familyId: "familyId",
+    tokenHash: "tokenHash",
+    parentTokenId: "parentTokenId",
+    used: "used",
+    revokedAt: "revokedAt",
+    expiresAt: "expiresAt",
+  },
 }));
 
 vi.mock("../../lib/crypto", () => ({
@@ -627,7 +637,7 @@ describe("auth", () => {
     });
 
     it("returns 401 for invalid refresh token", async () => {
-      mockLimit.mockReturnValue([]);
+      mockGet.mockResolvedValueOnce(null);
       const { app, env } = await createApp();
       const res = await app.request(
         "/refresh",
@@ -664,13 +674,14 @@ describe("auth", () => {
     });
 
     it("returns 401 and clears token when refresh token is expired", async () => {
-      mockLimit.mockReturnValueOnce([
-        {
-          id: "user-1",
-          role: "WORKER",
-          refreshTokenExpiresAt: new Date(Date.now() - 1_000).toISOString(),
-        },
-      ]);
+      mockGet.mockResolvedValueOnce({
+        id: "tf-1",
+        userId: "user-1",
+        familyId: "fam-1",
+        used: false,
+        revokedAt: null,
+        expiresAt: new Date(Date.now() - 1_000),
+      });
 
       const { app, env } = await createApp();
       const res = await app.request(
@@ -684,22 +695,29 @@ describe("auth", () => {
       );
 
       expect(res.status).toBe(401);
-      expect(mockDb.update).toHaveBeenCalled();
     });
 
     it("returns 403 when worker refresh has no attendance", async () => {
-      mockLimit
-        .mockReturnValueOnce([
-          {
-            id: "user-1",
-            role: "WORKER",
-            refreshTokenExpiresAt: null,
-            externalWorkerId: null,
-            piiViewFull: false,
-            phoneEncrypted: null,
-          },
-        ])
-        .mockReturnValueOnce([]);
+      mockGet
+        .mockResolvedValueOnce({
+          id: "tf-2",
+          userId: "user-1",
+          familyId: "fam-2",
+          used: false,
+          revokedAt: null,
+          expiresAt: new Date(Date.now() + 60_000),
+        })
+        .mockResolvedValueOnce({ id: "tf-2" })
+        .mockResolvedValueOnce({
+          id: "user-1",
+          role: "WORKER",
+          refreshTokenExpiresAt: null,
+          externalWorkerId: null,
+          piiViewFull: false,
+          phoneEncrypted: null,
+          loginExempt: false,
+        });
+      mockLimit.mockReturnValueOnce([]);
 
       const { app, env } = await createApp(undefined, {
         REQUIRE_ATTENDANCE_FOR_LOGIN: "true",
@@ -719,15 +737,24 @@ describe("auth", () => {
     });
 
     it("refreshes token successfully", async () => {
-      mockLimit.mockReturnValueOnce([
-        {
+      mockGet
+        .mockResolvedValueOnce({
+          id: "tf-3",
+          userId: "user-1",
+          familyId: "fam-3",
+          used: false,
+          revokedAt: null,
+          expiresAt: new Date(Date.now() + 60_000),
+        })
+        .mockResolvedValueOnce({ id: "tf-3" })
+        .mockResolvedValueOnce({
           id: "user-1",
           role: "SITE_ADMIN",
           refreshTokenExpiresAt: null,
           piiViewFull: true,
           phoneEncrypted: "encrypted-phone",
-        },
-      ]);
+          loginExempt: false,
+        });
 
       const { app, env } = await createApp();
       const res = await app.request(
@@ -761,8 +788,22 @@ describe("auth", () => {
     });
 
     it("logs out successfully", async () => {
-      mockRun.mockResolvedValueOnce(undefined);
-      const { app, env } = await createApp();
+      mockLimit
+        .mockReturnValueOnce([
+          {
+            id: "user-1",
+            refreshToken: "valid-token",
+          },
+        ])
+        .mockReturnValueOnce([]);
+      const kvDelete = vi.fn();
+      const { app, env } = await createApp(undefined, {
+        KV: {
+          get: vi.fn().mockResolvedValue(null),
+          put: vi.fn(),
+          delete: kvDelete,
+        },
+      });
       const res = await app.request(
         "/logout",
         {
@@ -773,6 +814,7 @@ describe("auth", () => {
         env,
       );
       expect(res.status).toBe(200);
+      expect(kvDelete).toHaveBeenCalledWith("session:user-1");
     });
   });
 
@@ -890,6 +932,11 @@ describe("auth", () => {
   });
 
   describe("GET /me", () => {
+    beforeEach(() => {
+      mockLimit.mockReset();
+      mockLimit.mockReturnValue([]);
+    });
+
     it("throws 401 when auth context is missing", async () => {
       const { app, env } = await createApp();
       const res = await app.request("/me", {}, env);

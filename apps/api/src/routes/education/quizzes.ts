@@ -12,6 +12,7 @@ import {
 } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
+import { signR2PathIfNeeded, toUnsignedR2Path } from "../../lib/signed-url";
 import type {
   AppType,
   CreateQuizBody,
@@ -223,7 +224,16 @@ app.get("/:id", async (c) => {
     .orderBy(quizQuestions.orderIndex)
     .all();
 
-  return success(c, { ...quiz, questions });
+  const mappedQuestions = await Promise.all(
+    questions.map(async (question) => ({
+      ...question,
+      questionType: question.questionType ?? "SINGLE_CHOICE",
+      imageUrl:
+        (await signR2PathIfNeeded(question.imageUrl, c.env.JWT_SECRET)) ?? null,
+    })),
+  );
+
+  return success(c, { ...quiz, questions: mappedQuestions });
 });
 
 app.patch("/:id", zValidator("json", UpdateQuizMetadataSchema), async (c) => {
@@ -399,6 +409,9 @@ app.post(
         options: validated.data.options,
         correctAnswer: validated.data.correctAnswer,
         questionType: validated.data.questionType,
+        imageUrl: validated.data.imageUrl
+          ? toUnsignedR2Path(validated.data.imageUrl)
+          : null,
         correctAnswerText: validated.data.correctAnswerText,
         explanation: body.explanation ?? null,
         orderIndex: body.orderIndex ?? 0,
@@ -406,7 +419,17 @@ app.post(
       .returning()
       .get();
 
-    return success(c, question, 201);
+    return success(
+      c,
+      {
+        ...question,
+        questionType: question.questionType ?? "SINGLE_CHOICE",
+        imageUrl:
+          (await signR2PathIfNeeded(question.imageUrl, c.env.JWT_SECRET)) ??
+          null,
+      },
+      201,
+    );
   },
 );
 
@@ -471,6 +494,9 @@ app.put(
         options: validated.data.options,
         correctAnswer: validated.data.correctAnswer,
         questionType: validated.data.questionType,
+        imageUrl: validated.data.imageUrl
+          ? toUnsignedR2Path(validated.data.imageUrl)
+          : null,
         correctAnswerText: validated.data.correctAnswerText,
         ...(body.explanation !== undefined && {
           explanation: body.explanation,
@@ -483,7 +509,12 @@ app.put(
       .returning()
       .get();
 
-    return success(c, updated);
+    return success(c, {
+      ...updated,
+      questionType: updated.questionType ?? "SINGLE_CHOICE",
+      imageUrl:
+        (await signR2PathIfNeeded(updated.imageUrl, c.env.JWT_SECRET)) ?? null,
+    });
   },
 );
 

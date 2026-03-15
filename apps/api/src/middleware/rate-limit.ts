@@ -8,6 +8,7 @@ interface RateLimitOptions {
   maxRequests?: number;
   windowMs?: number;
   keyGenerator?: (c: Context) => string;
+  prefix?: string;
 }
 
 const DEFAULT_MAX_REQUESTS = 100;
@@ -17,11 +18,17 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}) {
   const {
     maxRequests = DEFAULT_MAX_REQUESTS,
     windowMs = DEFAULT_WINDOW_MS,
-    keyGenerator = defaultKeyGenerator,
+    keyGenerator,
+    prefix = "general",
   } = options;
 
+  // Use custom keyGenerator if provided, otherwise use defaultKeyGenerator with prefix
+  const effectiveKeyGenerator = keyGenerator
+    ? keyGenerator
+    : (c: Context) => defaultKeyGenerator(c, prefix);
+
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
-    const key = keyGenerator(c);
+    const key = effectiveKeyGenerator(c);
     const rateLimiterBinding = c.env.RATE_LIMITER;
 
     if (!rateLimiterBinding) {
@@ -106,28 +113,22 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}) {
   };
 }
 
-function defaultKeyGenerator(c: Context): string {
+function defaultKeyGenerator(c: Context, prefix: string = "general"): string {
   const auth = c.get("auth");
   if (auth?.user?.id) {
-    return `user:${auth.user.id}`;
+    return `${prefix}:user:${auth.user.id}`;
   }
   const ip =
     c.req.header("CF-Connecting-IP") ||
     c.req.header("X-Forwarded-For") ||
     "anonymous";
-  return `ip:${ip}`;
+  return `${prefix}:ip:${ip}`;
 }
 
 export function authRateLimitMiddleware() {
   return rateLimitMiddleware({
     maxRequests: 5,
     windowMs: 60 * 1000,
-    keyGenerator: (c) => {
-      const ip =
-        c.req.header("CF-Connecting-IP") ||
-        c.req.header("X-Forwarded-For") ||
-        "anonymous";
-      return `auth:${ip}`;
-    },
+    prefix: "auth",
   });
 }

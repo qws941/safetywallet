@@ -9,6 +9,7 @@ export const QUESTION_TYPE_OPTIONS: Array<{
   { value: "OX", label: "OX 퀴즈" },
   { value: "MULTI_CHOICE", label: "복수 선택" },
   { value: "SHORT_ANSWER", label: "주관식" },
+  { value: "IMAGE", label: "이미지 문제" },
 ];
 
 export const INITIAL_QUIZ_FORM: QuizFormState = {
@@ -22,6 +23,7 @@ export const INITIAL_QUIZ_FORM: QuizFormState = {
 export const INITIAL_QUESTION_FORM: QuestionFormState = {
   question: "",
   questionType: "SINGLE_CHOICE",
+  imageUrl: "",
   option1: "",
   option2: "",
   option3: "",

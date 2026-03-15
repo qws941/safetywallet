@@ -28,7 +28,7 @@ const votesRoute = new Hono<{
   Variables: { auth: AuthContext };
 }>();
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 votesRoute.use("*", defaultRateLimit);
 
 function getCurrentMonth(): string {

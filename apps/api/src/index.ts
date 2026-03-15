@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { drizzle } from "drizzle-orm/d1";
 import { fasGetAllEmployeesPaginated, initFasConfig } from "./lib/fas";
 import {
@@ -33,10 +34,13 @@ import notificationsRoute from "./routes/notifications";
 import { securityHeaders } from "./middleware/security-headers";
 import { analyticsMiddleware } from "./middleware/analytics";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
+import { csrfProtection } from "./middleware/csrf";
 
 import { createLogger } from "./lib/logger";
 import { createErrorIssue } from "./lib/auto-issue";
 import { authMiddleware } from "./middleware/auth";
+import { generateSignedPath, verifySignedPath } from "./lib/signed-url";
+import { createSafeErrorResponse } from "./lib/error-sanitizer";
 
 const logger = createLogger("index");
 const app = new Hono<{ Bindings: Env }>();
@@ -76,6 +80,7 @@ app.use("*", async (c, next) => {
   });
   return corsMiddleware(c, next);
 });
+app.use("/api/*", csrfProtection);
 
 const api = new Hono<{ Bindings: Env }>();
 const schedulerAdmin = new Hono<{ Bindings: Env }>();
@@ -244,6 +249,33 @@ api.route("/education", educationRoute);
 api.route("/images", imagesRoute);
 api.route("/notifications", notificationsRoute);
 
+api.get("/r2/sign", authMiddleware, async (c) => {
+  const keysParam = c.req.query("keys") ?? "";
+  const keys = Array.from(
+    new Set(
+      keysParam
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  if (keys.length === 0) {
+    return error(c, "MISSING_KEYS", "keys query parameter is required", 400);
+  }
+
+  const urlEntries = await Promise.all(
+    keys.map(
+      async (key) =>
+        [key, await generateSignedPath(key, c.env.JWT_SECRET)] as const,
+    ),
+  );
+
+  return success(c, {
+    urls: Object.fromEntries(urlEntries),
+  });
+});
+
 // Catch-all for unmatched API routes — return 404 JSON instead of SPA HTML
 api.all("*", (c) => {
   return error(
@@ -281,8 +313,19 @@ const getMimeType = (path: string): string => {
   return MIME_TYPES[ext] || "application/octet-stream";
 };
 
-// R2 image/video serving — public, no auth required
 app.get("/r2/*", async (c) => {
+  const exp = c.req.query("exp") ?? "";
+  const sig = c.req.query("sig") ?? "";
+  const isValidSignature = await verifySignedPath(
+    c.req.path,
+    { exp, sig },
+    c.env.JWT_SECRET,
+  );
+
+  if (!isValidSignature) {
+    return error(c, "FORBIDDEN", "Invalid or expired signed URL", 403);
+  }
+
   const key = c.req.path.replace(/^\/r2\//, "");
   if (!key) {
     return error(c, "NOT_FOUND", "Missing R2 key", 404);
@@ -393,9 +436,18 @@ app.onError((err, c) => {
     waitUntil: (p) => c.executionCtx.waitUntil(p),
   });
 
-  log.error(err.message, err, {
+  log.error(err instanceof Error ? err.message : "Unhandled error", err, {
     endpoint: c.req.path,
     method: c.req.method,
+  });
+
+  console.error("Unhandled API error", {
+    endpoint: c.req.path,
+    method: c.req.method,
+    error:
+      err instanceof Error
+        ? { name: err.name, message: err.message, stack: err.stack }
+        : String(err),
   });
 
   // Auto-create GitHub issue for unhandled (non-HTTP) errors
@@ -410,41 +462,12 @@ app.onError((err, c) => {
       }),
     );
   }
-  // Handle HTTPException properly (auth errors, validation errors, etc.)
-  if (err instanceof Error && "getResponse" in err) {
-    const httpErr = err as { status?: number; message: string };
-    const status = (httpErr.status || 500) as 401 | 403 | 500;
-    return c.json(
-      {
-        success: false,
-        error: {
-          code:
-            status === 401
-              ? "UNAUTHORIZED"
-              : status === 403
-                ? "FORBIDDEN"
-                : "ERROR",
-          message: httpErr.message,
-        },
-        timestamp: new Date().toISOString(),
-      },
-      status,
-    );
-  }
-
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: "INTERNAL_ERROR",
-        message:
-          c.env.ENVIRONMENT === "development"
-            ? err.message
-            : "An error occurred",
-      },
-      timestamp: new Date().toISOString(),
-    },
-    500,
+  const safe = createSafeErrorResponse(err);
+  return error(
+    c,
+    safe.code,
+    safe.message,
+    safe.statusCode as ContentfulStatusCode,
   );
 });
 

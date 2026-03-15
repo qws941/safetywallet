@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import type { Env, AuthContext } from "../../types";
 import {
   getAlertConfig,
@@ -11,72 +13,89 @@ import { requireAdmin, type AppContext } from "./helpers";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
+const AlertConfigUpdateSchema = z
+  .object({
+    webhookUrl: z.string().optional(),
+    cooldownSeconds: z.number().int().optional(),
+    enabled: z.boolean().optional(),
+    errorRateThresholdPercent: z.number().optional(),
+    latencyThresholdMs: z.number().int().optional(),
+    fasFailureThreshold: z.number().int().optional(),
+  })
+  .passthrough();
+
+const MaintenanceMessageSchema = z.object({
+  message: z.string().optional(),
+  severity: z.string().optional(),
+  ttlSeconds: z.number().optional(),
+});
+
 app.get("/alerting/config", requireAdmin, async (c: AppContext) => {
   const config = await getAlertConfig(c.env.KV);
   return success(c, config);
 });
 
-app.put("/alerting/config", requireAdmin, async (c: AppContext) => {
-  let body: Partial<AlertConfig>;
-  try {
-    body = await c.req.json();
-  } catch {
-    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
-  }
+app.put(
+  "/alerting/config",
+  requireAdmin,
+  zValidator("json", AlertConfigUpdateSchema as never),
+  async (c: AppContext) => {
+    const body = c.req.valid("json" as never) as Partial<AlertConfig>;
 
-  const allowedKeys: Array<keyof AlertConfig> = [
-    "webhookUrl",
-    "cooldownSeconds",
-    "enabled",
-    "errorRateThresholdPercent",
-    "latencyThresholdMs",
-    "fasFailureThreshold",
-  ];
+    const allowedKeys: Array<keyof AlertConfig> = [
+      "webhookUrl",
+      "cooldownSeconds",
+      "enabled",
+      "errorRateThresholdPercent",
+      "latencyThresholdMs",
+      "fasFailureThreshold",
+    ];
 
-  const filtered: Partial<AlertConfig> = {};
-  for (const key of allowedKeys) {
-    if (key in body) {
-      (filtered as Record<string, unknown>)[key] = body[key];
+    const filtered: Partial<AlertConfig> = {};
+    for (const key of allowedKeys) {
+      if (key in body) {
+        (filtered as Record<string, unknown>)[key] = body[key];
+      }
     }
-  }
 
-  if (
-    filtered.cooldownSeconds !== undefined &&
-    (filtered.cooldownSeconds < 60 || filtered.cooldownSeconds > 86400)
-  ) {
-    return error(
-      c,
-      "VALIDATION_ERROR",
-      "cooldownSeconds must be between 60 and 86400",
-    );
-  }
+    if (
+      filtered.cooldownSeconds !== undefined &&
+      (filtered.cooldownSeconds < 60 || filtered.cooldownSeconds > 86400)
+    ) {
+      return error(
+        c,
+        "VALIDATION_ERROR",
+        "cooldownSeconds must be between 60 and 86400",
+      );
+    }
 
-  if (
-    filtered.errorRateThresholdPercent !== undefined &&
-    (filtered.errorRateThresholdPercent < 0.1 ||
-      filtered.errorRateThresholdPercent > 100)
-  ) {
-    return error(
-      c,
-      "VALIDATION_ERROR",
-      "errorRateThresholdPercent must be between 0.1 and 100",
-    );
-  }
+    if (
+      filtered.errorRateThresholdPercent !== undefined &&
+      (filtered.errorRateThresholdPercent < 0.1 ||
+        filtered.errorRateThresholdPercent > 100)
+    ) {
+      return error(
+        c,
+        "VALIDATION_ERROR",
+        "errorRateThresholdPercent must be between 0.1 and 100",
+      );
+    }
 
-  if (
-    filtered.latencyThresholdMs !== undefined &&
-    (filtered.latencyThresholdMs < 100 || filtered.latencyThresholdMs > 60000)
-  ) {
-    return error(
-      c,
-      "VALIDATION_ERROR",
-      "latencyThresholdMs must be between 100 and 60000",
-    );
-  }
+    if (
+      filtered.latencyThresholdMs !== undefined &&
+      (filtered.latencyThresholdMs < 100 || filtered.latencyThresholdMs > 60000)
+    ) {
+      return error(
+        c,
+        "VALIDATION_ERROR",
+        "latencyThresholdMs must be between 100 and 60000",
+      );
+    }
 
-  const updated = await setAlertConfig(c.env.KV, filtered);
-  return success(c, updated);
-});
+    const updated = await setAlertConfig(c.env.KV, filtered);
+    return success(c, updated);
+  },
+);
 
 app.post("/alerting/test", requireAdmin, async (c: AppContext) => {
   const config = await getAlertConfig(c.env.KV);
@@ -130,59 +149,57 @@ app.get("/maintenance", requireAdmin, async (c: AppContext) => {
   }
 });
 
-app.put("/maintenance", requireAdmin, async (c: AppContext) => {
-  let body: {
-    message: string;
-    severity?: "warning" | "critical" | "info";
-    ttlSeconds?: number;
-  };
-  try {
-    body = await c.req.json();
-  } catch {
-    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
-  }
+app.put(
+  "/maintenance",
+  requireAdmin,
+  zValidator("json", MaintenanceMessageSchema as never),
+  async (c: AppContext) => {
+    const body = c.req.valid("json" as never) as z.infer<
+      typeof MaintenanceMessageSchema
+    >;
 
-  if (!body.message || typeof body.message !== "string") {
-    return error(c, "VALIDATION_ERROR", "message is required");
-  }
+    if (!body.message || typeof body.message !== "string") {
+      return error(c, "VALIDATION_ERROR", "message is required");
+    }
 
-  if (body.message.length > 500) {
-    return error(
-      c,
-      "VALIDATION_ERROR",
-      "message must be 500 characters or less",
-    );
-  }
+    if (body.message.length > 500) {
+      return error(
+        c,
+        "VALIDATION_ERROR",
+        "message must be 500 characters or less",
+      );
+    }
 
-  const severity = body.severity ?? "info";
-  const validSeverities = ["warning", "critical", "info"];
-  if (!validSeverities.includes(severity)) {
-    return error(
-      c,
-      "VALIDATION_ERROR",
-      "severity must be warning, critical, or info",
-    );
-  }
+    const severity = body.severity ?? "info";
+    const validSeverities = ["warning", "critical", "info"];
+    if (!validSeverities.includes(severity)) {
+      return error(
+        c,
+        "VALIDATION_ERROR",
+        "severity must be warning, critical, or info",
+      );
+    }
 
-  const ttl = body.ttlSeconds ?? 86400;
-  if (ttl < 60 || ttl > 604800) {
-    return error(
-      c,
-      "VALIDATION_ERROR",
-      "ttlSeconds must be between 60 and 604800",
-    );
-  }
+    const ttl = body.ttlSeconds ?? 86400;
+    if (ttl < 60 || ttl > 604800) {
+      return error(
+        c,
+        "VALIDATION_ERROR",
+        "ttlSeconds must be between 60 and 604800",
+      );
+    }
 
-  const payload = JSON.stringify({ message: body.message, severity });
-  await c.env.KV.put("maintenance-message", payload, { expirationTtl: ttl });
+    const payload = JSON.stringify({ message: body.message, severity });
+    await c.env.KV.put("maintenance-message", payload, { expirationTtl: ttl });
 
-  return success(c, {
-    active: true,
-    message: body.message,
-    severity,
-    ttlSeconds: ttl,
-  });
-});
+    return success(c, {
+      active: true,
+      message: body.message,
+      severity,
+      ttlSeconds: ttl,
+    });
+  },
+);
 
 app.delete("/maintenance", requireAdmin, async (c: AppContext) => {
   await c.env.KV.delete("maintenance-message");

@@ -29,7 +29,7 @@ const disputesRoute = new Hono<{
 
 disputesRoute.use("*", authMiddleware);
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 disputesRoute.use("*", defaultRateLimit);
 
 disputesRoute.post(

@@ -33,6 +33,17 @@ const RISK_STYLES: Record<string, { label: string; className: string }> = {
   LOW: { label: "저위험", className: "bg-green-100 text-green-700" },
 };
 
+const HAZARD_SUBCATEGORY_LABELS: Record<string, string> = {
+  FALL: "추락",
+  COLLAPSE: "붕괴",
+  STRUCK_BY: "맞음",
+  CAUGHT_IN: "끼임",
+  ELECTROCUTION: "감전",
+  FIRE: "화재",
+  CHEMICAL: "화학물질",
+  OTHER: "기타",
+};
+
 export function PostClassificationCard({
   postId,
 }: PostClassificationCardProps) {
@@ -147,6 +158,17 @@ export function PostClassificationCard({
             <p className="text-sm text-muted-foreground">
               {classification.suggestedHazardType}
             </p>
+          </div>
+        )}
+
+        {classification.suggestedHazardSubcategory && (
+          <div>
+            <h4 className="text-sm font-medium mb-1">위험 세부분류</h4>
+            <Badge variant="outline">
+              {HAZARD_SUBCATEGORY_LABELS[
+                classification.suggestedHazardSubcategory
+              ] || classification.suggestedHazardSubcategory}
+            </Badge>
           </div>
         )}
 

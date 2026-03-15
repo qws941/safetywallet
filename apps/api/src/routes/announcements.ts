@@ -22,7 +22,7 @@ const app = new Hono<{
 
 app.use("*", authMiddleware);
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 app.use("*", defaultRateLimit);
 
 async function getActiveMembership(
@@ -43,44 +43,50 @@ async function getActiveMembership(
     .get();
 }
 
-app.post("/generate-draft", async (c) => {
-  const db = drizzle(c.env.DB);
-  const { user } = c.get("auth");
-  const body = await c.req.json<{ keywords: string; siteId: string }>();
+app.post(
+  "/generate-draft",
+  zValidator(
+    "json",
+    z.object({
+      keywords: z.string().min(1),
+      siteId: z.string().min(1),
+    }),
+  ),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const body = c.req.valid("json");
 
-  if (!body.keywords || !body.siteId) {
-    return error(c, "INVALID_INPUT", "키워드와 사이트 ID가 필요합니다", 400);
-  }
+    const adminMembership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, body.siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+          eq(siteMemberships.role, "SITE_ADMIN"),
+        ),
+      )
+      .get();
 
-  const adminMembership = await db
-    .select()
-    .from(siteMemberships)
-    .where(
-      and(
-        eq(siteMemberships.userId, user.id),
-        eq(siteMemberships.siteId, body.siteId),
-        eq(siteMemberships.status, "ACTIVE"),
-        eq(siteMemberships.role, "SITE_ADMIN"),
-      ),
-    )
-    .get();
+    if (!adminMembership && user.role !== "SUPER_ADMIN") {
+      return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+    }
 
-  if (!adminMembership && user.role !== "SUPER_ADMIN") {
-    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
-  }
+    const aiConfig = getAiCredentials(c.env);
+    if (!aiConfig) {
+      return error(c, "AI_UNAVAILABLE", "AI not configured", 503);
+    }
 
-  const aiConfig = getAiCredentials(c.env);
-  if (!aiConfig) {
-    return error(c, "AI_UNAVAILABLE", "AI not configured", 503);
-  }
+    const result = await generateAnnouncementDraft(aiConfig, body.keywords);
+    if (!result) {
+      return error(c, "AI_FAILED", "초안 생성에 실패했습니다", 500);
+    }
 
-  const result = await generateAnnouncementDraft(aiConfig, body.keywords);
-  if (!result) {
-    return error(c, "AI_FAILED", "초안 생성에 실패했습니다", 500);
-  }
-
-  return success(c, { title: result.title, content: result.content });
-});
+    return success(c, { title: result.title, content: result.content });
+  },
+);
 
 app.get("/", async (c) => {
   const db = drizzle(c.env.DB);

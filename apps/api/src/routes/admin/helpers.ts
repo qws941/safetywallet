@@ -196,6 +196,7 @@ export const requireExportAccess = async (c: AppContext, next: Next) => {
 
 export const exportRateLimit = rateLimitMiddleware({
   ...EXPORT_RATE_LIMIT,
+  prefix: "admin:export",
   keyGenerator: (c) => {
     const auth = c.get("auth");
     return auth?.user?.id ? `export:${auth.user.id}` : "export:anonymous";

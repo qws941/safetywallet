@@ -80,7 +80,13 @@ vi.mock("../../lib/response", async () => {
 
 vi.mock("@hono/zod-validator", () => ({
   zValidator: () => {
-    return async (_c: unknown, next: () => Promise<void>) => {
+    return async (c: any, next: () => Promise<void>) => {
+      try {
+        const body = await c.req.raw.clone().json();
+        c.req.valid = () => body;
+      } catch {
+        c.req.valid = () => undefined;
+      }
       await next();
     };
   },

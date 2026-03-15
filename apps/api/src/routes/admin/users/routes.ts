@@ -13,10 +13,16 @@ import {
   reviews,
   pointsLedger,
   siteMemberships,
+  tokenFamilies,
 } from "../../../db/schema";
 import { decrypt, hmac } from "../../../lib/crypto";
 import { success, error } from "../../../lib/response";
-import { logAuditWithContext } from "../../../lib/audit";
+import { logAuditWithContext, logPiiAccess } from "../../../lib/audit";
+import {
+  addToRevocationList,
+  removeFromRevocationList,
+} from "../../../lib/token-revocation";
+import { invalidateCachedUser } from "../../../lib/session-cache";
 import {
   AdminChangeRoleSchema,
   AdminEmergencyUserPurgeSchema,
@@ -172,20 +178,14 @@ router.get("/users", requireAdmin, async (c) => {
 
   if (canViewFullPii && allUsers.length > 0) {
     const userIdsViewed = allUsers.map((u) => u.id);
-    await logAuditWithContext(
-      c,
-      db,
-      "PII_VIEW",
-      currentUser.id,
-      "USER",
-      "BULK",
-      {
-        field: "phone,dob",
-        reason: "Admin user list with full PII",
+    await logPiiAccess(c, db, currentUser.id, "BULK", ["phone", "dob"], {
+      reasonCode: "ADMIN_USER_LIST_VIEW",
+      reason: "Admin user list with full PII",
+      extraDetails: {
         targetUserId: userIdsViewed.length === 1 ? userIdsViewed[0] : undefined,
         rowCount: userIdsViewed.length,
       },
-    );
+    });
   }
 
   return success(c, {
@@ -389,6 +389,21 @@ router.delete(
       return error(c, "ALREADY_PURGED", "User PII already purged", 410);
     }
 
+    if (c.env.KV) {
+      await addToRevocationList(c.env.KV, userId);
+      await invalidateCachedUser(c.env.KV, userId);
+    }
+
+    await db
+      .update(tokenFamilies)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(tokenFamilies.userId, userId),
+          sql`${tokenFamilies.revokedAt} IS NULL`,
+        ),
+      );
+
     const userPosts = await db
       .select({ id: posts.id })
       .from(posts)
@@ -510,6 +525,21 @@ router.post("/users/:id/lock", requireAdmin, async (c) => {
   }
 
   try {
+    if (c.env.KV) {
+      await addToRevocationList(c.env.KV, userId);
+      await invalidateCachedUser(c.env.KV, userId);
+    }
+
+    await db
+      .update(tokenFamilies)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(tokenFamilies.userId, userId),
+          sql`${tokenFamilies.revokedAt} IS NULL`,
+        ),
+      );
+
     await db.insert(auditLogs).values({
       action: "USER_LOCKED",
       actorId: currentUser.id,
@@ -546,6 +576,10 @@ router.post("/users/:id/unlock", requireAdmin, async (c) => {
 
   if (!updated) {
     return error(c, "USER_NOT_FOUND", "User not found", 404);
+  }
+
+  if (c.env.KV) {
+    await removeFromRevocationList(c.env.KV, userId);
   }
 
   try {

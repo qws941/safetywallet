@@ -17,6 +17,7 @@ export type AuditAction =
   | "DISPUTE_CREATED"
   | "DISPUTE_RESOLVED"
   | "PII_VIEW" // When piiViewFull is used to decrypt PII
+  | "PII_VIEW_FULL"
   | "EXCEL_EXPORT" // CSV/Excel data export
   | "IMAGE_DOWNLOAD" // Bulk image download
   | "POINT_AWARD" // Manual point award
@@ -104,6 +105,8 @@ export interface AuditDetails {
   field?: string;
   reason?: string;
   targetUserId?: string;
+  accessedFields?: string[];
+  clientFingerprint?: string;
 
   // EXCEL_EXPORT
   filterConditions?: Record<string, unknown>;
@@ -225,4 +228,28 @@ export async function logAuditWithContext(
     getClientIp(c),
     getUserAgent(c),
   );
+}
+
+export async function logPiiAccess(
+  c: Context,
+  db: ReturnType<typeof drizzle>,
+  actorId: string,
+  targetId: string,
+  accessedFields: string[],
+  options?: {
+    reasonCode?: string;
+    reason?: string;
+    extraDetails?: Record<string, unknown>;
+  },
+): Promise<void> {
+  await logAuditWithContext(c, db, "PII_VIEW_FULL", actorId, "USER", targetId, {
+    accessedFields,
+    reasonCode: options?.reasonCode,
+    reason: options?.reason,
+    clientFingerprint:
+      c.req.header("x-client-fingerprint") ||
+      c.req.header("X-Client-Fingerprint") ||
+      undefined,
+    ...(options?.extraDetails ?? {}),
+  });
 }

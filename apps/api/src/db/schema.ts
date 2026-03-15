@@ -77,6 +77,30 @@ export const disputeTypeEnum = [
   "OTHER",
 ] as const;
 export const approvalStatusEnum = ["PENDING", "APPROVED", "REJECTED"] as const;
+export const hazardSubcategoryEnum = [
+  "FALL",
+  "COLLAPSE",
+  "STRUCK_BY",
+  "CAUGHT_IN",
+  "ELECTROCUTION",
+  "FIRE",
+  "CHEMICAL",
+  "OTHER",
+] as const;
+export const tbmTopicCategoryEnum = [
+  "FALL_PREVENTION",
+  "SCAFFOLD_SAFETY",
+  "EXCAVATION",
+  "CRANE_OPERATION",
+  "ELECTRICAL",
+  "FIRE_PREVENTION",
+  "PPE",
+  "CHEMICAL_HANDLING",
+  "CONFINED_SPACE",
+  "TRAFFIC",
+  "WEATHER",
+  "GENERAL",
+] as const;
 
 // ============================================================================
 // TABLES
@@ -253,6 +277,9 @@ export const posts = sqliteTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     category: text("category", { enum: categoryEnum }).notNull(),
     hazardType: text("hazard_type"),
+    hazardSubcategory: text("hazard_subcategory", {
+      enum: hazardSubcategoryEnum,
+    }),
     riskLevel: text("risk_level", { enum: riskLevelEnum }),
     locationFloor: text("location_floor"),
     locationZone: text("location_zone"),
@@ -1247,6 +1274,7 @@ export const quizQuestions = sqliteTable(
     orderIndex: integer("order_index").default(0).notNull(),
     questionType: text("question_type").notNull().default("SINGLE_CHOICE"),
     correctAnswerText: text("correct_answer_text"),
+    imageUrl: text("image_url"),
   },
   (table) => ({
     quizIdx: index("quiz_questions_quiz_idx").on(table.quizId),
@@ -1389,6 +1417,7 @@ export const tbmRecords = sqliteTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     date: integer("date").notNull(), // epoch seconds (intentional — date-only field)
     topic: text("topic").notNull(),
+    topicCategory: text("topic_category", { enum: tbmTopicCategoryEnum }),
     content: text("content"),
     leaderId: text("leader_id")
       .notNull()
@@ -1669,5 +1698,31 @@ export const imageAiAnalysis = sqliteTable(
       table.postImageId,
     ),
     postIdIdx: index("image_ai_analysis_post_id_idx").on(table.postId),
+  }),
+);
+
+export const tokenFamilies = sqliteTable(
+  "token_families",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    familyId: text("family_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    parentTokenId: text("parent_token_id"),
+    used: integer("used", { mode: "boolean" }).default(false).notNull(),
+    revokedAt: integer("revoked_at", { mode: "timestamp" }),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    userIdIdx: index("token_families_user_id_idx").on(table.userId),
+    familyIdIdx: index("token_families_family_id_idx").on(table.familyId),
+    tokenHashIdx: index("token_families_token_hash_idx").on(table.tokenHash),
   }),
 );

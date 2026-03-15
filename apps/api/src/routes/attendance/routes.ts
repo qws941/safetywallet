@@ -56,19 +56,14 @@ export async function handleSync(c: AppContext) {
     }
   }
 
-  let validatedBody: { events?: AttendanceSyncEvent[] } | undefined;
-  try {
-    validatedBody = (await c.req.json()) as
-      | { events?: AttendanceSyncEvent[] }
-      | undefined;
-  } catch {
+  const body = c.req.valid("json" as never) as
+    | {
+        events?: AttendanceSyncEvent[];
+      }
+    | undefined;
+  if (!body) {
     return error(c, "INVALID_JSON", "Invalid JSON body", 400);
   }
-  const body =
-    validatedBody ??
-    ((await c.req.raw.clone().json()) as {
-      events?: AttendanceSyncEvent[];
-    });
 
   if (!body.events || !Array.isArray(body.events)) {
     return error(c, "MISSING_EVENTS", "events array is required", 400);
@@ -390,7 +385,7 @@ export async function handleToday(c: AppContext) {
   const { source, rawEmplCd } = resolveFasSourceByWorkerId(
     user.externalWorkerId,
   );
-  let attendanceResult;
+  let attendanceResult: Awaited<ReturnType<typeof fasCheckWorkerAttendance>>;
   try {
     attendanceResult = await fasCheckWorkerAttendance(
       hyperdrive,

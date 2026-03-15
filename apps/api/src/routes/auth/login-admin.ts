@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
-import { users } from "../../db/schema";
+import { tokenFamilies, users } from "../../db/schema";
 import { hmac, verifyPassword } from "../../lib/crypto";
 import { signJwt } from "../../lib/jwt";
 import { error, success } from "../../lib/response";
@@ -118,11 +118,21 @@ export async function handleAdminLogin(
     c.env.JWT_SECRET,
   );
   const refreshToken = crypto.randomUUID();
+  const refreshTokenHash = await hmac(c.env.HMAC_SECRET, refreshToken);
+  const familyId = crypto.randomUUID();
   const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await db
     .update(users)
     .set({ refreshToken, refreshTokenExpiresAt, updatedAt: new Date() })
     .where(eq(users.id, adminUser.id));
+
+  await db.insert(tokenFamilies).values({
+    userId: adminUser.id,
+    familyId,
+    tokenHash: refreshTokenHash,
+    used: false,
+    expiresAt: refreshTokenExpiresAt,
+  });
 
   return respondWithDelay(
     success(

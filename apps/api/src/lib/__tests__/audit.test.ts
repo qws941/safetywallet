@@ -3,6 +3,7 @@ import {
   getClientIp,
   getUserAgent,
   logAudit,
+  logPiiAccess,
   logAuditWithContext,
 } from "../audit";
 
@@ -121,6 +122,28 @@ describe("audit", () => {
 
       const valuesArg = db._values.mock.calls[0][0];
       expect(valuesArg.reason).toBe("{}");
+    });
+
+    it("logs full pii access with fingerprint and reason code", async () => {
+      const c = mockContext({
+        "CF-Connecting-IP": "10.0.0.5",
+        "User-Agent": "Worker/3.0",
+        "x-client-fingerprint": "fp-123",
+      });
+      const db = createMockDb();
+
+      await logPiiAccess(c, db as never, "actor-3", "BULK", ["phone", "dob"], {
+        reasonCode: "ADMIN_USER_LIST_VIEW",
+        reason: "Operational review",
+      });
+
+      const valuesArg = db._values.mock.calls[0][0];
+      expect(valuesArg.action).toBe("PII_VIEW_FULL");
+      expect(valuesArg.targetType).toBe("USER");
+      expect(valuesArg.targetId).toBe("BULK");
+      expect(valuesArg.reason).toContain("accessedFields");
+      expect(valuesArg.reason).toContain("clientFingerprint");
+      expect(valuesArg.reason).toContain("ADMIN_USER_LIST_VIEW");
     });
   });
 });

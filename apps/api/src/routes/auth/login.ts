@@ -16,13 +16,7 @@ loginRoute.post(
   authRateLimitMiddleware(),
   zValidator("json", LoginSchema),
   async (c) => {
-    const body = (() => {
-      try {
-        return c.req.valid("json");
-      } catch {
-        return null;
-      }
-    })();
+    const body = c.req.valid("json");
     return handleWorkerLogin(c, body);
   },
 );
@@ -32,13 +26,7 @@ loginRoute.post(
   authRateLimitMiddleware(),
   zValidator("json", AdminLoginSchema),
   async (c) => {
-    const body = (() => {
-      try {
-        return c.req.valid("json");
-      } catch {
-        return null;
-      }
-    })();
+    const body = c.req.valid("json");
     return handleAdminLogin(c, body);
   },
 );

@@ -1,11 +1,18 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { users, attendance, siteMemberships, sites } from "../../db/schema";
-import { decrypt } from "../../lib/crypto";
+import {
+  users,
+  attendance,
+  siteMemberships,
+  sites,
+  tokenFamilies,
+} from "../../db/schema";
+import { decrypt, hmac } from "../../lib/crypto";
 import { signJwt } from "../../lib/jwt";
+import { invalidateCachedUser } from "../../lib/session-cache";
 import { success, error } from "../../lib/response";
 import { createLogger } from "../../lib/logger";
 import { fasCheckWorkerAttendance } from "../../lib/fas";
@@ -63,17 +70,81 @@ sessionRoute.post(
 
     const db = drizzle(c.env.DB);
 
-    const userResults = await db
-      .select()
-      .from(users)
-      .where(eq(users.refreshToken, body.refreshToken))
-      .limit(1);
+    const refreshTokenHash = await hmac(c.env.HMAC_SECRET, body.refreshToken);
 
-    if (userResults.length === 0) {
+    const tokenRecord = await db
+      .select()
+      .from(tokenFamilies)
+      .where(eq(tokenFamilies.tokenHash, refreshTokenHash))
+      .get();
+
+    if (!tokenRecord || tokenRecord.revokedAt) {
       return error(c, "INVALID_REFRESH_TOKEN", "Invalid refresh token", 401);
     }
 
-    const user = userResults[0];
+    if (tokenRecord.used) {
+      await db
+        .update(tokenFamilies)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(tokenFamilies.familyId, tokenRecord.familyId),
+            isNull(tokenFamilies.revokedAt),
+          ),
+        );
+      if (c.env.KV) {
+        await invalidateCachedUser(c.env.KV, tokenRecord.userId);
+      }
+      return c.json({ error: "Token reuse detected" }, 401);
+    }
+
+    if (tokenRecord.expiresAt < new Date()) {
+      return error(
+        c,
+        "REFRESH_TOKEN_EXPIRED",
+        "Refresh token has expired",
+        401,
+      );
+    }
+
+    const markedUsed = await db
+      .update(tokenFamilies)
+      .set({ used: true })
+      .where(
+        and(
+          eq(tokenFamilies.id, tokenRecord.id),
+          eq(tokenFamilies.used, false),
+          isNull(tokenFamilies.revokedAt),
+        ),
+      )
+      .returning({ id: tokenFamilies.id })
+      .get();
+
+    if (!markedUsed) {
+      await db
+        .update(tokenFamilies)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(tokenFamilies.familyId, tokenRecord.familyId),
+            isNull(tokenFamilies.revokedAt),
+          ),
+        );
+      if (c.env.KV) {
+        await invalidateCachedUser(c.env.KV, tokenRecord.userId);
+      }
+      return c.json({ error: "Token reuse detected" }, 401);
+    }
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, tokenRecord.userId))
+      .get();
+
+    if (!user) {
+      return error(c, "INVALID_REFRESH_TOKEN", "Invalid refresh token", 401);
+    }
 
     if (
       user.refreshTokenExpiresAt &&
@@ -163,6 +234,7 @@ sessionRoute.post(
     }
 
     const newRefreshToken = crypto.randomUUID();
+    const newRefreshTokenHash = await hmac(c.env.HMAC_SECRET, newRefreshToken);
     const refreshTokenExpiresAt = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000,
     );
@@ -183,6 +255,15 @@ sessionRoute.post(
         updatedAt: new Date(),
       })
       .where(eq(users.id, user.id));
+
+    await db.insert(tokenFamilies).values({
+      userId: user.id,
+      familyId: tokenRecord.familyId,
+      tokenHash: newRefreshTokenHash,
+      parentTokenId: tokenRecord.id,
+      used: false,
+      expiresAt: refreshTokenExpiresAt,
+    });
 
     return success(
       c,
@@ -216,6 +297,20 @@ sessionRoute.post(
     }
 
     const db = drizzle(c.env.DB);
+
+    // First get the user to invalidate their KV cache
+    const userResults = await db
+      .select()
+      .from(users)
+      .where(eq(users.refreshToken, body.refreshToken))
+      .limit(1);
+
+    const user = userResults[0];
+
+    // Invalidate KV cache before clearing the refresh token
+    if (user) {
+      await invalidateCachedUser(c.env.KV, user.id);
+    }
 
     await db
       .update(users)

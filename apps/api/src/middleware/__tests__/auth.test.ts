@@ -8,6 +8,7 @@ const mockVerifyJwt = vi.fn();
 const mockCheckSameDay = vi.fn();
 const mockGetCachedUser = vi.fn();
 const mockSetCachedUser = vi.fn();
+const mockIsRevoked = vi.fn();
 
 vi.mock("../../lib/jwt", () => ({
   verifyJwt: (...args: unknown[]) => mockVerifyJwt(...args),
@@ -17,6 +18,10 @@ vi.mock("../../lib/jwt", () => ({
 vi.mock("../../lib/session-cache", () => ({
   getCachedUser: (...args: unknown[]) => mockGetCachedUser(...args),
   setCachedUser: (...args: unknown[]) => mockSetCachedUser(...args),
+}));
+
+vi.mock("../../lib/token-revocation", () => ({
+  isRevoked: (...args: unknown[]) => mockIsRevoked(...args),
 }));
 
 vi.mock("../../lib/logger", () => ({
@@ -76,6 +81,7 @@ function createApp() {
 describe("authMiddleware", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsRevoked.mockResolvedValue(false);
   });
 
   it("returns 401 when no Authorization header", async () => {

@@ -1,6 +1,8 @@
 import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import type { Env, AuthContext } from "../../types";
 import { accessPolicies } from "../../db/schema";
 import { success, error } from "../../lib/response";
@@ -12,6 +14,11 @@ const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
+
+const UpdateAccessPolicySchema = z.object({
+  requireCheckin: z.boolean(),
+  dayCutoffHour: z.number().int().optional(),
+});
 
 app.get("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
   const db = drizzle(c.env.DB);
@@ -35,86 +42,84 @@ app.get("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
   });
 });
 
-app.put("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
-  const db = drizzle(c.env.DB);
-  const { user: currentUser } = c.get("auth");
-  const siteId = c.req.param("siteId");
-  if (!siteId) {
-    return error(c, "BAD_REQUEST", "siteId is required", 400);
-  }
+app.put(
+  "/access-policies/:siteId",
+  requireAdmin,
+  zValidator("json", UpdateAccessPolicySchema),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user: currentUser } = c.get("auth");
+    const siteId = c.req.param("siteId");
+    if (!siteId) {
+      return error(c, "BAD_REQUEST", "siteId is required", 400);
+    }
 
-  let body: { requireCheckin: boolean; dayCutoffHour?: number };
-  try {
-    body = await c.req.json();
-  } catch {
-    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
-  }
+    const body = c.req.valid("json") as z.infer<
+      typeof UpdateAccessPolicySchema
+    >;
 
-  if (typeof body.requireCheckin !== "boolean") {
-    return error(c, "INVALID_INPUT", "requireCheckin must be a boolean", 400);
-  }
+    const cutoffHour = body.dayCutoffHour ?? 5;
+    if (cutoffHour < 0 || cutoffHour > 23) {
+      return error(
+        c,
+        "INVALID_INPUT",
+        "dayCutoffHour must be between 0 and 23",
+        400,
+      );
+    }
 
-  const cutoffHour = body.dayCutoffHour ?? 5;
-  if (cutoffHour < 0 || cutoffHour > 23) {
-    return error(
-      c,
-      "INVALID_INPUT",
-      "dayCutoffHour must be between 0 and 23",
-      400,
-    );
-  }
-
-  const existing = await db
-    .select()
-    .from(accessPolicies)
-    .where(eq(accessPolicies.siteId, siteId))
-    .get();
-
-  let policy: typeof accessPolicies.$inferSelect | undefined;
-  if (existing) {
-    [policy] = await db
-      .update(accessPolicies)
-      .set({
-        requireCheckin: body.requireCheckin,
-        dayCutoffHour: cutoffHour,
-      })
+    const existing = await db
+      .select()
+      .from(accessPolicies)
       .where(eq(accessPolicies.siteId, siteId))
-      .returning();
-  } else {
-    [policy] = await db
-      .insert(accessPolicies)
-      .values({
-        siteId,
+      .get();
+
+    let policy: typeof accessPolicies.$inferSelect | undefined;
+    if (existing) {
+      [policy] = await db
+        .update(accessPolicies)
+        .set({
+          requireCheckin: body.requireCheckin,
+          dayCutoffHour: cutoffHour,
+        })
+        .where(eq(accessPolicies.siteId, siteId))
+        .returning();
+    } else {
+      [policy] = await db
+        .insert(accessPolicies)
+        .values({
+          siteId,
+          requireCheckin: body.requireCheckin,
+          dayCutoffHour: cutoffHour,
+        })
+        .returning();
+    }
+
+    if (!policy) {
+      return error(
+        c,
+        "ACCESS_POLICY_UPDATE_FAILED",
+        "Failed to update access policy",
+        500,
+      );
+    }
+
+    await logAuditWithContext(
+      c,
+      db,
+      "ACCESS_POLICY_UPDATED",
+      currentUser.id,
+      "SYSTEM",
+      siteId,
+      {
         requireCheckin: body.requireCheckin,
         dayCutoffHour: cutoffHour,
-      })
-      .returning();
-  }
-
-  if (!policy) {
-    return error(
-      c,
-      "ACCESS_POLICY_UPDATE_FAILED",
-      "Failed to update access policy",
-      500,
+        action: existing ? "updated" : "created",
+      },
     );
-  }
 
-  await logAuditWithContext(
-    c,
-    db,
-    "ACCESS_POLICY_UPDATED",
-    currentUser.id,
-    "SYSTEM",
-    siteId,
-    {
-      requireCheckin: body.requireCheckin,
-      dayCutoffHour: cutoffHour,
-      action: existing ? "updated" : "created",
-    },
-  );
-
-  return success(c, { policy });
-});
+    return success(c, { policy });
+  },
+);
 
 export default app;

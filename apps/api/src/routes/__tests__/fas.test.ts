@@ -46,11 +46,16 @@ vi.mock("../../lib/response", async () => {
   return actual;
 });
 
-// Mock zValidator to pass through without consuming body stream
-// (fas.ts re-reads raw body via c.req.raw.clone().json())
+// Mock zValidator to parse body and populate c.req.valid()
 vi.mock("@hono/zod-validator", () => ({
   zValidator: () => {
-    return async (_c: unknown, next: () => Promise<void>) => {
+    return async (c: any, next: () => Promise<void>) => {
+      try {
+        const body = await c.req.raw.clone().json();
+        c.req.valid = () => body;
+      } catch {
+        c.req.valid = () => undefined;
+      }
       await next();
     };
   },

@@ -15,7 +15,7 @@ const recommendationsRoute = new Hono<{
   Variables: { auth: AuthContext };
 }>();
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 recommendationsRoute.use("*", defaultRateLimit);
 
 const CreateRecommendationSchema = z.object({

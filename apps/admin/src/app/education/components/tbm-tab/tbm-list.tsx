@@ -26,6 +26,21 @@ import type { TbmRecordItem, TbmDetail } from "../education-types";
 import { TbmAiAnalysis } from "./tbm-ai-analysis";
 import { TbmMeetingMinutes } from "./tbm-meeting-minutes";
 
+const TBM_TOPIC_CATEGORY_LABELS: Record<string, string> = {
+  FALL_PREVENTION: "추락방지",
+  SCAFFOLD_SAFETY: "비계안전",
+  EXCAVATION: "굴착작업",
+  CRANE_OPERATION: "크레인",
+  ELECTRICAL: "전기작업",
+  FIRE_PREVENTION: "화재예방",
+  PPE: "보호구",
+  CHEMICAL_HANDLING: "화학물질",
+  CONFINED_SPACE: "밀폐공간",
+  TRAFFIC: "교통안전",
+  WEATHER: "기상관련",
+  GENERAL: "일반",
+};
+
 interface Props {
   tbmRecords: TbmRecordItem[];
   isLoading: boolean;
@@ -84,6 +99,18 @@ export function TbmList({
       sortable: true,
       render: (item) => (
         <span className="font-medium break-words">{item.tbm.topic}</span>
+      ),
+    },
+    {
+      key: "tbm.topicCategory",
+      header: "분류",
+      sortable: true,
+      render: (item) => (
+        <span>
+          {TBM_TOPIC_CATEGORY_LABELS[item.tbm.topicCategory as string] ||
+            item.tbm.topicCategory ||
+            "-"}
+        </span>
       ),
     },
     {

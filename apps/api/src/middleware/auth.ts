@@ -7,6 +7,7 @@ import { users } from "../db/schema";
 import type { Env, AuthContext } from "../types";
 import { createLogger } from "../lib/logger";
 import { getCachedUser, setCachedUser } from "../lib/session-cache";
+import { isRevoked } from "../lib/token-revocation";
 
 const logger = createLogger("auth");
 
@@ -32,6 +33,10 @@ export async function authMiddleware(
     });
   }
 
+  if (c.env.KV && (await isRevoked(c.env.KV, payload.sub))) {
+    throw new HTTPException(401, { message: "유효하지 않은 토큰입니다." });
+  }
+
   const cached = c.env.KV ? await getCachedUser(c.env.KV, payload.sub) : null;
 
   if (cached) {
@@ -51,7 +56,11 @@ export async function authMiddleware(
 
   const db = drizzle(c.env.DB);
   const [user] = await db
-    .select({ name: users.name, nameMasked: users.nameMasked })
+    .select({
+      name: users.name,
+      nameMasked: users.nameMasked,
+      restrictedUntil: users.restrictedUntil,
+    })
     .from(users)
     .where(eq(users.id, payload.sub))
     .limit(1);
@@ -64,6 +73,10 @@ export async function authMiddleware(
     throw new HTTPException(401, {
       message: "사용자 정보를 찾을 수 없습니다.",
     });
+  }
+
+  if (user.restrictedUntil && user.restrictedUntil > new Date()) {
+    throw new HTTPException(401, { message: "유효하지 않은 토큰입니다." });
   }
 
   const userData = {

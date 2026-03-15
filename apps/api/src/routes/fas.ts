@@ -30,31 +30,8 @@ app.post(
     }
     const db = drizzle(c.env.DB);
 
-    let data: {
-      siteId?: string;
-      workers?: Array<{
-        externalWorkerId?: string;
-        name?: string;
-        phone?: string;
-        dob?: string;
-        companyName?: string;
-        tradeType?: string;
-      }>;
-    } | null = null;
-    try {
-      c.req.valid("json");
-      data = (await c.req.raw.clone().json()) as {
-        siteId?: string;
-        workers?: Array<{
-          externalWorkerId?: string;
-          name?: string;
-          phone?: string;
-          dob?: string;
-          companyName?: string;
-          tradeType?: string;
-        }>;
-      };
-    } catch {
+    const data = c.req.valid("json");
+    if (!data) {
       return error(c, "INVALID_JSON", "Invalid JSON", 400);
     }
 
@@ -80,8 +57,8 @@ app.post(
       name: string;
       phone: string;
       dob: string;
-      companyName: string | null;
-      tradeType: string | null;
+      company: string | null;
+      trade: string | null;
     }> = [];
 
     for (const worker of data.workers) {
@@ -103,8 +80,8 @@ app.post(
         name: worker.name,
         phone: worker.phone,
         dob: worker.dob,
-        companyName: worker.companyName ?? null,
-        tradeType: worker.tradeType ?? null,
+        company: worker.company ?? null,
+        trade: worker.trade ?? null,
       });
     }
 
@@ -165,8 +142,8 @@ app.post(
                 phoneEncrypted: w.phoneEncrypted,
                 dobHash: w.dobHash,
                 dobEncrypted: w.dobEncrypted,
-                companyName: w.companyName,
-                tradeType: w.tradeType,
+                companyName: w.company,
+                tradeType: w.trade,
                 updatedAt: new Date(),
               })
               .where(eq(users.id, existingId)),
@@ -183,8 +160,8 @@ app.post(
               phoneEncrypted: w.phoneEncrypted,
               dobHash: w.dobHash,
               dobEncrypted: w.dobEncrypted,
-              companyName: w.companyName,
-              tradeType: w.tradeType,
+              companyName: w.company,
+              tradeType: w.trade,
               role: "WORKER",
             }),
           );

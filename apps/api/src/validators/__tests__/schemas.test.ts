@@ -159,7 +159,14 @@ const fixtures: Record<string, Fixture> = {
   AdminSyncWorkersSchema: {
     valid: {
       siteId: "site-1",
-      workers: [{ externalWorkerId: "ext-1", name: "Lee" }],
+      workers: [
+        {
+          externalWorkerId: "ext-1",
+          name: "Lee",
+          phone: "010-1234-5678",
+          dob: "1990-01-01",
+        },
+      ],
     },
     invalid: { siteId: "site-1", workers: [] },
   },
@@ -275,6 +282,18 @@ const fixtures: Record<string, Fixture> = {
       date: "2026-02-15",
       topic: "",
     },
+  },
+  PostFilterSchema: {
+    valid: { siteId: "site-1", category: "HAZARD" },
+    invalid: { category: "INVALID_CATEGORY" },
+  },
+  UpdateTbmInputSchema: {
+    valid: { topic: "Updated briefing" },
+    invalid: {},
+  },
+  TbmRecordFilterSchema: {
+    valid: { siteId: "site-1" },
+    invalid: {},
   },
   AttendTbmSchema: {
     valid: { tbmRecordId: "tbm-1" },

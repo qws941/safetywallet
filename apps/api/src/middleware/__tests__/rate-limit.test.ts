@@ -170,7 +170,7 @@ describe("rateLimitMiddleware", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(rateLimiter.idFromName).toHaveBeenCalledWith("user:user-42");
+    expect(rateLimiter.idFromName).toHaveBeenCalledWith("general:user:user-42");
   });
 
   it("authRateLimitMiddleware keys by auth IP prefix", async () => {
@@ -197,6 +197,6 @@ describe("rateLimitMiddleware", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(rateLimiter.idFromName).toHaveBeenCalledWith("auth:8.8.8.8");
+    expect(rateLimiter.idFromName).toHaveBeenCalledWith("auth:ip:8.8.8.8");
   });
 });

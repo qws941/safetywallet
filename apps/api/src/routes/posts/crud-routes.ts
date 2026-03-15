@@ -7,8 +7,9 @@ import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { createLogger } from "../../lib/logger";
 import { hammingDistance, DUPLICATE_THRESHOLD } from "../../lib/phash";
+import { signR2PathIfNeeded, toUnsignedR2Path } from "../../lib/signed-url";
 import { classifyPost, getAiCredentials } from "../../lib/gemini-ai";
-import { CreatePostSchema } from "../../validators/schemas";
+import { CreatePostSchema, PostFilterSchema } from "../../validators/schemas";
 import {
   posts,
   postImages,
@@ -18,12 +19,7 @@ import {
   pointPolicies,
   pointsLedger,
 } from "../../db/schema";
-import {
-  validateJson,
-  validCategories,
-  type CategoryType,
-  type PostsRouteApp,
-} from "./helpers";
+import { validateJson, type PostsRouteApp } from "./helpers";
 
 const logger = createLogger("posts");
 
@@ -41,6 +37,7 @@ function extractR2Key(fileUrl: string): string {
 const postRateLimit = rateLimitMiddleware({
   maxRequests: 10,
   windowMs: 60_000,
+  prefix: "api:posts",
 });
 
 export const registerCrudRoutes = (app: PostsRouteApp): void => {
@@ -220,6 +217,8 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
           content: data.content,
           category: data.category,
           hazardType: data.hazardType,
+          hazardSubcategory:
+            data.category === "HAZARD" ? data.hazardSubcategory : null,
           riskLevel: data.riskLevel,
           visibility: data.visibility,
           locationFloor: data.locationFloor,
@@ -237,7 +236,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
               .map((fileUrl: string, idx: number) =>
                 db.insert(postImages).values({
                   postId,
-                  fileUrl,
+                  fileUrl: toUnsignedR2Path(fileUrl),
                   thumbnailUrl: null,
                   imageHash: hashes[idx] ?? null,
                 }),
@@ -363,15 +362,29 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
   app.get("/", async (c) => {
     const db = drizzle(c.env.DB);
 
-    const siteId = c.req.query("siteId");
+    const parsedFilter = PostFilterSchema.safeParse({
+      siteId: c.req.query("siteId"),
+      category: c.req.query("category"),
+      hazardSubcategory: c.req.query("hazardSubcategory"),
+      limit: c.req.query("limit"),
+      offset: c.req.query("offset"),
+    });
+
+    if (!parsedFilter.success) {
+      return error(c, "INVALID_QUERY", "Invalid post list query", 400);
+    }
+
+    const {
+      siteId,
+      category,
+      hazardSubcategory,
+      limit: limitParam,
+      offset: offsetParam,
+    } = parsedFilter.data;
+    const limit = Math.min(limitParam ?? 20, 100);
+    const offset = offsetParam ?? 0;
+
     await attendanceMiddleware(c, async () => {}, siteId);
-    const categoryParam = c.req.query("category") as CategoryType | undefined;
-    const category =
-      categoryParam && validCategories.includes(categoryParam)
-        ? categoryParam
-        : undefined;
-    const limit = Math.min(parseInt(c.req.query("limit") || "20"), 100);
-    const offset = parseInt(c.req.query("offset") || "0");
 
     const query = db
       .select({
@@ -394,6 +407,9 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
     }
     if (category) {
       conditions.push(eq(posts.category, category));
+    }
+    if (hazardSubcategory) {
+      conditions.push(eq(posts.hazardSubcategory, hazardSubcategory));
     }
 
     const result =
@@ -508,6 +524,18 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
       );
     }
 
+    const signedImages = await Promise.all(
+      images.map(async (image) => ({
+        ...image,
+        fileUrl:
+          (await signR2PathIfNeeded(image.fileUrl, c.env.JWT_SECRET)) ??
+          image.fileUrl,
+        thumbnailUrl:
+          (await signR2PathIfNeeded(image.thumbnailUrl, c.env.JWT_SECRET)) ??
+          image.thumbnailUrl,
+      })),
+    );
+
     return success(c, {
       post: {
         ...post,
@@ -517,7 +545,7 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
               id: author?.id,
               name: author?.nameMasked,
             },
-        images,
+        images: signedImages,
         reviews: postReviews,
       },
     });

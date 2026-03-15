@@ -44,7 +44,6 @@ export interface Env {
   FAS_SITE_NAME?: string;
   // Admin credentials
   ADMIN_USERNAME?: string;
-  ADMIN_PASSWORD?: string;
   ADMIN_PASSWORD_HASH?: string;
   // Analytics Engine for observability
   ANALYTICS?: AnalyticsEngineDataset;

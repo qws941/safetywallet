@@ -14,7 +14,7 @@ const app = new Hono<AppType>();
 
 app.use("*", authMiddleware);
 
-const defaultRateLimit = rateLimitMiddleware();
+const defaultRateLimit = rateLimitMiddleware({ prefix: "api:general" });
 app.use("*", defaultRateLimit);
 
 app.get("/youtube-oembed", async (c) => {
