@@ -6,6 +6,7 @@ import {
   EducationContentType,
   MembershipStatus,
   QuizStatus,
+  QuestionType,
   RejectReason,
   ReviewAction,
   ReviewStatus,
@@ -238,6 +239,7 @@ describe("DTO and envelope shapes", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       images: [postImage],
       author: { id: "u1", nameMasked: "홍*동" },
+      hazardSubcategory: null,
     } satisfies PostDto;
     const postList = {
       id: "p1",
@@ -516,6 +518,8 @@ describe("DTO and envelope shapes", () => {
       correctIndex: 0,
       explanation: "필수입니다",
       sortOrder: 1,
+      questionType: QuestionType.SINGLE_CHOICE,
+      imageUrl: null,
     } satisfies QuizQuestionDto;
     const quiz = {
       id: "quiz1",
@@ -653,6 +657,7 @@ describe("DTO and envelope shapes", () => {
       leaderName: "반장",
       createdAt: "2026-01-02T08:00:00.000Z",
       updatedAt: "2026-01-02T08:00:00.000Z",
+      topicCategory: null,
     } satisfies TbmRecordDto;
     const tbmList = {
       id: "tbm1",
@@ -661,6 +666,7 @@ describe("DTO and envelope shapes", () => {
       leaderName: "반장",
       attendeeCount: 1,
       createdAt: "2026-01-02T08:00:00.000Z",
+      topicCategory: null,
     } satisfies TbmRecordListDto;
     const tbmFilter = {
       siteId: "s1",

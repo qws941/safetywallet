@@ -6,6 +6,7 @@ import { apiFetch } from "./use-api-base";
 
 export function useTbmRecords(filters?: {
   date?: string;
+  topicCategory?: import("./use-education-api-types").TbmRecord["topicCategory"];
   limit?: number;
   offset?: number;
 }) {
@@ -17,6 +18,9 @@ export function useTbmRecords(filters?: {
       const params = new URLSearchParams();
       if (siteId) params.set("siteId", siteId);
       if (filters?.date) params.set("date", filters.date);
+      if (filters?.topicCategory) {
+        params.set("topicCategory", filters.topicCategory);
+      }
       if (filters?.limit !== undefined) {
         params.set("limit", String(filters.limit));
       }

@@ -1,7 +1,9 @@
 import {
   EducationContentType,
+  QuestionType,
   QuizStatus,
   StatutoryTrainingType,
+  TbmTopicCategory,
   TrainingCompletionStatus,
 } from "../enums";
 
@@ -98,9 +100,11 @@ export interface QuizDto {
 export interface QuizQuestionDto {
   id: string;
   questionText: string;
+  questionType: QuestionType;
   options: string[];
   correctIndex: number;
   explanation: string | null;
+  imageUrl: string | null;
   sortOrder: number;
 }
 
@@ -212,6 +216,7 @@ export interface CreateTbmRecordDto {
   date: string;
   topic: string;
   content?: string;
+  topicCategory?: TbmTopicCategory;
   leaderId?: string;
   weatherCondition?: string;
   specialNotes?: string;
@@ -220,6 +225,7 @@ export interface CreateTbmRecordDto {
 export interface UpdateTbmRecordDto {
   date?: string;
   topic?: string;
+  topicCategory?: TbmTopicCategory;
   content?: string;
   weatherCondition?: string;
   specialNotes?: string;
@@ -235,6 +241,7 @@ export interface TbmRecordDto {
   weatherCondition: string | null;
   specialNotes: string | null;
   attendeeCount: number;
+  topicCategory: TbmTopicCategory | null;
   attendees: TbmAttendeeDto[];
   leaderName?: string;
   createdAt: string;
@@ -253,6 +260,7 @@ export interface TbmRecordListDto {
   date: string;
   topic: string;
   leaderName: string | null;
+  topicCategory: TbmTopicCategory | null;
   attendeeCount: number;
   createdAt: string;
 }
@@ -262,6 +270,7 @@ export interface TbmRecordFilterDto {
   fromDate?: string;
   toDate?: string;
   leaderId?: string;
+  topicCategory?: TbmTopicCategory;
   page?: number;
   limit?: number;
 }

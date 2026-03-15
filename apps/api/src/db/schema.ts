@@ -77,6 +77,30 @@ export const disputeTypeEnum = [
   "OTHER",
 ] as const;
 export const approvalStatusEnum = ["PENDING", "APPROVED", "REJECTED"] as const;
+export const hazardSubcategoryEnum = [
+  "FALL",
+  "COLLAPSE",
+  "STRUCK_BY",
+  "CAUGHT_IN",
+  "ELECTROCUTION",
+  "FIRE",
+  "CHEMICAL",
+  "OTHER",
+] as const;
+export const tbmTopicCategoryEnum = [
+  "FALL_PREVENTION",
+  "SCAFFOLD_SAFETY",
+  "EXCAVATION",
+  "CRANE_OPERATION",
+  "ELECTRICAL",
+  "FIRE_PREVENTION",
+  "PPE",
+  "CHEMICAL_HANDLING",
+  "CONFINED_SPACE",
+  "TRAFFIC",
+  "WEATHER",
+  "GENERAL",
+] as const;
 
 // ============================================================================
 // TABLES
@@ -253,6 +277,9 @@ export const posts = sqliteTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     category: text("category", { enum: categoryEnum }).notNull(),
     hazardType: text("hazard_type"),
+    hazardSubcategory: text("hazard_subcategory", {
+      enum: hazardSubcategoryEnum,
+    }),
     riskLevel: text("risk_level", { enum: riskLevelEnum }),
     locationFloor: text("location_floor"),
     locationZone: text("location_zone"),
@@ -1247,6 +1274,7 @@ export const quizQuestions = sqliteTable(
     orderIndex: integer("order_index").default(0).notNull(),
     questionType: text("question_type").notNull().default("SINGLE_CHOICE"),
     correctAnswerText: text("correct_answer_text"),
+    imageUrl: text("image_url"),
   },
   (table) => ({
     quizIdx: index("quiz_questions_quiz_idx").on(table.quizId),
@@ -1389,6 +1417,7 @@ export const tbmRecords = sqliteTable(
       .references(() => sites.id, { onDelete: "cascade" }),
     date: integer("date").notNull(), // epoch seconds (intentional — date-only field)
     topic: text("topic").notNull(),
+    topicCategory: text("topic_category", { enum: tbmTopicCategoryEnum }),
     content: text("content"),
     leaderId: text("leader_id")
       .notNull()

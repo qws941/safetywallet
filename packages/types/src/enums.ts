@@ -100,6 +100,14 @@ export enum QuizStatus {
   ARCHIVED = "ARCHIVED",
 }
 
+export enum QuestionType {
+  SINGLE_CHOICE = "SINGLE_CHOICE",
+  OX = "OX",
+  MULTI_CHOICE = "MULTI_CHOICE",
+  SHORT_ANSWER = "SHORT_ANSWER",
+  IMAGE = "IMAGE",
+}
+
 export enum StatutoryTrainingType {
   NEW_WORKER = "NEW_WORKER",
   SPECIAL = "SPECIAL",
@@ -111,6 +119,36 @@ export enum TrainingCompletionStatus {
   SCHEDULED = "SCHEDULED",
   COMPLETED = "COMPLETED",
   EXPIRED = "EXPIRED",
+}
+
+// === Hazard Classification (위험 분류) ===
+
+export enum HazardSubcategory {
+  FALL = "FALL",
+  COLLAPSE = "COLLAPSE",
+  STRUCK_BY = "STRUCK_BY",
+  CAUGHT_IN = "CAUGHT_IN",
+  ELECTROCUTION = "ELECTROCUTION",
+  FIRE = "FIRE",
+  CHEMICAL = "CHEMICAL",
+  OTHER = "OTHER",
+}
+
+// === TBM Topics (TBM 주제 분류) ===
+
+export enum TbmTopicCategory {
+  FALL_PREVENTION = "FALL_PREVENTION",
+  SCAFFOLD_SAFETY = "SCAFFOLD_SAFETY",
+  EXCAVATION = "EXCAVATION",
+  CRANE_OPERATION = "CRANE_OPERATION",
+  ELECTRICAL = "ELECTRICAL",
+  FIRE_PREVENTION = "FIRE_PREVENTION",
+  PPE = "PPE",
+  CHEMICAL_HANDLING = "CHEMICAL_HANDLING",
+  CONFINED_SPACE = "CONFINED_SPACE",
+  TRAFFIC = "TRAFFIC",
+  WEATHER = "WEATHER",
+  GENERAL = "GENERAL",
 }
 
 // === Site Membership (현장 멤버십) ===

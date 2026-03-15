@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   Category,
+  HazardSubcategory,
   RiskLevel,
   Visibility,
   ReviewAction,
@@ -14,6 +15,7 @@ import {
   QuizStatus,
   StatutoryTrainingType,
   TrainingCompletionStatus,
+  TbmTopicCategory,
   UserRole,
   uuid,
   monthPattern,
@@ -28,6 +30,7 @@ export const CreatePostSchema = z.object({
   category: z.enum(Category),
   content: nonEmptyStr,
   hazardType: z.string().optional(),
+  hazardSubcategory: z.enum(HazardSubcategory).optional(),
   riskLevel: z.enum(RiskLevel).optional(),
   locationFloor: z.string().optional(),
   locationZone: z.string().optional(),
@@ -37,6 +40,14 @@ export const CreatePostSchema = z.object({
   imageUrls: z.array(z.string()).optional(),
   imageHashes: z.array(z.string().nullable()).optional(),
   metadata: z.record(z.unknown()).optional(),
+});
+
+export const PostFilterSchema = z.object({
+  siteId: uuid.optional(),
+  category: z.enum(Category).optional(),
+  hazardSubcategory: z.enum(HazardSubcategory).optional(),
+  limit: z.coerce.number().int().min(1).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
 });
 
 export const ResubmitPostSchema = z.object({
@@ -325,10 +336,32 @@ export const CreateTbmInputSchema = z.object({
   siteId: uuid,
   date: isoDateStr,
   topic: nonEmptyStr,
+  topicCategory: z.enum(TbmTopicCategory).optional(),
   content: z.string().optional(),
   leaderId: uuid.optional(),
   weatherCondition: z.string().optional(),
   specialNotes: z.string().optional(),
+});
+
+export const UpdateTbmInputSchema = z
+  .object({
+    date: isoDateStr.optional(),
+    topic: nonEmptyStr.optional(),
+    topicCategory: z.enum(TbmTopicCategory).optional(),
+    content: z.string().optional(),
+    weatherCondition: z.string().optional(),
+    specialNotes: z.string().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field is required",
+  });
+
+export const TbmRecordFilterSchema = z.object({
+  siteId: uuid,
+  date: isoDateStr.optional(),
+  topicCategory: z.enum(TbmTopicCategory).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
 });
 
 // ─── Attendance Schemas ──────────────────────────────────────────────────────

@@ -223,7 +223,13 @@ app.get("/:id", async (c) => {
     .orderBy(quizQuestions.orderIndex)
     .all();
 
-  return success(c, { ...quiz, questions });
+  const mappedQuestions = questions.map((question) => ({
+    ...question,
+    questionType: question.questionType ?? "SINGLE_CHOICE",
+    imageUrl: question.imageUrl ?? null,
+  }));
+
+  return success(c, { ...quiz, questions: mappedQuestions });
 });
 
 app.patch("/:id", zValidator("json", UpdateQuizMetadataSchema), async (c) => {
@@ -399,6 +405,7 @@ app.post(
         options: validated.data.options,
         correctAnswer: validated.data.correctAnswer,
         questionType: validated.data.questionType,
+        imageUrl: validated.data.imageUrl,
         correctAnswerText: validated.data.correctAnswerText,
         explanation: body.explanation ?? null,
         orderIndex: body.orderIndex ?? 0,
@@ -406,7 +413,15 @@ app.post(
       .returning()
       .get();
 
-    return success(c, question, 201);
+    return success(
+      c,
+      {
+        ...question,
+        questionType: question.questionType ?? "SINGLE_CHOICE",
+        imageUrl: question.imageUrl ?? null,
+      },
+      201,
+    );
   },
 );
 
@@ -471,6 +486,7 @@ app.put(
         options: validated.data.options,
         correctAnswer: validated.data.correctAnswer,
         questionType: validated.data.questionType,
+        imageUrl: validated.data.imageUrl,
         correctAnswerText: validated.data.correctAnswerText,
         ...(body.explanation !== undefined && {
           explanation: body.explanation,
@@ -483,7 +499,11 @@ app.put(
       .returning()
       .get();
 
-    return success(c, updated);
+    return success(c, {
+      ...updated,
+      questionType: updated.questionType ?? "SINGLE_CHOICE",
+      imageUrl: updated.imageUrl ?? null,
+    });
   },
 );
 

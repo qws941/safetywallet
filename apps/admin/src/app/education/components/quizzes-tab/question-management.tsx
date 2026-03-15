@@ -68,6 +68,7 @@ export function QuestionManagement({ expandedQuizId, typedQuizDetail }: Props) {
     setQuestionForm({
       question: question.question,
       questionType,
+      imageUrl: question.imageUrl || "",
       option1: question.options[0] || "",
       option2: question.options[1] || "",
       option3: question.options[2] || "",
@@ -100,7 +101,7 @@ export function QuestionManagement({ expandedQuizId, typedQuizDetail }: Props) {
     let correctAnswer = 0;
     let correctAnswerText: string | undefined;
 
-    if (questionType === "SINGLE_CHOICE") {
+    if (questionType === "SINGLE_CHOICE" || questionType === "IMAGE") {
       options = [
         questionForm.option1,
         questionForm.option2,
@@ -130,6 +131,17 @@ export function QuestionManagement({ expandedQuizId, typedQuizDetail }: Props) {
       }
 
       correctAnswer = selected;
+
+      if (questionType === "IMAGE") {
+        const imageUrl = questionForm.imageUrl.trim();
+        if (!imageUrl) {
+          toast({
+            variant: "destructive",
+            description: "이미지 URL을 입력해 주세요.",
+          });
+          return;
+        }
+      }
     }
 
     if (questionType === "OX") {
@@ -205,6 +217,10 @@ export function QuestionManagement({ expandedQuizId, typedQuizDetail }: Props) {
     const payload: CreateQuizQuestionInput = {
       question: questionForm.question,
       questionType,
+      imageUrl:
+        questionType === "IMAGE"
+          ? questionForm.imageUrl.trim() || undefined
+          : undefined,
       options,
       correctAnswer,
       correctAnswerText,

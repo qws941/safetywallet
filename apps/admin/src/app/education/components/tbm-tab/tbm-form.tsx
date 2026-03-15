@@ -10,8 +10,27 @@ import {
   Button,
   useToast,
 } from "@safetywallet/ui";
+import { TbmTopicCategory } from "@safetywallet/types";
 import type { TbmFormState } from "../education-types";
 import type { CreateTbmRecordInput } from "@/hooks/use-api";
+
+const TOPIC_CATEGORY_OPTIONS: Array<{
+  value: TbmTopicCategory;
+  label: string;
+}> = [
+  { value: TbmTopicCategory.FALL_PREVENTION, label: "추락방지" },
+  { value: TbmTopicCategory.SCAFFOLD_SAFETY, label: "비계안전" },
+  { value: TbmTopicCategory.EXCAVATION, label: "굴착작업" },
+  { value: TbmTopicCategory.CRANE_OPERATION, label: "크레인작업" },
+  { value: TbmTopicCategory.ELECTRICAL, label: "전기안전" },
+  { value: TbmTopicCategory.FIRE_PREVENTION, label: "화재예방" },
+  { value: TbmTopicCategory.PPE, label: "보호구" },
+  { value: TbmTopicCategory.CHEMICAL_HANDLING, label: "화학물질" },
+  { value: TbmTopicCategory.CONFINED_SPACE, label: "밀폐공간" },
+  { value: TbmTopicCategory.TRAFFIC, label: "교통안전" },
+  { value: TbmTopicCategory.WEATHER, label: "기상관련" },
+  { value: TbmTopicCategory.GENERAL, label: "일반" },
+];
 
 interface Props {
   tbmForm: TbmFormState;
@@ -67,7 +86,7 @@ export function TbmForm({
         <CardTitle>{editingTbmId ? "TBM 기록 수정" : "TBM 등록"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <Input
             type="date"
             value={tbmForm.date}
@@ -82,6 +101,26 @@ export function TbmForm({
               setTbmForm((prev) => ({ ...prev, topic: e.target.value }))
             }
           />
+          <select
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={tbmForm.topicCategory ?? ""}
+            onChange={(e) =>
+              setTbmForm((prev) => ({
+                ...prev,
+                topicCategory:
+                  e.target.value.length > 0
+                    ? (e.target.value as TbmTopicCategory)
+                    : undefined,
+              }))
+            }
+          >
+            <option value="">주제 분류(선택)</option>
+            {TOPIC_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
         <textarea
           className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

@@ -84,7 +84,9 @@ export function useQuizzes(siteId: string) {
                 | "SINGLE_CHOICE"
                 | "OX"
                 | "MULTI_CHOICE"
-                | "SHORT_ANSWER";
+                | "SHORT_ANSWER"
+                | "IMAGE";
+              imageUrl?: string | null;
               options: string | string[];
               correctAnswer: number;
               correctAnswerText?: string | null;
@@ -118,7 +120,9 @@ export function useQuiz(id: string) {
               | "SINGLE_CHOICE"
               | "OX"
               | "MULTI_CHOICE"
-              | "SHORT_ANSWER";
+              | "SHORT_ANSWER"
+              | "IMAGE";
+            imageUrl?: string | null;
             options: string | string[];
             correctAnswer: number;
             correctAnswerText?: string | null;

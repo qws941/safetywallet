@@ -156,6 +156,10 @@ vi.mock("../../db/schema", () => ({
     options: "options",
     correctAnswer: "correctAnswer",
     orderIndex: "orderIndex",
+    questionType: "questionType",
+    correctAnswerText: "correctAnswerText",
+    explanation: "explanation",
+    imageUrl: "imageUrl",
   },
   quizAttempts: {
     id: "id",
@@ -470,7 +474,13 @@ describe("education", () => {
     it("creates quiz question", async () => {
       mockGet
         .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
-        .mockResolvedValueOnce({ id: "qq1", question: "Q?" });
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          id: "qq1",
+          question: "Q?",
+          questionType: "SINGLE_CHOICE",
+          imageUrl: null,
+        });
       const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
       const res = await app.request(
         "/quizzes/q1/questions",
@@ -871,7 +881,12 @@ describe("education", () => {
     it("creates OX question", async () => {
       mockGet
         .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
-        .mockResolvedValueOnce({ id: "qq-ox", questionType: "OX" });
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          id: "qq-ox",
+          questionType: "OX",
+          imageUrl: null,
+        });
       const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
       const res = await app.request(
         "/quizzes/q1/questions",
@@ -920,6 +935,59 @@ describe("education", () => {
           body: JSON.stringify({
             question: "short",
             questionType: "SHORT_ANSWER",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("creates IMAGE question with imageUrl", async () => {
+      mockGet
+        .mockResolvedValueOnce({ id: "q1", siteId: "site-1" })
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          id: "qq-img",
+          questionType: "IMAGE",
+          imageUrl: "/r2/quiz-images/test.jpg",
+        });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "이 사진에서 위험요소를 식별하세요",
+            questionType: "IMAGE",
+            options: ["추락 위험", "감전 위험", "끼임 위험"],
+            correctAnswer: 0,
+            imageUrl: "/r2/quiz-images/test.jpg",
+          }),
+        },
+        env,
+      );
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as {
+        data: { questionType: string; imageUrl: string };
+      };
+      expect(body.data.questionType).toBe("IMAGE");
+      expect(body.data.imageUrl).toBe("/r2/quiz-images/test.jpg");
+    });
+
+    it("rejects IMAGE question without imageUrl", async () => {
+      mockGet.mockResolvedValueOnce({ id: "q1", siteId: "site-1" });
+      const { app, env } = await createApp(makeAuth("SUPER_ADMIN"));
+      const res = await app.request(
+        "/quizzes/q1/questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: "이 사진에서 위험요소를 식별하세요",
+            questionType: "IMAGE",
+            options: ["추락 위험", "감전 위험", "끼임 위험"],
+            correctAnswer: 0,
           }),
         },
         env,

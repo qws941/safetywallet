@@ -6,6 +6,7 @@ import type {
   CreateStatutoryTrainingInput,
   QuizQuestion,
 } from "@/hooks/use-api";
+import type { TbmTopicCategory } from "@safetywallet/types";
 
 export type ContentFormState = {
   title: string;
@@ -29,7 +30,13 @@ export type QuizFormState = {
 
 export type QuestionFormState = {
   question: string;
-  questionType: "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+  questionType:
+    | "SINGLE_CHOICE"
+    | "OX"
+    | "MULTI_CHOICE"
+    | "SHORT_ANSWER"
+    | "IMAGE";
+  imageUrl: string;
   option1: string;
   option2: string;
   option3: string;
@@ -54,6 +61,7 @@ export type TrainingFormState = {
 export type TbmFormState = {
   date: string;
   topic: string;
+  topicCategory?: TbmTopicCategory;
   content: string;
   weatherCondition: string;
   specialNotes: string;
@@ -116,6 +124,7 @@ export type TbmRecordItem = {
     id: string;
     date: string;
     topic: string;
+    topicCategory?: TbmTopicCategory | null;
     weatherCondition?: string | null;
   };
 };

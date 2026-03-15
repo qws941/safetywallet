@@ -22,7 +22,12 @@ import {
 } from "@safetywallet/ui";
 import { AlertCircle, CheckCircle2, Clock, RotateCcw } from "lucide-react";
 
-type QuestionType = "SINGLE_CHOICE" | "OX" | "MULTI_CHOICE" | "SHORT_ANSWER";
+type QuestionType =
+  | "SINGLE_CHOICE"
+  | "OX"
+  | "MULTI_CHOICE"
+  | "SHORT_ANSWER"
+  | "IMAGE";
 type AnswerValue = number | number[] | string;
 
 const getQuestionType = (value: string | undefined): QuestionType => {
@@ -30,7 +35,8 @@ const getQuestionType = (value: string | undefined): QuestionType => {
     value === "SINGLE_CHOICE" ||
     value === "OX" ||
     value === "MULTI_CHOICE" ||
-    value === "SHORT_ANSWER"
+    value === "SHORT_ANSWER" ||
+    value === "IMAGE"
   ) {
     return value;
   }
@@ -41,6 +47,7 @@ const getQuestionTypeLabel = (type: QuestionType): string => {
   if (type === "OX") return "OX 퀴즈";
   if (type === "MULTI_CHOICE") return "복수 선택";
   if (type === "SHORT_ANSWER") return "주관식";
+  if (type === "IMAGE") return "이미지 문제";
   return "단일 선택";
 };
 
@@ -334,7 +341,14 @@ function QuizTakeContent() {
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm text-muted-foreground">
+                    <CardContent className="space-y-3 text-sm text-muted-foreground">
+                      {questionType === "IMAGE" && question.imageUrl && (
+                        <img
+                          src={question.imageUrl}
+                          alt={`문항 이미지 ${index + 1}`}
+                          className="w-full max-h-64 rounded-md border object-contain bg-background"
+                        />
+                      )}
                       <span className="font-medium text-foreground">
                         {t("education.quiz.answerLabel")}
                       </span>{" "}
@@ -413,27 +427,43 @@ function QuizTakeContent() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {questionType === "SINGLE_CHOICE" &&
+                  {questionType === "IMAGE" && q.imageUrl && (
+                    <div className="pb-2">
+                      <img
+                        src={q.imageUrl}
+                        alt={`문항 이미지 ${idx + 1}`}
+                        className="w-full max-h-80 rounded-lg border object-contain bg-background"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          el.onerror = null;
+                          el.style.display = "none";
+                          const p = el.parentElement;
+                          if (p) {
+                            const d = document.createElement("div");
+                            d.className =
+                              "w-full h-40 rounded-lg border bg-muted flex items-center justify-center text-sm text-muted-foreground";
+                            d.textContent = "이미지를 불러올 수 없습니다";
+                            p.appendChild(d);
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {(questionType === "SINGLE_CHOICE" ||
+                    questionType === "IMAGE") &&
                     options.map((option: string, optIdx: number) => {
                       const selected = answer === optIdx;
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={`${q.id}-single-${optIdx}`}
-                          role="radio"
-                          aria-checked={selected}
-                          tabIndex={0}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                             selected
                               ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
                               : "border-border hover:bg-muted"
                           }`}
                           onClick={() => handleAnswerSelect(q.id, optIdx)}
-                          onKeyDown={(e) => {
-                            if (e.key === " " || e.key === "Enter") {
-                              e.preventDefault();
-                              handleAnswerSelect(q.id, optIdx);
-                            }
-                          }}
                         >
                           <div
                             className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -450,7 +480,7 @@ function QuizTakeContent() {
                           {selected && (
                             <CheckCircle2 className="w-4 h-4 text-primary" />
                           )}
-                        </div>
+                        </button>
                       );
                     })}
 
@@ -486,23 +516,15 @@ function QuizTakeContent() {
                       const selected =
                         Array.isArray(answer) && answer.includes(optIdx);
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={`${q.id}-multi-${optIdx}`}
-                          role="checkbox"
-                          aria-checked={selected}
-                          tabIndex={0}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                             selected
                               ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
                               : "border-border hover:bg-muted"
                           }`}
                           onClick={() => handleMultiChoiceToggle(q.id, optIdx)}
-                          onKeyDown={(e) => {
-                            if (e.key === " " || e.key === "Enter") {
-                              e.preventDefault();
-                              handleMultiChoiceToggle(q.id, optIdx);
-                            }
-                          }}
                         >
                           <div
                             className={`w-4 h-4 rounded border flex items-center justify-center ${
@@ -521,7 +543,7 @@ function QuizTakeContent() {
                           {selected && (
                             <CheckCircle2 className="w-4 h-4 text-primary" />
                           )}
-                        </div>
+                        </button>
                       );
                     })}
 

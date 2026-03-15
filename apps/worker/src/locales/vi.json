@@ -105,7 +105,16 @@
       "anonymous": "Báo cáo ẩn danh",
       "title": "Báo cáo mới",
       "unsafeBehaviorWarning": "Khi báo cáo hành vi không an toàn, vui lòng không đưa thông tin cá nhân.",
-      "zone": "Khu vực"
+      "zone": "Khu vực",
+      "hazardSubcategory": "Phân loại nguy hiểm chi tiết",
+      "hazardSubcategory_FALL": "Ngã cao",
+      "hazardSubcategory_COLLAPSE": "Sập đổ",
+      "hazardSubcategory_STRUCK_BY": "Vật rơi va đập",
+      "hazardSubcategory_CAUGHT_IN": "Kẹt/cuốn",
+      "hazardSubcategory_ELECTROCUTION": "Điện giật",
+      "hazardSubcategory_FIRE": "Hỏa hoạn",
+      "hazardSubcategory_CHEMICAL": "Hóa chất",
+      "hazardSubcategory_OTHER": "Khác"
     },
     "createReport": "Tạo báo cáo",
     "selectCategory": "Vui lòng chọn danh mục",

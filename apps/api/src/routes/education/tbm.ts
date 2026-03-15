@@ -2,13 +2,15 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { z } from "zod";
 import {
   CreateTbmInputSchema,
+  UpdateTbmInputSchema,
+  TbmRecordFilterSchema,
   AttendTbmSchema,
 } from "../../validators/schemas";
 import {
   tbmRecords,
+  tbmTopicCategoryEnum,
   tbmAttendees,
   siteMemberships,
   users,
@@ -20,30 +22,18 @@ import {
   generateTbmMeetingMinutes,
   getAiCredentials,
 } from "../../lib/gemini-ai";
-import type { AppType, CreateTbmBody } from "./helpers";
+import type { AppType } from "./helpers";
 import { createLogger } from "../../lib/logger";
 
 const logger = createLogger("tbm");
 
 const app = new Hono<AppType>();
 
-const UpdateTbmInputSchema = z
-  .object({
-    date: z.string().optional(),
-    topic: z.string().min(1).optional(),
-    content: z.string().optional(),
-    weatherCondition: z.string().optional(),
-    specialNotes: z.string().optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "At least one field is required",
-  });
-
 app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
-  const body = c.req.valid("json") as CreateTbmBody;
+  const body = c.req.valid("json");
 
   if (!body.siteId || !body.date || !body.topic) {
     return error(c, "MISSING_FIELDS", "siteId, date, topic are required", 400);
@@ -93,6 +83,7 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
       siteId: body.siteId,
       date: Math.floor(new Date(body.date).getTime() / 1000),
       topic: body.topic,
+      topicCategory: body.topicCategory ?? null,
       content: body.content ?? null,
       leaderId: body.leaderId ?? user.id,
       weatherCondition: body.weatherCondition ?? null,
@@ -175,11 +166,27 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
   return success(c, tbm, 201);
 });
 
-app.get("/", async (c) => {
+app.get("/", zValidator("query", TbmRecordFilterSchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
-  const siteId = c.req.query("siteId");
-  const date = c.req.query("date");
+  const validatedQuery = c.req.valid("query");
+  const siteId = validatedQuery?.siteId ?? c.req.query("siteId");
+  const date = validatedQuery?.date ?? c.req.query("date");
+  const topicCategoryRaw =
+    validatedQuery?.topicCategory ?? c.req.query("topicCategory");
+  const topicCategory =
+    topicCategoryRaw &&
+    tbmTopicCategoryEnum.includes(
+      topicCategoryRaw as (typeof tbmTopicCategoryEnum)[number],
+    )
+      ? (topicCategoryRaw as (typeof tbmTopicCategoryEnum)[number])
+      : undefined;
+  const limit = Math.min(
+    validatedQuery?.limit ?? Number.parseInt(c.req.query("limit") || "20", 10),
+    100,
+  );
+  const offset =
+    validatedQuery?.offset ?? Number.parseInt(c.req.query("offset") || "0", 10);
 
   if (!siteId) {
     return error(c, "MISSING_SITE_ID", "siteId is required", 400);
@@ -200,18 +207,19 @@ app.get("/", async (c) => {
     return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   }
 
-  const limit = Math.min(
-    Number.parseInt(c.req.query("limit") || "20", 10),
-    100,
-  );
-  const offset = Number.parseInt(c.req.query("offset") || "0", 10);
+  const whereConditions = [eq(tbmRecords.siteId, siteId)];
 
-  const whereClause = date
-    ? and(
-        eq(tbmRecords.siteId, siteId),
-        eq(tbmRecords.date, Math.floor(new Date(date).getTime() / 1000)),
-      )
-    : eq(tbmRecords.siteId, siteId);
+  if (date) {
+    whereConditions.push(
+      eq(tbmRecords.date, Math.floor(new Date(date).getTime() / 1000)),
+    );
+  }
+
+  if (topicCategory) {
+    whereConditions.push(eq(tbmRecords.topicCategory, topicCategory));
+  }
+
+  const whereClause = and(...whereConditions);
 
   const [records, countResult] = await Promise.all([
     db
@@ -336,6 +344,9 @@ app.put("/:id", zValidator("json", UpdateTbmInputSchema), async (c) => {
         date: Math.floor(new Date(body.date).getTime() / 1000),
       }),
       ...(body.topic !== undefined && { topic: body.topic }),
+      ...(body.topicCategory !== undefined && {
+        topicCategory: body.topicCategory,
+      }),
       ...(body.content !== undefined && { content: body.content }),
       ...(body.weatherCondition !== undefined && {
         weatherCondition: body.weatherCondition,
